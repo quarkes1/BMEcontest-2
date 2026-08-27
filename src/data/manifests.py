@@ -29,7 +29,7 @@ def load_meals() -> pd.DataFrame:
     out = []
     for r in rows:
         ext = str(r["externalid"]).strip()
-        if ext.lower() == "test":
+        if not ext or ext.lower() == "test":
             continue
         before, after = int(float(r["beforeTime"])), int(float(r["afterTime"]))
         if after <= before:
@@ -46,15 +46,16 @@ def load_meals() -> pd.DataFrame:
     return pd.DataFrame(out)
 
 def load_users() -> pd.DataFrame:
-    df = pd.read_csv(USERS_CSV, encoding="utf-8")
+    df = pd.read_csv(USERS_CSV, encoding="utf-8", dtype={"externalid": str})
     df = df[df["externalid"].str.lower() != "test"].drop_duplicates(subset="externalid")
     return df
 
 def load_sensor_index() -> pd.DataFrame:
-    """传感器索引：session_id=zip 名 stem；剔除 test 用户与黑名单会话。"""
-    df = pd.read_csv(INDEX_CSV, encoding="utf-8")
+    """传感器索引：session_id=zip 名 stem；剔除空/NaN、test 用户与黑名单会话。"""
+    df = pd.read_csv(INDEX_CSV, encoding="utf-8", dtype={"externalid": str})
     df["session_id"] = df["sensorData"].map(lambda p: p.split("/")[-1].removesuffix(".zip"))
-    df = df[df["externalid"].str.lower() != "test"]
+    df = df[df["externalid"].notna() & (df["externalid"].str.strip() != "")
+            & (df["externalid"].str.lower() != "test")]
     blacklist = load_blacklist()
     df = df[~df["session_id"].isin(blacklist)]
     return df
