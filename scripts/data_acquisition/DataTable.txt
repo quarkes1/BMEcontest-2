@@ -1,0 +1,3 @@
+t_zsstnnrj_sensororiginaldata_system,externalid,sensorData,timeStamp.startTime,timeStamp.endTime
+t_zsstnnrj_mealinfo_puadqog7,externalid,dietaryType,beforeTime,afterTime,drinkingVolume,satiety,foodName,tablewareType,dietaryHand,wearHand
+t_zsstnnrj_userinfobean_5d4l0nmp,externalid,age,gender,height,weight,wrist,wear
