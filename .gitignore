@@ -1,2 +1,8 @@
 Archieves/
-Data/
+/Data/
+*.7z
+*.pyc
+__pycache__/
+cache/
+models/
+outputs/
