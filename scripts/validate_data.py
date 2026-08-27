@@ -55,7 +55,7 @@ def main():
     t0 = time.time()
     index = manifests.load_sensor_index()
     ids = sorted(index["session_id"].tolist())
-    print(f"扫描 {len(ids)} 个会话...")
+    print(f"扫描 {len(ids)} 个会话...", flush=True)
     results = []
     with ProcessPoolExecutor(max_workers=8) as ex:
         for rec in ex.map(check_one, ids, chunksize=8):
@@ -68,7 +68,7 @@ def main():
         "\n".join(blacklist) + "\n", encoding="utf-8")
     bad_tail = [r["session_id"] for r in results if r.get("tail_zero_rows", 0) >= 50]
     errs = [r for r in results if r.get("error")]
-    print(f"完成, 用时 {time.time()-t0:.0f}s")
+    print(f"完成, 用时 {time.time()-t0:.0f}s", flush=True)
     print(f"二进制损坏: {sum(1 for r in results if r.get('binary'))}")
     print(f"解析失败/缺文件: {len(errs)} {errs[:3]}")
     print(f"尾随置零>=50行: {len(bad_tail)}")
