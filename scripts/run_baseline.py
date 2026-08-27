@@ -2,8 +2,13 @@
 """LightGBM 基线 5 折主流程（依赖特征缓存，见 build_feature_cache.py）。
 运行：conda activate bme && python scripts/run_baseline.py"""
 import json
+import sys
 import time
+from pathlib import Path
 import numpy as np
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))   # 项目根入 sys.path
+
 import src.config as config
 from src.data import manifests, splits
 from src.models.baseline_lgbm import train_one_fold, predict_session

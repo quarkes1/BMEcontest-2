@@ -7,7 +7,11 @@ import os
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor
+from pathlib import Path
 import numpy as np
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))   # 项目根入 sys.path
+
 import src.config as config
 from src.data import manifests
 from src.data.loader import load_session, detect_binary, _find_collect_data
