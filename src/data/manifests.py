@@ -50,6 +50,20 @@ def load_users() -> pd.DataFrame:
     df = df[df["externalid"].str.lower() != "test"].drop_duplicates(subset="externalid")
     return df
 
+def load_meal_meta():
+    """每受试者的用餐区间元数据（场景/餐具/膳食类型），供 W2 窗口缓存脚本共用。
+    返回 (meta, tableware_classes)：meta[ext] = [{before,after,scene,tableware,dietary}, ...]"""
+    meals = load_meals()
+    tw_classes = sorted(meals["tableware"].unique().tolist())
+    tw_idx = {v: i for i, v in enumerate(tw_classes)}
+    meta = {}
+    for _, r in meals.iterrows():
+        meta.setdefault(r["externalid"], []).append({
+            "before": int(r["before_ms"]), "after": int(r["after_ms"]),
+            "scene": r["scene"], "tableware": tw_idx[r["tableware"]],
+            "dietary": r["dietary_type"]})
+    return meta, tw_classes
+
 def load_sensor_index() -> pd.DataFrame:
     """传感器索引：session_id=zip 名 stem；剔除空/NaN、test 用户与黑名单会话。"""
     df = pd.read_csv(INDEX_CSV, encoding="utf-8", dtype={"externalid": str})
