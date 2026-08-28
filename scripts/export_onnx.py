@@ -35,30 +35,38 @@ class _L3bProb(nn.Module):
 def export(fold):
     config.MODEL_DIR.mkdir(parents=True, exist_ok=True)
     # L3a
-    m3a = L3aCNN(5).eval()
-    m3a.load_state_dict(torch.load(config.MODEL_DIR / f"l3a_cnn_fold{fold}.pt", weights_only=True))
-    out3a = config.MODEL_DIR / f"l3a_cnn_fold{fold}.onnx"
-    torch.onnx.export(_L3aEatOnly(m3a),
-                      torch.zeros(1, N_CHANNELS, WINDOW_LEN),
-                      out3a,
-                      input_names=["x"], output_names=["p"],
-                      dynamic_axes={"x": {0: "batch"}, "p": {0: "batch"}},
-                      opset_version=17)
-    print(f"L3a -> {out3a}")
+    p3a = config.MODEL_DIR / f"l3a_cnn_fold{fold}.pt"
+    if p3a.exists():
+        m3a = L3aCNN(5).eval()
+        m3a.load_state_dict(torch.load(p3a, weights_only=True))
+        out3a = config.MODEL_DIR / f"l3a_cnn_fold{fold}.onnx"
+        torch.onnx.export(_L3aEatOnly(m3a),
+                          torch.zeros(1, N_CHANNELS, WINDOW_LEN),
+                          out3a,
+                          input_names=["x"], output_names=["p"],
+                          dynamic_axes={"x": {0: "batch"}, "p": {0: "batch"}},
+                          opset_version=17)
+        print(f"L3a -> {out3a}")
+    else:
+        print(f"skip L3a（{p3a} 不存在）")
 
     # L3b
-    m3b = L3bPPGNN().eval()
-    m3b.load_state_dict(torch.load(config.MODEL_DIR / f"l3b_ppgnn_fold{fold}.pt", weights_only=True))
-    out3b = config.MODEL_DIR / f"l3b_ppgnn_fold{fold}.onnx"
-    torch.onnx.export(_L3bProb(m3b),
-                      (torch.zeros(1, SEQ_LEN, N_PPG_CHANNELS, PPG_WINDOW_ROWS),
-                       torch.zeros(1, SEQ_LEN, HRV_DIMS)),
-                      out3b,
-                      input_names=["x", "h"], output_names=["p"],
-                      dynamic_axes={"x": {0: "batch"}, "h": {0: "batch"},
-                                    "p": {0: "batch"}},
-                      opset_version=17)
-    print(f"L3b -> {out3b}")
+    p3b = config.MODEL_DIR / f"l3b_ppgnn_fold{fold}.pt"
+    if p3b.exists():
+        m3b = L3bPPGNN().eval()
+        m3b.load_state_dict(torch.load(p3b, weights_only=True))
+        out3b = config.MODEL_DIR / f"l3b_ppgnn_fold{fold}.onnx"
+        torch.onnx.export(_L3bProb(m3b),
+                          (torch.zeros(1, SEQ_LEN, N_PPG_CHANNELS, PPG_WINDOW_ROWS),
+                           torch.zeros(1, SEQ_LEN, HRV_DIMS)),
+                          out3b,
+                          input_names=["x", "h"], output_names=["p"],
+                          dynamic_axes={"x": {0: "batch"}, "h": {0: "batch"},
+                                        "p": {0: "batch"}},
+                          opset_version=17)
+        print(f"L3b -> {out3b}")
+    else:
+        print(f"skip L3b（{p3b} 不存在）")
 
 def smoke(fold):
     """onnxruntime 冒烟：与 torch 输出一致。"""
@@ -70,6 +78,9 @@ def smoke(fold):
         ("l3b_ppgnn", lambda: (rng.randn(2, SEQ_LEN, N_PPG_CHANNELS, PPG_WINDOW_ROWS).astype(np.float32),
                                rng.randn(2, SEQ_LEN, HRV_DIMS).astype(np.float32)))):
         path = config.MODEL_DIR / f"{name}_fold{fold}.onnx"
+        if not path.exists():
+            print(f"{name}: skip smoke（{path} 不存在）")
+            continue
         sess = ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
         inputs = make_inputs()
         outs = sess.run(None, dict(zip([i.name for i in sess.get_inputs()], inputs)))
