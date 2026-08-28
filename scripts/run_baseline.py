@@ -12,7 +12,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))   # 项目根入 sys.path
 
 import src.config as config
-from src.data import splits
+from src.data import manifests, splits
 from src.models.baseline_lgbm import train_one_fold, predict_session
 from src.eval.metrics import compute_metrics
 
@@ -65,28 +65,13 @@ def load_fold_features(session_ids, neg_ratio=3.0, seed=config.RANDOM_SEED):
     return X, y, t0, t1
 
 def _load_val_session(sid):
-    """加载单会话验证窗口（数组）+ 该会话真值事件（y==1 并集区间）。"""
+    """加载单会话验证窗口（数组）。"""
     f = FEAT_CACHE / f"{sid}.npz"
     if not f.exists():
         return None
     d = np.load(f, mmap_mode="r")
     mask = d["y"] >= 0
-    Xv = np.asarray(d["X"][mask])
-    t0v = np.asarray(d["t0"][mask])
-    t1v = np.asarray(d["t1"][mask])
-    pos = np.where(np.asarray(d["y"]) == 1)[0]
-    true_events = []
-    if len(pos):
-        order = np.argsort(np.asarray(d["t0"])[pos])
-        cur_s, cur_e = int(d["t0"][pos[order[0]]]), int(d["t1"][pos[order[0]]])
-        for i in order[1:]:
-            if int(d["t0"][pos[i]]) <= cur_e:
-                cur_e = max(cur_e, int(d["t1"][pos[i]]))
-            else:
-                true_events.append((cur_s, cur_e))
-                cur_s, cur_e = int(d["t0"][pos[i]]), int(d["t1"][pos[i]])
-        true_events.append((cur_s, cur_e))
-    return (Xv, t0v, t1v, true_events)
+    return (np.asarray(d["X"][mask]), np.asarray(d["t0"][mask]), np.asarray(d["t1"][mask]))
 
 def load_val_data(session_ids):
     print(f"  加载 {len(session_ids)} 个验证会话...", flush=True)
@@ -95,8 +80,16 @@ def load_val_data(session_ids):
     Xv = np.vstack([p[0] for p in parts])
     t0v = np.concatenate([p[1] for p in parts])
     t1v = np.concatenate([p[2] for p in parts])
-    true_events = [e for p in parts for e in p[3]]
-    return Xv, t0v, t1v, true_events
+    return Xv, t0v, t1v
+
+def val_true_events(val_sessions):
+    """验证真值：直接取验证受试者的餐标签（1 餐 = 1 事件，与竞赛口径一致）。
+    不用正窗口重建——餐内空档会把一餐拆成多个事件，虚增 n_true。"""
+    meal_meta, _ = manifests.load_meal_meta()
+    index = manifests.load_sensor_index().set_index("session_id")
+    ext_set = {index.loc[s, "externalid"] for s in val_sessions if s in index.index}
+    return [(m["before"], m["after"])
+            for ext in ext_set for m in meal_meta.get(ext, [])]
 
 def eval_threshold(model, Xv, t0v, t1v, true_events, threshold):
     evs, _ = predict_session(model, Xv, t0v, t1v, threshold)
@@ -112,7 +105,8 @@ def main():
         Xtr, ytr, _, _ = load_fold_features(f["train_sessions"])
         model = train_one_fold(Xtr, ytr)
         del Xtr, ytr
-        Xv, t0v, t1v, val_true = load_val_data(f["val_sessions"])
+        Xv, t0v, t1v = load_val_data(f["val_sessions"])
+        val_true = val_true_events(f["val_sessions"])
         # 阈值扫描：0.3~0.7 取验证 F1 最优（验证数据只加载一次）
         best = None
         for thr in (0.3, 0.4, 0.5, 0.6, 0.7):
