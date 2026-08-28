@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 """LightGBM 窗口分类基线：训练 + 阈值调优 + 滑窗概率 -> 事件列表。"""
-import os
 import numpy as np
 import lightgbm as lgb
 import src.config as config
 
-NUM_THREADS = max(4, os.cpu_count() or 8)   # 显式线程数，避免 OpenMP 超订
+NUM_THREADS = 8   # 保守线程数：留足桌面响应余量（曾因 32 线程+高优先级卡死机器）
 
 def train_one_fold(X, y, seed=config.RANDOM_SEED):
     """X/y 为窗口特征与标签；内部留 15% 分层样本做 early stopping。"""
