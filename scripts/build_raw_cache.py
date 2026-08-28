@@ -63,7 +63,7 @@ def _build(args):
             ys.append(0); scs.append(-1); tws.append(-1)
             t0s.append(w["t0_ms"]); t1s.append(w["t1_ms"])
         if Xs:
-            np.savez_compressed(out, X=np.stack(Xs),
+            np.savez(out, X=np.stack(Xs),
                                 y=np.array(ys, dtype=np.int8),
                                 scene=np.array(scs, dtype=np.int8),
                                 tw=np.array(tws, dtype=np.int8),

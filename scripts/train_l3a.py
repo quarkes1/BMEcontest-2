@@ -14,7 +14,7 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 import numpy as np
 import torch
-from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
+from torch.utils.data import DataLoader, Dataset
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -52,8 +52,8 @@ def _val_session(args):
             Xs.append(build_raw_channels(s, w["start_row"], w["end_row"]))
             t0s.append(w["t0_ms"]); t1s.append(w["t1_ms"])
         if Xs:
-            np.savez_compressed(out, X=np.stack(Xs),
-                                t0=np.array(t0s, dtype=np.int64), t1=np.array(t1s, dtype=np.int64))
+            np.savez(out, X=np.stack(Xs),
+                     t0=np.array(t0s, dtype=np.int64), t1=np.array(t1s, dtype=np.int64))
         return ("ok", session_id)
     except Exception as e:
         return ("error", f"{session_id}: {type(e).__name__}: {e}")
@@ -76,46 +76,52 @@ def build_val_cache(val_sessions):
 
 
 # ------------------------------------------------------------------ 数据集
+# 注意：缓存为不压缩 npz（加载快）；索引按"文件内打乱 + 文件间洗牌"顺序访问，
+# 保证每个文件被完整消费后再换下一个（LRU 命中率 ~100%，避免每 batch 解压上百文件）。
+# 正样本重复 3 次实现 3:1 加权（替代 WeightedRandomSampler，兼容顺序访问）。
 class RawDataset(Dataset):
-    def __init__(self, out_dir, stats, mirror=True):
+    def __init__(self, out_dir, stats, epoch_seed, mirror=True):
         self.files = sorted(out_dir.glob("*.npz"))
         self.mean = np.array(stats["mean"], dtype=np.float32).reshape(N_CHANNELS, 1)
         self.std = np.array(stats["std"], dtype=np.float32).reshape(N_CHANNELS, 1) + 1e-6
         self.mirror = mirror
-        self.entries = []          # (file_idx, local_idx, label, tw)
-        self.file_labels = []
+        self.file_info = []
+        for f in self.files:
+            d = np.load(f)
+            pos = np.flatnonzero(d["y"] == 1)
+            neg = np.flatnonzero(d["y"] == 0)
+            self.file_info.append((f, d["y"].copy(), d["tw"].copy(), pos, neg))
+        rng = np.random.RandomState(epoch_seed)
+        parts = []
+        for fi, (_, _, _, pos, neg) in enumerate(self.file_info):
+            reps = np.r_[np.repeat(pos, 3), neg]
+            rng.shuffle(reps)
+            parts.append(np.c_[np.full(len(reps), fi, dtype=np.int64), reps])
+        for i in rng.permutation(len(parts)):        # 文件间洗牌
+            pass
+        self.order = np.concatenate([parts[i] for i in rng.permutation(len(parts))])
         self._cache = {}
         self._cache_order = []
-        for fi, f in enumerate(self.files):
-            d = np.load(f)
-            n = len(d["y"])
-            self.file_labels.append((d["y"], d["tw"]))
-            for i in range(n):
-                w = 3.0 if d["y"][i] == 1 else 1.0
-                self.entries.append((fi, i, w))
-        self.weights = np.array([e[2] for e in self.entries], dtype=np.float32)
-        self.rng = np.random.RandomState(config.RANDOM_SEED)
 
     def __len__(self):
-        return len(self.entries)
+        return len(self.order)
 
     def _get_file(self, fi):
         if fi not in self._cache:
             self._cache[fi] = np.load(self.files[fi])
             self._cache_order.append(fi)
-            if len(self._cache) > 2:
-                evict = self._cache_order.pop(0)
-                del self._cache[evict]
+            if len(self._cache) > 3:
+                del self._cache[self._cache_order.pop(0)]
         return self._cache[fi]
 
     def __getitem__(self, idx):
-        fi, i, _ = self.entries[idx]
+        fi, i = self.order[idx]
         d = self._get_file(fi)
         X = d["X"][i].astype(np.float32)
-        if self.mirror and self.rng.random() < 0.5:
+        if self.mirror and np.random.random() < 0.5:
             X = mirror_channels(X)
         X = (X - self.mean) / self.std
-        y, tw = self.file_labels[fi]
+        y, tw = self.file_info[fi][1], self.file_info[fi][2]
         return (torch.from_numpy(X), torch.tensor(y[i], dtype=torch.float32),
                 torch.tensor(tw[i], dtype=torch.long))
 
@@ -165,14 +171,10 @@ def train_fold(fold, epochs):
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"device={device}", flush=True)
-    ds = RawDataset(out_dir, stats, mirror=True)
-    sampler = WeightedRandomSampler(ds.weights, num_samples=len(ds), replacement=True)
-    dl = DataLoader(ds, batch_size=BATCH, sampler=sampler, num_workers=4,
-                    pin_memory=True, persistent_workers=True, drop_last=True)
 
     model = L3aCNN(num_tableware=5).to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
-    steps_per_epoch = len(dl)
+    steps_per_epoch = (3 * stats["pos"] + stats["neg"]) // BATCH   # 正样本重复 3 次的 epoch 长度
     total_steps = steps_per_epoch * epochs
     sched = torch.optim.lr_scheduler.LambdaLR(
         opt, lambda s: 0.5 * (1 + math.cos(math.pi * s / total_steps)))
@@ -185,6 +187,10 @@ def train_fold(fold, epochs):
 
     best = {"f1_dominant": -1.0}
     for ep in range(1, epochs + 1):
+        # 每 epoch 重建数据集（新洗牌顺序；Windows spawn 下 worker 拷贝不会随 set_epoch 更新）
+        ds = RawDataset(out_dir, stats, epoch_seed=config.RANDOM_SEED + ep)
+        dl = DataLoader(ds, batch_size=BATCH, shuffle=False, num_workers=4,
+                        pin_memory=True, drop_last=True)
         model.train()
         t0 = time.time(); loss_sum = 0.0; n_b = 0; pos_acc = 0.0
         for xb, yb, twb in dl:
@@ -196,11 +202,12 @@ def train_fold(fold, epochs):
             scaler.scale(loss).backward()
             scaler.step(opt); scaler.update(); opt.zero_grad(set_to_none=True)
             sched.step()
-            loss_sum += float(loss); n_b += 1
+            loss_sum += loss.item(); n_b += 1
             with torch.no_grad():
                 pos_acc += float(((torch.sigmoid(logit) > 0.5) == (yb > 0.5))[yb > 0.5].float().mean())
         print(f"  ep {ep}/{epochs} loss={loss_sum/n_b:.4f} pos_acc={pos_acc/max(1,n_b):.3f} "
               f"用时 {time.time()-t0:.0f}s", flush=True)
+        del dl, ds
 
         if ep % VAL_EVERY == 0 or ep == epochs:
             probs, tv0, tv1 = score_val_cache(model, VAL_DIR, mean, std, device)
