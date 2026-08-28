@@ -67,7 +67,7 @@
 
 ## 4. 训练与评估
 
-- 窗口标签：与事件 IoU≥0.5 正、=0 负、灰区丢弃（训练）；推理连续打分不二分类
+- 窗口标签：与餐的重叠**占窗口时长比例 ≥0.5 正**、零重叠负、其余灰区丢弃（训练）；推理连续打分不二分类。⚠️ 不能用事件级 IoU：5s 窗口 vs 15min 事件 IoU 恒 <0.01，会无正样本（已实测踩坑并修复，2026-08-27）
 - 负采样：会话内分段 3:1 负正比 + WeightedRandomSampler；正样本全保留
 - 划分：按受试者 GroupKFold 5 折（45 人 → 每组 9 人），两场景均衡，seed=42，manifest 落盘
 - 增强：左右镜像（X 翻转，wearHand↔dietaryHand 标签同步映射）、幅度抖动 ±10%、时间伸缩 ±5%、通道 dropout
@@ -81,7 +81,8 @@
 - PyInstaller 单文件 + **ONNX Runtime** 后端（L3a/L3b 导出 ONNX；L1/L2/L4 纯 numpy）→ ~80MB、无 torch
 - CLI：`bme_predict.exe <测试数据目录> [--out predict.csv] [--config adapter.json]`
 - **`src/infer/io_adapter.py` 适配层**：规范中间格式 CanonicalSession 与外部格式解耦；接口文档发布后只改此处
-- 输出 predict.csv 列名占位 `externalid,startTime,endTime`（毫秒），随文档调整；容错：单会话失败不中断、写 predict.log
+- 输出 predict.csv 列名占位 `externalid,startTime,endTime`（毫秒），随文档调整
+- **测试集容错（用户明确要求，2026-08-27）**：测试数据**也可能包含损坏/异常文件**（训练集实测 16 个二进制损坏 + 空 ID 行 + 时间戳跳跃）。推理管线必须：① 逐会话 `detect_binary` 检测，损坏即跳过并记入 `predict.log`；② 单会话解析失败不中断整体流程（try/except 逐会话隔离）；③ 空 externalid 会话跳过；④ 与训练侧同一套 loader 掩码/窗口逻辑，保证分布一致；⑤ 输出清单同时生成"已处理/跳过"明细供组委会核对。**禁止**因个别损坏文件导致整个可执行文件崩溃（会直接导致准确性零分）
 
 ## 6. Web 应用（目标 2）
 
