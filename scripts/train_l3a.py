@@ -216,7 +216,7 @@ def train_fold(fold, epochs):
             true_dom = val_true_events(f["val_sessions"], "dominant")
             true_all = val_true_events(f["val_sessions"], None)
             best_thr, f1_dom = None, -1.0
-            for thr in (0.3, 0.4, 0.5, 0.6, 0.7):
+            for thr in (0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6):
                 evs = windows_to_events(probs, tv0, tv1, thr)
                 m = compute_metrics(evs, true_dom)
                 if m["f1"] > f1_dom:
