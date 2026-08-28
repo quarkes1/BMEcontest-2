@@ -65,6 +65,8 @@ def build_ppg_window(session, start, end):
     elif X.shape[1] < PPG_WINDOW_ROWS:
         X = np.pad(X, ((0, 0), (0, PPG_WINDOW_ROWS - X.shape[1])))
     X = denoise_ppg(X)
+    scale = np.percentile(np.abs(X), 99.9) + 1e-6   # 幅值归一化：原始 ADC 值可超 fp16 上限
+    X = X / scale
     g = session.gyro[:, start:end]
     a = session.acc[:, start:end]
     hrv = hrv_features(X, gyro_std=float(np.linalg.norm(g, axis=0).std()),
