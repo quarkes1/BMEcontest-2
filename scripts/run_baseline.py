@@ -32,7 +32,7 @@ def _count_one(sid):
 def load_fold_features(session_ids, neg_ratio=3.0, seed=config.RANDOM_SEED):
     """按会话增量加载并抽样：返回 (X, y, t0s, t1s)。峰值内存 = 抽样后数据量。"""
     print(f"  统计 {len(session_ids)} 个会话...", flush=True)
-    t0 = time.time()
+    t_start = time.time()
     with ThreadPoolExecutor(max_workers=N_WORKERS) as ex:
         counts = list(ex.map(_count_one, session_ids))
     pos_total = sum(c[0] for c in counts)
@@ -51,7 +51,7 @@ def load_fold_features(session_ids, neg_ratio=3.0, seed=config.RANDOM_SEED):
         pos_m = y_k == 1
         neg_m = ~pos_m
         rng = np.random.RandomState(seed + i)
-        sel_neg = neg_m & (rng.random(int(neg_m.sum())) < r_neg)
+        sel_neg = neg_m & (rng.random(len(y_k)) < r_neg)
         full_mask = np.zeros(len(keep), dtype=bool)
         full_mask[keep] = pos_m | sel_neg          # 直接在 mmap 上按掩码取数，避免全量拷贝
         Xs.append(np.asarray(d["X"][full_mask]))
@@ -61,7 +61,7 @@ def load_fold_features(session_ids, neg_ratio=3.0, seed=config.RANDOM_SEED):
     X = np.vstack(Xs); del Xs
     y = np.concatenate(ys); del ys
     t0 = np.concatenate(t0s); t1 = np.concatenate(t1s); del t0s, t1s
-    print(f"  训练窗口 {len(y)}（加载+抽样用时 {time.time()-t0:.0f}s）", flush=True)
+    print(f"  训练窗口 {len(y)}（加载+抽样用时 {time.time()-t_start:.0f}s）", flush=True)
     return X, y, t0, t1
 
 def _load_val_session(sid):
