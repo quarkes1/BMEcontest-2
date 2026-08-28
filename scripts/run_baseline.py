@@ -16,7 +16,7 @@ from src.models.baseline_lgbm import train_one_fold, predict_session
 from src.eval.metrics import compute_metrics
 
 FEAT_CACHE = config.CACHE_DIR / "baseline_features"
-N_WORKERS = 8
+N_WORKERS = 16
 
 def _load_train_one(sid):
     """并行加载单会话窗口特征（训练用）。返回 None 表示无缓存。"""
