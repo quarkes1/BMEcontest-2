@@ -7,6 +7,7 @@
 import argparse
 import json
 import math
+import shutil
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor
@@ -78,8 +79,8 @@ def build_val_cache(val_sessions):
 class RawDataset(Dataset):
     def __init__(self, out_dir, stats, mirror=True):
         self.files = sorted(out_dir.glob("*.npz"))
-        self.mean = np.array(stats["mean"], dtype=np.float32).reshape(1, N_CHANNELS, 1)
-        self.std = np.array(stats["std"], dtype=np.float32).reshape(1, N_CHANNELS, 1) + 1e-6
+        self.mean = np.array(stats["mean"], dtype=np.float32).reshape(N_CHANNELS, 1)
+        self.std = np.array(stats["std"], dtype=np.float32).reshape(N_CHANNELS, 1) + 1e-6
         self.mirror = mirror
         self.entries = []          # (file_idx, local_idx, label, tw)
         self.file_labels = []
@@ -221,6 +222,7 @@ def train_fold(fold, epochs):
                 config.MODEL_DIR.mkdir(parents=True, exist_ok=True)
                 torch.save(model.state_dict(), config.MODEL_DIR / f"l3a_cnn_fold{fold}.pt")
                 print(f"  >>> 保存 best (ep {ep})", flush=True)
+    shutil.rmtree(VAL_DIR, ignore_errors=True)      # 验证缓存 ~14GB/折，用完即删
     return best
 
 
