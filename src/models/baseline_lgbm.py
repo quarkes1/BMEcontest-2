@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 """LightGBM 窗口分类基线：训练 + 阈值调优 + 滑窗概率 -> 事件列表。"""
+import os
 import numpy as np
 import lightgbm as lgb
 import src.config as config
+
+NUM_THREADS = max(4, os.cpu_count() or 8)   # 显式线程数，避免 OpenMP 超订
 
 def train_one_fold(X, y, seed=config.RANDOM_SEED):
     """X/y 为窗口特征与标签；内部留 15% 分层样本做 early stopping。"""
@@ -18,7 +21,7 @@ def train_one_fold(X, y, seed=config.RANDOM_SEED):
     params = {"objective": "binary", "metric": "binary_logloss", "learning_rate": 0.05,
               "num_leaves": 63, "max_depth": 7, "feature_fraction": 0.8,
               "bagging_fraction": 0.8, "bagging_freq": 1, "verbose": -1,
-              "seed": seed}
+              "num_threads": NUM_THREADS, "seed": seed}
     model = lgb.train(params, ds, num_boost_round=300, valid_sets=[dv],
                       callbacks=[lgb.early_stopping(30, verbose=False)])
     return model
