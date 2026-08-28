@@ -5,6 +5,11 @@ from scipy.signal import butter, sosfilt
 from scipy.stats import skew, kurtosis
 
 def _bandpass(signal, low, high, fs):
+    if fs <= 4.0:
+        return np.zeros_like(signal)   # 极低行率（长空档会话）：带通无意义，降级为零
+    high = min(high, fs / 2 * 0.95)    # 保证 Wn < fs/2
+    if high <= low:
+        return np.zeros_like(signal)
     sos = butter(4, [low, high], btype="band", fs=fs, output="sos")
     return sosfilt(sos, signal)
 
