@@ -66,7 +66,7 @@ class L3aCNN(nn.Module):
         self.stem = nn.Conv1d(N_CHANNELS, stem_out, 1, bias=False)
         self.bn0 = nn.BatchNorm1d(stem_out)
         self.blocks = nn.Sequential(
-            _SepBlock(stem_out, 64, stride=1),
+            _SepBlock(stem_out, 64, stride=2),     # spec：逐块 stride 2（525→263→132→66）
             _SepBlock(64, 128, stride=2),
             _SepBlock(128, 128, stride=2),
         )

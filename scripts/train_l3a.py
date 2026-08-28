@@ -76,59 +76,58 @@ def build_val_cache(val_sessions):
 
 
 # ------------------------------------------------------------------ 数据集
-# 注意：缓存为不压缩 npz（加载快）；索引按"文件内打乱 + 文件间洗牌"顺序访问，
-# 保证每个文件被完整消费后再换下一个（LRU 命中率 ~100%，避免每 batch 解压上百文件）。
-# 正样本重复 3 次实现 3:1 加权（替代 WeightedRandomSampler，兼容顺序访问）。
+# 教训（2026-08-29）：① 压缩 npz 随机访问 = 每 batch 解压上百文件（200h/epoch）
+# ② 多进程 spawn 数据管线在 Windows 上不可靠（worker 满载、主进程死等、GPU 空转）。
+# 最终方案：负样本 3:1 抽样后全量载入内存（~10GB），epoch 内纯内存洗牌，num_workers=0。
 class RawDataset(Dataset):
-    def __init__(self, out_dir, stats, epoch_seed, mirror=True):
-        self.files = sorted(out_dir.glob("*.npz"))
+    def __init__(self, out_dir, stats, neg_ratio=3.0, mirror=True):
         self.mean = np.array(stats["mean"], dtype=np.float32).reshape(N_CHANNELS, 1)
         self.std = np.array(stats["std"], dtype=np.float32).reshape(N_CHANNELS, 1) + 1e-6
         self.mirror = mirror
-        self.file_info = []
-        for f in self.files:
+        files = [f for f in sorted(out_dir.glob("*.npz")) if not f.name.endswith(".tmp.npz")]
+        neg_prob = min(1.0, neg_ratio * stats["pos"] / max(1, stats["neg"]))
+        rng = np.random.RandomState(config.RANDOM_SEED)
+        # 预分配（先统计再填充，避免 concat 双倍内存峰值；掩码只取一次随机数）
+        total = 0
+        masks = []
+        for f in files:
             d = np.load(f)
-            pos = np.flatnonzero(d["y"] == 1)
-            neg = np.flatnonzero(d["y"] == 0)
-            self.file_info.append((f, d["y"].copy(), d["tw"].copy(), pos, neg))
-        rng = np.random.RandomState(epoch_seed)
-        parts = []
-        for fi, (_, _, _, pos, neg) in enumerate(self.file_info):
-            reps = np.r_[np.repeat(pos, 3), neg]
-            rng.shuffle(reps)
-            parts.append(np.c_[np.full(len(reps), fi, dtype=np.int64), reps])
-        for i in rng.permutation(len(parts)):        # 文件间洗牌
-            pass
-        self.order = np.concatenate([parts[i] for i in rng.permutation(len(parts))])
-        self._cache = {}
-        self._cache_order = []
+            m = (d["y"] == 1) | ((d["y"] == 0) & (rng.random(len(d["y"])) < neg_prob))
+            masks.append(m)
+            total += int(m.sum())
+        self.X = np.empty((total, N_CHANNELS, WINDOW_LEN), dtype=np.float32)
+        self.y = np.empty(total, dtype=np.float32)
+        self.tw = np.empty(total, dtype=np.int64)
+        off = 0
+        for f, m in zip(files, masks):
+            d = np.load(f)
+            n = int(m.sum())
+            self.X[off:off + n] = d["X"][m]
+            self.y[off:off + n] = d["y"][m]
+            self.tw[off:off + n] = d["tw"][m]
+            off += n
+        self.idx = np.arange(total)
+        print(f"  内存数据集: {total} 窗口（正 {int((self.y == 1).sum())}）", flush=True)
+
+    def reshuffle(self, seed):
+        self.idx = np.random.RandomState(seed).permutation(len(self.idx))
 
     def __len__(self):
-        return len(self.order)
-
-    def _get_file(self, fi):
-        if fi not in self._cache:
-            self._cache[fi] = np.load(self.files[fi])
-            self._cache_order.append(fi)
-            if len(self._cache) > 3:
-                del self._cache[self._cache_order.pop(0)]
-        return self._cache[fi]
+        return len(self.idx)
 
     def __getitem__(self, idx):
-        fi, i = self.order[idx]
-        d = self._get_file(fi)
-        X = d["X"][i].astype(np.float32)
+        i = self.idx[idx]
+        X = self.X[i].copy()
         if self.mirror and np.random.random() < 0.5:
             X = mirror_channels(X)
         X = (X - self.mean) / self.std
-        y, tw = self.file_info[fi][1], self.file_info[fi][2]
-        return (torch.from_numpy(X), torch.tensor(y[i], dtype=torch.float32),
-                torch.tensor(tw[i], dtype=torch.long))
+        return (torch.from_numpy(X), torch.tensor(self.y[i], dtype=torch.float32),
+                torch.tensor(self.tw[i], dtype=torch.long))
 
 
 # ------------------------------------------------------------------ 验证打分
 def score_val_cache(model, out_dir, mean, std, device):
-    files = sorted(out_dir.glob("*.npz"))
+    files = [f for f in sorted(out_dir.glob("*.npz")) if not f.name.endswith(".tmp.npz")]
     probs, t0s, t1s = [], [], []
     model.eval()
     with torch.no_grad():
@@ -170,11 +169,13 @@ def train_fold(fold, epochs):
     build_val_cache(f["val_sessions"])
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    if device == "cuda":
+        torch.backends.cudnn.benchmark = True
     print(f"device={device}", flush=True)
 
     model = L3aCNN(num_tableware=5).to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
-    steps_per_epoch = (3 * stats["pos"] + stats["neg"]) // BATCH   # 正样本重复 3 次的 epoch 长度
+    steps_per_epoch = (3 * stats["pos"] + int(min(stats["neg"], 3 * stats["pos"]))) // BATCH
     total_steps = steps_per_epoch * epochs
     sched = torch.optim.lr_scheduler.LambdaLR(
         opt, lambda s: 0.5 * (1 + math.cos(math.pi * s / total_steps)))
@@ -186,11 +187,10 @@ def train_fold(fold, epochs):
     std = torch.from_numpy(np.array(stats["std"], dtype=np.float32).reshape(1, N_CHANNELS, 1)).to(device) + 1e-6
 
     best = {"f1_dominant": -1.0}
+    ds = RawDataset(out_dir, stats)            # 全量载入内存一次（~10GB）
     for ep in range(1, epochs + 1):
-        # 每 epoch 重建数据集（新洗牌顺序；Windows spawn 下 worker 拷贝不会随 set_epoch 更新）
-        ds = RawDataset(out_dir, stats, epoch_seed=config.RANDOM_SEED + ep)
-        dl = DataLoader(ds, batch_size=BATCH, shuffle=False, num_workers=4,
-                        pin_memory=True, drop_last=True)
+        ds.reshuffle(config.RANDOM_SEED + ep)  # epoch 级纯内存洗牌
+        dl = DataLoader(ds, batch_size=BATCH, shuffle=False, num_workers=0, drop_last=True)
         model.train()
         t0 = time.time(); loss_sum = 0.0; n_b = 0; pos_acc = 0.0
         for xb, yb, twb in dl:
@@ -207,7 +207,7 @@ def train_fold(fold, epochs):
                 pos_acc += float(((torch.sigmoid(logit) > 0.5) == (yb > 0.5))[yb > 0.5].float().mean())
         print(f"  ep {ep}/{epochs} loss={loss_sum/n_b:.4f} pos_acc={pos_acc/max(1,n_b):.3f} "
               f"用时 {time.time()-t0:.0f}s", flush=True)
-        del dl, ds
+        del dl
 
         if ep % VAL_EVERY == 0 or ep == epochs:
             probs, tv0, tv1 = score_val_cache(model, VAL_DIR, mean, std, device)
@@ -236,7 +236,7 @@ def train_fold(fold, epochs):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--folds", default="0,1")
-    ap.add_argument("--epochs", type=int, default=25)
+    ap.add_argument("--epochs", type=int, default=18)
     args = ap.parse_args()
     t0 = time.time()
     report = {"folds": {}}
