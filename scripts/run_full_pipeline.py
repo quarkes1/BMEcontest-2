@@ -153,15 +153,15 @@ def fuse_session(p_a, p_b, hrv_b):
     p_b_up = np.repeat(p_b, 10)
     hrv_up = np.repeat(hrv_b, 10, axis=0)
     n = min(len(p_a), len(p_b_up))
-    p_a, p_b_up, hrv_up = p_a[:n], p_b_up[:n], hrv_up[:n]
     alpha = np.array([handcrafted_alpha(s, pi, act)
-                      for s, pi, act in zip(hrv_up[:, 4], hrv_up[:, 3], hrv_up[:, 6])], dtype=np.float32)
+                      for s, pi, act in zip(hrv_up[:n, 4], hrv_up[:n, 3], hrv_up[:n, 6])], dtype=np.float32)
     a_sm = np.empty_like(alpha)
     cur = 0.5
     for i in range(n):
         cur = ema_smooth(alpha[i], cur, step_s=1.0)
         a_sm[i] = cur
-    return fuse(p_a, p_b_up, a_sm)
+    fused = fuse(p_a[:n], p_b_up[:n], a_sm)
+    return np.concatenate([fused, p_a[n:]])   # 尾部无 PPG 覆盖 → 退化为 L3a
 
 
 def eval_events(evs, true_events):
