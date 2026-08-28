@@ -49,11 +49,9 @@ def _probs_to_events(probs, t0s, t1s, threshold):
     return [(max(0, s - dil), e + dil) for s, e in merged
             if (e - s) >= config.EVENT_MIN_DUR_SEC * 1000]
 
-def predict_session(model, windows, threshold=0.5):
-    """windows: list[dict]（含 feat/t0_ms/t1_ms）。返回 (事件列表, 概率序列)。"""
-    X = [w["feat"] for w in windows]
-    if not X:
+def predict_session(model, X, t0s, t1s, threshold=0.5):
+    """X: (n,37) 特征矩阵, t0s/t1s: (n,) 毫秒。返回 (事件列表, 概率序列)。"""
+    if len(X) == 0:
         return [], []
-    probs = model.predict(np.vstack(X))
-    return (_probs_to_events(probs, [w["t0_ms"] for w in windows],
-                             [w["t1_ms"] for w in windows], threshold), probs)
+    probs = model.predict(np.asarray(X))
+    return (_probs_to_events(probs, np.asarray(t0s), np.asarray(t1s), threshold), probs)
