@@ -168,6 +168,7 @@ def train_fold(fold, epochs):
     print(f"fold {fold}: 训练窗口 {stats['n_windows']}（正 {stats['pos']} / 负 {stats['neg']}）", flush=True)
 
     print("构建验证窗口缓存...", flush=True)
+    shutil.rmtree(VAL_DIR, ignore_errors=True)      # 每折清空，防止混入他折残留文件
     build_val_cache(f["val_sessions"])
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
