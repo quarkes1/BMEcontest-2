@@ -91,25 +91,27 @@ def build_val_caches(val_sessions):
                     print(f"  {out_dir.name} {i+1}/{len(val_sessions)} {time.time()-t0:.0f}s", flush=True)
 
 
-# ------------------------------------------------------------------ 打分
+# ------------------------------------------------------------------ 打分（按会话字典）
 def score_l3a(fold, device):
     model = L3aCNN(5).to(device).eval()
     model.load_state_dict(torch.load(config.MODEL_DIR / f"l3a_cnn_fold{fold}.pt", weights_only=True))
     stats = json.loads((config.CACHE_DIR / "l3a_raw" / f"fold{fold}" / "stats.json").read_text(encoding="utf-8"))
     mean = np.array(stats["mean"], dtype=np.float32).reshape(1, L3A_CH, 1)
     std = np.array(stats["std"], dtype=np.float32).reshape(1, L3A_CH, 1) + 1e-6
-    probs, t0s, t1s = [], [], []
+    out = {}
     with torch.no_grad():
         for f in sorted(A_VAL.glob("*.npz")):
             d = np.load(f)
             X = (d["X"].astype(np.float32) - mean) / std
+            sp = []
             for b in range(0, len(X), 512):
                 xb = torch.from_numpy(X[b:b + 512]).to(device)
                 with torch.amp.autocast("cuda", dtype=torch.float16):
                     logit, _ = model(xb)
-                probs.append(torch.sigmoid(logit).float().cpu().numpy())
-            t0s.append(d["t0"]); t1s.append(d["t1"])
-    return np.concatenate(probs), np.concatenate(t0s), np.concatenate(t1s)
+                sp.append(torch.sigmoid(logit).float().cpu().numpy())
+            sid = f.stem
+            out[sid] = (np.concatenate(sp), d["t0"], d["t1"])
+    return out
 
 def score_l3b(fold, device):
     model = L3bPPGNN().to(device).eval()
@@ -117,7 +119,7 @@ def score_l3b(fold, device):
     out_dir = config.CACHE_DIR / "l3b_raw" / f"fold{fold}"
     hs = np.concatenate([np.load(f)["hrv"] for f in sorted(out_dir.glob("*.npz"))]).astype(np.float32)
     mean_h = hs.mean(axis=0); std_h = hs.std(axis=0) + 1e-6
-    probs, t0s, t1s, hrv_all = [], [], [], []
+    out = {}
     with torch.no_grad():
         for f in sorted(B_VAL.glob("*.npz")):
             d = np.load(f)
@@ -139,29 +141,27 @@ def score_l3b(fold, device):
                 with torch.amp.autocast("cuda", dtype=torch.float16):
                     logits = model(xb, hb)
                 sp[s0:s1] = torch.sigmoid(logits[:, -1]).float().cpu().numpy()
-            probs.append(sp)
-            t0s.append(d["t0"]); t1s.append(d["t1"])
-            hrv_all.append(d["hrv"].astype(np.float32))
-    return (np.concatenate(probs), np.concatenate(t0s), np.concatenate(t1s), np.concatenate(hrv_all))
+            out[f.stem] = (sp, d["t0"], d["t1"], d["hrv"].astype(np.float32))
+    return out
 
 
-# ------------------------------------------------------------------ 融合
-def fuse_upsample(p_a, p_b, hrv_b):
-    """L3b 10s 网格上采样到 1s（重复 10 次）后与 L3a 对齐融合。
-    alpha 特征：hrv_b[4]=SNR、hrv_b[3]=灌注指数、hrv_b[6]=陀螺活动度。"""
+# ------------------------------------------------------------------ 融合（按会话对齐）
+def fuse_session(p_a, p_b, hrv_b):
+    """同一会话内：L3b 10s 网格上采样到 1s（重复 10 次）后与 L3a 对齐融合。
+    alpha 特征：hrv_b[4]=SNR、hrv_b[3]=灌注指数、hrv_b[6]=陀螺活动度。
+    p_a: (n_a,) 1s 网格；返回与 p_a 等长的融合分。"""
     p_b_up = np.repeat(p_b, 10)
     hrv_up = np.repeat(hrv_b, 10, axis=0)
     n = min(len(p_a), len(p_b_up))
     p_a, p_b_up, hrv_up = p_a[:n], p_b_up[:n], hrv_up[:n]
     alpha = np.array([handcrafted_alpha(s, pi, act)
                       for s, pi, act in zip(hrv_up[:, 4], hrv_up[:, 3], hrv_up[:, 6])], dtype=np.float32)
-    # 30s EMA（流式）
     a_sm = np.empty_like(alpha)
     cur = 0.5
     for i in range(n):
         cur = ema_smooth(alpha[i], cur, step_s=1.0)
         a_sm[i] = cur
-    return fuse(p_a, p_b_up, a_sm), a_sm
+    return fuse(p_a, p_b_up, a_sm)
 
 
 def eval_events(evs, true_events):
@@ -186,17 +186,26 @@ def main():
         shutil.rmtree(A_VAL, ignore_errors=True)
         shutil.rmtree(B_VAL, ignore_errors=True)
         build_val_caches(f["val_sessions"])
-        p_a, ta0, ta1 = score_l3a(k, device)
-        p_b, tb0, tb1, hrv_b = score_l3b(k, device)
-        p_f, alpha = fuse_upsample(p_a, p_b, hrv_b)
+        sa = score_l3a(k, device)      # {sid: (p, t0, t1)}
+        sb = score_l3b(k, device)      # {sid: (p, t0, t1, hrv)}
         # 真值（场景）
         ext_set = {index.loc[s, "externalid"] for s in f["val_sessions"] if s in index.index}
         true_all = [(m["before"], m["after"]) for e in ext_set for m in meal_meta.get(e, [])]
         true_dom = [(m["before"], m["after"]) for e in ext_set for m in meal_meta.get(e, []) if m["scene"] == "dominant"]
         true_non = [(m["before"], m["after"]) for e in ext_set for m in meal_meta.get(e, []) if m["scene"] == "nondominant"]
 
+        # 按会话组装全量序列（顺序与 A_VAL 文件一致）
+        sids = sorted(sa.keys())
+        p_a = np.concatenate([sa[s][0] for s in sids])
+        ta0 = np.concatenate([sa[s][1] for s in sids])
+        ta1 = np.concatenate([sa[s][2] for s in sids])
+        p_b = np.concatenate([sb[s][0] for s in sids if s in sb])
+        tb0 = np.concatenate([sb[s][1] for s in sids if s in sb])
+        tb1 = np.concatenate([sb[s][2] for s in sids if s in sb])
+        p_f = np.concatenate([fuse_session(sa[s][0], sb[s][0], sb[s][3])
+                              if s in sb else sa[s][0] for s in sids])
+
         rows = {}
-        # 消融：单分支与融合（平滑后处理，阈值按总体 F1 选取）
         for name, (p, t0, t1) in (("l3a", (p_a, ta0, ta1)),
                                   ("l3b", (p_b, tb0, tb1)),
                                   ("fused", (p_f, ta0, ta1))):
@@ -211,14 +220,13 @@ def main():
                               windows_to_events(p, t0, t1, best[0], smooth_win=smooth), true_dom),
                           "nondominant": compute_metrics(
                               windows_to_events(p, t0, t1, best[0], smooth_win=smooth), true_non)}
-        # 融合 + HMM（按会话文件切分做 Viterbi，保持会话内时序连续）
+        # 融合 + HMM（按会话切分做 Viterbi，保持会话内时序连续）
         evs_hmm = []
         off = 0
-        for f_v in sorted(A_VAL.glob("*.npz")):
-            d = np.load(f_v)
-            n = len(d["t0"])
+        for s in sids:
+            n = len(sa[s][0])
             st = viterbi(p_f[off:off + n])
-            evs_hmm.extend(decode_events(st, d["t0"], d["t1"]))
+            evs_hmm.extend(decode_events(st, sa[s][1], sa[s][2]))
             off += n
         m_hmm = compute_metrics(evs_hmm, true_all)
         rows["fused_hmm"] = {"overall": m_hmm,
