@@ -129,11 +129,13 @@ class RawDataset(Dataset):
 def score_val_cache(model, out_dir, mean, std, device):
     files = [f for f in sorted(out_dir.glob("*.npz")) if not f.name.endswith(".tmp.npz")]
     probs, t0s, t1s = [], [], []
+    mean_np = mean.cpu().numpy()
+    std_np = std.cpu().numpy()
     model.eval()
     with torch.no_grad():
         for f in files:
             d = np.load(f)
-            X = ((d["X"].astype(np.float32) - mean) / std)
+            X = ((d["X"].astype(np.float32) - mean_np) / std_np)
             for b in range(0, len(X), BATCH * 2):
                 xb = torch.from_numpy(X[b:b + BATCH * 2]).to(device)
                 with torch.amp.autocast("cuda", dtype=torch.float16):
