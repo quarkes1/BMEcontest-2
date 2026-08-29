@@ -82,14 +82,7 @@ def main():
         (config.MODEL_DIR / f"l3a_resnet_stats_fold{k}.json").write_text(
             json.dumps(out), encoding="utf-8")
         print(f"  l3a: {n} 窗口 → models/l3a_resnet_stats_fold{k}.json", flush=True)
-        # L3b
-        hs_all = []
-        with ProcessPoolExecutor(max_workers=8) as ex:
-            for r in ex.map(_l3b_one, tasks, chunksize=4):
-                if r:
-                    hs_all.append(r[0] * r[2])
-                    hs_all.append(r[1] * r[2])
-        # 简化：收集 (mean,std,n)，用加权合并
+        # L3b（单遍收集 (mean,std,n)，加权合并）
         parts = []
         with ProcessPoolExecutor(max_workers=8) as ex:
             for r in ex.map(_l3b_one, tasks, chunksize=4):
