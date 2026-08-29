@@ -25,14 +25,13 @@ def _l3a_one(args):
         if detect_binary(_find_collect_data(str(config.SENSOR_DIR / sid))):
             return None
         s = load_session(sid)
-        sums = np.zeros(N_CHANNELS, dtype=np.float64)
-        sumsq = np.zeros(N_CHANNELS, dtype=np.float64)
-        n = 0
+        wm, wv = [], []                      # 逐窗均值/方差（对尖峰伪影鲁棒）
         for w in iter_window_labels(s, [(m["before"], m["after"]) for m in meal_list]):
             X = build_raw_channels(s, w["start_row"], w["end_row"])
-            sums += X.sum(axis=1); sumsq += (X.astype(np.float64) ** 2).sum(axis=1)
-            n += 1
-        return sums, sumsq, n
+            wm.append(X.mean(axis=1)); wv.append(X.var(axis=1))
+        if not wm:
+            return None
+        return np.array(wm), np.array(wv)
     except Exception:
         return None
 
@@ -68,20 +67,20 @@ def main():
         # L3a
         tasks = [(sid, meal_meta.get(index.loc[sid, "externalid"], []))
                  for sid in f["train_sessions"] if sid in index.index]
-        sums = np.zeros(N_CHANNELS, dtype=np.float64)
-        sumsq = np.zeros(N_CHANNELS, dtype=np.float64)
-        n = 0
+        wm_all, wv_all = [], []
         with ProcessPoolExecutor(max_workers=8) as ex:
             for r in ex.map(_l3a_one, tasks, chunksize=4):
-                if r:
-                    sums += r[0]; sumsq += r[1]; n += r[2]
-        mean = sums / max(1, n)
-        var = np.clip(sumsq / max(1, n) - mean ** 2, 0, None)
-        std = np.sqrt(var).astype(np.float32)
-        out = {"mean": mean.tolist(), "std": std.tolist(), "n_windows": n}
+                if r is not None:
+                    wm_all.append(r[0]); wv_all.append(r[1])
+        Wm = np.concatenate(wm_all)                       # (N_windows, 11)
+        Wv = np.concatenate(wv_all)
+        mean = np.median(Wm, axis=0)                      # 中位数池化：免疫尖峰伪影
+        var = np.median(Wv, axis=0) + np.median((Wm - mean) ** 2, axis=0)
+        std = np.sqrt(np.clip(var, 0, None)).astype(np.float32)
+        out = {"mean": mean.tolist(), "std": std.tolist(), "n_windows": int(len(Wm))}
         (config.MODEL_DIR / f"l3a_resnet_stats_fold{k}.json").write_text(
             json.dumps(out), encoding="utf-8")
-        print(f"  l3a: {n} 窗口 → models/l3a_resnet_stats_fold{k}.json", flush=True)
+        print(f"  l3a: {len(Wm)} 窗口 → models/l3a_resnet_stats_fold{k}.json", flush=True)
         # L3b（单遍收集 (mean,std,n)，加权合并）
         parts = []
         with ProcessPoolExecutor(max_workers=8) as ex:

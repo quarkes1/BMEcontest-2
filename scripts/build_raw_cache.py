@@ -96,17 +96,16 @@ def build_fold(fold, workers=8):
                 stats["pos"] += npos; stats["neg"] += nneg
             if (i + 1) % 50 == 0:
                 print(f"  {i+1}/{len(tasks)} 用时 {time.time()-t0:.0f}s", flush=True)
-    # 通道均值/方差（两遍向量化：逐文件累加 sum/sumsq，避免 Python 逐行循环）
-    sums = np.zeros(11, dtype=np.float64)
-    sumsq = np.zeros(11, dtype=np.float64)
-    n = 0
+    # 通道均值/方差（鲁棒：逐窗统计 + 中位数池化。
+    # 教训：E[x²]-E[x]² 在大均值通道上灾难性消减产生 std=0 → 标准化爆 fp16 inf（2026-08-30 实锤））
+    wm_all, wv_all = [], []
     for f in out_dir.glob("*.npz"):
-        X = np.load(f)["X"].astype(np.float64).reshape(-1, 11)
-        sums += X.sum(axis=0)
-        sumsq += (X * X).sum(axis=0)
-        n += len(X)
-    mean = sums / max(1, n)
-    var = sumsq / max(1, n) - mean ** 2
+        X = np.load(f)["X"].astype(np.float32)          # (n, 11, 525)
+        wm_all.append(X.mean(axis=2))
+        wv_all.append(X.var(axis=2))
+    Wm = np.concatenate(wm_all); Wv = np.concatenate(wv_all)
+    mean = np.median(Wm, axis=0)
+    var = np.median(Wv, axis=0) + np.median((Wm - mean) ** 2, axis=0)
     std = np.sqrt(np.clip(var, 0, None)).astype(np.float32)
     (out_dir / "stats.json").write_text(json.dumps(
         {"mean": mean.tolist(), "std": std.tolist(), "n_windows": n, **stats},
