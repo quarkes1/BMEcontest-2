@@ -28,7 +28,7 @@ def parse_one(session_id):
         if detect_binary(txt):
             return ("binary", session_id)
         s = load_session(session_id)
-        np.savez(out,
+        np.savez_compressed(out,
                  acc=s.acc, gyro=s.gyro, ppg=s.ppg,
                  t_acc=s.t_acc, t_ppg=s.t_ppg,
                  imu_valid=s.imu_valid, ppg_valid=s.ppg_valid,
