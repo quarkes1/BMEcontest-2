@@ -27,6 +27,7 @@ from src.eval.metrics import compute_metrics
 from src.infer.events import windows_to_events
 from src.models.l3a_cnn import (L3aCNN, L3aCNNLarge, build_raw_channels,
                                 mirror_channels, N_CHANNELS, WINDOW_LEN)
+from src.models.l3a_resnet import L3aResNet
 
 BASE = config.CACHE_DIR / "l3a_raw"
 VAL_DIR = config.CACHE_DIR / "l3a_val_raw"
@@ -230,7 +231,7 @@ def val_true_events(session_ids, scene="dominant"):
 
 
 # ------------------------------------------------------------------ 训练主流程
-def train_fold(fold, epochs, model_name, data_mode="auto"):
+def train_fold(fold, epochs, model_name, data_mode="auto", use_compile=False):
     f = splits.load_folds()[fold]
     out_dir = BASE / f"fold{fold}"
     if not (out_dir / "stats.json").exists():
@@ -249,9 +250,15 @@ def train_fold(fold, epochs, model_name, data_mode="auto"):
         torch.backends.cudnn.allow_tf32 = True       # TF32 卷积加速 ~20-30%
     print(f"device={device}", flush=True)
 
-    model = (L3aCNNLarge(num_tableware=5) if model_name == "large"
-             else L3aCNN(num_tableware=5)).to(device)
+    model = {"small": L3aCNN(5), "large": L3aCNNLarge(5),
+             "resnet": L3aResNet(5)}[model_name].to(device)
     print(f"model: {model_name} ({sum(p.numel() for p in model.parameters())} params)", flush=True)
+    if use_compile and device == "cuda":
+        try:
+            model = torch.compile(model)
+            print("  torch.compile ON", flush=True)
+        except Exception as e:
+            print(f"  torch.compile 失败（{type(e).__name__}），回退 eager", flush=True)
     opt = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
     steps_per_epoch = (3 * stats["pos"] + int(min(stats["neg"], 3 * stats["pos"]))) // BATCH
     total_steps = steps_per_epoch * epochs
@@ -322,7 +329,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--folds", default="0,1")
     ap.add_argument("--epochs", type=int, default=18)
-    ap.add_argument("--model", default="small", choices=["small", "large"])
+    ap.add_argument("--model", default="small", choices=["small", "large", "resnet"])
+    ap.add_argument("--compile", action="store_true", help="torch.compile 加速（cuda）")
     ap.add_argument("--data", default="auto", choices=["auto", "gpu", "cpu"],
                     help="数据集驻留位置：auto=优先显存，OOM 回退内存")
     args = ap.parse_args()
@@ -334,7 +342,8 @@ def main():
             print(f"===== L3a {args.model} fold {k} 已存在模型，跳过 =====", flush=True)
             continue
         print(f"===== L3a {args.model} fold {k} =====", flush=True)
-        report["folds"][str(k)] = train_fold(k, args.epochs, args.model, args.data)
+        report["folds"][str(k)] = train_fold(k, args.epochs, args.model, args.data,
+                                            use_compile=args.compile)
     f1s = [v["f1_dominant"] for v in report["folds"].values()]
     report["mean_f1_dominant"] = float(np.mean(f1s))
     report["total_seconds"] = round(time.time() - t0, 1)

@@ -64,7 +64,9 @@ def _build(args):
             ys.append(0); scs.append(-1); tws.append(-1)
             t0s.append(w["t0_ms"]); t1s.append(w["t1_ms"])
         if Xs:
-            np.savez(out, X=np.stack(Xs), hrv=np.stack(hs),
+            H = np.stack(hs)
+            H = (H - H.mean(axis=0)) / (H.std(axis=0) + 1e-6)   # 会话级 HRV 归一化（跨会话增益差异 14×）
+            np.savez(out, X=np.stack(Xs), hrv=H,
                      y=np.array(ys, dtype=np.int8), scene=np.array(scs, dtype=np.int8),
                      tw=np.array(tws, dtype=np.int8),
                      t0=np.array(t0s, dtype=np.int64), t1=np.array(t1s, dtype=np.int64))
@@ -72,7 +74,7 @@ def _build(args):
     except Exception as e:
         return ("error", f"{session_id}: {type(e).__name__}: {e}", 0, 0)
 
-def build_fold(fold):
+def build_fold(fold, workers=8):
     f = splits.load_folds()[fold]
     out_dir = BASE / f"fold{fold}"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -83,7 +85,7 @@ def build_fold(fold):
     print(f"fold {fold}: {len(tasks)} 训练会话", flush=True)
     t0 = time.time()
     stats = {"ok": 0, "skip": 0, "binary": 0, "error": [], "pos": 0, "neg": 0}
-    with ProcessPoolExecutor(max_workers=8) as ex:
+    with ProcessPoolExecutor(max_workers=workers) as ex:
         for i, (status, info, npos, nneg) in enumerate(ex.map(_build, tasks, chunksize=4)):
             if status == "error":
                 stats["error"].append(info)
@@ -100,9 +102,10 @@ def build_fold(fold):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--folds", default="0,1")
+    ap.add_argument("--workers", type=int, default=8)
     args = ap.parse_args()
     for k in [int(x) for x in args.folds.split(",")]:
-        build_fold(k)
+        build_fold(k, args.workers)
 
 if __name__ == "__main__":
     main()

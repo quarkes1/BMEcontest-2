@@ -27,6 +27,7 @@ from src.eval.metrics import compute_metrics
 from src.infer.events import windows_to_events
 from src.models.l3b_ppgnn import (L3bPPGNN, build_ppg_window, denoise_ppg, hrv_features,
                                   N_PPG_CHANNELS, PPG_WINDOW_ROWS, HRV_DIMS, SEQ_LEN)
+from src.models.l3b_v2 import L3bBiGRU
 
 BASE = config.CACHE_DIR / "l3b_raw"
 VAL_DIR = config.CACHE_DIR / "l3b_val_raw"
@@ -57,7 +58,9 @@ def _val_session(args):
             Xs.append(X); hs.append(h)
             t0s.append(w["t0_ms"]); t1s.append(w["t1_ms"])
         if Xs:
-            np.savez(out, X=np.stack(Xs), hrv=np.stack(hs),
+            H = np.stack(hs)
+            H = (H - H.mean(axis=0)) / (H.std(axis=0) + 1e-6)   # 会话级 HRV 归一化
+            np.savez(out, X=np.stack(Xs), hrv=H,
                      t0=np.array(t0s, dtype=np.int64), t1=np.array(t1s, dtype=np.int64))
         return ("ok", session_id)
     except Exception as e:
@@ -203,7 +206,7 @@ def val_true_events(session_ids, scene="nondominant"):
 
 
 # ------------------------------------------------------------------ 主流程
-def train_fold(fold, epochs, data_mode="auto"):
+def train_fold(fold, epochs, data_mode="auto", model_name="v2", use_compile=False):
     f = splits.load_folds()[fold]
     out_dir = BASE / f"fold{fold}"
     if not (out_dir / "build_stats.json").exists():
@@ -232,7 +235,14 @@ def train_fold(fold, epochs, data_mode="auto"):
     mean_h = h_all.mean(axis=0).astype(np.float32)
     std_h = h_all.std(axis=0).astype(np.float32) + 1e-6
 
-    model = L3bPPGNN().to(device)
+    model = (L3bBiGRU() if model_name == "v2" else L3bPPGNN()).to(device)
+    print(f"model: l3b_{model_name} ({sum(p.numel() for p in model.parameters())} params)", flush=True)
+    if use_compile and device == "cuda":
+        try:
+            model = torch.compile(model)
+            print("  torch.compile ON", flush=True)
+        except Exception as e:
+            print(f"  torch.compile 失败（{type(e).__name__}），回退 eager", flush=True)
     opt = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
     steps_per_epoch = len(ds) // BATCH
     total_steps = steps_per_epoch * epochs
@@ -282,7 +292,7 @@ def train_fold(fold, epochs, data_mode="auto"):
                         "metrics": compute_metrics(
                             windows_to_events(probs, tv0, tv1, best_thr, smooth_win=SMOOTH_WIN), true_non)}
                 config.MODEL_DIR.mkdir(parents=True, exist_ok=True)
-                torch.save(model.state_dict(), config.MODEL_DIR / f"l3b_ppgnn_fold{fold}.pt")
+                torch.save(model.state_dict(), config.MODEL_DIR / f"l3b_{model_name}_fold{fold}.pt")
                 print(f"  >>> 保存 best (ep {ep})", flush=True)
     shutil.rmtree(VAL_DIR, ignore_errors=True)
     return best
@@ -294,15 +304,17 @@ def main():
     ap.add_argument("--epochs", type=int, default=25)
     ap.add_argument("--data", default="auto", choices=["auto", "gpu", "cpu"],
                     help="数据集驻留位置：auto=优先显存，OOM 回退内存")
+    ap.add_argument("--model", default="v2", choices=["v1", "v2"])
+    ap.add_argument("--compile", action="store_true")
     args = ap.parse_args()
     t0 = time.time()
     report = {"folds": {}}
     for k in [int(x) for x in args.folds.split(",")]:
-        if (config.MODEL_DIR / f"l3b_ppgnn_fold{k}.pt").exists():
-            print(f"===== L3b fold {k} 已存在模型，跳过 =====", flush=True)
+        if (config.MODEL_DIR / f"l3b_{args.model}_fold{k}.pt").exists():
+            print(f"===== L3b {args.model} fold {k} 已存在模型，跳过 =====", flush=True)
             continue
-        print(f"===== L3b fold {k} =====", flush=True)
-        report["folds"][str(k)] = train_fold(k, args.epochs, args.data)
+        print(f"===== L3b {args.model} fold {k} =====", flush=True)
+        report["folds"][str(k)] = train_fold(k, args.epochs, args.data, args.model, args.compile)
     f1s = [v["f1_nondominant"] for v in report["folds"].values()]
     report["mean_f1_nondominant"] = float(np.mean(f1s))
     report["total_seconds"] = round(time.time() - t0, 1)

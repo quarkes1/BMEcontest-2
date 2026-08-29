@@ -25,8 +25,10 @@ from src.infer.events import windows_to_events
 from src.models.fusion import handcrafted_alpha, ema_smooth, fuse
 from src.models.hmm_decode import viterbi, decode_events
 from src.models.l3a_cnn import L3aCNN, N_CHANNELS as L3A_CH
+from src.models.l3a_resnet import L3aResNet
 from src.models.l3b_ppgnn import (L3bPPGNN, N_PPG_CHANNELS, PPG_WINDOW_ROWS,
                                   HRV_DIMS, SEQ_LEN)
+from src.models.l3b_v2 import L3bBiGRU
 
 A_VAL = config.CACHE_DIR / "l3a_val_raw"
 B_VAL = config.CACHE_DIR / "l3b_val_raw"
@@ -93,8 +95,8 @@ def build_val_caches(val_sessions):
 
 # ------------------------------------------------------------------ 打分（按会话字典）
 def score_l3a(fold, device):
-    model = L3aCNN(5).to(device).eval()
-    model.load_state_dict(torch.load(config.MODEL_DIR / f"l3a_cnn_fold{fold}.pt", weights_only=True))
+    model = L3aResNet(5).to(device).eval()
+    model.load_state_dict(torch.load(config.MODEL_DIR / f"l3a_cnn_resnet_fold{fold}.pt", weights_only=True))
     stats = json.loads((config.CACHE_DIR / "l3a_raw" / f"fold{fold}" / "stats.json").read_text(encoding="utf-8"))
     mean = np.array(stats["mean"], dtype=np.float32).reshape(1, L3A_CH, 1)
     std = np.array(stats["std"], dtype=np.float32).reshape(1, L3A_CH, 1) + 1e-6
@@ -114,8 +116,8 @@ def score_l3a(fold, device):
     return out
 
 def score_l3b(fold, device):
-    model = L3bPPGNN().to(device).eval()
-    model.load_state_dict(torch.load(config.MODEL_DIR / f"l3b_ppgnn_fold{fold}.pt", weights_only=True))
+    model = L3bBiGRU().to(device).eval()
+    model.load_state_dict(torch.load(config.MODEL_DIR / f"l3b_v2_fold{fold}.pt", weights_only=True))
     out_dir = config.CACHE_DIR / "l3b_raw" / f"fold{fold}"
     hs = np.concatenate([np.load(f)["hrv"] for f in sorted(out_dir.glob("*.npz"))]).astype(np.float32)
     mean_h = hs.mean(axis=0); std_h = hs.std(axis=0) + 1e-6
