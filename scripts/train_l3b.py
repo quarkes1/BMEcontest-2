@@ -14,7 +14,8 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 import numpy as np
 import torch
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import Dataset
+from src.train.prefetch import PrefetchLoader
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -80,9 +81,9 @@ def build_val_cache(val_sessions):
 
 # ------------------------------------------------------------------ 数据集（全量入内存）
 class PPGSeqDataset(Dataset):
-    """窗口全量入内存；每样本 = SEQ_LEN 连续窗口（跨会话截断，不足左侧补零）。
+    """窗口全量入内存（或显存 fp16）；每样本 = SEQ_LEN 连续窗口（跨会话截断，不足左侧补零）。
     epoch 级洗牌：正样本序列（含任一正窗口）权重 3。"""
-    def __init__(self, out_dir, neg_ratio=3.0, seq_step=3):
+    def __init__(self, out_dir, neg_ratio=3.0, seq_step=3, on_gpu=False):
         self.seq_step = seq_step
         files = [f for f in sorted(out_dir.glob("*.npz")) if not f.name.endswith(".tmp.npz")]
         Xs, hs, ys, tws = [], [], [], []
@@ -111,7 +112,17 @@ class PPGSeqDataset(Dataset):
             3.0 if self.y[s0:s0 + SEQ_LEN].sum() > 0 else 1.0
             for s0 in self.seq_starts], dtype=np.float32)
         self.epoch_idx = np.arange(len(self.seq_starts))
-        print(f"  内存数据集: {len(self.X)} 窗口, {len(self.seq_starts)} 序列", flush=True)
+        self.on_gpu = on_gpu
+        if on_gpu:
+            n = len(self.X)
+            self.X_gpu = torch.empty((n, N_PPG_CHANNELS, PPG_WINDOW_ROWS),
+                                     dtype=torch.float16, device="cuda")
+            CH = 8192
+            for s in range(0, n, CH):
+                self.X_gpu[s:s + CH] = torch.from_numpy(self.X[s:s + CH]).cuda().half()
+            del self.X
+        print(f"  数据集: {len(self.y)} 窗口, {len(self.seq_starts)} 序列"
+              f"{'（GPU fp16 驻留）' if on_gpu else ''}", flush=True)
 
     def reshuffle(self, seed):
         rng = np.random.RandomState(seed)
@@ -129,17 +140,22 @@ class PPGSeqDataset(Dataset):
         lo, hi = self.bounds[b], self.bounds[b + 1]
         s1 = min(s0 + SEQ_LEN, hi)
         n_keep = s1 - s0
-        X = np.zeros((SEQ_LEN, N_PPG_CHANNELS, PPG_WINDOW_ROWS), dtype=np.float32)
         h = np.zeros((SEQ_LEN, HRV_DIMS), dtype=np.float32)
         y = np.zeros(SEQ_LEN, dtype=np.float32)
         tw = np.full(SEQ_LEN, -1, dtype=np.int64)
         off = SEQ_LEN - n_keep                    # 左侧补零（保持时间顺序）
-        X[off:] = self.X[s0:s1].astype(np.float32)
         h[off:] = self.hrv[s0:s1]
         y[off:] = self.y[s0:s1]
         tw[off:] = self.tw[s0:s1]
-        return (torch.from_numpy(X), torch.from_numpy(h),
-                torch.from_numpy(y), torch.from_numpy(tw))
+        if self.on_gpu:
+            X = torch.zeros((SEQ_LEN, N_PPG_CHANNELS, PPG_WINDOW_ROWS),
+                            dtype=torch.float16, device="cuda")
+            X[off:] = self.X_gpu[s0:s1]
+        else:
+            X = np.zeros((SEQ_LEN, N_PPG_CHANNELS, PPG_WINDOW_ROWS), dtype=np.float32)
+            X[off:] = self.X[s0:s1].astype(np.float32)
+            X = torch.from_numpy(X)
+        return (X, torch.from_numpy(h), torch.from_numpy(y), torch.from_numpy(tw))
 
 
 # ------------------------------------------------------------------ 验证打分（流式）
@@ -187,7 +203,7 @@ def val_true_events(session_ids, scene="nondominant"):
 
 
 # ------------------------------------------------------------------ 主流程
-def train_fold(fold, epochs):
+def train_fold(fold, epochs, data_mode="auto"):
     f = splits.load_folds()[fold]
     out_dir = BASE / f"fold{fold}"
     if not (out_dir / "build_stats.json").exists():
@@ -203,7 +219,14 @@ def train_fold(fold, epochs):
     if device == "cuda":
         torch.backends.cudnn.benchmark = True
     print(f"device={device}", flush=True)
-    ds = PPGSeqDataset(out_dir)
+    use_gpu = data_mode in ("gpu", "auto")
+    try:
+        ds = PPGSeqDataset(out_dir, on_gpu=use_gpu)
+    except MemoryError as e:
+        if data_mode == "gpu":
+            raise
+        print(f"  GPU 驻留失败（{e}），回退 CPU 内存数据集", flush=True)
+        ds = PPGSeqDataset(out_dir, on_gpu=False)
     # hrv 标准化统计
     h_all = ds.hrv
     mean_h = h_all.mean(axis=0).astype(np.float32)
@@ -221,7 +244,7 @@ def train_fold(fold, epochs):
     best = {"f1_nondominant": -1.0}
     for ep in range(1, epochs + 1):
         ds.reshuffle(config.RANDOM_SEED + ep)
-        dl = DataLoader(ds, batch_size=BATCH, shuffle=False, num_workers=0, drop_last=True)
+        dl = PrefetchLoader(ds, batch_size=BATCH, drop_last=True)
         model.train()
         t0 = time.time(); loss_sum = 0.0; n_b = 0; pos_acc = 0.0
         for xb, hb, yb, twb in dl:
@@ -269,6 +292,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--folds", default="0,1")
     ap.add_argument("--epochs", type=int, default=25)
+    ap.add_argument("--data", default="auto", choices=["auto", "gpu", "cpu"],
+                    help="数据集驻留位置：auto=优先显存，OOM 回退内存")
     args = ap.parse_args()
     t0 = time.time()
     report = {"folds": {}}
@@ -277,7 +302,7 @@ def main():
             print(f"===== L3b fold {k} 已存在模型，跳过 =====", flush=True)
             continue
         print(f"===== L3b fold {k} =====", flush=True)
-        report["folds"][str(k)] = train_fold(k, args.epochs)
+        report["folds"][str(k)] = train_fold(k, args.epochs, args.data)
     f1s = [v["f1_nondominant"] for v in report["folds"].values()]
     report["mean_f1_nondominant"] = float(np.mean(f1s))
     report["total_seconds"] = round(time.time() - t0, 1)
