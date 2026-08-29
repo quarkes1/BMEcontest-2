@@ -79,5 +79,26 @@ def load_session_tsv(txt_path) -> SessionData:
         meta={"path": txt_path, "rows": N, "row_rate": round(row_rate, 1)})
 
 def load_session(session_id: str) -> SessionData:
-    d = config.SENSOR_DIR / session_id
-    return load_session_tsv(_find_collect_data(str(d)))
+    """优先读二进制会话缓存（cache/sessions/，parse_sessions.py 产出 ~50ms），
+    缺失时回退 TSV 解析并顺带落盘缓存。"""
+    import numpy as np
+    bin_path = config.CACHE_DIR / "sessions" / f"{session_id}.npz"
+    if bin_path.exists():
+        d = np.load(bin_path)
+        return SessionData(
+            acc=d["acc"], gyro=d["gyro"], ppg=d["ppg"],
+            t_acc=d["t_acc"], t_ppg=d["t_ppg"],
+            imu_valid=d["imu_valid"], ppg_valid=d["ppg_valid"],
+            meta={"path": str(bin_path), "rows": int(d["rows"]),
+                  "row_rate": float(d["row_rate"])})
+    s = load_session_tsv(_find_collect_data(str(config.SENSOR_DIR / session_id)))
+    try:
+        bin_path.parent.mkdir(parents=True, exist_ok=True)
+        np.savez(bin_path,
+                 acc=s.acc, gyro=s.gyro, ppg=s.ppg,
+                 t_acc=s.t_acc, t_ppg=s.t_ppg,
+                 imu_valid=s.imu_valid, ppg_valid=s.ppg_valid,
+                 row_rate=np.float32(s.meta["row_rate"]), rows=np.int64(s.meta["rows"]))
+    except OSError:
+        pass    # 缓存写失败不影响主流程
+    return s
