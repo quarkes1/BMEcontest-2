@@ -30,6 +30,9 @@ class PrefetchLoader:
                 s = b * self.batch_size
                 s1 = min(s + self.batch_size, len(ds))
                 batch = default_collate([ds[i] for i in range(s, s1)])
+                aug = getattr(ds, "augment_batch", None)
+                if aug is not None:                    # GPU 数据集：批级增强
+                    batch = (aug(batch[0].float()).half(), batch[1], batch[2])
                 q.put(batch)
             q.put(None)
 

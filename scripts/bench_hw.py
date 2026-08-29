@@ -20,17 +20,18 @@ from scripts.train_l3a import RawDataset
 FOLD = 0
 WARMUP = 5
 
-def build_dataset():
+def build_dataset(data_mode="gpu"):
     out_dir = config.CACHE_DIR / "l3a_raw" / f"fold{FOLD}"
     stats = json.loads((out_dir / "stats.json").read_text(encoding="utf-8"))
-    ds = RawDataset(out_dir, stats, mirror=False, stretch=False, jitter=False, ch_drop=0)
+    ds = RawDataset(out_dir, stats, mirror=False, stretch=False, jitter=False, ch_drop=0,
+                    on_gpu=(data_mode == "gpu"))
     ds.reshuffle(config.RANDOM_SEED)
     return ds
 
-def bench(batch, amp, tf32, model_name, steps, workers=0):
+def bench(batch, amp, tf32, model_name, steps, data_mode="gpu"):
     torch.backends.cudnn.benchmark = True
     torch.backends.cudnn.allow_tf32 = bool(tf32)
-    ds = build_dataset()
+    ds = build_dataset(data_mode)
     from src.train.prefetch import PrefetchLoader
     dl = PrefetchLoader(ds, batch_size=batch, drop_last=True)
     model = (L3aCNNLarge(5) if model_name == "large" else L3aCNN(5)).cuda().train()
@@ -70,6 +71,7 @@ def main():
     ap.add_argument("--tf32", default="0,1")
     ap.add_argument("--model", default="small,large")
     ap.add_argument("--steps", type=int, default=40)
+    ap.add_argument("--data", default="gpu", choices=["gpu", "cpu"], help="数据集驻留位置")
     args = ap.parse_args()
     print(f"GPU: {torch.cuda.get_device_name(0)}  显存: {torch.cuda.get_device_properties(0).total_memory/2**30:.1f}GB")
     rows = []

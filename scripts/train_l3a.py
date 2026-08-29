@@ -83,13 +83,14 @@ def build_val_cache(val_sessions):
 # 最终方案：负样本 3:1 抽样后全量载入内存（~10GB），epoch 内纯内存洗牌，num_workers=0。
 class RawDataset(Dataset):
     def __init__(self, out_dir, stats, neg_ratio=3.0, mirror=True,
-                 stretch=True, jitter=True, ch_drop=0.1):
+                 stretch=True, jitter=True, ch_drop=0.1, on_gpu=False):
         self.mean = np.array(stats["mean"], dtype=np.float32).reshape(N_CHANNELS, 1)
         self.std = np.array(stats["std"], dtype=np.float32).reshape(N_CHANNELS, 1) + 1e-6
         self.mirror = mirror
         self.stretch = stretch
         self.jitter = jitter
         self.ch_drop = ch_drop
+        self.on_gpu = on_gpu
         files = [f for f in sorted(out_dir.glob("*.npz")) if not f.name.endswith(".tmp.npz")]
         neg_prob = min(1.0, neg_ratio * stats["pos"] / max(1, stats["neg"]))
         rng = np.random.RandomState(config.RANDOM_SEED)
@@ -116,7 +117,25 @@ class RawDataset(Dataset):
         # 预标准化：一次完成，省去每次取数的逐样本归一化（原地操作避免峰值翻倍）
         self.X -= self.mean
         self.X /= self.std
-        print(f"  内存数据集: {total} 窗口（正 {int((self.y == 1).sum())}），已预标准化", flush=True)
+        if on_gpu:
+            self._to_gpu()
+        print(f"  内存数据集: {total} 窗口（正 {int((self.y == 1).sum())}），"
+              f"{'GPU fp16 驻留' if on_gpu else '已预标准化'}", flush=True)
+
+    def _to_gpu(self):
+        """分块搬到显存（fp16 ~5.1GB），避免整块 fp32 临时量爆显存。"""
+        n = len(self.X)
+        free, _ = torch.cuda.mem_get_info()
+        need = n * N_CHANNELS * WINDOW_LEN * 2
+        if need > free * 0.85:
+            raise MemoryError(f"显存不足: 需 {need/2**30:.1f}GB, 可用 {free/2**30:.1f}GB")
+        self.X_gpu = torch.empty((n, N_CHANNELS, WINDOW_LEN), dtype=torch.float16, device="cuda")
+        CH = 32768
+        for s in range(0, n, CH):
+            self.X_gpu[s:s + CH] = torch.from_numpy(self.X[s:s + CH]).cuda().half()
+        del self.X
+        self.y_t = torch.from_numpy(self.y).cuda()
+        self.tw_t = torch.from_numpy(self.tw).cuda()
 
     def reshuffle(self, seed):
         self.idx = np.random.RandomState(seed).permutation(len(self.idx))
@@ -126,6 +145,8 @@ class RawDataset(Dataset):
 
     def __getitem__(self, idx):
         i = self.idx[idx]
+        if self.on_gpu:
+            return self._getitem_gpu(i)
         X = self.X[i].copy()
         rng = np.random
         if self.mirror and rng.random() < 0.5:
@@ -148,6 +169,32 @@ class RawDataset(Dataset):
                     X[c] = 0.0                            # 标准化空间置零 = 通道均值填补
         return (torch.from_numpy(X), torch.tensor(self.y[i], dtype=torch.float32),
                 torch.tensor(self.tw[i], dtype=torch.long))
+
+    def _getitem_gpu(self, i):
+        """GPU 路径：只做 gather（增强由 augment_batch 在批级向量化完成）。"""
+        return self.X_gpu[i], self.y_t[i], self.tw_t[i]
+
+    def augment_batch(self, X):
+        """批量级 GPU 增强：每 batch ~10 个 kernel（而非每样本），避免与训练抢 GPU。
+        X: (B, 11, 525) fp32 cuda，返回增强后的 X。随机决策在 CPU 生成（无同步）。"""
+        B = X.shape[0]
+        rng = np.random
+        if self.mirror:
+            flips = torch.from_numpy(rng.random(B) < 0.5).cuda()
+            X[flips][:, [0, 3, 6]] = -X[flips][:, [0, 3, 6]]
+        if self.jitter:
+            scales = torch.from_numpy(0.9 + 0.2 * rng.random(B)).cuda().float()
+            X *= scales.view(-1, 1, 1)
+        if self.ch_drop:
+            for c in range(6):
+                drop = torch.from_numpy(rng.random(B) < self.ch_drop).cuda()
+                X[drop, c] = 0.0
+        if self.stretch:
+            # 时间伸缩的等价近似：每样本随机平移 ±0.5s（窗口内容不变）
+            shifts = torch.from_numpy(rng.randint(-52, 53, size=B)).cuda()
+            idx = (torch.arange(WINDOW_LEN, device="cuda")[None, :] - shifts[:, None]) % WINDOW_LEN
+            X = X.gather(2, idx[:, None, :].expand(-1, N_CHANNELS, -1))
+        return X
 
 
 # ------------------------------------------------------------------ 验证打分
@@ -183,7 +230,7 @@ def val_true_events(session_ids, scene="dominant"):
 
 
 # ------------------------------------------------------------------ 训练主流程
-def train_fold(fold, epochs, model_name):
+def train_fold(fold, epochs, model_name, data_mode="auto"):
     f = splits.load_folds()[fold]
     out_dir = BASE / f"fold{fold}"
     if not (out_dir / "stats.json").exists():
@@ -218,7 +265,14 @@ def train_fold(fold, epochs, model_name):
     std = torch.from_numpy(np.array(stats["std"], dtype=np.float32).reshape(1, N_CHANNELS, 1)).to(device) + 1e-6
 
     best = {"f1_dominant": -1.0}
-    ds = RawDataset(out_dir, stats)            # 全量载入内存一次（~10GB，预标准化）
+    use_gpu = data_mode in ("gpu", "auto")
+    try:
+        ds = RawDataset(out_dir, stats, on_gpu=use_gpu)
+    except MemoryError as e:
+        if data_mode == "gpu":
+            raise
+        print(f"  GPU 驻留失败（{e}），回退 CPU 内存数据集", flush=True)
+        ds = RawDataset(out_dir, stats, on_gpu=False)
     for ep in range(1, epochs + 1):
         ds.reshuffle(config.RANDOM_SEED + ep)  # epoch 级纯内存洗牌
         dl = PrefetchLoader(ds, batch_size=BATCH)   # 单线程预取：CPU 增强与 GPU 计算重叠
@@ -269,6 +323,8 @@ def main():
     ap.add_argument("--folds", default="0,1")
     ap.add_argument("--epochs", type=int, default=18)
     ap.add_argument("--model", default="small", choices=["small", "large"])
+    ap.add_argument("--data", default="auto", choices=["auto", "gpu", "cpu"],
+                    help="数据集驻留位置：auto=优先显存，OOM 回退内存")
     args = ap.parse_args()
     t0 = time.time()
     report = {"folds": {}}
@@ -278,7 +334,7 @@ def main():
             print(f"===== L3a {args.model} fold {k} 已存在模型，跳过 =====", flush=True)
             continue
         print(f"===== L3a {args.model} fold {k} =====", flush=True)
-        report["folds"][str(k)] = train_fold(k, args.epochs, args.model)
+        report["folds"][str(k)] = train_fold(k, args.epochs, args.model, args.data)
     f1s = [v["f1_dominant"] for v in report["folds"].values()]
     report["mean_f1_dominant"] = float(np.mean(f1s))
     report["total_seconds"] = round(time.time() - t0, 1)
