@@ -15,9 +15,10 @@ from pathlib import Path
 import numpy as np
 import torch
 from torch.utils.data import Dataset
-from src.train.prefetch import PrefetchLoader
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from src.train.prefetch import PrefetchLoader
 
 import src.config as config
 from src.data import manifests, splits
