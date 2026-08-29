@@ -8,6 +8,8 @@ MEALS_CSV = config.DATA_DIR / "t_zsstnnrj_mealinfo_puadqog70826_1857.csv"
 USERS_CSV = config.DATA_DIR / "t_zsstnnrj_userinfobean_5d4l0nmp0826_1857.csv"
 INDEX_CSV = config.DATA_DIR / "t_zsstnnrj_sensororiginaldata_system0826_1857.csv"
 BLACKLIST_FILE = config.OUTPUT_DIR / "data_quality_blacklist.txt"   # 数据校验产出，无则空
+# 官网宣布作废的受试者（2026-08-29）：全部数据（会话/餐/划分）排除
+INVALID_SUBJECTS = {"HNU21007", "HNU21026j", "HNU21030"}
 
 def normalize_hand(value: str) -> str:
     """'左手佩戴' -> '左手'; '右手' -> '右手'"""
@@ -29,7 +31,7 @@ def load_meals() -> pd.DataFrame:
     out = []
     for r in rows:
         ext = str(r["externalid"]).strip()
-        if not ext or ext.lower() == "test":
+        if not ext or ext.lower() == "test" or ext in INVALID_SUBJECTS:
             continue
         before, after = int(float(r["beforeTime"])), int(float(r["afterTime"]))
         if after <= before:
@@ -69,7 +71,8 @@ def load_sensor_index() -> pd.DataFrame:
     df = pd.read_csv(INDEX_CSV, encoding="utf-8", dtype={"externalid": str})
     df["session_id"] = df["sensorData"].map(lambda p: p.split("/")[-1].removesuffix(".zip"))
     df = df[df["externalid"].notna() & (df["externalid"].str.strip() != "")
-            & (df["externalid"].str.lower() != "test")]
+            & (df["externalid"].str.lower() != "test")
+            & (~df["externalid"].isin(INVALID_SUBJECTS))]
     blacklist = load_blacklist()
     df = df[~df["session_id"].isin(blacklist)]
     return df
