@@ -264,10 +264,6 @@ def train_fold(fold, epochs, model_name, data_mode="auto", use_compile=False):
         except Exception as e:
             print(f"  torch.compile 失败（{type(e).__name__}），回退 eager", flush=True)
     opt = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
-    steps_per_epoch = (3 * stats["pos"] + int(min(stats["neg"], 3 * stats["pos"]))) // BATCH
-    total_steps = steps_per_epoch * epochs
-    sched = torch.optim.lr_scheduler.LambdaLR(
-        opt, lambda s: 0.5 * (1 + math.cos(math.pi * s / total_steps)))
     scaler = torch.amp.GradScaler("cuda", enabled=(device == "cuda"))
     bce = torch.nn.BCEWithLogitsLoss()
     ce = torch.nn.CrossEntropyLoss(ignore_index=-1)
@@ -284,6 +280,10 @@ def train_fold(fold, epochs, model_name, data_mode="auto", use_compile=False):
             raise
         print(f"  GPU 驻留失败（{e}），回退 CPU 内存数据集", flush=True)
         ds = RawDataset(out_dir, stats, on_gpu=False)
+    steps_per_epoch = len(ds) // BATCH                # 按实际数据集长度（skip 场景 stats 计数为 0）
+    total_steps = max(1, steps_per_epoch * epochs)
+    sched = torch.optim.lr_scheduler.LambdaLR(
+        opt, lambda s: 0.5 * (1 + math.cos(math.pi * s / total_steps)))
     for ep in range(1, epochs + 1):
         ds.reshuffle(config.RANDOM_SEED + ep)  # epoch 级纯内存洗牌
         dl = PrefetchLoader(ds, batch_size=BATCH)   # 单线程预取：CPU 增强与 GPU 计算重叠
