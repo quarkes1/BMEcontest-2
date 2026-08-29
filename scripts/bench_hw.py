@@ -80,11 +80,13 @@ def main():
             for tf32 in [int(x) for x in args.tf32.split(",")]:
                 for batch in [int(x) for x in args.batches.split(",")]:
                     try:
-                        sps, ep_min = bench(batch, amp, tf32, model_name, args.steps)
-                        rows.append((sps, f"{model_name} batch={batch} amp={amp} tf32={tf32}"))
+                        sps, ep_min = bench(batch, amp, tf32, model_name, args.steps, args.data)
+                        rows.append((sps, f"{model_name} batch={batch} amp={amp} tf32={tf32} data={args.data}"))
                         print(f"  {rows[-1][1]}: {sps:.1f} steps/s, epoch ≈ {ep_min:.1f} min", flush=True)
                     except Exception as e:
                         print(f"  {model_name} batch={batch} amp={amp} tf32={tf32}: FAIL {type(e).__name__}: {e}", flush=True)
+                    finally:
+                        torch.cuda.empty_cache()          # 释放上一轮的数据集显存
     rows.sort(key=lambda r: -r[0])
     print("\n===== 最快配置 =====")
     for sps, name in rows[:5]:
