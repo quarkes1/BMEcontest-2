@@ -14,7 +14,8 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 import numpy as np
 import torch
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import Dataset
+from src.train.prefetch import PrefetchLoader
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -112,7 +113,10 @@ class RawDataset(Dataset):
             self.tw[off:off + n] = d["tw"][m]
             off += n
         self.idx = np.arange(total)
-        print(f"  内存数据集: {total} 窗口（正 {int((self.y == 1).sum())}）", flush=True)
+        # 预标准化：一次完成，省去每次取数的逐样本归一化（原地操作避免峰值翻倍）
+        self.X -= self.mean
+        self.X /= self.std
+        print(f"  内存数据集: {total} 窗口（正 {int((self.y == 1).sum())}），已预标准化", flush=True)
 
     def reshuffle(self, seed):
         self.idx = np.random.RandomState(seed).permutation(len(self.idx))
@@ -141,8 +145,7 @@ class RawDataset(Dataset):
             X = X.copy()
             for c in range(6):                            # 6 个原始信号通道（la/gyro）
                 if rng.random() < self.ch_drop:
-                    X[c] = 0.0
-        X = (X - self.mean) / self.std
+                    X[c] = 0.0                            # 标准化空间置零 = 通道均值填补
         return (torch.from_numpy(X), torch.tensor(self.y[i], dtype=torch.float32),
                 torch.tensor(self.tw[i], dtype=torch.long))
 
@@ -215,10 +218,10 @@ def train_fold(fold, epochs, model_name):
     std = torch.from_numpy(np.array(stats["std"], dtype=np.float32).reshape(1, N_CHANNELS, 1)).to(device) + 1e-6
 
     best = {"f1_dominant": -1.0}
-    ds = RawDataset(out_dir, stats)            # 全量载入内存一次（~10GB）
+    ds = RawDataset(out_dir, stats)            # 全量载入内存一次（~10GB，预标准化）
     for ep in range(1, epochs + 1):
         ds.reshuffle(config.RANDOM_SEED + ep)  # epoch 级纯内存洗牌
-        dl = DataLoader(ds, batch_size=BATCH, shuffle=False, num_workers=0, drop_last=True)
+        dl = PrefetchLoader(ds, batch_size=BATCH)   # 单线程预取：CPU 增强与 GPU 计算重叠
         model.train()
         t0 = time.time(); loss_sum = 0.0; n_b = 0; pos_acc = 0.0
         for xb, yb, twb in dl:

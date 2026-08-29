@@ -31,8 +31,8 @@ def bench(batch, amp, tf32, model_name, steps, workers=0):
     torch.backends.cudnn.benchmark = True
     torch.backends.cudnn.allow_tf32 = bool(tf32)
     ds = build_dataset()
-    from torch.utils.data import DataLoader
-    dl = DataLoader(ds, batch_size=batch, shuffle=False, num_workers=workers, drop_last=True)
+    from src.train.prefetch import PrefetchLoader
+    dl = PrefetchLoader(ds, batch_size=batch, drop_last=True)
     model = (L3aCNNLarge(5) if model_name == "large" else L3aCNN(5)).cuda().train()
     opt = torch.optim.AdamW(model.parameters(), lr=1e-3)
     bce = torch.nn.BCEWithLogitsLoss()
