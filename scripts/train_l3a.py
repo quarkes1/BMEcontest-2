@@ -239,6 +239,9 @@ def train_fold(fold, epochs, model_name, data_mode="auto", use_compile=False):
         from scripts.build_raw_cache import build_fold
         build_fold(fold)
     stats = json.loads((out_dir / "stats.json").read_text(encoding="utf-8"))
+    config.MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    (config.MODEL_DIR / f"l3a_{model_name}_stats_fold{fold}.json").write_text(
+        json.dumps(stats), encoding="utf-8")          # 缓存删除后供全链路读取
     print(f"fold {fold}: 训练窗口 {stats['n_windows']}（正 {stats['pos']} / 负 {stats['neg']}）", flush=True)
 
     print("构建验证窗口缓存...", flush=True)

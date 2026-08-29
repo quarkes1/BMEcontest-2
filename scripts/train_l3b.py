@@ -234,6 +234,9 @@ def train_fold(fold, epochs, data_mode="auto", model_name="v2", use_compile=Fals
     h_all = ds.hrv
     mean_h = h_all.mean(axis=0).astype(np.float32)
     std_h = h_all.std(axis=0).astype(np.float32) + 1e-6
+    config.MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    (config.MODEL_DIR / f"l3b_{model_name}_stats_fold{fold}.json").write_text(
+        json.dumps({"mean_h": mean_h.tolist(), "std_h": std_h.tolist()}), encoding="utf-8")
 
     model = (L3bBiGRU() if model_name == "v2" else L3bPPGNN()).to(device)
     print(f"model: l3b_{model_name} ({sum(p.numel() for p in model.parameters())} params)", flush=True)

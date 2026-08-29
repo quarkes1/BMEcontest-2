@@ -17,6 +17,7 @@ from src.data import manifests, splits
 from src.eval.metrics import compute_metrics
 from src.infer.events import windows_to_events
 from src.models.l3a_cnn import L3aCNN, L3aCNNLarge, N_CHANNELS
+from src.models.l3a_resnet import L3aResNet
 
 A_VAL = config.CACHE_DIR / "l3a_val_raw"
 MERGE_GAPS = (15, 30, 60, 90)
@@ -25,11 +26,14 @@ THRESHOLDS = (0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6)
 
 def load_scores(fold, model_name):
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    model = (L3aCNNLarge(5) if model_name == "large" else L3aCNN(5)).to(device).eval()
+    model = {"small": L3aCNN(5), "large": L3aCNNLarge(5),
+             "resnet": L3aResNet(5)}[model_name].to(device).eval()
     model.load_state_dict(torch.load(
         config.MODEL_DIR / f"l3a_cnn_{model_name}_fold{fold}.pt", weights_only=True))
-    stats = json.loads((config.CACHE_DIR / "l3a_raw" / f"fold{fold}" / "stats.json")
-                       .read_text(encoding="utf-8"))
+    p_stats = config.CACHE_DIR / "l3a_raw" / f"fold{fold}" / "stats.json"
+    if not p_stats.exists():
+        p_stats = config.MODEL_DIR / f"l3a_{model_name}_stats_fold{fold}.json"
+    stats = json.loads(p_stats.read_text(encoding="utf-8"))
     mean = np.array(stats["mean"], dtype=np.float32).reshape(1, N_CHANNELS, 1)
     std = np.array(stats["std"], dtype=np.float32).reshape(1, N_CHANNELS, 1) + 1e-6
     probs, t0s, t1s = [], [], []
@@ -50,7 +54,7 @@ def load_scores(fold, model_name):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--fold", type=int, default=0)
-    ap.add_argument("--model", default="small", choices=["small", "large"])
+    ap.add_argument("--model", default="small", choices=["small", "large", "resnet"])
     ap.add_argument("--build-val", action="store_true", help="先重建该折验证缓存")
     args = ap.parse_args()
     f = folds = splits.load_folds()[args.fold]

@@ -97,7 +97,10 @@ def build_val_caches(val_sessions):
 def score_l3a(fold, device):
     model = L3aResNet(5).to(device).eval()
     model.load_state_dict(torch.load(config.MODEL_DIR / f"l3a_cnn_resnet_fold{fold}.pt", weights_only=True))
-    stats = json.loads((config.CACHE_DIR / "l3a_raw" / f"fold{fold}" / "stats.json").read_text(encoding="utf-8"))
+    p_stats = config.CACHE_DIR / "l3a_raw" / f"fold{fold}" / "stats.json"
+    if not p_stats.exists():                          # 缓存已删 → 用训练期快照
+        p_stats = config.MODEL_DIR / f"l3a_resnet_stats_fold{fold}.json"
+    stats = json.loads(p_stats.read_text(encoding="utf-8"))
     mean = np.array(stats["mean"], dtype=np.float32).reshape(1, L3A_CH, 1)
     std = np.array(stats["std"], dtype=np.float32).reshape(1, L3A_CH, 1) + 1e-6
     out = {}
@@ -119,8 +122,13 @@ def score_l3b(fold, device):
     model = L3bBiGRU().to(device).eval()
     model.load_state_dict(torch.load(config.MODEL_DIR / f"l3b_v2_fold{fold}.pt", weights_only=True))
     out_dir = config.CACHE_DIR / "l3b_raw" / f"fold{fold}"
-    hs = np.concatenate([np.load(f)["hrv"] for f in sorted(out_dir.glob("*.npz"))]).astype(np.float32)
-    mean_h = hs.mean(axis=0); std_h = hs.std(axis=0) + 1e-6
+    if out_dir.exists() and any(out_dir.glob("*.npz")):
+        hs = np.concatenate([np.load(f)["hrv"] for f in sorted(out_dir.glob("*.npz"))]).astype(np.float32)
+        mean_h = hs.mean(axis=0); std_h = hs.std(axis=0) + 1e-6
+    else:                                             # 缓存已删 → 训练期快照
+        s = json.loads((config.MODEL_DIR / f"l3b_v2_stats_fold{fold}.json").read_text(encoding="utf-8"))
+        mean_h = np.array(s["mean_h"], dtype=np.float32)
+        std_h = np.array(s["std_h"], dtype=np.float32) + 1e-6
     out = {}
     with torch.no_grad():
         for f in sorted(B_VAL.glob("*.npz")):
