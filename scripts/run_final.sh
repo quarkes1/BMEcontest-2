@@ -7,7 +7,10 @@ PY=/d/Anaconda3/envs/bme/python.exe
 cd /d/BMEtest || exit 1
 echo "===== $(date '+%F %T') 最终训练链启动 ====="
 
-# ---- L3a ResNet 5 折 ----
+# ---- L3a ResNet 5 折（模型齐备则跳过） ----
+if [ -f models/l3a_cnn_resnet_fold4.pt ]; then
+  echo "L3a 5 折模型齐备，跳过 L3a 阶段"
+else
 for k in 0 1 2 3 4; do
   BUILD_PID=""
   nxt=$((k+1))
@@ -20,8 +23,12 @@ for k in 0 1 2 3 4; do
   rm -rf cache/l3a_raw/fold$k
   if [ -n "$BUILD_PID" ]; then wait $BUILD_PID; fi
 done
+fi
 
-# ---- L3b BiGRU 5 折 ----
+# ---- L3b BiGRU 5 折（模型齐备则跳过） ----
+if [ -f models/l3b_v2_fold4.pt ]; then
+  echo "L3b 5 折模型齐备，跳过 L3b 阶段"
+else
 for k in 0 1 2 3 4; do
   BUILD_PID=""
   nxt=$((k+1))
@@ -34,6 +41,7 @@ for k in 0 1 2 3 4; do
   rm -rf cache/l3b_raw/fold$k
   if [ -n "$BUILD_PID" ]; then wait $BUILD_PID; fi
 done
+fi
 
 # ---- 后处理调优 + 全链路 5 折消融 ----
 $PY -u scripts/tune_postprocess.py --fold 0 --model resnet --build-val 2>&1 | tee outputs/tune_log.txt
