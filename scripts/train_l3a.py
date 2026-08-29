@@ -28,7 +28,7 @@ from src.models.l3a_cnn import L3aCNN, build_raw_channels, mirror_channels, N_CH
 
 BASE = config.CACHE_DIR / "l3a_raw"
 VAL_DIR = config.CACHE_DIR / "l3a_val_raw"
-BATCH = 128
+BATCH = 256
 LR = 1e-3
 WEIGHT_DECAY = 1e-4
 AUX_WEIGHT = 0.3
@@ -174,6 +174,7 @@ def train_fold(fold, epochs):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     if device == "cuda":
         torch.backends.cudnn.benchmark = True
+        torch.backends.cudnn.allow_tf32 = True       # TF32 卷积加速 ~20-30%
     print(f"device={device}", flush=True)
 
     model = L3aCNN(num_tableware=5).to(device)

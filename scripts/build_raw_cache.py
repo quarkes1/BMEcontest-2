@@ -96,16 +96,18 @@ def build_fold(fold):
                 stats["pos"] += npos; stats["neg"] += nneg
             if (i + 1) % 50 == 0:
                 print(f"  {i+1}/{len(tasks)} 用时 {time.time()-t0:.0f}s", flush=True)
-    # 通道均值/方差（增量 Welford）
-    mean = np.zeros(11); m2 = np.zeros(11); n = 0
+    # 通道均值/方差（两遍向量化：逐文件累加 sum/sumsq，避免 Python 逐行循环）
+    sums = np.zeros(11, dtype=np.float64)
+    sumsq = np.zeros(11, dtype=np.float64)
+    n = 0
     for f in out_dir.glob("*.npz"):
-        X = np.load(f)["X"].astype(np.float64)
-        for x in X.reshape(-1, 11):
-            n += 1
-            d = x - mean
-            mean += d / n
-            m2 += d * (x - mean)
-    std = np.sqrt(m2 / max(1, n - 1)).astype(np.float32)
+        X = np.load(f)["X"].astype(np.float64).reshape(-1, 11)
+        sums += X.sum(axis=0)
+        sumsq += (X * X).sum(axis=0)
+        n += len(X)
+    mean = sums / max(1, n)
+    var = sumsq / max(1, n) - mean ** 2
+    std = np.sqrt(np.clip(var, 0, None)).astype(np.float32)
     (out_dir / "stats.json").write_text(json.dumps(
         {"mean": mean.tolist(), "std": std.tolist(), "n_windows": n, **stats},
         ensure_ascii=False, indent=1), encoding="utf-8")
