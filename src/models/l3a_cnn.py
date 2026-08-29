@@ -83,6 +83,34 @@ class L3aCNN(nn.Module):
         return self.eat_head(h).squeeze(-1), self.tableware_head(h)
 
 
+class L3aCNNLarge(nn.Module):
+    """L3a 满配版（IT1，准确率优先）：4 块 64→128→256→256，~218K 参数 / ~16M MACs。
+    头部带 dropout 正则。"""
+    def __init__(self, num_tableware=5, drop=0.2):
+        super().__init__()
+        self.stem = nn.Conv1d(N_CHANNELS, 64, 1, bias=False)
+        self.bn0 = nn.BatchNorm1d(64)
+        self.blocks = nn.Sequential(
+            _SepBlock(64, 128, stride=2),
+            _SepBlock(128, 256, stride=2),
+            _SepBlock(256, 256, stride=2),
+            _SepBlock(256, 256, stride=2),
+        )
+        self.head = nn.Sequential(
+            nn.Linear(256, 128), nn.ReLU(), nn.Dropout(drop),
+            nn.Linear(128, 64), nn.ReLU())
+        self.eat_head = nn.Linear(64, 1)
+        self.tableware_head = nn.Linear(64, num_tableware)
+        self.num_tableware = num_tableware
+
+    def forward(self, x):
+        x = nn.functional.relu(self.bn0(self.stem(x)))
+        x = self.blocks(x)
+        x = x.mean(dim=2)
+        h = self.head(x)
+        return self.eat_head(h).squeeze(-1), self.tableware_head(h)
+
+
 def count_params(model) -> int:
     return sum(p.numel() for p in model.parameters())
 

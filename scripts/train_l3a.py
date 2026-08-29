@@ -24,7 +24,8 @@ from src.data.loader import load_session, detect_binary, _find_collect_data
 from src.data.windows import iter_window_labels
 from src.eval.metrics import compute_metrics
 from src.infer.events import windows_to_events
-from src.models.l3a_cnn import L3aCNN, build_raw_channels, mirror_channels, N_CHANNELS, WINDOW_LEN
+from src.models.l3a_cnn import (L3aCNN, L3aCNNLarge, build_raw_channels,
+                                mirror_channels, N_CHANNELS, WINDOW_LEN)
 
 BASE = config.CACHE_DIR / "l3a_raw"
 VAL_DIR = config.CACHE_DIR / "l3a_val_raw"
@@ -80,10 +81,14 @@ def build_val_cache(val_sessions):
 # ② 多进程 spawn 数据管线在 Windows 上不可靠（worker 满载、主进程死等、GPU 空转）。
 # 最终方案：负样本 3:1 抽样后全量载入内存（~10GB），epoch 内纯内存洗牌，num_workers=0。
 class RawDataset(Dataset):
-    def __init__(self, out_dir, stats, neg_ratio=3.0, mirror=True):
+    def __init__(self, out_dir, stats, neg_ratio=3.0, mirror=True,
+                 stretch=True, jitter=True, ch_drop=0.1):
         self.mean = np.array(stats["mean"], dtype=np.float32).reshape(N_CHANNELS, 1)
         self.std = np.array(stats["std"], dtype=np.float32).reshape(N_CHANNELS, 1) + 1e-6
         self.mirror = mirror
+        self.stretch = stretch
+        self.jitter = jitter
+        self.ch_drop = ch_drop
         files = [f for f in sorted(out_dir.glob("*.npz")) if not f.name.endswith(".tmp.npz")]
         neg_prob = min(1.0, neg_ratio * stats["pos"] / max(1, stats["neg"]))
         rng = np.random.RandomState(config.RANDOM_SEED)
@@ -118,8 +123,25 @@ class RawDataset(Dataset):
     def __getitem__(self, idx):
         i = self.idx[idx]
         X = self.X[i].copy()
-        if self.mirror and np.random.random() < 0.5:
+        rng = np.random
+        if self.mirror and rng.random() < 0.5:
             X = mirror_channels(X)
+        if self.jitter and rng.random() < 0.5:
+            X *= rng.uniform(0.9, 1.1)                   # 幅度抖动 ±10%
+        if self.stretch and rng.random() < 0.5:
+            scale = rng.uniform(0.95, 1.05)              # 时间伸缩 ±5%
+            new_len = int(round(X.shape[1] * scale))
+            xs = np.linspace(0, X.shape[1] - 1, new_len)
+            X = np.stack([np.interp(xs, np.arange(X.shape[1]), X[c]) for c in range(X.shape[0])])
+            if new_len < WINDOW_LEN:
+                X = np.pad(X, ((0, 0), (0, WINDOW_LEN - new_len)))
+            else:
+                X = X[:, :WINDOW_LEN]
+        if self.ch_drop:
+            X = X.copy()
+            for c in range(6):                            # 6 个原始信号通道（la/gyro）
+                if rng.random() < self.ch_drop:
+                    X[c] = 0.0
         X = (X - self.mean) / self.std
         return (torch.from_numpy(X), torch.tensor(self.y[i], dtype=torch.float32),
                 torch.tensor(self.tw[i], dtype=torch.long))
@@ -158,7 +180,7 @@ def val_true_events(session_ids, scene="dominant"):
 
 
 # ------------------------------------------------------------------ 训练主流程
-def train_fold(fold, epochs):
+def train_fold(fold, epochs, model_name):
     f = splits.load_folds()[fold]
     out_dir = BASE / f"fold{fold}"
     if not (out_dir / "stats.json").exists():
@@ -177,7 +199,9 @@ def train_fold(fold, epochs):
         torch.backends.cudnn.allow_tf32 = True       # TF32 卷积加速 ~20-30%
     print(f"device={device}", flush=True)
 
-    model = L3aCNN(num_tableware=5).to(device)
+    model = (L3aCNNLarge(num_tableware=5) if model_name == "large"
+             else L3aCNN(num_tableware=5)).to(device)
+    print(f"model: {model_name} ({sum(p.numel() for p in model.parameters())} params)", flush=True)
     opt = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
     steps_per_epoch = (3 * stats["pos"] + int(min(stats["neg"], 3 * stats["pos"]))) // BATCH
     total_steps = steps_per_epoch * epochs
@@ -202,7 +226,7 @@ def train_fold(fold, epochs):
             twb = twb.where(yb > 0.5, torch.full_like(twb, -1))
             with torch.amp.autocast("cuda", dtype=torch.float16):
                 logit, tw_logit = model(xb)
-                loss = bce(logit, yb) + AUX_WEIGHT * ce(tw_logit, twb)
+                loss = bce(logit, yb * 0.9 + 0.05) + AUX_WEIGHT * ce(tw_logit, twb)   # label smoothing 0.1
             scaler.scale(loss).backward()
             scaler.step(opt); scaler.update(); opt.zero_grad(set_to_none=True)
             sched.step()
@@ -231,7 +255,7 @@ def train_fold(fold, epochs):
                         "f1_overall": m_all["f1"], "metrics_dominant": compute_metrics(
                             windows_to_events(probs, tv0, tv1, best_thr), true_dom)}
                 config.MODEL_DIR.mkdir(parents=True, exist_ok=True)
-                torch.save(model.state_dict(), config.MODEL_DIR / f"l3a_cnn_fold{fold}.pt")
+                torch.save(model.state_dict(), config.MODEL_DIR / f"l3a_cnn_{model_name}_fold{fold}.pt")
                 print(f"  >>> 保存 best (ep {ep})", flush=True)
     shutil.rmtree(VAL_DIR, ignore_errors=True)      # 验证缓存 ~14GB/折，用完即删
     return best
@@ -241,15 +265,17 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--folds", default="0,1")
     ap.add_argument("--epochs", type=int, default=18)
+    ap.add_argument("--model", default="small", choices=["small", "large"])
     args = ap.parse_args()
     t0 = time.time()
     report = {"folds": {}}
     for k in [int(x) for x in args.folds.split(",")]:
-        if (config.MODEL_DIR / f"l3a_cnn_fold{k}.pt").exists():
-            print(f"===== L3a fold {k} 已存在模型，跳过 =====", flush=True)
+        ckpt = config.MODEL_DIR / f"l3a_cnn_{args.model}_fold{k}.pt"
+        if ckpt.exists():
+            print(f"===== L3a {args.model} fold {k} 已存在模型，跳过 =====", flush=True)
             continue
-        print(f"===== L3a fold {k} =====", flush=True)
-        report["folds"][str(k)] = train_fold(k, args.epochs)
+        print(f"===== L3a {args.model} fold {k} =====", flush=True)
+        report["folds"][str(k)] = train_fold(k, args.epochs, args.model)
     f1s = [v["f1_dominant"] for v in report["folds"].values()]
     report["mean_f1_dominant"] = float(np.mean(f1s))
     report["total_seconds"] = round(time.time() - t0, 1)
