@@ -108,7 +108,7 @@ def build_fold(fold, workers=8):
     var = np.median(Wv, axis=0) + np.median((Wm - mean) ** 2, axis=0)
     std = np.sqrt(np.clip(var, 0, None)).astype(np.float32)
     (out_dir / "stats.json").write_text(json.dumps(
-        {"mean": mean.tolist(), "std": std.tolist(), "n_windows": n, **stats},
+        {"mean": mean.tolist(), "std": std.tolist(), "n_windows": int(len(Wm)), **stats},
         ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"fold {fold} 完成: ok={stats['ok']} pos={stats['pos']} neg={stats['neg']} "
           f"error={len(stats['error'])} 用时 {time.time()-t0:.0f}s", flush=True)
