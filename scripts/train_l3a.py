@@ -245,6 +245,9 @@ def main():
     t0 = time.time()
     report = {"folds": {}}
     for k in [int(x) for x in args.folds.split(",")]:
+        if (config.MODEL_DIR / f"l3a_cnn_fold{k}.pt").exists():
+            print(f"===== L3a fold {k} 已存在模型，跳过 =====", flush=True)
+            continue
         print(f"===== L3a fold {k} =====", flush=True)
         report["folds"][str(k)] = train_fold(k, args.epochs)
     f1s = [v["f1_dominant"] for v in report["folds"].values()]
