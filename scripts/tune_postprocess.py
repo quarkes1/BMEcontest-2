@@ -51,8 +51,14 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--fold", type=int, default=0)
     ap.add_argument("--model", default="small", choices=["small", "large"])
+    ap.add_argument("--build-val", action="store_true", help="先重建该折验证缓存")
     args = ap.parse_args()
     f = folds = splits.load_folds()[args.fold]
+    if args.build_val:
+        import shutil
+        from scripts.run_full_pipeline import build_val_caches
+        shutil.rmtree(A_VAL, ignore_errors=True)
+        build_val_caches(f["val_sessions"])
     meal_meta, _ = manifests.load_meal_meta()
     index = manifests.load_sensor_index().set_index("session_id")
     ext_set = {index.loc[s, "externalid"] for s in f["val_sessions"] if s in index.index}
