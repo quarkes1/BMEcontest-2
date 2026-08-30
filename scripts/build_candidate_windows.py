@@ -137,6 +137,8 @@ def _process_sid(args):
             "imu": imu.astype(np.float16), "ppg": ppg, "ma": ma,
             "meta": json.dumps({"sid": sid, "s": s0, "e": e0, "is_prior": 0,
                                 "label": int(y), "gate_prob": float(gate_probs.get(sid, 0.5)),
+                                "dur_s": (e0 - s0) / 1000.0,
+                                "prior_h": float(prior[int((s0 / 3.6e6) % 24) % 24]),
                                 "span_s": float(s.acc.shape[1] / s.meta.get("row_rate", 105.0))}),
         })
     if not rows:

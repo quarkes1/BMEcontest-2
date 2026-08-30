@@ -63,13 +63,16 @@ class MMRanker(nn.Module):
             nn.Linear(2, 16), nn.ReLU(), nn.Linear(16, 1), nn.Sigmoid())
         # ---- 融合 ----
         self.fuse = nn.GRU(2 * d_model, d_model, batch_first=True, bidirectional=True)
+        # 元特征（候选时长/会话门控/时刻先验）——长候选 FP 的关键判别（v1 LightGBM 靠 dur）
+        self.meta_in = nn.Sequential(
+            nn.Linear(3, 32), nn.ReLU(), nn.Dropout(dropout))
         self.head = nn.Sequential(
-            nn.Linear(4 * d_model, 128), nn.ReLU(), nn.Dropout(dropout),
+            nn.Linear(4 * d_model + 32, 128), nn.ReLU(), nn.Dropout(dropout),
             nn.Linear(128, 1))
         self.n_blocks = n_blocks
 
-    def forward(self, imu, ppg, ma):
-        """imu: (B, 2400, 6) fp16→float；ppg: (B, 48, 66)；ma: (B, 48, 2)。"""
+    def forward(self, imu, ppg, ma, meta):
+        """imu: (B, 2400, 6) fp16→float；ppg: (B, 48, 66)；ma: (B, 48, 2)；meta: (B, 3)。"""
         x = imu.transpose(1, 2).float()                 # (B, 6, 2400)
         x = self.imu_in(x)
         for blk in self.tcn:
@@ -87,7 +90,8 @@ class MMRanker(nn.Module):
 
         z = torch.cat([h_imu, h_ppg], dim=2)            # (B, 48, 2d)
         z, _ = self.fuse(z)                             # (B, 48, 2d)
-        pooled = torch.cat([z.mean(1), z.max(1).values], dim=1)   # (B, 4d)
+        hm = self.meta_in(meta)                         # (B, 32)
+        pooled = torch.cat([z.mean(1), z.max(1).values, hm], dim=1)   # (B, 4d+32)
         return self.head(pooled).squeeze(1)             # (B,)
 
 

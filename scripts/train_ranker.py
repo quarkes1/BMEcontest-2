@@ -36,9 +36,10 @@ HARD_K = 3            # top-k = 3× 正样本数
 
 
 class CandDS(Dataset):
-    """候选窗口数据集。pos_rep>1 时训练集正样本复制（1:45 不平衡 → 过采样平衡）。"""
+    """候选窗口数据集。pos_rep>1 时训练集正样本复制（1:45 不平衡 → 过采样平衡）。
+    meta 特征：dur_s/log、gate_prob、prior_h（归一化在构造时完成）。"""
 
-    def __init__(self, imu, ppg, ma, y, pos_rep=1):
+    def __init__(self, imu, ppg, ma, meta, y, pos_rep=1):
         orig = np.arange(len(y))
         pos = np.where(y == 1)[0]
         if pos_rep > 1 and len(pos):
@@ -47,6 +48,7 @@ class CandDS(Dataset):
         self.imu = torch.from_numpy(imu[orig])
         self.ppg = torch.from_numpy(ppg[orig])
         self.ma = torch.from_numpy(ma[orig])
+        self.meta = torch.from_numpy(meta[orig].astype(np.float32))
         self.y = torch.from_numpy(y[orig].astype(np.float32))
         self.weights = torch.ones(len(orig), dtype=torch.float32)
         self.n_orig = len(y)
@@ -55,7 +57,7 @@ class CandDS(Dataset):
         return len(self.y)
 
     def __getitem__(self, i):
-        return self.imu[i], self.ppg[i], self.ma[i], self.y[i], self.weights[i]
+        return self.imu[i], self.ppg[i], self.ma[i], self.meta[i], self.y[i], self.weights[i]
 
 
 def load_fold(k):
@@ -69,13 +71,13 @@ def main():
     ap.add_argument("--epochs", type=int, default=EPOCHS)
     ap.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     args = ap.parse_args()
-    k = args.fold
+    fold_idx = args.fold
 
     # ---- 加载缓存（按 fold 划分切 train/val） ----
     from src.data import splits
     folds = splits.load_folds()
-    tr_set, va_set = set(folds[k]["train_sessions"]), set(folds[k]["val_sessions"])
-    d = config.CACHE_DIR / "cand_windows" / f"fold{k}"
+    tr_set, va_set = set(folds[fold_idx]["train_sessions"]), set(folds[fold_idx]["val_sessions"])
+    d = config.CACHE_DIR / "cand_windows" / f"fold{fold_idx}"
     X, Y, META = [], [], []
     for p in sorted(d.glob("*.npz")):
         z = np.load(p, allow_pickle=True)
@@ -88,8 +90,9 @@ def main():
         Y.extend(int(mm["label"]) for mm in m)
     imu = np.stack([x[0] for x in X]); ppg = np.stack([x[1] for x in X]); ma = np.stack([x[2] for x in X])
     y = np.array(Y, np.int8)
+    meta = np.stack([[np.log1p(m["dur_s"]), m["gate_prob"], m["prior_h"]] for m in META]).astype(np.float32)
     split_idx = np.array([0 if m["sid"] in tr_set else 1 for m in META])
-    print(f"fold{k}: {len(y)} 候选（正 {y.sum()}，{y.mean()*100:.1f}%）", flush=True)
+    print(f"fold{fold_idx}: {len(y)} 候选（正 {y.sum()}，{y.mean()*100:.1f}%）", flush=True)
     tr, va = split_idx == 0, split_idx == 1
     print(f"  train {(split_idx==0).sum()} 候选（正 {y[tr].sum()}）| val {(split_idx==1).sum()}（正 {y[va].sum()}）", flush=True)
 
@@ -98,10 +101,10 @@ def main():
     print(f"  MM-Ranker 参数 {count_params(model)/1e3:.0f}K", flush=True)
 
     POS_REP = max(2, int((y[tr] == 0).sum() / max(y[tr].sum(), 1) / 8))  # 正:负 ≈ 1:8
-    train_ds = CandDS(imu[tr], ppg[tr], ma[tr], y[tr], pos_rep=POS_REP)
-    val_ds = CandDS(imu[va], ppg[va], ma[va], y[va])
+    train_ds = CandDS(imu[tr], ppg[tr], ma[tr], meta[tr], y[tr], pos_rep=POS_REP)
+    val_ds = CandDS(imu[va], ppg[va], ma[va], meta[va], y[va])
     print(f"  正样本过采样 ×{POS_REP} → train {len(train_ds)}", flush=True)
-    hm_ds = CandDS(imu[tr], ppg[tr], ma[tr], y[tr])   # 硬负样本挖掘全量（原始索引）
+    hm_ds = CandDS(imu[tr], ppg[tr], ma[tr], meta[tr], y[tr])   # 硬负样本挖掘全量（原始索引）
     tr_loader = DataLoader(train_ds, batch_size=BATCH, shuffle=True, num_workers=0)
     va_loader = DataLoader(val_ds, batch_size=256, shuffle=False, num_workers=0)
 
@@ -112,19 +115,20 @@ def main():
         model.eval()
         logs, ys = [], []
         with torch.no_grad():
-            for ii, pp, mm, yy, _ in DataLoader(ds, batch_size=256, shuffle=False):
-                logs.append(model(ii.to(dev), pp.to(dev), mm.to(dev)).cpu())
+            for ii, pp, mm, mt, yy, _ in DataLoader(ds, batch_size=256, shuffle=False):
+                logs.append(model(ii.to(dev), pp.to(dev), mm.to(dev), mt.to(dev)).cpu())
                 ys.append(yy)
         l = torch.cat(logs); yt = torch.cat(ys)
         p = torch.sigmoid(l)
-        # AUC（0 基 rank：Σ正样本rank - n_pos(n_pos-1)/2）
+        # AUC：降序 0 基 rank 和 S_desc → AUC = 1 - (S_desc - n_pos(n_pos-1)/2)/(n_pos·n_neg)
         order = p.argsort(descending=True)
-        ranks = torch.empty_like(order); ranks[order] = torch.arange(len(p))
+        ranks = torch.empty(len(p), dtype=torch.long); ranks[order] = torch.arange(len(p))
         n_pos = yt.sum(); n_neg = len(yt) - n_pos
         if n_pos == 0 or n_neg == 0:
             auc = float("nan")
         else:
-            auc = ((yt * ranks).sum() - n_pos * (n_pos - 1) / 2) / (n_pos * n_neg)
+            s_desc = float((yt * ranks).sum())
+            auc = 1.0 - (s_desc - n_pos * (n_pos - 1) / 2) / (n_pos * n_neg)
         return float(auc), p.numpy(), l.numpy()
 
     best_auc, best_state, patience, hard_w = -1.0, None, 0, None
@@ -132,8 +136,8 @@ def main():
         model.train()
         t0 = time.time()
         tot = 0.0; nb = 0
-        for ii, pp, mm, yy, ww in tr_loader:
-            lg = model(ii.to(dev), pp.to(dev), mm.to(dev))
+        for ii, pp, mm, mt, yy, ww in tr_loader:
+            lg = model(ii.to(dev), pp.to(dev), mm.to(dev), mt.to(dev))
             loss = focal_loss(lg, yy.to(dev), weights=ww.to(dev))
             opt.zero_grad(); loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
@@ -155,19 +159,19 @@ def main():
         model.eval()
         with torch.no_grad():
             ltr = []
-            for ii, pp, mm, _, _ in DataLoader(hm_ds, batch_size=256, shuffle=False):
-                ltr.append(model(ii.to(dev), pp.to(dev), mm.to(dev)).cpu())
+            for ii, pp, mm, mt, _, _ in DataLoader(hm_ds, batch_size=256, shuffle=False):
+                ltr.append(model(ii.to(dev), pp.to(dev), mm.to(dev), mt.to(dev)).cpu())
             ltr = torch.cat(ltr)
         ptr = torch.sigmoid(ltr).numpy()
         fp_mask = (y[tr] == 0) & (ptr > 0.5)
-        k = min(int(HARD_K * y[tr].sum()), int(fp_mask.sum()))
-        if k > 0:
-            idx = np.where(fp_mask)[0][np.argsort(ptr[fp_mask])[-k:]]
+        n_hard = min(int(HARD_K * y[tr].sum()), int(fp_mask.sum()))
+        if n_hard > 0:
+            idx = np.where(fp_mask)[0][np.argsort(ptr[fp_mask])[-n_hard:]]
             hard_w = np.ones(train_ds.n_orig, np.float32)
             hard_w[idx] = HARD_W
             # 映射：dataset 索引 → 原始索引 → 权重
             train_ds.weights = torch.from_numpy(hard_w[train_ds.orig]).float()
-            print(f"    硬负样本: {k} 个（top sigmoid {ptr[idx].max():.3f}）", flush=True)
+            print(f"    硬负样本: {n_hard} 个（top sigmoid {ptr[idx].max():.3f}）", flush=True)
         else:
             hard_w = None
 
@@ -176,12 +180,12 @@ def main():
     print(f"★ 最优 valAUC {best_auc:.3f}（重载后 {auc:.3f}）", flush=True)
 
     # ---- 保存：模型 + val 候选分数（解码用） ----
-    torch.save(best_state, config.MODEL_DIR / f"mm_ranker_fold{k}.pt")
+    torch.save(best_state, config.MODEL_DIR / f"mm_ranker_fold{fold_idx}.pt")
     order = [i for i, m in enumerate(META) if m["sid"] in va_set]
-    np.savez(config.OUTPUT_DIR / f"mm_ranker_fold{k}_val.npz",
+    np.savez(config.OUTPUT_DIR / f"mm_ranker_fold{fold_idx}_val.npz",
              score=p_va, label=np.array([y[i] for i in order], np.int8),
              meta=np.array([json.dumps(META[i]).encode() for i in order]))
-    print(f"→ models/mm_ranker_fold{k}.pt + outputs/mm_ranker_fold{k}_val.npz（{len(order)} val 候选）", flush=True)
+    print(f"→ models/mm_ranker_fold{fold_idx}.pt + outputs/mm_ranker_fold{fold_idx}_val.npz（{len(order)} val 候选）", flush=True)
 
 
 if __name__ == "__main__":
