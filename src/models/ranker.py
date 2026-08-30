@@ -34,16 +34,15 @@ class TCNBlock(nn.Module):
         self.dilation = dilation
 
     def forward(self, x):
-        """x: (B, d, T) → (B, d, T)。因果：卷积后裁掉未来 pad。"""
+        """x: (B, d, T) → (B, d, T)。因果：Conv1d 双边 padding 后裁掉右侧 (k-1)·d。"""
         out = self.conv1(x)
-        if self.dilation > 1:
-            out = out[:, :, :-self.dilation]
         out = torch.relu(self.bn1(out))
         out = self.drop(out)
         out = self.conv2(out)
-        if self.dilation > 1:
-            out = out[:, :, :-self.dilation]
         out = torch.relu(self.bn2(out))
+        T = x.size(2)
+        if out.size(2) > T:
+            out = out[:, :, :T]
         return x + out
 
 

@@ -55,7 +55,7 @@ def _extract(s, med_c, c_s, c_e, valid_ts):
     c_mid = (c_s + c_e) // 2
     ws = c_mid - int(CTX_S * 1000)
     we = c_mid + int(CTX_S * 1000)
-    n_step = int((we - ws) / GRID_STEP_MS) + 1
+    n_step = int((we - ws) / GRID_STEP_MS)                # 固定 2400 步（半开区间）
     grid = ws + np.arange(n_step) * GRID_STEP_MS          # 10Hz 网格（绝对 ms）
 
     t = s.t_acc.astype(np.float64)

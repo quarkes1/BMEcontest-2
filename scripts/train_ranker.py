@@ -36,13 +36,20 @@ HARD_K = 3            # top-k = 3× 正样本数
 
 
 class CandDS(Dataset):
-    def __init__(self, imu, ppg, ma, y, weights=None):
-        self.imu = torch.from_numpy(imu)
-        self.ppg = torch.from_numpy(ppg)
-        self.ma = torch.from_numpy(ma)
-        self.y = torch.from_numpy(y.astype(np.float32))
-        self.weights = torch.ones(len(y), dtype=torch.float32) if weights is None \
-            else torch.from_numpy(weights.astype(np.float32))
+    """候选窗口数据集。pos_rep>1 时训练集正样本复制（1:45 不平衡 → 过采样平衡）。"""
+
+    def __init__(self, imu, ppg, ma, y, pos_rep=1):
+        orig = np.arange(len(y))
+        pos = np.where(y == 1)[0]
+        if pos_rep > 1 and len(pos):
+            orig = np.concatenate([orig, np.repeat(pos, pos_rep - 1)])
+        self.orig = orig
+        self.imu = torch.from_numpy(imu[orig])
+        self.ppg = torch.from_numpy(ppg[orig])
+        self.ma = torch.from_numpy(ma[orig])
+        self.y = torch.from_numpy(y[orig].astype(np.float32))
+        self.weights = torch.ones(len(orig), dtype=torch.float32)
+        self.n_orig = len(y)
 
     def __len__(self):
         return len(self.y)
@@ -90,11 +97,13 @@ def main():
     model = MMRanker().to(dev)
     print(f"  MM-Ranker 参数 {count_params(model)/1e3:.0f}K", flush=True)
 
-    train_ds = CandDS(imu[tr], ppg[tr], ma[tr], y[tr])
+    POS_REP = max(2, int((y[tr] == 0).sum() / max(y[tr].sum(), 1) / 8))  # 正:负 ≈ 1:8
+    train_ds = CandDS(imu[tr], ppg[tr], ma[tr], y[tr], pos_rep=POS_REP)
     val_ds = CandDS(imu[va], ppg[va], ma[va], y[va])
+    print(f"  正样本过采样 ×{POS_REP} → train {len(train_ds)}", flush=True)
+    hm_ds = CandDS(imu[tr], ppg[tr], ma[tr], y[tr])   # 硬负样本挖掘全量（原始索引）
     tr_loader = DataLoader(train_ds, batch_size=BATCH, shuffle=True, num_workers=0)
     va_loader = DataLoader(val_ds, batch_size=256, shuffle=False, num_workers=0)
-    all_tr = CandDS(imu[tr], ppg[tr], ma[tr], y[tr])   # 硬负样本挖掘全量
 
     opt = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=WD)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=args.epochs)
@@ -146,7 +155,7 @@ def main():
         model.eval()
         with torch.no_grad():
             ltr = []
-            for ii, pp, mm, _, _ in DataLoader(all_tr, batch_size=256, shuffle=False):
+            for ii, pp, mm, _, _ in DataLoader(hm_ds, batch_size=256, shuffle=False):
                 ltr.append(model(ii.to(dev), pp.to(dev), mm.to(dev)).cpu())
             ltr = torch.cat(ltr)
         ptr = torch.sigmoid(ltr).numpy()
@@ -154,9 +163,10 @@ def main():
         k = min(int(HARD_K * y[tr].sum()), int(fp_mask.sum()))
         if k > 0:
             idx = np.where(fp_mask)[0][np.argsort(ptr[fp_mask])[-k:]]
-            hard_w = np.ones(len(all_tr), np.float32)
+            hard_w = np.ones(train_ds.n_orig, np.float32)
             hard_w[idx] = HARD_W
-            train_ds.weights.copy_(torch.from_numpy(hard_w))
+            # 映射：dataset 索引 → 原始索引 → 权重
+            train_ds.weights = torch.from_numpy(hard_w[train_ds.orig]).float()
             print(f"    硬负样本: {k} 个（top sigmoid {ptr[idx].max():.3f}）", flush=True)
         else:
             hard_w = None

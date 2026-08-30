@@ -3,7 +3,7 @@ Data/
 *.7z
 *.pyc
 __pycache__/
-/cache/
-/models/
-/outputs/
+cache/
+models/
+outputs/
 refs/
