@@ -6,9 +6,9 @@
    ——深度模型是"IMU 手势提案 → PPG+IMU 联合二次校验"分层中的细粒度校验器
 2. 解码：自动阈值搜索（方向 4）——融合分数 τ × 权重 w × 会话门控 g × 先验阈值 thr_p
    × 膨胀 dilation 网格，validation 按受试者级 F1 选最优，替代手工 g×topk×p
-3. 事件级后处理（方向 3）：会话内活动事件合并（gap<120s）→ 过滤 <2min 孤立误报段
-   （min_dur=120s）→ 边界膨胀 dilation
-4. 先验池通道不变（时间先验，无信号窗口 → 不做深度校验）；w=0 网格可复现 v1
+3. 事件级后处理（方向 3）：活动事件合并（gap<120s）→ 过滤 <2min 孤立段 → 边界膨胀
+4. 先验池通道不变（时间先验，无信号窗口 → 不做深度校验）；w=0 网格可复现 v1 的
+   top-k 解码（τ 代替 top-k 语义）
 
 运行：source activate bme && python scripts/rank_events_v2.py --fold 0
 产物：outputs/rank_events_v2_fold0.json
@@ -34,7 +34,7 @@ IOU_LABEL = 0.25
 POST_MERGE_GAP_S = 120.0    # 事件合并 gap（<2min 断开视为同一餐）
 POST_MIN_DUR_S = 120.0      # 过滤 <2min 孤立段（方向 3）
 DL_W = (0.0, 0.3, 0.5, 0.7, 1.0)      # 深度分数融合权重（0=纯 LightGBM 对照）
-DL_TAU = tuple(np.arange(0.25, 0.76, 0.05))  # 活动融合分数阈值
+DL_TAU = tuple(np.arange(0.25, 0.76, 0.05))  # 活动融合分数阈值（自动阈值搜索）
 GATE_GS = (0.0, 0.3)
 PRI_THRS = (0.3, 0.5)
 DILATIONS = (60.0, 120.0)
@@ -49,14 +49,6 @@ def load_dl_scores(k):
     meta = [json.loads(m.decode()) for m in z["meta"]]
     return {(m["sid"], int(m["s"]), int(m["e"])): float(sc)
             for m, sc in zip(meta, z["score"])}
-
-
-def pct_rank(x):
-    """全局百分位归一化（跨会话可比）。"""
-    if len(x) == 0:
-        return x
-    order = np.argsort(np.argsort(x))
-    return (order + 1) / len(x)
 
 
 def postprocess_events(evs, merge_gap_s=POST_MERGE_GAP_S, min_dur_s=POST_MIN_DUR_S,
@@ -134,12 +126,16 @@ def main():
             meals = sid_meals.get(sid, [])
             if act:
                 Xa = v1.candidate_features(act, env, t0, prior, sess_feats, 0.5)
-                (Xa_tr.append(Xa), ya_tr.append(v1.match_labels(act, meals))) if split == "tr" \
-                    else Xa_va.append(Xa)
+                if split == "tr":
+                    Xa_tr.append(Xa); ya_tr.append(v1.match_labels(act, meals))
+                else:
+                    Xa_va.append(Xa)
             if pri:
                 Xp = v1.candidate_features(pri, env, t0, prior, sess_feats, 0.5)
-                (Xp_tr.append(Xp), yp_tr.append(v1.match_labels(pri, meals))) if split == "tr" \
-                    else Xp_va.append(Xp)
+                if split == "tr":
+                    Xp_tr.append(Xp); yp_tr.append(v1.match_labels(pri, meals))
+                else:
+                    Xp_va.append(Xp)
     Xa_tr, ya_tr = np.concatenate(Xa_tr), np.concatenate(ya_tr)
     Xp_tr = np.concatenate(Xp_tr) if Xp_tr else np.zeros((0, 14), np.float32)
     yp_tr = np.concatenate(yp_tr) if yp_tr else np.zeros(0, np.int8)
@@ -157,33 +153,26 @@ def main():
     pa = clf_act.predict_proba(Xa_va)[:, 1]
     pp = clf_pri.predict_proba(Xp_va)[:, 1] if clf_pri is not None else np.zeros(len(Xp_va))
 
-    # ---- 深度分数对齐（按 (sid, s, e) 精确匹配） ----
+    # ---- 深度分数对齐（按 (sid, s, e) 精确匹配；缺失候选退化为纯 LGBM） ----
     dl = load_dl_scores(k)
-    dl_rate = 0.0
-    if dl is not None:
-        hit = sum(1 for sid, act, _, _, _ in val_rows() if dl is not None)
     val_rows = []
     ia = ip = 0
-    n_dl_hit = n_dl_tot = 0
+    n_hit = n_tot = 0
     for sid in f["val_sessions"]:
         if sid not in sess_meta:
             continue
         env, t0, sess_feats = sess_meta[sid]
         act, pri = v1.make_proposals(env, t0, prior, starts.get(sid, 0))
         n_a, n_p = len(act), len(pri)
-        va_scores = np.zeros(n_a, np.float32)
+        va_scores = np.full(n_a, np.nan, np.float32)
         for j, c in enumerate(act):
-            n_dl_tot += 1
+            n_tot += 1
             if dl is not None and (sid, c[0], c[1]) in dl:
                 va_scores[j] = dl[(sid, c[0], c[1])]
-                n_dl_hit += 1
-            else:
-                va_scores[j] = float("nan")
+                n_hit += 1
         val_rows.append((sid, act, pa[ia:ia + n_a], va_scores, pri, pp[ip:ip + n_p]))
         ia += n_a; ip += n_p
-    if n_dl_tot:
-        dl_rate = n_dl_hit / n_dl_tot
-    print(f"  深度分数对齐: {n_dl_hit}/{n_dl_tot} ({dl_rate*100:.0f}%)", flush=True)
+    print(f"  深度分数对齐: {n_hit}/{n_tot} ({n_hit / max(n_tot, 1) * 100:.0f}%)", flush=True)
 
     true_all = [(s, m["before"], m["after"]) for s in f["val_sessions"] if s in sid_meals for m in sid_meals[s]]
     true_sid = [(s, (b, e)) for s, b, e in true_all]
@@ -197,42 +186,30 @@ def main():
                     for dil in DILATIONS:
                         pred_sid = []
                         for sid, act, sa, va_scores, pri, sp in val_rows:
-                            preds = []
-                            if gate_prob.get(sid, 1.0) >= thr_g:
-                                sel = np.arange(len(sa))
-                                if len(sa):
-                                    if w > 0:
-                                        # 融合：深度分数缺时退化为纯 LGBM
-                                        fuse = w * va_scores + (1 - w) * sa
-                                        sel = sel[np.nan_to_num(fuse, nan=-1.0) >= tau]
-                                        # 深度缺失候选按 LGBM 概率降级处理：fuse=nan→-1 淘汰
-                                        # 但 NaN 数大时会漏 → 缺深度分时用 sa 兜底
-                                        miss = np.isnan(va_scores)
-                                        if miss.any():
-                                            fuse = np.where(miss, sa, fuse)
-                                            sel = sel[fuse[sel] >= tau]
-                                    else:
-                                        sel = sel[sa[sel] >= tau]
-                                    preds = [(sid, (act[j][0], act[j][1])) for j in sel]
-                            # 先验池 top-1（时间先验通道，v1 逻辑）
+                            act_out, pri_out = [], []
+                            if gate_prob.get(sid, 1.0) >= thr_g and len(sa):
+                                if w > 0:
+                                    fuse = w * va_scores + (1 - w) * sa
+                                    fuse = np.where(np.isnan(va_scores), sa, fuse)  # 缺深度分→纯LGBM
+                                    sel = np.where(fuse >= tau)[0]
+                                else:
+                                    sel = np.where(sa >= tau)[0]
+                                act_out = [(sid, (act[j][0], act[j][1])) for j in sel]
+                            # 先验池 top-1（时间先验通道，v1 逻辑）+ 高分旁路
                             if clf_pri is not None and len(sp) and sp.max() >= thr_p:
                                 jp = int(np.argmax(sp))
                                 pc = (pri[jp][0], pri[jp][1])
-                                if not any(event_iou(pc, (s0, e0)) >= IOU_LABEL for _, (s0, e0) in preds):
-                                    preds.append((sid, pc))
-                            if clf_pri is not None and len(sp) and sp.max() >= 0.85:   # 高分旁路
+                                if not any(event_iou(pc, (s0, e0)) >= IOU_LABEL for _, (s0, e0) in act_out):
+                                    pri_out.append((sid, pc))
+                            if clf_pri is not None and len(sp) and sp.max() >= 0.85:
                                 jp = int(np.argmax(sp))
                                 pc = (pri[jp][0], pri[jp][1])
-                                if not any(event_iou(pc, (s0, e0)) >= IOU_LABEL for _, (s0, e0) in preds):
-                                    preds.append((sid, pc))
-                            # 事件级后处理（只合并活动事件，先验窗保持独立）
-                            act_evs = [(s0, e0) for _, (s0, e0) in preds
-                                       if not (len(sp) and event_iou((s0, e0), (pri[int(np.argmax(sp))][0], pri[int(np.argmax(sp))][1])) >= IOU_LABEL)]
-                            keep = postprocess_events(act_evs, dilation_s=dil)
-                            for s0, e0 in preds:
-                                if not any(s0 == a and e0 == b for a, b in act_evs):
-                                    keep.append((s0, e0))
-                            pred_sid.extend((sid, (s0, e0)) for s0, e0 in keep)
+                                if not any(event_iou(pc, (s0, e0)) >= IOU_LABEL for _, (s0, e0) in act_out + pri_out):
+                                    pri_out.append((sid, pc))
+                            # 事件级后处理只作用于活动事件（先验 40min 宽窗不参与合并）
+                            keep = postprocess_events([e for _, e in act_out], dilation_s=dil)
+                            pred_sid.extend((sid, e) for e in keep)
+                            pred_sid.extend(pri_out)
                         m = compute_metrics_by_subject(pred_sid, true_sid, lambda s: subject_of[s])
                         row = {"name": f"w{w}_t{tau}_g{thr_g}_p{thr_p}_d{dil:.0f}",
                                **{kk: m[kk] for kk in ("f1", "sensitivity", "ppv", "n_tp", "n_pred", "n_true")}}
@@ -248,14 +225,11 @@ def main():
 
     out = {"fold": k, "rows": rows, "best": {"name": best_row[0],
            **{kk: best_row[1][kk] for kk in ("f1", "sensitivity", "ppv", "n_tp", "n_pred", "n_true")}},
-           "dl_alignment": round(dl_rate, 3), "v1_baseline": 0.242}
+           "dl_alignment": round(n_hit / max(n_tot, 1), 3),
+           "baselines": {"v1_best": 0.242, "v1_fixed_g0.7k2p0.3": 0.176}}
     (config.OUTPUT_DIR / f"rank_events_v2_fold{k}.json").write_text(
         json.dumps(out, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
     print(f"→ outputs/rank_events_v2_fold{k}.json", flush=True)
-
-
-def val_rows():
-    return []
 
 
 if __name__ == "__main__":
