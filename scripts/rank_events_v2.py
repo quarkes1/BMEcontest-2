@@ -111,8 +111,17 @@ def decode_session(row, gate_prob, cfg, clf_pri):
         else:
             fuse = sa
         sel = np.where(fuse >= tau)[0]
-        if K > 0 and len(sel) > K:  # 会话级 top-K：一天最多 K 餐
-            sel = sel[np.argsort(fuse[sel])[::-1][:K]]
+        if K > 0 and len(sel) > K:  # 会话级 top-K（非重叠贪心：与已选窗 IoU≥0.5 的窗不计名额）
+            order = np.argsort(fuse[sel])[::-1]
+            picked = []
+            for j in order:
+                c = act[sel[j]][:2]
+                if any(event_iou(c, act[sel[p]][:2]) >= 0.5 for p in picked):
+                    continue
+                picked.append(j)
+                if len(picked) >= K:
+                    break
+            sel = sel[np.array(picked)]
         act_out = [(sid, (act[j][0], act[j][1])) for j in sel]
     # 先验通道：门控与活动池同权（低门控会话不发先验事件，避免无餐会话 FP）
     # 逐窗阈值：每个被选先验窗都须 sp ≥ thr_p（旧旁路只查 sp.max()，第 2 窗可低至 0.006）
