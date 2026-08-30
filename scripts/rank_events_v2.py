@@ -44,15 +44,24 @@ DILATIONS = (60.0, 120.0)
 TOPK = (0, 1, 2, 3, 4)                # 会话级最多事件数（0=不限；一天 3-5 餐的现实约束，砍 FP）
 
 
-def load_dl_scores(k):
-    """读 MM-Ranker val 候选分数 → {(sid, s, e): score}。"""
+def load_dl_scores(k, norm="none"):
+    """读 MM-Ranker val 候选分数 → {(sid, s, e): score}。
+
+    norm='minmax'：用本折全部 val 候选的 5-95 分位做 min-max 归一（config 选择
+    本就在 val 上进行，无新增泄漏）。目的：消除逐折深度分尺度漂移——fold1 负样本
+    中位 0.151 vs fold0 0.050，固定 w 融合在逐折间含义不一致；归一化使 w 可比。
+    """
     p = config.OUTPUT_DIR / f"mm_ranker_fold{k}_val.npz"
     if not p.exists():
         return None
     z = np.load(p, allow_pickle=True)
+    score = z["score"].astype(np.float64)
     meta = [json.loads(m.decode()) for m in z["meta"]]
+    if norm == "minmax":
+        lo, hi = float(np.percentile(score, 5)), float(np.percentile(score, 95))
+        score = np.clip((score - lo) / max(hi - lo, 1e-6), 0.0, 1.0)
     return {(m["sid"], int(m["s"]), int(m["e"])): float(sc)
-            for m, sc in zip(meta, z["score"])}
+            for m, sc in zip(meta, score)}
 
 
 def postprocess_events_prov(evs, idxs=None, merge_gap_s=POST_MERGE_GAP_S,
@@ -140,6 +149,8 @@ def main():
                     help="先验网格：15m=15min/15min 窗（覆盖短餐）；60m=整点/40min 窗（v1 基线）")
     ap.add_argument("--detail", action="store_true",
                     help="输出最佳配置逐事件明细（src/score/tp，FP 来源分析）")
+    ap.add_argument("--norm-score", choices=("none", "minmax"), default="none",
+                    help="深度分逐折归一化（minmax=5-95 分位，消除折间尺度漂移）")
     args = ap.parse_args()
     k = args.fold
     # 局部变量而非直接改模块常量：函数内任何赋值都会把名字变成局部，
@@ -228,7 +239,7 @@ def main():
     pp = clf_pri.predict_proba(Xp_va)[:, 1] if clf_pri is not None else np.zeros(len(Xp_va))
 
     # ---- 深度分数对齐（按 (sid, s, e) 精确匹配；缺失候选退化为纯 LGBM） ----
-    dl = load_dl_scores(k)
+    dl = load_dl_scores(k, args.norm_score)
     val_rows = []
     ia = ip = 0
     n_hit = n_tot = 0
@@ -306,9 +317,10 @@ def main():
         n_fp_pri = sum(1 for d in out["detail"] if not d["tp"] and d["src"] == "pri")
         print(f"  明细: {len(out['detail'])} 预测（act {len(out['detail']) - n_pri} / pri {n_pri}），"
               f"FP {n_fp}（其中 pri 来源 {n_fp_pri}）", flush=True)
-    (config.OUTPUT_DIR / f"rank_events_v2_fold{k}_{args.prior_grid}.json").write_text(
+    norm_tag = f"_norm{args.norm_score}" if args.norm_score != "none" else ""
+    (config.OUTPUT_DIR / f"rank_events_v2_fold{k}_{args.prior_grid}{norm_tag}.json").write_text(
         json.dumps(out, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
-    print(f"→ outputs/rank_events_v2_fold{k}_{args.prior_grid}.json", flush=True)
+    print(f"→ outputs/rank_events_v2_fold{k}_{args.prior_grid}{norm_tag}.json", flush=True)
 
 
 if __name__ == "__main__":
