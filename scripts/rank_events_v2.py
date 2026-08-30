@@ -105,14 +105,20 @@ def decode_session(row, gate_prob, cfg, clf_pri):
         if K > 0 and len(sel) > K:  # 会话级 top-K：一天最多 K 餐
             sel = sel[np.argsort(fuse[sel])[::-1][:K]]
         act_out = [(sid, (act[j][0], act[j][1])) for j in sel]
-    if clf_pri is not None and len(sp) and sp.max() >= thr_p:
+    # 先验通道：门控与活动池同权（低门控会话不发先验事件，避免无餐会话 FP）
+    # 逐窗阈值：每个被选先验窗都须 sp ≥ thr_p（旧旁路只查 sp.max()，第 2 窗可低至 0.006）
+    if gate_prob.get(sid, 1.0) >= thr_g and clf_pri is not None and len(sp) and sp.max() >= thr_p:
         act_evs = [(s0, e0) for _, (s0, e0) in act_out]
         pri_evs = [e for _, e in pri_out]  # pri_out 是 (sid,(s,e)) 元组
-        for jp in np.argsort(sp)[::-1][:2]:
+        for jp in np.argsort(sp)[::-1]:
+            if sp[jp] < thr_p:
+                break  # 降序扫描，低于阈值即止
             pc = (pri[jp][0], pri[jp][1])
             if any(event_iou(pc, e) >= IOU_LABEL for e in act_evs + pri_evs):
                 continue
             pri_out.append((sid, pc))
+            if len(pri_out) >= 2:
+                break
     # 事件级后处理只作用于活动事件（先验窄窗不参与合并）
     keep, prov = postprocess_events_prov([e for _, e in act_out], list(range(len(act_out))),
                                          dilation_s=dil)
