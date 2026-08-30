@@ -1,0 +1,43 @@
+fold0 先验峰值小时: 3
+D:\Anaconda3\envs\bme\Lib\site-packages\joblib\externals\loky\backend\context.py:131: UserWarning: Could not find the number of physical cores for the following reason:
+[WinError 2] 系统找不到指定的文件。
+Returning the number of logical cores instead. You can silence this warning by setting LOKY_MAX_CPU_COUNT to the number of cores you want to use.
+  warnings.warn(
+  File "D:\Anaconda3\envs\bme\Lib\site-packages\joblib\externals\loky\backend\context.py", line 247, in _count_physical_cores
+    cpu_count_physical = _count_physical_cores_win32()
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Anaconda3\envs\bme\Lib\site-packages\joblib\externals\loky\backend\context.py", line 299, in _count_physical_cores_win32
+    cpu_info = subprocess.run(
+               ^^^^^^^^^^^^^^^
+  File "D:\Anaconda3\envs\bme\Lib\subprocess.py", line 548, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Anaconda3\envs\bme\Lib\subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "D:\Anaconda3\envs\bme\Lib\subprocess.py", line 1538, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  会话门控: val 226 会话打分完成（AUC≈0.88 见 validate_baselines）
+  提案: train 3795（正 78）| val 909（正 24）
+  提案覆盖餐: train 78/149 val 24/38
+  特征重要性: ['f11', 'f0', 'f5', 'f7', 'f4', 'f1']
+  g0.0_k1: F1=0.053 sens=0.184 ppv=0.031 (7/38, pred=224)
+  g0.0_k2: F1=0.077 sens=0.474 ppv=0.042 (18/38, pred=430)
+  g0.0_k3: F1=0.063 sens=0.526 ppv=0.033 (20/38, pred=599)
+  g0.3_k1: F1=0.152 sens=0.158 ppv=0.146 (6/38, pred=41)
+  g0.3_k2: F1=0.217 sens=0.342 ppv=0.159 (13/38, pred=82)
+  g0.3_k3: F1=0.192 sens=0.395 ppv=0.127 (15/38, pred=118)
+  g0.4_k1: F1=0.137 sens=0.132 ppv=0.143 (5/38, pred=35)
+  g0.4_k2: F1=0.204 sens=0.289 ppv=0.157 (11/38, pred=70)
+  g0.4_k3: F1=0.187 sens=0.342 ppv=0.129 (13/38, pred=101)
+  g0.5_k1: F1=0.119 sens=0.105 ppv=0.138 (4/38, pred=29)
+  g0.5_k2: F1=0.167 sens=0.211 ppv=0.138 (8/38, pred=58)
+  g0.5_k3: F1=0.161 sens=0.263 ppv=0.116 (10/38, pred=86)
+  g0.6_k1: F1=0.100 sens=0.079 ppv=0.136 (3/38, pred=22)
+  g0.6_k2: F1=0.171 sens=0.184 ppv=0.159 (7/38, pred=44)
+  g0.6_k3: F1=0.154 sens=0.211 ppv=0.121 (8/38, pred=66)
+  g0.7_k1: F1=0.000 sens=0.000 ppv=0.000 (0/38, pred=11)
+  g0.7_k2: F1=0.067 sens=0.053 ppv=0.091 (2/38, pred=22)
+  g0.7_k3: F1=0.085 sens=0.079 ppv=0.091 (3/38, pred=33)
+  ★ 最佳: g0.3_k2 F1=0.217 sens=0.342 ppv=0.159 (13/38, pred=82)
+→ outputs/rank_events_fold0.json

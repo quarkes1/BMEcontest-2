@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-"""事件级评估：IoU>0.25 一对一贪心匹配 -> F1 + 起止 MAE（组委会口径）。"""
+"""事件级评估：IoU>0.25 一对一贪心匹配 -> F1 + 起止 MAE（组委会口径）。
+
+⚠️ 匹配作用域：按受试者（externalid）分组匹配——跨受试者事件不得匹配他人餐次
+（实测多人同时段采集，全局匹配会把他人手腕活动误算为自己的 TP，2026-08-30 修正）。
+"""
 import src.config as config
 
 def event_iou(pred, true) -> float:
@@ -49,3 +53,27 @@ def compute_metrics(pred_events, true_events, iou_thr=None) -> dict:
             "n_fp": n_pred - n_tp, "n_fn": n_true - n_tp,
             "sensitivity": sens, "ppv": ppv, "f1": f1,
             "mae_start_s": mae_s, "mae_end_s": mae_e}
+
+
+def compute_metrics_by_subject(pred_sid, true_sid, subject_of, iou_thr=None):
+    """受试者级评估：pred_sid/true_sid = [(sid, (s_ms, e_ms)), ...]，subject_of: sid→externalid。
+    按受试者分组，组内一对一贪心匹配（同一受试者可跨会话匹配），再汇总 TP/FP/FN。"""
+    iou_thr = iou_thr if iou_thr is not None else config.IOU_EVENT
+    groups = {}
+    for sid, ev in pred_sid:
+        groups.setdefault(subject_of(sid), {"pred": [], "true": []})["pred"].append(ev)
+    for sid, ev in true_sid:
+        groups.setdefault(subject_of(sid), {"pred": [], "true": []})["true"].append(ev)
+    n_tp = n_pred = n_true = 0
+    matched_pairs = []
+    for ext, g in groups.items():
+        matched, _, _ = _greedy_pairs(g["pred"], g["true"], iou_thr)
+        n_tp += len(matched)
+        n_pred += len(g["pred"])
+        n_true += len(g["true"])
+    sens = n_tp / n_true if n_true else 0.0
+    ppv = n_tp / n_pred if n_pred else 0.0
+    f1 = 2 * sens * ppv / (sens + ppv) if (sens + ppv) else 0.0
+    return {"n_true": n_true, "n_pred": n_pred, "n_tp": n_tp,
+            "n_fp": n_pred - n_tp, "n_fn": n_true - n_tp,
+            "sensitivity": sens, "ppv": ppv, "f1": f1}
