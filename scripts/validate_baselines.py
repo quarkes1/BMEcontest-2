@@ -52,7 +52,9 @@ def _density_one(args):
             return ("short", sid)
         n_w = (n - win) // st + 1
         envs = np.empty(n_w, dtype=np.float32)
+        zcrs = np.empty(n_w, dtype=np.float32)   # 0.1-0.5Hz 带通过零率（任务 #49：低频规律振荡信号）
         sos = scipy.signal.butter(4, [0.5, 2.0], btype="bandpass", fs=fs, output="sos")
+        sos_z = scipy.signal.butter(4, [0.1, 0.5], btype="bandpass", fs=fs, output="sos")
         for b0 in range(0, n_w, 4000):
             b1 = min(b0 + 4000, n_w)
             m = b1 - b0
@@ -62,15 +64,18 @@ def _density_one(args):
             lam = np.linalg.norm(la, axis=0)
             env = scipy.signal.sosfiltfilt(sos, lam, axis=1)
             envs[b0:b1] = np.abs(env).mean(axis=1)
+            ez = scipy.signal.sosfiltfilt(sos_z, lam, axis=1)
+            zcrs[b0:b1] = ((ez[:, 1:] * ez[:, :-1]) < 0).mean(axis=1)
         t0_ms = start_epoch + np.arange(n_w, dtype=np.int64) * 1000   # epoch ms
         feats = {
             "dur_h": round(n / fs / 3600, 4),
             "env_mean": float(envs.mean()), "env_p50": float(np.median(envs)),
             "env_p95": float(np.percentile(envs, 95)), "env_std": float(envs.std()),
             "p95_ratio": float(np.percentile(envs, 95) / (envs.mean() + 1e-6)),
+            "z_p50": float(np.median(zcrs)), "z_p95": float(np.percentile(zcrs, 95)),
             "start_h_utc": round((start_epoch / 3.6e6) % 24, 3),
         }
-        np.savez_compressed(out, env=envs, t0=t0_ms, feats=json.dumps(feats))
+        np.savez_compressed(out, env=envs, env_z=zcrs, t0=t0_ms, feats=json.dumps(feats))
         return ("ok", sid)
     except Exception as e:
         return ("error", f"{sid}: {type(e).__name__}: {e}")

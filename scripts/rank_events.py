@@ -91,7 +91,7 @@ def _merge(cands):
 
 
 def make_proposals(env, t0, prior, start_epoch, loose=False, no_prior=False, dilate_ms=0,
-                   prior_grid_s=3600, prior_half_w_s=PRIOR_HALF_W_S):
+                   prior_grid_s=3600, prior_half_w_s=PRIOR_HALF_W_S, zseq=None):
     """返回 (act_cands, pri_cands)：活动池（连通域）与先验池（网格窗）各自合并，两池不互并。
     loose=True 时活动池双档并集（strict pct75-95 + loose pct50-75/短 dur/大 gap）——攻
     弱信号短餐（未覆盖餐画像：5-8min 且 45-56% 距整点 >20min，先验窗数学失效，只能靠
@@ -114,7 +114,18 @@ def make_proposals(env, t0, prior, start_epoch, loose=False, no_prior=False, dil
                     evs = windows_to_events(score, t0, t0 + WINDOW_MS, float(np.percentile(score, pct)),
                                             merge_gap_s=gap, min_dur_s=dur, smooth_win=SMOOTH)
                     act.extend((s, e, 0) for s, e in evs)
-    act = _merge(act)
+    if zseq is not None:
+        # 低频规律振荡池（0.1-0.5Hz 带通过零率低值；信号检验：餐窗 zcr 系统性更低，
+        # |AUROC| 0.63 双折一致，与能量包络正交）。取 -zcr top pct 连通域（低 zcr →
+        # 高 -zcr），is_prior=2 标记来源。
+        zs = -zseq.astype(np.float64)
+        for pct in PROP_PCT:
+            for gap in PROP_GAP:
+                for dur in PROP_DUR:
+                    evs = windows_to_events(zs, t0, t0 + WINDOW_MS, float(np.percentile(zs, pct)),
+                                            merge_gap_s=gap, min_dur_s=dur, smooth_win=SMOOTH)
+                    act.extend((s, e, 2) for s, e in evs)
+        act = _merge(act)
     if dilate_ms > 0:
         t_beg, t_end = int(t0.min()), int(t0[0]) + len(env) * 1000
         act = [(max(t_beg, int(s - dilate_ms)), min(t_end, int(e + dilate_ms)), ip)
@@ -124,8 +135,8 @@ def make_proposals(env, t0, prior, start_epoch, loose=False, no_prior=False, dil
     return act, _merge(pri)
 
 
-def candidate_features(cands, env, t0, prior, sess_feats, gate_prob=0.5):
-    """候选事件 → 特征矩阵（n_cand, 14）+ 标签无关（is_prior 为第 14 列）。"""
+def candidate_features(cands, env, t0, prior, sess_feats, gate_prob=0.5, z=None):
+    """候选事件 → 特征矩阵（n_cand, 14；z 给定则 17）+ 标签无关（is_prior 为第 14 列）。"""
     X = []
     for s, e, is_prior in cands:
         dur = (e - s) / 1000.0
@@ -138,7 +149,7 @@ def candidate_features(cands, env, t0, prior, sess_feats, gate_prob=0.5):
         ctx = (t0 >= s - CTX_S * 1000) & (t0 < e + CTX_S * 1000) & ~seg
         ctx_mean = float(env[ctx].mean()) if ctx.sum() > 10 else mean
         hh = (s / 3.6e6) % 24
-        X.append([
+        row = [
             dur, peak, mean, std, p90,
             peak / (mean + 1e-6),                      # 形状：尖峰性
             float(prior[int(hh) % 24]),                # 时刻先验
@@ -147,8 +158,14 @@ def candidate_features(cands, env, t0, prior, sess_feats, gate_prob=0.5):
             (s - sess_feats["start"]) / (sess_feats["dur_h"] * 3.6e6 + 1e-6),  # 会话内相对位置
             gate_prob,                                # 会话级"有无餐"门控概率（V1, AUC≈0.88）
             float(is_prior),                          # 先验窗来源标记
-        ])
-    return np.array(X, dtype=np.float32) if X else np.zeros((0, 14), dtype=np.float32)
+        ]
+        if z is not None:
+            zseg = z[seg]
+            row.extend([float(zseg.mean()), float(zseg.min()),   # 规律振荡：均值/最低值
+                        float(np.percentile(zseg, 10))])         # 低 zcr = 规律低频内容
+        X.append(row)
+    n_feat = 17 if z is not None else 14
+    return np.array(X, dtype=np.float32) if X else np.zeros((0, n_feat), dtype=np.float32)
 
 
 def match_labels(cands, meals):

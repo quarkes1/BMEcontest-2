@@ -204,6 +204,17 @@ def main():
     Xa_tr, ya_tr, Xp_tr, yp_tr = [], [], [], []
     Xa_va, Xp_va = [], []
     sess_meta = {}
+    # z 完整性预检查：env_z 缺失/长度不符 → 全链路退化 14 维（避免 14/17 混 concat）
+    z_ok = True
+    for sid in f["train_sessions"] + f["val_sessions"]:
+        p = OUT_CACHE / f"{sid}.npz"
+        if p.exists():
+            dz = np.load(p)
+            if "env_z" not in dz.files or len(dz["env_z"]) != len(dz["env"]):
+                z_ok = False
+                break
+    if not z_ok:
+        print("  ⚠ env_z 缺失/不一致 → 特征退化为 14 维（无 z 通道）", flush=True)
     for split, sessions in (("tr", f["train_sessions"]), ("va", f["val_sessions"])):
         for sid in sessions:
             p = OUT_CACHE / f"{sid}.npz"
@@ -211,30 +222,32 @@ def main():
                 continue
             d = np.load(p)
             env, t0 = d["env"].astype(np.float32), d["t0"].astype(np.int64)
+            zseq = d["env_z"].astype(np.float32) if z_ok else None
             ft = json.loads(d["feats"].item())
             sess_feats = {"dur_h": float(ft["dur_h"]), "env_p95": float(ft["env_p95"]),
                           "p95_ratio": float(ft["p95_ratio"]), "start": starts.get(sid, 0)}
-            sess_meta[sid] = (env, t0, sess_feats)
+            sess_meta[sid] = (env, zseq, t0, sess_feats)
             act, pri = v1.make_proposals(env, t0, prior, starts.get(sid, 0), dilate_ms=60000,
-                                         prior_grid_s=grid_s, prior_half_w_s=half_w_s)
+                                         prior_grid_s=grid_s, prior_half_w_s=half_w_s, zseq=zseq)
             meals = sid_meals.get(sid, [])
             if act:
-                Xa = v1.candidate_features(act, env, t0, prior, sess_feats, 0.5)
+                Xa = v1.candidate_features(act, env, t0, prior, sess_feats, 0.5, z=zseq)
                 if split == "tr":
                     Xa_tr.append(Xa); ya_tr.append(v1.match_labels(act, meals))
                 else:
                     Xa_va.append(Xa)
             if pri:
-                Xp = v1.candidate_features(pri, env, t0, prior, sess_feats, 0.5)
+                Xp = v1.candidate_features(pri, env, t0, prior, sess_feats, 0.5, z=zseq)
                 if split == "tr":
                     Xp_tr.append(Xp); yp_tr.append(v1.match_labels(pri, meals))
                 else:
                     Xp_va.append(Xp)
+    n_feat = 17 if any(z is not None for _, z, _, _ in sess_meta.values()) else 14
     Xa_tr, ya_tr = np.concatenate(Xa_tr), np.concatenate(ya_tr)
-    Xp_tr = np.concatenate(Xp_tr) if Xp_tr else np.zeros((0, 14), np.float32)
+    Xp_tr = np.concatenate(Xp_tr) if Xp_tr else np.zeros((0, n_feat), np.float32)
     yp_tr = np.concatenate(yp_tr) if yp_tr else np.zeros(0, np.int8)
     Xa_va = np.concatenate(Xa_va)
-    Xp_va = np.concatenate(Xp_va) if Xp_va else np.zeros((0, 14), np.float32)
+    Xp_va = np.concatenate(Xp_va) if Xp_va else np.zeros((0, n_feat), np.float32)
 
     def _fit(X, y):
         return lgb.LGBMClassifier(n_estimators=300, learning_rate=0.05, num_leaves=15,
@@ -255,9 +268,9 @@ def main():
     for sid in f["val_sessions"]:
         if sid not in sess_meta:
             continue
-        env, t0, sess_feats = sess_meta[sid]
+        env, zseq, t0, sess_feats = sess_meta[sid]
         act, pri = v1.make_proposals(env, t0, prior, starts.get(sid, 0), dilate_ms=60000,
-                                     prior_grid_s=grid_s, prior_half_w_s=half_w_s)
+                                     prior_grid_s=grid_s, prior_half_w_s=half_w_s, zseq=zseq)
         n_a, n_p = len(act), len(pri)
         va_scores = np.full(n_a, np.nan, np.float32)
         for j, c in enumerate(act):
