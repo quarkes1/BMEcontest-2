@@ -14,6 +14,7 @@
 产物：outputs/rank_events_v2_fold{k}_{grid}.json
 """
 import argparse
+import os
 import json
 import sys
 import time
@@ -29,7 +30,7 @@ from src.data import manifests, splits
 from src.eval.metrics import compute_metrics_by_subject, event_iou
 import rank_events as v1
 
-OUT_CACHE = config.CACHE_DIR / "validate_baselines"
+OUT_CACHE = config.CACHE_DIR / os.environ.get("BME_ENV_CACHE", "validate_baselines")
 IOU_LABEL = 0.25
 POST_MERGE_GAP_S = 120.0    # 事件合并 gap（<2min 断开视为同一餐）
 POST_MIN_DUR_S = 120.0      # 过滤 <2min 孤立段（方向 3）
@@ -184,7 +185,8 @@ def main():
 
     # ---- 会话门控 + 两池 LightGBM（与 v1 相同） ----
     import lightgbm as lgb
-    GATE_FEATS = ["dur_h", "env_mean", "env_p50", "env_p95", "env_std", "p95_ratio", "start_h_utc"]
+    GATE_FEATS = ["dur_h", "env_mean", "env_p50", "env_p95", "env_std", "p95_ratio", "start_h_utc",
+                  "z_p50", "z_p95"]  # zcr 会话级特征（S0-2：z 提案池/候选特征 15m 网格 -0.012 负向，仅 gate 层保留）
     gate_feats = {}
     for sid in f["train_sessions"] + f["val_sessions"]:
         p = OUT_CACHE / f"{sid}.npz"
@@ -228,16 +230,16 @@ def main():
                           "p95_ratio": float(ft["p95_ratio"]), "start": starts.get(sid, 0)}
             sess_meta[sid] = (env, zseq, t0, sess_feats)
             act, pri = v1.make_proposals(env, t0, prior, starts.get(sid, 0), dilate_ms=60000,
-                                         prior_grid_s=grid_s, prior_half_w_s=half_w_s, zseq=zseq)
+                                         prior_grid_s=grid_s, prior_half_w_s=half_w_s)
             meals = sid_meals.get(sid, [])
             if act:
-                Xa = v1.candidate_features(act, env, t0, prior, sess_feats, 0.5, z=zseq)
+                Xa = v1.candidate_features(act, env, t0, prior, sess_feats, 0.5)
                 if split == "tr":
                     Xa_tr.append(Xa); ya_tr.append(v1.match_labels(act, meals))
                 else:
                     Xa_va.append(Xa)
             if pri:
-                Xp = v1.candidate_features(pri, env, t0, prior, sess_feats, 0.5, z=zseq)
+                Xp = v1.candidate_features(pri, env, t0, prior, sess_feats, 0.5)
                 if split == "tr":
                     Xp_tr.append(Xp); yp_tr.append(v1.match_labels(pri, meals))
                 else:
@@ -268,9 +270,9 @@ def main():
     for sid in f["val_sessions"]:
         if sid not in sess_meta:
             continue
-        env, zseq, t0, sess_feats = sess_meta[sid]
+        env, _zseq, t0, sess_feats = sess_meta[sid]
         act, pri = v1.make_proposals(env, t0, prior, starts.get(sid, 0), dilate_ms=60000,
-                                     prior_grid_s=grid_s, prior_half_w_s=half_w_s, zseq=zseq)
+                                     prior_grid_s=grid_s, prior_half_w_s=half_w_s)
         n_a, n_p = len(act), len(pri)
         va_scores = np.full(n_a, np.nan, np.float32)
         for j, c in enumerate(act):

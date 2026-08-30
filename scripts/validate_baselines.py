@@ -7,6 +7,7 @@ V2 启发式密度检测器下限：1s 活动包络 × 时刻先验 → 事件 �
 运行: conda activate bme && python scripts/validate_baselines.py --folds 0[,1..]
 """
 import argparse
+import os
 import json
 import sys
 import time
@@ -22,7 +23,7 @@ from src.data.loader import load_session, detect_binary, _find_collect_data
 from src.eval.metrics import compute_metrics
 from src.infer.events import windows_to_events
 
-OUT_CACHE = config.CACHE_DIR / "validate_baselines"
+OUT_CACHE = config.CACHE_DIR / os.environ.get("BME_ENV_CACHE", "validate_baselines")
 FS = 105.0
 WIN_ROWS = int(5 * FS)        # 5s 窗
 STRIDE = int(FS)              # 1s 步长
