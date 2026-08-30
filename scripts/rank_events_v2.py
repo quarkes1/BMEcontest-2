@@ -80,9 +80,11 @@ def main():
                     help="先验网格：15m=15min/15min 窗（覆盖短餐）；60m=整点/40min 窗（v1 基线）")
     args = ap.parse_args()
     k = args.fold
+    # 局部变量而非直接改模块常量：函数内任何赋值都会把名字变成局部，
+    # 15m 分支不赋值时读取会 UnboundLocalError（2026-08-30 教训）
+    grid_s, half_w_s = PRIOR_GRID_S, PRIOR_HALF_W_S
     if args.prior_grid == "60m":
-        PRIOR_GRID_S = 3600
-        PRIOR_HALF_W_S = 1200
+        grid_s, half_w_s = 3600, 1200
     folds = splits.load_folds()
     f = folds[k]
     meal_meta, _ = manifests.load_meal_meta()
@@ -132,7 +134,7 @@ def main():
                           "p95_ratio": float(ft["p95_ratio"]), "start": starts.get(sid, 0)}
             sess_meta[sid] = (env, t0, sess_feats)
             act, pri = v1.make_proposals(env, t0, prior, starts.get(sid, 0), dilate_ms=60000,
-                                         prior_grid_s=PRIOR_GRID_S, prior_half_w_s=PRIOR_HALF_W_S)
+                                         prior_grid_s=grid_s, prior_half_w_s=half_w_s)
             meals = sid_meals.get(sid, [])
             if act:
                 Xa = v1.candidate_features(act, env, t0, prior, sess_feats, 0.5)
@@ -173,7 +175,7 @@ def main():
             continue
         env, t0, sess_feats = sess_meta[sid]
         act, pri = v1.make_proposals(env, t0, prior, starts.get(sid, 0), dilate_ms=60000,
-                                     prior_grid_s=PRIOR_GRID_S, prior_half_w_s=PRIOR_HALF_W_S)
+                                     prior_grid_s=grid_s, prior_half_w_s=half_w_s)
         n_a, n_p = len(act), len(pri)
         va_scores = np.full(n_a, np.nan, np.float32)
         for j, c in enumerate(act):
