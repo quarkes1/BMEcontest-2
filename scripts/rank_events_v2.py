@@ -33,10 +33,13 @@ OUT_CACHE = config.CACHE_DIR / "validate_baselines"
 IOU_LABEL = 0.25
 POST_MERGE_GAP_S = 120.0    # 事件合并 gap（<2min 断开视为同一餐）
 POST_MIN_DUR_S = 120.0      # 过滤 <2min 孤立段（方向 3）
+PRIOR_GRID_S = 900          # 先验网格步长 15min
+PRIOR_HALF_W_S = 450        # 先验窗半宽 15min（31% 餐 <10min，40min 窗 IoU=D/40<0.25 数学不可达
+                            # → 15min 窗覆盖 88% vs 49%；覆盖分析 scripts/analysis_prior_grid.py）
 DL_W = (0.0, 0.3, 0.5, 0.7, 1.0)      # 深度分数融合权重（0=纯 LightGBM 对照）
 DL_TAU = tuple(np.arange(0.15, 0.425, 0.025))  # 活动融合分数阈值（细化：覆盖保守分数区 0.15-0.40）
 GATE_GS = (0.0, 0.3)
-PRI_THRS = (0.3, 0.5)
+PRI_THRS = (0.3, 0.5, 0.7)  # 先验池 top-1 阈值（96 窗/天：0.3 可能过松，加 0.7 档）
 DILATIONS = (60.0, 120.0)
 TOPK = (0, 2, 3, 4)                   # 会话级最多事件数（0=不限；一天 3-5 餐的现实约束，砍 FP）
 
@@ -123,7 +126,8 @@ def main():
             sess_feats = {"dur_h": float(ft["dur_h"]), "env_p95": float(ft["env_p95"]),
                           "p95_ratio": float(ft["p95_ratio"]), "start": starts.get(sid, 0)}
             sess_meta[sid] = (env, t0, sess_feats)
-            act, pri = v1.make_proposals(env, t0, prior, starts.get(sid, 0), dilate_ms=60000)
+            act, pri = v1.make_proposals(env, t0, prior, starts.get(sid, 0), dilate_ms=60000,
+                                         prior_grid_s=PRIOR_GRID_S, prior_half_w_s=PRIOR_HALF_W_S)
             meals = sid_meals.get(sid, [])
             if act:
                 Xa = v1.candidate_features(act, env, t0, prior, sess_feats, 0.5)
@@ -163,7 +167,8 @@ def main():
         if sid not in sess_meta:
             continue
         env, t0, sess_feats = sess_meta[sid]
-        act, pri = v1.make_proposals(env, t0, prior, starts.get(sid, 0), dilate_ms=60000)
+        act, pri = v1.make_proposals(env, t0, prior, starts.get(sid, 0), dilate_ms=60000,
+                                     prior_grid_s=PRIOR_GRID_S, prior_half_w_s=PRIOR_HALF_W_S)
         n_a, n_p = len(act), len(pri)
         va_scores = np.full(n_a, np.nan, np.float32)
         for j, c in enumerate(act):
@@ -199,18 +204,16 @@ def main():
                                     if K > 0 and len(sel) > K:  # 会话级 top-K：一天最多 K 餐
                                         sel = sel[np.argsort(fuse[sel])[::-1][:K]]
                                     act_out = [(sid, (act[j][0], act[j][1])) for j in sel]
-                                # 先验池 top-1（时间先验通道，v1 逻辑）+ 高分旁路
+                                # 先验池 top-2 非重叠窗（时间先验通道；多餐会话的第 2 餐靠它）
+                                # 修复：旧 0.85 旁路复用 argmax(sp) → 与 top-1 同窗，IoU 去重恒跳过（死代码）
                                 if clf_pri is not None and len(sp) and sp.max() >= thr_p:
-                                    jp = int(np.argmax(sp))
-                                    pc = (pri[jp][0], pri[jp][1])
-                                    if not any(event_iou(pc, (s0, e0)) >= IOU_LABEL for _, (s0, e0) in act_out):
+                                    act_evs = [(s0, e0) for _, (s0, e0) in act_out]
+                                    for jp in np.argsort(sp)[::-1][:2]:
+                                        pc = (pri[jp][0], pri[jp][1])
+                                        if any(event_iou(pc, e) >= IOU_LABEL for e in act_evs + pri_out):
+                                            continue
                                         pri_out.append((sid, pc))
-                                if clf_pri is not None and len(sp) and sp.max() >= 0.85:
-                                    jp = int(np.argmax(sp))
-                                    pc = (pri[jp][0], pri[jp][1])
-                                    if not any(event_iou(pc, (s0, e0)) >= IOU_LABEL for _, (s0, e0) in act_out + pri_out):
-                                        pri_out.append((sid, pc))
-                                # 事件级后处理只作用于活动事件（先验 40min 宽窗不参与合并）
+                                # 事件级后处理只作用于活动事件（先验 15min 窄窗不参与合并）
                                 keep = postprocess_events([e for _, e in act_out], dilation_s=dil)
                                 pred_sid.extend((sid, e) for e in keep)
                                 pred_sid.extend(pri_out)

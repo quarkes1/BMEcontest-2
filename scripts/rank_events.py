@@ -52,20 +52,23 @@ def _prior(meal_before_hours, sigma_h=1.0):
     return prior / prior.max()
 
 
-def prior_candidates(sess_s, sess_e):
-    """会话窗内全部整点 ±半宽 → 先验时间窗候选（与会话交集，≥PRIOR_MIN_W_S 保留）。
+def prior_candidates(sess_s, sess_e, grid_step_s=3600, half_w_s=PRIOR_HALF_W_S):
+    """会话窗内网格铺先验窗（与会话交集，≥PRIOR_MIN_W_S 保留）。
 
     餐的 before 45-62% 落在整点 ±15-20min（采集协议整点开餐），而餐内 IMU 活动常
-    <25% 餐长（IoU≥0.25 数学上无法由活动连通覆盖）→ 整点铺先验窗。
+    <25% 餐长（IoU≥0.25 数学上无法由活动连通覆盖）→ 网格铺先验窗。
     宽度必须 ≤40min：90min 半宽的教训——宽 180min 候选与 15min 餐最大 IoU=0.083。
+    覆盖分析（analysis_prior_grid.py, 2026-08-30）：31% 餐 <10min 在 40min 窗内
+    IoU=D/40<0.25 数学不可达 → 15min 网格/15min 窗（grid_step_s=900, half_w_s=450）
+    覆盖 88%（vs 整点 40min 窗 49%），且完全覆盖长餐（相邻窗无缝隙）。
     """
     cands = []
-    base = sess_s - (sess_s % 3_600_000)        # 会话起点所在整点（UTC）
-    n_h = int(np.ceil((sess_e - sess_s) / 3.6e6)) + 2
-    h0 = int((sess_s / 3.6e6) % 24)
+    step_ms = grid_step_s * 1000
+    base = sess_s - (sess_s % step_ms)          # 会话起点所在网格点（UTC）
+    n_h = int(np.ceil((sess_e - sess_s) / step_ms)) + 2
     for off in range(n_h):
-        t_whole = base + off * 3.6e6            # 该小时的整点时刻
-        s, e = int(t_whole - PRIOR_HALF_W_S * 1000), int(t_whole + PRIOR_HALF_W_S * 1000)
+        t_whole = base + off * step_ms
+        s, e = int(t_whole - half_w_s * 1000), int(t_whole + half_w_s * 1000)
         s, e = max(s, sess_s), min(e, sess_e)
         if e - s >= PRIOR_MIN_W_S * 1000:
             cands.append((s, e, 1))
@@ -87,11 +90,14 @@ def _merge(cands):
     return [(s, e, p) for s, e, p in merged]
 
 
-def make_proposals(env, t0, prior, start_epoch, loose=False, no_prior=False, dilate_ms=0):
-    """返回 (act_cands, pri_cands)：活动池（连通域）与先验池（整点窗）各自合并，两池不互并。
+def make_proposals(env, t0, prior, start_epoch, loose=False, no_prior=False, dilate_ms=0,
+                   prior_grid_s=3600, prior_half_w_s=PRIOR_HALF_W_S):
+    """返回 (act_cands, pri_cands)：活动池（连通域）与先验池（网格窗）各自合并，两池不互并。
     loose=True 时活动池双档并集（strict pct75-95 + loose pct50-75/短 dur/大 gap）——攻
     弱信号短餐（未覆盖餐画像：5-8min 且 45-56% 距整点 >20min，先验窗数学失效，只能靠
-    低阈值信号连通）；dilate_ms>0 时活动候选边界膨胀（短餐 IoU 修复）。"""
+    低阈值信号连通）；dilate_ms>0 时活动候选边界膨胀（短餐 IoU 修复）。
+    prior_grid_s/prior_half_w_s：先验网格步长/半宽（v2 用 900/450 = 15min 网格 15min 窗，
+    覆盖短餐；v1 默认整点/20min 半宽保持基线不变）。"""
     h = (t0 / 3.6e6) % 24
     score = env * prior[np.clip(h.astype(int), 0, 23)]
     act = []
@@ -113,7 +119,8 @@ def make_proposals(env, t0, prior, start_epoch, loose=False, no_prior=False, dil
         t_beg, t_end = int(t0.min()), int(t0[0]) + len(env) * 1000
         act = [(max(t_beg, int(s - dilate_ms)), min(t_end, int(e + dilate_ms)), ip)
                for s, e, ip in act]
-    pri = [] if no_prior else prior_candidates(start_epoch, start_epoch + (len(env) - 1) * 1000)
+    pri = [] if no_prior else prior_candidates(start_epoch, start_epoch + (len(env) - 1) * 1000,
+                                               grid_step_s=prior_grid_s, half_w_s=prior_half_w_s)
     return act, _merge(pri)
 
 

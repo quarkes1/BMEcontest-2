@@ -171,7 +171,10 @@ def main():
             sid_meals[sid] = ms
     prior = re._prior(np.array([m["before"] / 3.6e6 % 24
                                 for s in f["train_sessions"] if s in sid_meals for m in sid_meals[s]]))
-    # 会话门控（与 rank_events 相同：V1 7 特征 LightGBM，仅 val 打分）
+    # 会话门控（与 rank_events 相同：V1 7 特征 LightGBM，全体会话打分）
+    # 注：v1 曾只对 val 打分 → 训练缓存 gate_prob 恒 0.5、推理真实值，分布不一致
+    # （rank_events_v2 移除该特征那次消融 +0.059）；现在 train/val 都打真实分，
+    # 排序头可直接消费会话级先验（门控是全场最有判别力的信号，AUC≈0.88）。
     import lightgbm as lgb
     GATE_FEATS = ["dur_h", "env_mean", "env_p50", "env_p95", "env_std", "p95_ratio", "start_h_utc"]
     gate_feats = {}
@@ -188,7 +191,7 @@ def main():
                               min_child_samples=20, verbosity=-1)
     gate.fit(Xg_tr, yg_tr)
     gate_probs = {}
-    for sid in f["val_sessions"]:
+    for sid in f["train_sessions"] + f["val_sessions"]:
         if sid in gate_feats:
             gate_probs[sid] = float(gate.predict_proba(np.array(gate_feats[sid])[None])[0, 1])
 

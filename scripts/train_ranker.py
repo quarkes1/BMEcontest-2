@@ -103,7 +103,7 @@ def main():
         Y.extend(int(mm["label"]) for mm in m)
     imu = np.stack([x[0] for x in X]); ppg = np.stack([x[1] for x in X]); ma = np.stack([x[2] for x in X])
     y = np.array(Y, np.int8)
-    meta = np.stack([[np.log1p(m["dur_s"]), m["prior_h"]] for m in META]).astype(np.float32)  # 无 gate_prob（分布不一致，见 ranker.py）
+    meta = np.stack([[np.log1p(m["dur_s"]), m["prior_h"], m["gate_prob"]] for m in META]).astype(np.float32)  # gate_prob 全体会话真实分（build 脚本修复后一致）
     split_idx = np.array([0 if m["sid"] in tr_set else 1 for m in META])
     print(f"fold{fold_idx}: {len(y)} 候选（正 {y.sum()}，{y.mean()*100:.1f}%）", flush=True)
     tr, va = split_idx == 0, split_idx == 1
