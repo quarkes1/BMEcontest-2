@@ -31,8 +31,10 @@ BATCH = 64
 LR = 1e-3
 WD = 1e-4
 PATIENCE = 12
-HARD_W = 5.0          # 硬负样本提权倍数
-HARD_K = 3            # top-k = 3× 正样本数
+HARD_W = 5.0          # 硬负样本提权倍数（×10 验证：过激→整体保守化，回退 5）
+HARD_K = 5            # top-k = 5× 正样本数
+FOCAL_ALPHA = 0.35    # Focal α（0.25→0.35：更重视正样本召回）
+SEED = 42             # 固定随机种子（消融可复现）
 
 
 class CandDS(Dataset):
@@ -90,17 +92,24 @@ def main():
         Y.extend(int(mm["label"]) for mm in m)
     imu = np.stack([x[0] for x in X]); ppg = np.stack([x[1] for x in X]); ma = np.stack([x[2] for x in X])
     y = np.array(Y, np.int8)
-    meta = np.stack([[np.log1p(m["dur_s"]), m["gate_prob"], m["prior_h"]] for m in META]).astype(np.float32)
+    meta = np.stack([[np.log1p(m["dur_s"]), m["prior_h"]] for m in META]).astype(np.float32)  # 无 gate_prob（分布不一致，见 ranker.py）
     split_idx = np.array([0 if m["sid"] in tr_set else 1 for m in META])
     print(f"fold{fold_idx}: {len(y)} 候选（正 {y.sum()}，{y.mean()*100:.1f}%）", flush=True)
     tr, va = split_idx == 0, split_idx == 1
     print(f"  train {(split_idx==0).sum()} 候选（正 {y[tr].sum()}）| val {(split_idx==1).sum()}（正 {y[va].sum()}）", flush=True)
 
+    import random
+    random.seed(SEED)
+    np.random.seed(SEED)
+    torch.manual_seed(SEED)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(SEED)
+
     dev = torch.device(args.device)
     model = MMRanker().to(dev)
     print(f"  MM-Ranker 参数 {count_params(model)/1e3:.0f}K", flush=True)
 
-    POS_REP = max(2, int((y[tr] == 0).sum() / max(y[tr].sum(), 1) / 8))  # 正:负 ≈ 1:8
+    POS_REP = max(2, int((y[tr] == 0).sum() / max(y[tr].sum(), 1) / 4))  # 正:负 ≈ 1:4（1:8→1:4：提升正样本学习强度）
     train_ds = CandDS(imu[tr], ppg[tr], ma[tr], meta[tr], y[tr], pos_rep=POS_REP)
     val_ds = CandDS(imu[va], ppg[va], ma[va], meta[va], y[va])
     print(f"  正样本过采样 ×{POS_REP} → train {len(train_ds)}", flush=True)
@@ -138,7 +147,7 @@ def main():
         tot = 0.0; nb = 0
         for ii, pp, mm, mt, yy, ww in tr_loader:
             lg = model(ii.to(dev), pp.to(dev), mm.to(dev), mt.to(dev))
-            loss = focal_loss(lg, yy.to(dev), weights=ww.to(dev))
+            loss = focal_loss(lg, yy.to(dev), alpha=FOCAL_ALPHA, weights=ww.to(dev))
             opt.zero_grad(); loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
             opt.step()

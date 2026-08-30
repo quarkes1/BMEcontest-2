@@ -87,9 +87,10 @@ def _merge(cands):
     return [(s, e, p) for s, e, p in merged]
 
 
-def make_proposals(env, t0, prior, start_epoch, loose=False, no_prior=False):
+def make_proposals(env, t0, prior, start_epoch, loose=False, no_prior=False, dilate_ms=0):
     """返回 (act_cands, pri_cands)：活动池（连通域）与先验池（整点窗）各自合并，两池不互并。
-    loose=True 用更松阈值集（低 pct/短事件）。"""
+    loose=True 用更松阈值集（低 pct/短事件）；dilate_ms>0 时活动候选边界膨胀（短餐 IoU 修复：
+    5-7min 短餐与候选边界偏移 1-2min 即掉出 IoU 0.25 匹配线，±60s 膨胀可救回）。"""
     h = (t0 / 3.6e6) % 24
     score = env * prior[np.clip(h.astype(int), 0, 23)]
     pcts, gaps, durs = (LOOSE_PCT, LOOSE_GAP, LOOSE_DUR) if loose else (PROP_PCT, PROP_GAP, PROP_DUR)
@@ -100,8 +101,13 @@ def make_proposals(env, t0, prior, start_epoch, loose=False, no_prior=False):
                 evs = windows_to_events(score, t0, t0 + WINDOW_MS, float(np.percentile(score, pct)),
                                         merge_gap_s=gap, min_dur_s=dur, smooth_win=SMOOTH)
                 act.extend((s, e, 0) for s, e in evs)
+    act = _merge(act)
+    if dilate_ms > 0:
+        t_beg, t_end = int(t0.min()), int(t0[0]) + len(env) * 1000
+        act = [(max(t_beg, int(s - dilate_ms)), min(t_end, int(e + dilate_ms)), ip)
+               for s, e, ip in act]
     pri = [] if no_prior else prior_candidates(start_epoch, start_epoch + (len(env) - 1) * 1000)
-    return _merge(act), _merge(pri)
+    return act, _merge(pri)
 
 
 def candidate_features(cands, env, t0, prior, sess_feats, gate_prob=0.5):

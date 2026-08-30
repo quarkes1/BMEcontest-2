@@ -63,9 +63,11 @@ class MMRanker(nn.Module):
             nn.Linear(2, 16), nn.ReLU(), nn.Linear(16, 1), nn.Sigmoid())
         # ---- 融合 ----
         self.fuse = nn.GRU(2 * d_model, d_model, batch_first=True, bidirectional=True)
-        # 元特征（候选时长/会话门控/时刻先验）——长候选 FP 的关键判别（v1 LightGBM 靠 dur）
+        # 元特征（候选时长/时刻先验）——长候选 FP 的关键判别（v1 LightGBM 靠 dur）。
+        # gate_prob 已移除：训练集恒 0.5（build_candidate_windows 只对 val 打分）→ 训练/推理
+        # 分布不一致，模型对真实门控值瞎猜且压分低门控会话正候选；门控由解码端 g 阈值承担。
         self.meta_in = nn.Sequential(
-            nn.Linear(3, 32), nn.ReLU(), nn.Dropout(dropout))
+            nn.Linear(2, 32), nn.ReLU(), nn.Dropout(dropout))
         self.head = nn.Sequential(
             nn.Linear(4 * d_model + 32, 128), nn.ReLU(), nn.Dropout(dropout),
             nn.Linear(128, 1))

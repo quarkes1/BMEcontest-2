@@ -119,7 +119,7 @@ def _process_sid(args):
     ft = json.loads(d["feats"].item())
     sess_feats = {"dur_h": float(ft["dur_h"]), "env_p95": float(ft["env_p95"]),
                   "p95_ratio": float(ft["p95_ratio"]), "start": starts.get(sid, 0)}
-    act, pri = re.make_proposals(env, t0, prior, starts.get(sid, 0))
+    act, pri = re.make_proposals(env, t0, prior, starts.get(sid, 0), dilate_ms=60000)  # 活动候选 ±60s（短餐 IoU 修复）
     meals = meals.get(sid, [])
     med_c = _session_ppg_stats(s)
     tv = s.t_acc[s.imu_valid]

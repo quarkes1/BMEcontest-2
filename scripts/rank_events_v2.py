@@ -34,7 +34,7 @@ IOU_LABEL = 0.25
 POST_MERGE_GAP_S = 120.0    # 事件合并 gap（<2min 断开视为同一餐）
 POST_MIN_DUR_S = 120.0      # 过滤 <2min 孤立段（方向 3）
 DL_W = (0.0, 0.3, 0.5, 0.7, 1.0)      # 深度分数融合权重（0=纯 LightGBM 对照）
-DL_TAU = tuple(np.arange(0.25, 0.76, 0.05))  # 活动融合分数阈值（自动阈值搜索）
+DL_TAU = tuple(np.arange(0.15, 0.425, 0.025))  # 活动融合分数阈值（细化：覆盖保守分数区 0.15-0.40）
 GATE_GS = (0.0, 0.3)
 PRI_THRS = (0.3, 0.5)
 DILATIONS = (60.0, 120.0)
@@ -122,7 +122,7 @@ def main():
             sess_feats = {"dur_h": float(ft["dur_h"]), "env_p95": float(ft["env_p95"]),
                           "p95_ratio": float(ft["p95_ratio"]), "start": starts.get(sid, 0)}
             sess_meta[sid] = (env, t0, sess_feats)
-            act, pri = v1.make_proposals(env, t0, prior, starts.get(sid, 0))
+            act, pri = v1.make_proposals(env, t0, prior, starts.get(sid, 0), dilate_ms=60000)
             meals = sid_meals.get(sid, [])
             if act:
                 Xa = v1.candidate_features(act, env, t0, prior, sess_feats, 0.5)
@@ -162,7 +162,7 @@ def main():
         if sid not in sess_meta:
             continue
         env, t0, sess_feats = sess_meta[sid]
-        act, pri = v1.make_proposals(env, t0, prior, starts.get(sid, 0))
+        act, pri = v1.make_proposals(env, t0, prior, starts.get(sid, 0), dilate_ms=60000)
         n_a, n_p = len(act), len(pri)
         va_scores = np.full(n_a, np.nan, np.float32)
         for j, c in enumerate(act):
@@ -211,7 +211,7 @@ def main():
                             pred_sid.extend((sid, e) for e in keep)
                             pred_sid.extend(pri_out)
                         m = compute_metrics_by_subject(pred_sid, true_sid, lambda s: subject_of[s])
-                        row = {"name": f"w{w}_t{tau}_g{thr_g}_p{thr_p}_d{dil:.0f}",
+                        row = {"name": f"w{w}_t{round(tau, 3)}_g{thr_g}_p{thr_p}_d{dil:.0f}",
                                **{kk: m[kk] for kk in ("f1", "sensitivity", "ppv", "n_tp", "n_pred", "n_true")}}
                         rows.append(row)
                         if best_row is None or m["f1"] > best_row[1]["f1"]:
