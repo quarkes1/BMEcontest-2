@@ -10,8 +10,8 @@
 4. 先验池通道不变（时间先验，无信号窗口 → 不做深度校验）；w=0 网格可复现 v1 的
    top-k 解码（τ 代替 top-k 语义）
 
-运行：source activate bme && python scripts/rank_events_v2.py --fold 0
-产物：outputs/rank_events_v2_fold0.json
+运行：source activate bme && python scripts/rank_events_v2.py --fold 0 [--prior-grid 15m|60m]
+产物：outputs/rank_events_v2_fold{k}_{grid}.json
 """
 import argparse
 import json
@@ -38,10 +38,10 @@ PRIOR_HALF_W_S = 450        # 先验窗半宽 15min（31% 餐 <10min，40min 窗
                             # → 15min 窗覆盖 88% vs 49%；覆盖分析 scripts/analysis_prior_grid.py）
 DL_W = (0.0, 0.3, 0.5, 0.7, 1.0)      # 深度分数融合权重（0=纯 LightGBM 对照）
 DL_TAU = tuple(np.arange(0.15, 0.425, 0.025))  # 活动融合分数阈值（细化：覆盖保守分数区 0.15-0.40）
-GATE_GS = (0.0, 0.3)
+GATE_GS = (0.0, 0.15, 0.3, 0.45)  # 排序头已含 gate 元特征 → 解码门控可放宽，细化网格找新平衡
 PRI_THRS = (0.3, 0.5, 0.7)  # 先验池 top-1 阈值（96 窗/天：0.3 可能过松，加 0.7 档）
 DILATIONS = (60.0, 120.0)
-TOPK = (0, 2, 3, 4)                   # 会话级最多事件数（0=不限；一天 3-5 餐的现实约束，砍 FP）
+TOPK = (0, 1, 2, 3, 4)                # 会话级最多事件数（0=不限；一天 3-5 餐的现实约束，砍 FP）
 
 
 def load_dl_scores(k):
@@ -76,8 +76,13 @@ def postprocess_events(evs, merge_gap_s=POST_MERGE_GAP_S, min_dur_s=POST_MIN_DUR
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--fold", type=int, default=0)
+    ap.add_argument("--prior-grid", choices=("15m", "60m"), default="15m",
+                    help="先验网格：15m=15min/15min 窗（覆盖短餐）；60m=整点/40min 窗（v1 基线）")
     args = ap.parse_args()
     k = args.fold
+    if args.prior_grid == "60m":
+        PRIOR_GRID_S = 3600
+        PRIOR_HALF_W_S = 1200
     folds = splits.load_folds()
     f = folds[k]
     meal_meta, _ = manifests.load_meal_meta()
@@ -208,9 +213,10 @@ def main():
                                 # 修复：旧 0.85 旁路复用 argmax(sp) → 与 top-1 同窗，IoU 去重恒跳过（死代码）
                                 if clf_pri is not None and len(sp) and sp.max() >= thr_p:
                                     act_evs = [(s0, e0) for _, (s0, e0) in act_out]
+                                    pri_evs = [e for _, e in pri_out]  # pri_out 是 (sid,(s,e)) 元组
                                     for jp in np.argsort(sp)[::-1][:2]:
                                         pc = (pri[jp][0], pri[jp][1])
-                                        if any(event_iou(pc, e) >= IOU_LABEL for e in act_evs + pri_out):
+                                        if any(event_iou(pc, e) >= IOU_LABEL for e in act_evs + pri_evs):
                                             continue
                                         pri_out.append((sid, pc))
                                 # 事件级后处理只作用于活动事件（先验 15min 窄窗不参与合并）
@@ -234,9 +240,9 @@ def main():
            **{kk: best_row[1][kk] for kk in ("f1", "sensitivity", "ppv", "n_tp", "n_pred", "n_true")}},
            "dl_alignment": round(n_hit / max(n_tot, 1), 3),
            "baselines": {"v1_best": 0.242, "v1_fixed_g0.7k2p0.3": 0.176}}
-    (config.OUTPUT_DIR / f"rank_events_v2_fold{k}.json").write_text(
+    (config.OUTPUT_DIR / f"rank_events_v2_fold{k}_{args.prior_grid}.json").write_text(
         json.dumps(out, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
-    print(f"→ outputs/rank_events_v2_fold{k}.json", flush=True)
+    print(f"→ outputs/rank_events_v2_fold{k}_{args.prior_grid}.json", flush=True)
 
 
 if __name__ == "__main__":
