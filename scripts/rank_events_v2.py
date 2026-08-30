@@ -55,22 +55,76 @@ def load_dl_scores(k):
             for m, sc in zip(meta, z["score"])}
 
 
-def postprocess_events(evs, merge_gap_s=POST_MERGE_GAP_S, min_dur_s=POST_MIN_DUR_S,
-                       dilation_s=60.0):
-    """事件级形态学后处理（方向 3）：按起始排序合并相邻 → 过滤孤立短段 → 边界膨胀。"""
+def postprocess_events_prov(evs, idxs=None, merge_gap_s=POST_MERGE_GAP_S,
+                            min_dur_s=POST_MIN_DUR_S, dilation_s=60.0):
+    """事件级形态学后处理（方向 3）：按起始排序合并相邻 → 过滤孤立短段 → 边界膨胀。
+    返回 (事件, 每事件对应的原始索引列表)；idxs=None 时事件原样编号。"""
     if not evs:
-        return []
-    merged = []
-    for s, e in sorted(evs):
+        return [], []
+    if idxs is None:
+        idxs = list(range(len(evs)))
+    merged, merged_i = [], []
+    for (s, e), i in sorted(zip(evs, idxs), key=lambda t: t[0][0]):
         if merged and s - merged[-1][1] <= merge_gap_s * 1000:
             merged[-1] = (merged[-1][0], max(merged[-1][1], e))
+            merged_i[-1].append(i)
         else:
             merged.append((s, e))
-    out = []
-    for s, e in merged:
+            merged_i.append([i])
+    out, out_i = [], []
+    for (s, e), ii in zip(merged, merged_i):
         if (e - s) / 1000.0 >= min_dur_s:
             out.append((max(0, int(s - dilation_s * 1000)), int(e + dilation_s * 1000)))
+            out_i.append(ii)
+    return out, out_i
+
+
+def postprocess_events(evs, merge_gap_s=POST_MERGE_GAP_S, min_dur_s=POST_MIN_DUR_S,
+                       dilation_s=60.0):
+    out, _ = postprocess_events_prov(evs, None, merge_gap_s, min_dur_s, dilation_s)
     return out
+
+
+def decode_session(row, gate_prob, cfg, clf_pri):
+    """单会话解码 → (预测 [(sid,(s,e))...], 明细 [(sid,s,e,src,score)]).
+
+    src: 'act'（活动池，score=活动融合分）| 'pri'（先验池，score=先验分）。
+    先验池 top-2 非重叠窗（多餐会话的第 2 餐靠它）；修复：旧 0.85 旁路复用
+    argmax(sp) → 与 top-1 同窗，IoU 去重恒跳过（死代码）。"""
+    sid, act, sa, va_scores, pri, sp = row
+    w, tau, thr_g, thr_p, dil, K = cfg
+    act_out, pri_out = [], []
+    fuse = None
+    if gate_prob.get(sid, 1.0) >= thr_g and len(sa):
+        if w > 0:
+            fuse = w * va_scores + (1 - w) * sa
+            fuse = np.where(np.isnan(va_scores), sa, fuse)  # 缺深度分→纯LGBM
+        else:
+            fuse = sa
+        sel = np.where(fuse >= tau)[0]
+        if K > 0 and len(sel) > K:  # 会话级 top-K：一天最多 K 餐
+            sel = sel[np.argsort(fuse[sel])[::-1][:K]]
+        act_out = [(sid, (act[j][0], act[j][1])) for j in sel]
+    if clf_pri is not None and len(sp) and sp.max() >= thr_p:
+        act_evs = [(s0, e0) for _, (s0, e0) in act_out]
+        pri_evs = [e for _, e in pri_out]  # pri_out 是 (sid,(s,e)) 元组
+        for jp in np.argsort(sp)[::-1][:2]:
+            pc = (pri[jp][0], pri[jp][1])
+            if any(event_iou(pc, e) >= IOU_LABEL for e in act_evs + pri_evs):
+                continue
+            pri_out.append((sid, pc))
+    # 事件级后处理只作用于活动事件（先验窄窗不参与合并）
+    keep, prov = postprocess_events_prov([e for _, e in act_out], list(range(len(act_out))),
+                                         dilation_s=dil)
+    pred = [(sid, e) for e in keep] + pri_out
+    detail = []
+    if fuse is not None:
+        for e, ii in zip(keep, prov):
+            if len(ii):
+                detail.append((sid, e[0], e[1], "act", float(np.max(fuse[sel[ii]]))))
+    for (sid2, (s0, e0)), jp in zip(pri_out, np.argsort(sp)[::-1][:len(pri_out)]):
+        detail.append((sid2, s0, e0, "pri", float(sp[jp])))
+    return pred, detail
 
 
 def main():
@@ -78,6 +132,8 @@ def main():
     ap.add_argument("--fold", type=int, default=0)
     ap.add_argument("--prior-grid", choices=("15m", "60m"), default="15m",
                     help="先验网格：15m=15min/15min 窗（覆盖短餐）；60m=整点/40min 窗（v1 基线）")
+    ap.add_argument("--detail", action="store_true",
+                    help="输出最佳配置逐事件明细（src/score/tp，FP 来源分析）")
     args = ap.parse_args()
     k = args.fold
     # 局部变量而非直接改模块常量：函数内任何赋值都会把名字变成局部，
@@ -199,32 +255,9 @@ def main():
                     for dil in DILATIONS:
                         for K in TOPK:
                             pred_sid = []
-                            for sid, act, sa, va_scores, pri, sp in val_rows:
-                                act_out, pri_out = [], []
-                                if gate_prob.get(sid, 1.0) >= thr_g and len(sa):
-                                    if w > 0:
-                                        fuse = w * va_scores + (1 - w) * sa
-                                        fuse = np.where(np.isnan(va_scores), sa, fuse)  # 缺深度分→纯LGBM
-                                    else:
-                                        fuse = sa
-                                    sel = np.where(fuse >= tau)[0]
-                                    if K > 0 and len(sel) > K:  # 会话级 top-K：一天最多 K 餐
-                                        sel = sel[np.argsort(fuse[sel])[::-1][:K]]
-                                    act_out = [(sid, (act[j][0], act[j][1])) for j in sel]
-                                # 先验池 top-2 非重叠窗（时间先验通道；多餐会话的第 2 餐靠它）
-                                # 修复：旧 0.85 旁路复用 argmax(sp) → 与 top-1 同窗，IoU 去重恒跳过（死代码）
-                                if clf_pri is not None and len(sp) and sp.max() >= thr_p:
-                                    act_evs = [(s0, e0) for _, (s0, e0) in act_out]
-                                    pri_evs = [e for _, e in pri_out]  # pri_out 是 (sid,(s,e)) 元组
-                                    for jp in np.argsort(sp)[::-1][:2]:
-                                        pc = (pri[jp][0], pri[jp][1])
-                                        if any(event_iou(pc, e) >= IOU_LABEL for e in act_evs + pri_evs):
-                                            continue
-                                        pri_out.append((sid, pc))
-                                # 事件级后处理只作用于活动事件（先验 15min 窄窗不参与合并）
-                                keep = postprocess_events([e for _, e in act_out], dilation_s=dil)
-                                pred_sid.extend((sid, e) for e in keep)
-                                pred_sid.extend(pri_out)
+                            for row in val_rows:
+                                pred_sid.extend(decode_session(
+                                    row, gate_prob, (w, tau, thr_g, thr_p, dil, K), clf_pri)[0])
                             m = compute_metrics_by_subject(pred_sid, true_sid, lambda s: subject_of[s])
                             row = {"name": f"w{w}_t{round(tau, 3)}_g{thr_g}_p{thr_p}_d{dil:.0f}_k{K}",
                                    **{kk: m[kk] for kk in ("f1", "sensitivity", "ppv", "n_tp", "n_pred", "n_true")}}
@@ -238,10 +271,35 @@ def main():
     print(f"  ★ 最佳: {best_row[0]} F1={best_row[1]['f1']:.3f} sens={best_row[1]['sensitivity']:.3f} "
           f"ppv={best_row[1]['ppv']:.3f} ({best_row[1]['n_tp']}/{best_row[1]['n_true']}, pred={best_row[1]['n_pred']})", flush=True)
 
+    # ---- 最佳配置逐事件明细（FP 来源分析，--detail） ----
     out = {"fold": k, "rows": rows, "best": {"name": best_row[0],
            **{kk: best_row[1][kk] for kk in ("f1", "sensitivity", "ppv", "n_tp", "n_pred", "n_true")}},
-           "dl_alignment": round(n_hit / max(n_tot, 1), 3),
-           "baselines": {"v1_best": 0.242, "v1_fixed_g0.7k2p0.3": 0.176}}
+           "dl_alignment": round(n_hit / max(n_tot, 1), 3)}
+    p1 = config.OUTPUT_DIR / f"rank_events_fold{k}.json"
+    if p1.exists():
+        r1 = json.loads(p1.read_text(encoding="utf-8"))
+        out["baselines"] = {"v1_best": r1["best"]["f1"]}
+    if args.detail and best_row is not None:
+        import re
+        mm = re.match(r"w([\d.]+)_t([\d.]+)_g([\d.]+)_p([\d.]+)_d(\d+)_k(\d+)", best_row[0])
+        cfg = (float(mm[1]), float(mm[2]), float(mm[3]), float(mm[4]), int(mm[5]), int(mm[6]))
+        detail, pred_sid = [], []
+        for row in val_rows:
+            pr, dt = decode_session(row, gate_prob, cfg, clf_pri)
+            pred_sid.extend(pr)
+            detail.extend(dt)
+        true_by_sid = {}
+        for s, (b, e) in true_sid:
+            true_by_sid.setdefault(s, []).append((b, e))
+        out["detail"] = [{"sid": sid, "s": s, "e": e, "src": src, "score": sc,
+                          "tp": any(event_iou((s, e), t) >= IOU_LABEL
+                                    for t in true_by_sid.get(sid, []))}
+                         for sid, s, e, src, sc in detail]
+        n_pri = sum(1 for d in out["detail"] if d["src"] == "pri")
+        n_fp = sum(1 for d in out["detail"] if not d["tp"])
+        n_fp_pri = sum(1 for d in out["detail"] if not d["tp"] and d["src"] == "pri")
+        print(f"  明细: {len(out['detail'])} 预测（act {len(out['detail']) - n_pri} / pri {n_pri}），"
+              f"FP {n_fp}（其中 pri 来源 {n_fp_pri}）", flush=True)
     (config.OUTPUT_DIR / f"rank_events_v2_fold{k}_{args.prior_grid}.json").write_text(
         json.dumps(out, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
     print(f"→ outputs/rank_events_v2_fold{k}_{args.prior_grid}.json", flush=True)
