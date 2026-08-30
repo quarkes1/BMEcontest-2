@@ -19,7 +19,7 @@ import src.config as config
 OUT = config.OUTPUT_DIR
 
 V1_FIXED = "g0.7_k2_p0.3"
-V2_FIXED = "w1.0_t0.175_g0.3_p0.5_d60"  # fold0 验证网格最优配置（无 gate 特征后，跨折固定验证诚实口径）
+V2_FIXED = "w0.7_t0.2_g0.3_p0.5_d60_k0"  # fold0 纯 IMU 最优配置（跨折固定验证诚实口径）
 
 
 def load(k, tag):

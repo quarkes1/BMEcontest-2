@@ -73,13 +73,23 @@ def main():
     ap.add_argument("--epochs", type=int, default=EPOCHS)
     ap.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     ap.add_argument("--no-ppg", action="store_true", help="PPG 分支消融（纯 IMU）")
+    ap.add_argument("--all-train", action="store_true",
+                    help="跨折训练扩充：训练集 = 全部会话 - val(k)（受试者级划分无泄漏，正样本 ×4）")
     args = ap.parse_args()
     fold_idx = args.fold
 
     # ---- 加载缓存（按 fold 划分切 train/val） ----
     from src.data import splits
     folds = splits.load_folds()
-    tr_set, va_set = set(folds[fold_idx]["train_sessions"]), set(folds[fold_idx]["val_sessions"])
+    va_set = set(folds[fold_idx]["val_sessions"])
+    if args.all_train:  # 跨折扩充：本折 val 之外的会话全部作训练（fold 划分按受试者，无泄漏）
+        tr_set = None
+        all_sid = set()
+        for f in folds:
+            all_sid |= set(f["train_sessions"]) | set(f["val_sessions"])
+        tr_set = all_sid - va_set
+    else:
+        tr_set = set(folds[fold_idx]["train_sessions"])
     d = config.CACHE_DIR / "cand_windows" / f"fold{fold_idx}"
     X, Y, META = [], [], []
     for p in sorted(d.glob("*.npz")):
