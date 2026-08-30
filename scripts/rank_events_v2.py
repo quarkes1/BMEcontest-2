@@ -38,6 +38,7 @@ DL_TAU = tuple(np.arange(0.15, 0.425, 0.025))  # 活动融合分数阈值（细�
 GATE_GS = (0.0, 0.3)
 PRI_THRS = (0.3, 0.5)
 DILATIONS = (60.0, 120.0)
+TOPK = (0, 2, 3, 4)                   # 会话级最多事件数（0=不限；一天 3-5 餐的现实约束，砍 FP）
 
 
 def load_dl_scores(k):
@@ -184,38 +185,41 @@ def main():
             for thr_g in GATE_GS:
                 for thr_p in PRI_THRS:
                     for dil in DILATIONS:
-                        pred_sid = []
-                        for sid, act, sa, va_scores, pri, sp in val_rows:
-                            act_out, pri_out = [], []
-                            if gate_prob.get(sid, 1.0) >= thr_g and len(sa):
-                                if w > 0:
-                                    fuse = w * va_scores + (1 - w) * sa
-                                    fuse = np.where(np.isnan(va_scores), sa, fuse)  # 缺深度分→纯LGBM
+                        for K in TOPK:
+                            pred_sid = []
+                            for sid, act, sa, va_scores, pri, sp in val_rows:
+                                act_out, pri_out = [], []
+                                if gate_prob.get(sid, 1.0) >= thr_g and len(sa):
+                                    if w > 0:
+                                        fuse = w * va_scores + (1 - w) * sa
+                                        fuse = np.where(np.isnan(va_scores), sa, fuse)  # 缺深度分→纯LGBM
+                                    else:
+                                        fuse = sa
                                     sel = np.where(fuse >= tau)[0]
-                                else:
-                                    sel = np.where(sa >= tau)[0]
-                                act_out = [(sid, (act[j][0], act[j][1])) for j in sel]
-                            # 先验池 top-1（时间先验通道，v1 逻辑）+ 高分旁路
-                            if clf_pri is not None and len(sp) and sp.max() >= thr_p:
-                                jp = int(np.argmax(sp))
-                                pc = (pri[jp][0], pri[jp][1])
-                                if not any(event_iou(pc, (s0, e0)) >= IOU_LABEL for _, (s0, e0) in act_out):
-                                    pri_out.append((sid, pc))
-                            if clf_pri is not None and len(sp) and sp.max() >= 0.85:
-                                jp = int(np.argmax(sp))
-                                pc = (pri[jp][0], pri[jp][1])
-                                if not any(event_iou(pc, (s0, e0)) >= IOU_LABEL for _, (s0, e0) in act_out + pri_out):
-                                    pri_out.append((sid, pc))
-                            # 事件级后处理只作用于活动事件（先验 40min 宽窗不参与合并）
-                            keep = postprocess_events([e for _, e in act_out], dilation_s=dil)
-                            pred_sid.extend((sid, e) for e in keep)
-                            pred_sid.extend(pri_out)
-                        m = compute_metrics_by_subject(pred_sid, true_sid, lambda s: subject_of[s])
-                        row = {"name": f"w{w}_t{round(tau, 3)}_g{thr_g}_p{thr_p}_d{dil:.0f}",
-                               **{kk: m[kk] for kk in ("f1", "sensitivity", "ppv", "n_tp", "n_pred", "n_true")}}
-                        rows.append(row)
-                        if best_row is None or m["f1"] > best_row[1]["f1"]:
-                            best_row = (row["name"], m)
+                                    if K > 0 and len(sel) > K:  # 会话级 top-K：一天最多 K 餐
+                                        sel = sel[np.argsort(fuse[sel])[::-1][:K]]
+                                    act_out = [(sid, (act[j][0], act[j][1])) for j in sel]
+                                # 先验池 top-1（时间先验通道，v1 逻辑）+ 高分旁路
+                                if clf_pri is not None and len(sp) and sp.max() >= thr_p:
+                                    jp = int(np.argmax(sp))
+                                    pc = (pri[jp][0], pri[jp][1])
+                                    if not any(event_iou(pc, (s0, e0)) >= IOU_LABEL for _, (s0, e0) in act_out):
+                                        pri_out.append((sid, pc))
+                                if clf_pri is not None and len(sp) and sp.max() >= 0.85:
+                                    jp = int(np.argmax(sp))
+                                    pc = (pri[jp][0], pri[jp][1])
+                                    if not any(event_iou(pc, (s0, e0)) >= IOU_LABEL for _, (s0, e0) in act_out + pri_out):
+                                        pri_out.append((sid, pc))
+                                # 事件级后处理只作用于活动事件（先验 40min 宽窗不参与合并）
+                                keep = postprocess_events([e for _, e in act_out], dilation_s=dil)
+                                pred_sid.extend((sid, e) for e in keep)
+                                pred_sid.extend(pri_out)
+                            m = compute_metrics_by_subject(pred_sid, true_sid, lambda s: subject_of[s])
+                            row = {"name": f"w{w}_t{round(tau, 3)}_g{thr_g}_p{thr_p}_d{dil:.0f}_k{K}",
+                                   **{kk: m[kk] for kk in ("f1", "sensitivity", "ppv", "n_tp", "n_pred", "n_true")}}
+                            rows.append(row)
+                            if best_row is None or m["f1"] > best_row[1]["f1"]:
+                                best_row = (row["name"], m)
     print(f"解码网格 {len(rows)} 组完成（{time.time()-t0:.0f}s）", flush=True)
     for row in sorted(rows, key=lambda r: -r["f1"])[:12]:
         print(f"  {row['name']}: F1={row['f1']:.3f} sens={row['sensitivity']:.3f} ppv={row['ppv']:.3f} "

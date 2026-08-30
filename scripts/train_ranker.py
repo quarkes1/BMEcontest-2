@@ -72,6 +72,7 @@ def main():
     ap.add_argument("--fold", type=int, default=0)
     ap.add_argument("--epochs", type=int, default=EPOCHS)
     ap.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
+    ap.add_argument("--no-ppg", action="store_true", help="PPG 分支消融（纯 IMU）")
     args = ap.parse_args()
     fold_idx = args.fold
 
@@ -106,8 +107,8 @@ def main():
         torch.cuda.manual_seed_all(SEED)
 
     dev = torch.device(args.device)
-    model = MMRanker().to(dev)
-    print(f"  MM-Ranker 参数 {count_params(model)/1e3:.0f}K", flush=True)
+    model = MMRanker(use_ppg=not args.no_ppg).to(dev)
+    print(f"  MM-Ranker 参数 {count_params(model)/1e3:.0f}K（use_ppg={not args.no_ppg}）", flush=True)
 
     POS_REP = max(2, int((y[tr] == 0).sum() / max(y[tr].sum(), 1) / 4))  # 正:负 ≈ 1:4（1:8→1:4：提升正样本学习强度）
     train_ds = CandDS(imu[tr], ppg[tr], ma[tr], meta[tr], y[tr], pos_rep=POS_REP)

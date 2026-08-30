@@ -47,8 +47,9 @@ class TCNBlock(nn.Module):
 
 
 class MMRanker(nn.Module):
-    def __init__(self, d_model=64, n_layers=6, dropout=0.3, n_ppg=66, n_blocks=48):
+    def __init__(self, d_model=64, n_layers=6, dropout=0.3, n_ppg=66, n_blocks=48, use_ppg=True):
         super().__init__()
+        self.use_ppg = use_ppg
         # ---- IMU 分支 ----
         self.imu_in = nn.Sequential(
             nn.Conv1d(6, d_model, 7, padding=3), nn.BatchNorm1d(d_model), nn.ReLU())
@@ -84,11 +85,13 @@ class MMRanker(nn.Module):
         h_imu = x.view(B, -1, self.n_blocks, x.size(2) // self.n_blocks).mean(3)  # (B, d, 48)
         h_imu = h_imu.transpose(1, 2)                   # (B, 48, d)
 
-        h_ppg = self.ppg_in(ppg)                        # (B, 48, d)
-        h_ppg = self.ppg_bn(h_ppg.transpose(1, 2)).transpose(1, 2)
-
-        gate = self.ma_gate(ma)                         # (B, 48, 1) 运动伪影低→门控大
-        h_ppg = h_ppg * gate                            # 掩码降权
+        if self.use_ppg:
+            h_ppg = self.ppg_in(ppg)                    # (B, 48, d)
+            h_ppg = self.ppg_bn(h_ppg.transpose(1, 2)).transpose(1, 2)
+            gate = self.ma_gate(ma)                     # (B, 48, 1) 运动伪影低→门控大
+            h_ppg = h_ppg * gate                        # 掩码降权
+        else:
+            h_ppg = torch.zeros_like(h_imu)             # PPG 消融（结构不变）
 
         z = torch.cat([h_imu, h_ppg], dim=2)            # (B, 48, 2d)
         z, _ = self.fuse(z)                             # (B, 48, 2d)
