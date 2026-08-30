@@ -13,6 +13,7 @@
 """
 import argparse
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -31,9 +32,9 @@ BATCH = 64
 LR = 1e-3
 WD = 1e-4
 PATIENCE = 12
-HARD_W = 5.0          # 硬负样本提权倍数（×10 验证：过激→整体保守化，回退 5）
-HARD_K = 5            # top-k = 5× 正样本数
-FOCAL_ALPHA = 0.35    # Focal α（0.25→0.35：更重视正样本召回）
+HARD_W = float(os.environ.get("BME_HARD_W", "5.0"))   # 硬负样本提权倍数（×10 验证：过激→保守化）
+HARD_K = int(os.environ.get("BME_HARD_K", "5"))       # top-k = K× 正样本数
+FOCAL_ALPHA = float(os.environ.get("BME_FOCAL_ALPHA", "0.35"))  # Focal α（0.25→0.35：更重视召回）
 SEED = 42             # 固定随机种子（消融可复现）
 
 
@@ -117,7 +118,9 @@ def main():
         torch.cuda.manual_seed_all(SEED)
 
     dev = torch.device(args.device)
-    model = MMRanker(use_ppg=not args.no_ppg).to(dev)
+    model = MMRanker(d_model=int(os.environ.get("BME_D_MODEL", "64")),
+                     n_layers=int(os.environ.get("BME_N_LAYERS", "6")),
+                     use_ppg=not args.no_ppg).to(dev)
     print(f"  MM-Ranker 参数 {count_params(model)/1e3:.0f}K（use_ppg={not args.no_ppg}）", flush=True)
 
     POS_REP = max(2, int((y[tr] == 0).sum() / max(y[tr].sum(), 1) / 4))  # 正:负 ≈ 1:4（1:8→1:4：提升正样本学习强度）
