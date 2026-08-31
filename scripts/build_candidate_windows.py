@@ -22,6 +22,7 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 import numpy as np
+import scipy.signal
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -33,6 +34,8 @@ import rank_events as re
 CTX_S = 120.0                  # 窗口半宽（±120s）
 FS10 = 10                      # IMU 重采样率
 GRID_STEP_MS = 100             # 10Hz 网格步长
+GYRO_HI_BAND = (4.0, 16.0)     # gyro 高频能量通道（信号检验：gyro 4-16Hz 能量受试者内
+                               # 餐窗判别 0.61-0.62 fold1 / 0.55-0.57 fold3；10Hz 缓存丢失）
 BLOCK_S = 5.0                  # PPG 块宽
 N_BLOCK = 48                   # 240s / 5s
 N_PPG = 22                     # 有效 PPG 通道数
@@ -63,9 +66,17 @@ def _extract(s, med_c, c_s, c_e, valid_ts):
     if not valid.any():
         return None
     t_v = t[valid]
-    imu = np.zeros((n_step, 6), np.float32)
+    imu = np.zeros((n_step, 7), np.float32)   # 7 通道：acc3 + gyro3 + gyro 高频能量（第 7）
     for i, ch in enumerate(np.concatenate([s.acc, s.gyro])[:, valid]):
         imu[:, i] = np.interp(grid, t_v, ch.astype(np.float64))
+    # gyro 高频能量（4-16Hz bandpass）：必须在原始采样率上滤波（10Hz 插值后信息已丢）
+    fs = float(s.meta.get("row_rate", 105.0))
+    if fs > 2 * GYRO_HI_BAND[1]:
+        sos = scipy.signal.butter(4, GYRO_HI_BAND, btype="bandpass", fs=fs, output="sos")
+        gy = s.gyro[:, valid].astype(np.float64)
+        gh = scipy.signal.sosfiltfilt(sos, gy, axis=1)
+        gh_env = np.sqrt((gh ** 2).sum(0))                 # (n_valid,) 高频角速度能量
+        imu[:, 6] = np.interp(grid, t_v, gh_env)
     e_norm = np.sqrt((imu[:, :3] ** 2).sum(1))            # acc 能量
     cov = ((grid >= t_v[0]) & (grid <= t_v[-1])).mean()
     if cov < MIN_EMPTY_RATIO:

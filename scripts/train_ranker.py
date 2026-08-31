@@ -122,7 +122,8 @@ def main():
     dev = torch.device(args.device)
     model = MMRanker(d_model=int(os.environ.get("BME_D_MODEL", "64")),
                      n_layers=int(os.environ.get("BME_N_LAYERS", "6")),
-                     use_ppg=not args.no_ppg).to(dev)
+                     use_ppg=not args.no_ppg,
+                     n_imu=int(imu.shape[2])).to(dev)   # 缓存通道数（6 或 7：gyro 高频通道）
     if args.init_from:  # MO bite 预训练迁移：逐层拷贝 imu_in+tcn（BN 统计量一并）
         sd = torch.load(args.init_from, map_location=dev)
         loaded = 0

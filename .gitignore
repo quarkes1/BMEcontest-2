@@ -4,6 +4,6 @@ Data/
 *.pyc
 __pycache__/
 cache/
-models/
+/models/
 outputs/
 refs/

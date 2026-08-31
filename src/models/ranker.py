@@ -47,12 +47,13 @@ class TCNBlock(nn.Module):
 
 
 class MMRanker(nn.Module):
-    def __init__(self, d_model=64, n_layers=6, dropout=0.3, n_ppg=66, n_blocks=48, use_ppg=True):
+    def __init__(self, d_model=64, n_layers=6, dropout=0.3, n_ppg=66, n_blocks=48, use_ppg=True,
+                 n_imu=6):
         super().__init__()
         self.use_ppg = use_ppg
         # ---- IMU 分支 ----
         self.imu_in = nn.Sequential(
-            nn.Conv1d(6, d_model, 7, padding=3), nn.BatchNorm1d(d_model), nn.ReLU())
+            nn.Conv1d(n_imu, d_model, 7, padding=3), nn.BatchNorm1d(d_model), nn.ReLU())
         self.tcn = nn.ModuleList(
             [TCNBlock(d_model, dilation=2 ** i, dropout=dropout) for i in range(n_layers)])
         # ---- PPG 分支 ----

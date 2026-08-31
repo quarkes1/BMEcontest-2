@@ -34,33 +34,35 @@ import src.config as config
 from src.data import manifests, splits
 from src.data.loader import load_session
 
-FS = 10.0
+FS = 10.0  # 占位：每会话 row_rate（~105-113Hz）实际传入
 WIN_S, ST_S = 5.0, 1.0
+# 频带按真实意图（fs=row_rate ~110Hz；排序头 10Hz 缓存 Nyquist=5Hz）：
+# b0/b1/b2 在排序头可见域内；b3/b4 高频（>5Hz）排序头不可见——若判别力存在，
+# 需重建缓存带高频通道重训
 BANDS = [("b0_acc_0.5-2", "acc", (0.5, 2.0)),
          ("b1_acc_2-4", "acc", (2.0, 4.0)),
-         ("b2_acc_0.1-0.5", "acc", (0.1, 0.5)),
-         ("b3_gyro_0.5-2", "gyro", (0.5, 2.0))]
+         ("b2_acc_4-8", "acc", (4.0, 8.0)),
+         ("b3_acc_8-16", "acc", (8.0, 16.0)),
+         ("b4_acc_16-32", "acc", (16.0, 32.0)),
+         ("b5_gyro_0.5-4", "gyro", (0.5, 4.0)),
+         ("b6_gyro_4-16", "gyro", (4.0, 16.0))]
 MEAL_PAD_S = 60        # 餐段膨胀（与 make_proposals dilate_ms=60000 一致）
 NONMEAL_GAP_S = 1800   # 非餐窗：距所有餐段膨胀后 ≥30min
 
 
-def band_feats(sig, band):
-    """与 validate_baselines._density_one 同构的包络计算（5s 窗/1s 步）+ 时域形态特征。
+def band_feats(sig, band, fs):
+    """与 validate_baselines._density_one 同构的包络计算（5s 窗/1s 步）+ 过零率。
 
-    返回 4 组逐窗特征：
-      E: |e| 均值（原 env，能量）
-      S: |e| 标准差（活动稳定性——规律摆动方差低）
-      Z: 过零率（bandpass 信号符号翻转比例——摆动频率直接度量）
-      A: 去均值自相关 lag∈[5,25]（0.5-2Hz @10Hz）峰值——周期性强度
+    返回 2 组逐窗特征：
+      E: |e| 均值（能量）
+      Z: 过零率（bandpass 信号符号翻转比例——频带内规律性度量）
     """
-    win, st = int(WIN_S * FS), int(ST_S * FS)
+    win, st = int(WIN_S * fs), int(ST_S * fs)
     n = sig.shape[1]
     n_w = (n - win) // st + 1
-    sos = scipy.signal.butter(4, band, btype="bandpass", fs=FS, output="sos")
+    sos = scipy.signal.butter(4, band, btype="bandpass", fs=fs, output="sos")
     E = np.empty(n_w, np.float32)
-    S = np.empty(n_w, np.float32)
     Z = np.empty(n_w, np.float32)
-    A = np.empty(n_w, np.float32)
     for b0 in range(0, n_w, 4000):
         b1 = min(b0 + 4000, n_w)
         m = b1 - b0
@@ -71,26 +73,20 @@ def band_feats(sig, band):
         e = scipy.signal.sosfiltfilt(sos, lam, axis=1)
         ae = np.abs(e)
         E[b0:b1] = ae.mean(1)
-        S[b0:b1] = ae.std(1)
         Z[b0:b1] = ((e[:, 1:] * e[:, :-1]) < 0).mean(1)
-        em = e - e.mean(1, keepdims=True)
-        v = (em * em).mean(1) + 1e-9
-        ac = np.empty((m, 21), np.float32)
-        for li, lag in enumerate(range(5, 26)):
-            ac[:, li] = (em[:, :-lag] * em[:, lag:]).mean(1) / v
-        A[b0:b1] = ac.max(1)
-    return E, S, Z, A
+    return E, Z
 
 
 def session_bands(args):
     sid, start_epoch, meals = args
     try:
         s = load_session(sid)
-        if s.acc.shape[1] < int(WIN_S * FS):
+        fs = s.meta.get("row_rate", 105.0)
+        if s.acc.shape[1] < int(WIN_S * fs):
             return None
         out = {}
         for name, src, band in BANDS:
-            out[name] = band_feats(getattr(s, src), band)
+            out[name] = band_feats(getattr(s, src), band, fs)
         n_w = len(out["b0_acc_0.5-2"][0])
         t0 = start_epoch + np.arange(n_w, dtype=np.int64) * 1000   # 与 _density_one 同构
         return (sid, out, t0, meals)
@@ -153,7 +149,7 @@ def main():
 
     # ---- 窗级标签：餐窗（±60s）/ 非餐窗（距餐 ≥30min） ----
     names = [b[0] for b in BANDS]
-    FEATS = ["E", "S", "Z", "A"]          # 能量 / 包络方差 / 过零率 / 自相关峰
+    FEATS = ["E", "Z"]                    # 能量 / 过零率
     per_band = {n: {ft: {"pos": [], "neg": []} for ft in FEATS} for n in names}
     meal_prof = []                        # ({band: {feat: 峰值}}, 检出标志)
     subj_auc = {n: {ft: [] for ft in FEATS} for n in names}
@@ -172,18 +168,14 @@ def main():
         if not is_meal.any():
             continue
         for n in names:
-            E, S, Z, A = envs[n]
+            E, Z = envs[n]
             if not far.any():
                 continue
             p95 = np.percentile(E, 95) + 1e-6
             per_band[n]["E"]["pos"].extend(E[is_meal] / p95)
             per_band[n]["E"]["neg"].extend(E[far] / p95)
-            per_band[n]["S"]["pos"].extend(S[is_meal] / p95)
-            per_band[n]["S"]["neg"].extend(S[far] / p95)
             per_band[n]["Z"]["pos"].extend(Z[is_meal])     # 比例特征，跨会话可比，不归一
             per_band[n]["Z"]["neg"].extend(Z[far])
-            per_band[n]["A"]["pos"].extend(A[is_meal])     # 相关系数，跨会话可比
-            per_band[n]["A"]["neg"].extend(A[far])
             subj_auc[n]["E"].append(auc_binary(E[is_meal] / p95, E[far] / p95))
             subj_auc[n]["Z"].append(auc_binary(Z[is_meal], Z[far]))
         # 餐级剖面：每餐在窗集合内的各频带峰值；深度分匹配判定检出
@@ -194,10 +186,9 @@ def main():
                 continue
             prof = {}
             for n in names:
-                E, S, Z, A = envs[n]
+                E, Z = envs[n]
                 p95 = np.percentile(E, 95) + 1e-6
-                prof[n] = {"E": float(E[sel].max() / p95), "Z": float(Z[sel].max()),
-                           "A": float(A[sel].max())}
+                prof[n] = {"E": float(E[sel].max() / p95), "Z": float(Z[sel].max())}
             det = 0
             if dl:
                 for (sid2, s0, e0), sc in dl.items():
@@ -227,7 +218,7 @@ def main():
         dets = [p for p, d in meal_prof if d]
         und = [p for p, d in meal_prof if not d]
         print(f"\n餐剖面（窗内峰值）：检出 {len(dets)} / 未检出 {len(und)}")
-        for ft in ("E", "Z", "A"):
+        for ft in ("E", "Z"):
             print(f"{'特征':<20}{'检出均值':>10}{'未检出均值':>12}{'差异':>8}")
             for n in names:
                 dv = np.array([p[n][ft] for p in dets]) if dets else np.array([0.0])
