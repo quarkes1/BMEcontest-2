@@ -76,6 +76,8 @@ def main():
     ap.add_argument("--no-ppg", action="store_true", help="PPG 分支消融（纯 IMU）")
     ap.add_argument("--all-train", action="store_true",
                     help="跨折训练扩充：训练集 = 全部会话 - val(k)（受试者级划分无泄漏，正样本 ×4）")
+    ap.add_argument("--init-from", default=None,
+                    help="MO bite 预训练权重（models/mo_bite.pt）：imu_in+tcn 特征提取器逐层拷贝（S1 迁移）")
     args = ap.parse_args()
     fold_idx = args.fold
 
@@ -121,6 +123,14 @@ def main():
     model = MMRanker(d_model=int(os.environ.get("BME_D_MODEL", "64")),
                      n_layers=int(os.environ.get("BME_N_LAYERS", "6")),
                      use_ppg=not args.no_ppg).to(dev)
+    if args.init_from:  # MO bite 预训练迁移：逐层拷贝 imu_in+tcn（BN 统计量一并）
+        sd = torch.load(args.init_from, map_location=dev)
+        loaded = 0
+        with torch.no_grad():
+            for k, v in model.state_dict().items():
+                if k in sd and sd[k].shape == v.shape:
+                    v.copy_(sd[k]); loaded += 1
+        print(f"  MO 预训练迁移：{loaded} 层权重拷贝自 {args.init_from}", flush=True)
     print(f"  MM-Ranker 参数 {count_params(model)/1e3:.0f}K（use_ppg={not args.no_ppg}）", flush=True)
 
     POS_REP = max(2, int((y[tr] == 0).sum() / max(y[tr].sum(), 1) / 4))  # 正:负 ≈ 1:4（1:8→1:4：提升正样本学习强度）
