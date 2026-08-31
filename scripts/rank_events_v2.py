@@ -185,8 +185,7 @@ def main():
 
     # ---- 会话门控 + 两池 LightGBM（与 v1 相同） ----
     import lightgbm as lgb
-    GATE_FEATS = ["dur_h", "env_mean", "env_p50", "env_p95", "env_std", "p95_ratio", "start_h_utc",
-                  "z_p50", "z_p95"]  # zcr 会话级特征（S0-2：z 提案池/候选特征 15m 网格 -0.012 负向，仅 gate 层保留）
+    GATE_FEATS = ["dur_h", "env_mean", "env_p50", "env_p95", "env_std", "p95_ratio", "start_h_utc"]
     gate_feats = {}
     for sid in f["train_sessions"] + f["val_sessions"]:
         p = OUT_CACHE / f"{sid}.npz"
@@ -216,7 +215,7 @@ def main():
                 z_ok = False
                 break
     if not z_ok:
-        print("  ⚠ env_z 缺失/不一致 → 特征退化为 14 维（无 z 通道）", flush=True)
+        print("  [warn] env_z 缺失/不一致 → 特征退化为 14 维（无 z 通道）", flush=True)
     for split, sessions in (("tr", f["train_sessions"]), ("va", f["val_sessions"])):
         for sid in sessions:
             p = OUT_CACHE / f"{sid}.npz"
