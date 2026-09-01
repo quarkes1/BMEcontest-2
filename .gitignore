@@ -7,3 +7,5 @@ cache/
 /models/
 outputs/
 refs/
+FDdatasets/
+checkpoints/

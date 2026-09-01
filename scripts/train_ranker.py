@@ -14,6 +14,7 @@
 import argparse
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -78,6 +79,8 @@ def main():
                     help="跨折训练扩充：训练集 = 全部会话 - val(k)（受试者级划分无泄漏，正样本 ×4）")
     ap.add_argument("--init-from", default=None,
                     help="MO bite 预训练权重（models/mo_bite.pt）：imu_in+tcn 特征提取器逐层拷贝（S1 迁移）")
+    ap.add_argument("--freeze-first", type=int, default=0,
+                    help="冻结 TCN 前 N 层（阶段三：FD 预训练特征保护；N=3 冻结 imu_in+前 3 层）")
     args = ap.parse_args()
     fold_idx = args.fold
 
@@ -144,6 +147,13 @@ def main():
         n_ch = min(imu.shape[2], len(norm_mean))
         imu[..., :n_ch] = (imu[..., :n_ch] - norm_mean[:n_ch]) / (norm_std[:n_ch] + 1e-6)
         print(f"  输入 z-score 归一化（前 {n_ch} 通道）", flush=True)
+    if args.freeze_first > 0:   # 阶段三：冻结 TCN 前半（imu_in + 前 N 层），保护 FD 特征
+        frozen = []
+        for name, p in model.named_parameters():
+            if name.startswith("imu_in.") or re.match(rf"tcn\.([0-{args.freeze_first - 1}])\.", name):
+                p.requires_grad = False
+                frozen.append(name)
+        print(f"  冻结 {len(frozen)} 个参数组（imu_in + tcn 前 {args.freeze_first} 层）", flush=True)
     print(f"  MM-Ranker 参数 {count_params(model)/1e3:.0f}K（use_ppg={not args.no_ppg}）", flush=True)
 
     POS_REP = max(2, int((y[tr] == 0).sum() / max(y[tr].sum(), 1) / 4))  # 正:负 ≈ 1:4（1:8→1:4：提升正样本学习强度）
