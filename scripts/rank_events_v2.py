@@ -152,21 +152,14 @@ def decode_session(row, gate_prob, cfg, clf_pri):
     return pred, detail
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--fold", type=int, default=0)
-    ap.add_argument("--prior-grid", choices=("15m", "60m"), default="15m",
-                    help="先验网格：15m=15min/15min 窗（覆盖短餐）；60m=整点/40min 窗（v1 基线）")
-    ap.add_argument("--detail", action="store_true",
-                    help="输出最佳配置逐事件明细（src/score/tp，FP 来源分析）")
-    ap.add_argument("--norm-score", choices=("none", "minmax"), default="none",
-                    help="深度分逐折归一化（minmax=5-95 分位，消除折间尺度漂移）")
-    args = ap.parse_args()
-    k = args.fold
-    # 局部变量而非直接改模块常量：函数内任何赋值都会把名字变成局部，
-    # 15m 分支不赋值时读取会 UnboundLocalError（2026-08-30 教训）
+def prepare_fold(k, prior_grid="15m", norm_score="none"):
+    """加载缓存 + 会话门控 + 两池 LGBM + 深度分对齐（official_iou_eval 复用同一函数，
+    避免复刻打分引入泄漏，E-20260831-01 教训）。
+
+    返回 (val_rows, gate_prob, clf_pri, true_sid, subject_of)。
+    """
     grid_s, half_w_s = PRIOR_GRID_S, PRIOR_HALF_W_S
-    if args.prior_grid == "60m":
+    if prior_grid == "60m":
         grid_s, half_w_s = 3600, 1200
     folds = splits.load_folds()
     f = folds[k]
@@ -262,7 +255,7 @@ def main():
     pp = clf_pri.predict_proba(Xp_va)[:, 1] if clf_pri is not None else np.zeros(len(Xp_va))
 
     # ---- 深度分数对齐（按 (sid, s, e) 精确匹配；缺失候选退化为纯 LGBM） ----
-    dl = load_dl_scores(k, args.norm_score)
+    dl = load_dl_scores(k, norm_score)
     val_rows = []
     ia = ip = 0
     n_hit = n_tot = 0
@@ -285,6 +278,24 @@ def main():
 
     true_all = [(s, m["before"], m["after"]) for s in f["val_sessions"] if s in sid_meals for m in sid_meals[s]]
     true_sid = [(s, (b, e)) for s, b, e in true_all]
+    return val_rows, gate_prob, clf_pri, true_sid, subject_of
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--fold", type=int, default=0)
+    ap.add_argument("--prior-grid", choices=("15m", "60m"), default="15m",
+                    help="先验网格：15m=15min/15min 窗（覆盖短餐）；60m=整点/40min 窗（v1 基线）")
+    ap.add_argument("--detail", action="store_true",
+                    help="输出最佳配置逐事件明细（src/score/tp，FP 来源分析）")
+    ap.add_argument("--norm-score", choices=("none", "minmax"), default="none",
+                    help="深度分逐折归一化（minmax=5-95 分位，消除折间尺度漂移）")
+    ap.add_argument("--official", action="store_true",
+                    help="附加官方全局事件级评估（IoU>0.25，非按受试者）")
+    args = ap.parse_args()
+    k = args.fold
+    val_rows, gate_prob, clf_pri, true_sid, subject_of = prepare_fold(
+        k, args.prior_grid, args.norm_score)
 
     rows, best_row = [], None
     t0 = time.time()
