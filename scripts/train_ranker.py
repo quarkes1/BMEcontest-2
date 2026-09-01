@@ -126,7 +126,7 @@ def main():
                      n_imu=int(imu.shape[2])).to(dev)   # 缓存通道数（6 或 7：gyro 高频通道）
     norm_mean = norm_std = None
     if args.init_from:  # 预训练迁移：支持 FD 格式（{encoder, norm_mean, norm_std}）与平铺格式
-        ckpt = torch.load(args.init_from, map_location=dev)
+        ckpt = torch.load(args.init_from, map_location=dev, weights_only=False)
         sd = ckpt["encoder"] if isinstance(ckpt, dict) and "encoder" in ckpt else ckpt
         loaded = 0
         with torch.no_grad():

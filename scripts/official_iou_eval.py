@@ -179,7 +179,7 @@ def decode_official(row, gate_prob, cfg, clf_pri, post=True, dilate_s=None):
 
 def run_fold(k, cfg_name, official_post=True, legacy_post=True, dilate_s=None):
     """对 fold k 指定配置：同时输出官方后处理与现有管线（legacy）的事件级 F1。"""
-    val_rows, gate_prob, clf_pri, true_sid, _ = v2.prepare_fold(k)
+    val_rows, gate_prob, clf_pri, true_sid, _, _ = v2.prepare_fold(k)
     mm = re.match(r"w([\d.]+)_t([\d.]+)_g([\d.]+)_p([\d.]+)_d(\d+)_k(\d+)", cfg_name)
     cfg = (float(mm[1]), float(mm[2]), float(mm[3]), float(mm[4]), int(mm[5]), int(mm[6]))
 
@@ -219,7 +219,7 @@ def main():
             j = json.loads((config.OUTPUT_DIR / f"rank_events_v2_fold{k}_15m.json").read_text(encoding="utf-8"))
             cfg_name = j["best"]["name"]
         m_off, m_leg = run_fold(k, cfg_name)
-        val_rows, gate_prob, clf_pri, true_sid, _ = v2.prepare_fold(k)
+        val_rows, gate_prob, clf_pri, true_sid, _, _ = v2.prepare_fold(k)
         mm = re.match(r"w([\d.]+)_t([\d.]+)_g([\d.]+)_p([\d.]+)_d(\d+)_k(\d+)", cfg_name)
         cfg = (float(mm[1]), float(mm[2]), float(mm[3]), float(mm[4]), int(mm[5]), int(mm[6]))
         def dec(post, dilate_s=None):

@@ -278,7 +278,7 @@ def prepare_fold(k, prior_grid="15m", norm_score="none"):
 
     true_all = [(s, m["before"], m["after"]) for s in f["val_sessions"] if s in sid_meals for m in sid_meals[s]]
     true_sid = [(s, (b, e)) for s, b, e in true_all]
-    return val_rows, gate_prob, clf_pri, true_sid, subject_of
+    return val_rows, gate_prob, clf_pri, true_sid, subject_of, (n_hit, n_tot)
 
 
 def main():
@@ -294,7 +294,7 @@ def main():
                     help="附加官方全局事件级评估（IoU>0.25，非按受试者）")
     args = ap.parse_args()
     k = args.fold
-    val_rows, gate_prob, clf_pri, true_sid, subject_of = prepare_fold(
+    val_rows, gate_prob, clf_pri, true_sid, subject_of, (n_hit, n_tot) = prepare_fold(
         k, args.prior_grid, args.norm_score)
 
     rows, best_row = [], None
