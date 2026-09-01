@@ -140,12 +140,15 @@ def threshold_episodes(grid, series, tau):
     return evs
 
 
-def decode_official(row, gate_prob, cfg, clf_pri, post=True, dilate_s=None):
+def decode_official(row, gate_prob, cfg, clf_pri, post=True, dilate_s=None, w_sid=None):
     """官方后处理解码（v1.1 Pipeline 锁定）：
     候选概率 → 1Hz 连续时间轴 → 60s 平滑 → 阈值截断 → 180s 融合 → 120s 过滤
-    →（可选）边界膨胀。post=False 仅原始选窗（跳过平滑，直接阈值选窗）。"""
+    →（可选）边界膨胀。post=False 仅原始选窗（跳过平滑，直接阈值选窗）。
+    w_sid：会话级自适应权重（阶段三 AdaptiveRouter），None 用配置固定 w。"""
     sid, act, sa, va_scores, pri, sp = row
     w, tau, thr_g, thr_p, dil, K = cfg
+    if w_sid is not None:
+        w = w_sid.get(sid, w)      # 路由权重覆盖（α 连续插值）
     out = []
     if gate_prob.get(sid, 1.0) >= thr_g and len(sa):
         fuse = w * va_scores + (1 - w) * sa
@@ -177,8 +180,9 @@ def decode_official(row, gate_prob, cfg, clf_pri, post=True, dilate_s=None):
     return [(sid, e) for e in out]
 
 
-def run_fold(k, cfg_name, official_post=True, legacy_post=True, dilate_s=None):
-    """对 fold k 指定配置：同时输出官方后处理与现有管线（legacy）的事件级 F1。"""
+def run_fold(k, cfg_name, official_post=True, legacy_post=True, dilate_s=None, w_sid=None):
+    """对 fold k 指定配置：同时输出官方后处理与现有管线（legacy）的事件级 F1。
+    w_sid：AdaptiveRouter 会话级权重（阶段三）。"""
     val_rows, gate_prob, clf_pri, true_sid, _, _ = v2.prepare_fold(k)
     mm = re.match(r"w([\d.]+)_t([\d.]+)_g([\d.]+)_p([\d.]+)_d(\d+)_k(\d+)", cfg_name)
     cfg = (float(mm[1]), float(mm[2]), float(mm[3]), float(mm[4]), int(mm[5]), int(mm[6]))
@@ -186,15 +190,36 @@ def run_fold(k, cfg_name, official_post=True, legacy_post=True, dilate_s=None):
     pred_off = []
     for row in val_rows:
         pred_off.extend(decode_official(row, gate_prob, cfg, clf_pri, post=official_post,
-                                        dilate_s=dilate_s))
+                                        dilate_s=dilate_s, w_sid=w_sid))
     m_off = official_metrics(pred_off, true_sid)
 
     # 现有管线（decode_session 内 postprocess_events_prov：merge 120s / min 120s / dilation）
     pred_leg = []
     for row in val_rows:
-        pred_leg.extend(v2.decode_session(row, gate_prob, cfg, clf_pri)[0])
+        pred_leg.extend(v2.decode_session(row, gate_prob, cfg, clf_pri, w_sid=w_sid)[0])
     m_leg = official_metrics(pred_leg, true_sid)
     return m_off, m_leg
+
+
+def build_router_weights(sids, fs_ref=105.0):
+    """会话级 AdaptiveRouter 权重（阶段三）：每会话 gyro 4-16Hz 能量 → α。
+    sids: 需要权重的会话列表。返回 {sid: alpha}。"""
+    from src.data.loader import load_session
+    from src.models.dualbranch import AdaptiveRouter, gyro_high_band_env
+    router = AdaptiveRouter()
+    out = {}
+    for sid in sids:
+        try:
+            s = load_session(sid)
+            fs = s.meta.get("row_rate", fs_ref)
+            gh = gyro_high_band_env(s.gyro, fs)
+            if len(gh) < 10:
+                out[sid] = 0.5
+            else:
+                out[sid], _ = router.session_weight(gh)
+        except Exception:
+            out[sid] = 0.5
+    return out
 
 
 def main():
@@ -202,6 +227,8 @@ def main():
     ap.add_argument("--fold", type=int, default=None)
     ap.add_argument("--cfg", default=None, help="配置名 w.._t.._g.._p.._d.._k..（默认各折 best）")
     ap.add_argument("--all", action="store_true", help="5 折 best 配置全跑 + 汇总对比表")
+    ap.add_argument("--routed", action="store_true",
+                    help="阶段三：解码层 w 用 AdaptiveRouter 会话级权重（4-16Hz 能量）")
     args = ap.parse_args()
 
     if not args.all and args.fold is None:
@@ -213,19 +240,25 @@ def main():
     print(header)
     print("-" * len(header))
     tot = {"raw": [], "off": [], "dil": [], "leg": []}
+    w_sid = None
+    if args.routed:   # 阶段三：会话级自适应路由权重
+        all_sids = sorted({r[0] for k in folds_to_run
+                           for r in v2.prepare_fold(k)[0]})
+        w_sid = build_router_weights(all_sids)
+        print(f"  [routed] AdaptiveRouter 权重 {len(w_sid)} 会话", flush=True)
     for k in folds_to_run:
         cfg_name = args.cfg
         if not cfg_name:
             j = json.loads((config.OUTPUT_DIR / f"rank_events_v2_fold{k}_15m.json").read_text(encoding="utf-8"))
             cfg_name = j["best"]["name"]
-        m_off, m_leg = run_fold(k, cfg_name)
+        m_off, m_leg = run_fold(k, cfg_name, w_sid=w_sid)
         val_rows, gate_prob, clf_pri, true_sid, _, _ = v2.prepare_fold(k)
         mm = re.match(r"w([\d.]+)_t([\d.]+)_g([\d.]+)_p([\d.]+)_d(\d+)_k(\d+)", cfg_name)
         cfg = (float(mm[1]), float(mm[2]), float(mm[3]), float(mm[4]), int(mm[5]), int(mm[6]))
         def dec(post, dilate_s=None):
             return official_metrics(
-                sum((decode_official(r, gate_prob, cfg, clf_pri, post=post, dilate_s=dilate_s)
-                     for r in val_rows), []), true_sid)
+                sum((decode_official(r, gate_prob, cfg, clf_pri, post=post, dilate_s=dilate_s,
+                                     w_sid=w_sid) for r in val_rows), []), true_sid)
         m_raw = dec(False)
         m_dil = dec(True, 60.0)
         for tag, m in (("raw", m_raw), ("off", m_off), ("dil", m_dil), ("leg", m_leg)):

@@ -95,14 +95,17 @@ def postprocess_events(evs, merge_gap_s=POST_MERGE_GAP_S, min_dur_s=POST_MIN_DUR
     return out
 
 
-def decode_session(row, gate_prob, cfg, clf_pri):
+def decode_session(row, gate_prob, cfg, clf_pri, w_sid=None):
     """单会话解码 → (预测 [(sid,(s,e))...], 明细 [(sid,s,e,src,score)]).
 
     src: 'act'（活动池，score=活动融合分）| 'pri'（先验池，score=先验分）。
     先验池 top-2 非重叠窗（多餐会话的第 2 餐靠它）；修复：旧 0.85 旁路复用
-    argmax(sp) → 与 top-1 同窗，IoU 去重恒跳过（死代码）。"""
+    argmax(sp) → 与 top-1 同窗，IoU 去重恒跳过（死代码）。
+    w_sid：AdaptiveRouter 会话级权重（阶段三），None 用配置固定 w。"""
     sid, act, sa, va_scores, pri, sp = row
     w, tau, thr_g, thr_p, dil, K = cfg
+    if w_sid is not None:
+        w = w_sid.get(sid, w)
     act_out, pri_out = [], []
     fuse = None
     if gate_prob.get(sid, 1.0) >= thr_g and len(sa):
