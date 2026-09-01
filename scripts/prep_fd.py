@@ -17,6 +17,7 @@ FD 数据（Shimmer3 @64Hz，6ch [ax,ay,az,gx,gy,gz] 双腕）：
 """
 import argparse
 import json
+import os
 import pickle
 import sys
 import time
@@ -131,8 +132,22 @@ def channel_check(which="FD-I", sidx=0):
     return eps
 
 
+def _gyro_high_env(x, fs=FD_SRC, band=(4.0, 16.0), grid_ms=GRID_MS):
+    """原始 6ch（[ax,ay,az,gx,gy,gz] @64Hz）→ gyro 4-16Hz 能量包络（10Hz 网格）。
+    必须在原始采样率上滤波（与 build_candidate_windows 第 7 通道同构）。"""
+    t = np.arange(len(x)) / fs * 1000.0
+    grid = np.arange(0, t[-1], grid_ms)
+    if fs <= 2 * band[1]:
+        return np.zeros(len(grid), np.float32)
+    sos = scipy.signal.butter(4, band, btype="bandpass", fs=fs, output="sos")
+    gy = x[:, 3:].T                                   # (3, N) gyro
+    gh = scipy.signal.sosfiltfilt(sos, gy, axis=1)
+    env = np.sqrt((gh ** 2).sum(0))
+    return np.interp(grid, t, env).astype(np.float32)
+
+
 def build_windows(which, norm_stats, use_neg=True):
-    """构建 240s 候选窗（10Hz）：
+    """构建 240s 候选窗（10Hz，7 通道 = 6ch + gyro 4-16Hz 高频能量）：
     - 正样本：窗与 meal Episode 重叠 ≥50%（FD-I + FD-II）
     - 负样本：仅 FD-I（0=确认非餐），窗与所有 Episode 无重叠
     返回 (X, labels, metas)。"""
@@ -150,7 +165,12 @@ def build_windows(which, norm_stats, use_neg=True):
             eps = derive_episodes(y)       # 64Hz 样本索引
             if not eps and not use_neg:
                 continue
+            gh = _gyro_high_env(x)         # 第 7 通道（10Hz 网格）
             xr, yr, _ = _resample_10hz(x, y)
+            if len(gh) < len(xr):          # 网格对齐（尾段截齐）
+                xr = xr[:len(gh)]
+                gh = gh[:len(xr)]
+            xr = np.concatenate([xr, gh[:, None]], axis=1)   # (N, 7)
             n_w = (len(xr) - win_n) // step_n + 1
             for b in range(n_w):
                 w0 = b * step_n
@@ -182,14 +202,17 @@ def build_windows(which, norm_stats, use_neg=True):
 
 
 def compute_norm_stats():
-    """归一化统计量：FD-I 全量（双腕）6 通道 10Hz 信号的 mean/std。"""
+    """归一化统计量：FD-I 全量（双腕）7 通道（6ch + gyro 高频）10Hz 信号的 mean/std。"""
     XL, XR, _, _ = load_fd("FD-I")
-    sums, sumsq, n = np.zeros(6), np.zeros(6), 0
+    sums, sumsq, n = np.zeros(7), np.zeros(7), 0
     for x in list(XL) + list(XR):
         xr, _ = _resample_10hz(x)
-        sums += xr.sum(0)
-        sumsq += (xr ** 2).sum(0)
-        n += len(xr)
+        gh = _gyro_high_env(x)
+        m = min(len(xr), len(gh))
+        xr7 = np.concatenate([xr[:m], gh[:m, None]], axis=1)
+        sums += xr7.sum(0)
+        sumsq += (xr7 ** 2).sum(0)
+        n += len(xr7)
     mean = sums / n
     std = np.sqrt(sumsq / n - mean ** 2)
     return {"mean": mean, "std": std}
@@ -211,16 +234,17 @@ def main():
               flush=True)
         out_dir = config.CACHE_DIR / "fd_windows"
         out_dir.mkdir(parents=True, exist_ok=True)
-        # FD-I：正+负；FD-II：仅正
+        # FD-I：正+负；FD-II：仅正（7 通道：6ch + gyro 4-16Hz 高频）
         Xi, Yi, Mi = build_windows("FD-I", stats, use_neg=True)
         Xp, Yp, Mp = build_windows("FD-II", stats, use_neg=False)
         X = np.concatenate([Xi, Xp]); Y = np.concatenate([Yi, Yp]); M = Mi + Mp
         import json as _json
-        np.savez(out_dir / "fd_pretrain.npz",
+        name = os.environ.get("FD_CACHE", "fd_pretrain")
+        np.savez(out_dir / f"{name}.npz",
                  imu=X, label=Y,
                  meta=np.array([_json.dumps(m).encode() for m in M]),
                  norm_mean=stats["mean"], norm_std=stats["std"])
-        print(f"→ cache/fd_windows/fd_pretrain.npz: {len(X)} 窗（正 {Y.mean()*100:.1f}%）"
+        print(f"→ cache/fd_windows/{name}.npz: {len(X)} 窗（正 {Y.mean()*100:.1f}%）"
               f" 用时 {time.time()-t0:.0f}s", flush=True)
     else:
         print("用法：--check 校验 | --build 全量构建", flush=True)

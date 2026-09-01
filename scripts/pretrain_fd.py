@@ -18,6 +18,7 @@ import time
 from pathlib import Path
 
 import numpy as np
+import os
 import torch
 from torch.utils.data import Dataset, DataLoader
 
@@ -52,7 +53,8 @@ def main():
     ap.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     args = ap.parse_args()
 
-    p = config.CACHE_DIR / "fd_windows" / "fd_pretrain.npz"
+    cache_name = os.environ.get("FD_CACHE", "fd_pretrain")
+    p = config.CACHE_DIR / "fd_windows" / f"{cache_name}.npz"
     z = np.load(p, allow_pickle=True)
     imu = z["imu"].astype(np.float32)
     y = z["label"].astype(np.float32)
@@ -72,7 +74,7 @@ def main():
 
     torch.manual_seed(SEED); np.random.seed(SEED)
     dev = torch.device(args.device)
-    model = MMRanker(n_imu=6, use_ppg=False).to(dev)
+    model = MMRanker(n_imu=int(os.environ.get("BME_N_IMU", "6")), use_ppg=False).to(dev)
     n_param = sum(p.numel() for p in model.parameters() if p.requires_grad) / 1e3
     print(f"  MM-Ranker（无 PPG，n_imu=6）参数 {n_param:.0f}K", flush=True)
 
@@ -139,10 +141,11 @@ def main():
             encoder[k] = v
     out = config.CHECKPOINT_DIR
     out.mkdir(parents=True, exist_ok=True)
+    ckpt_name = os.environ.get("FD_CKPT", "fd_pretrained_s1")
     torch.save({"encoder": encoder,
                 "norm_mean": z["norm_mean"], "norm_std": z["norm_std"]},
-               out / "fd_pretrained_s1.pt")
-    print(f"→ checkpoints/fd_pretrained_s1.pt（encoder {sum(v.numel() for v in encoder.values())/1e3:.0f}K，"
+               out / f"{ckpt_name}.pt")
+    print(f"→ checkpoints/{ckpt_name}.pt（encoder {sum(v.numel() for v in encoder.values())/1e3:.0f}K，"
           f"valAUC {best_auc:.3f}）", flush=True)
 
 
