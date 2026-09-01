@@ -124,14 +124,26 @@ def main():
                      n_layers=int(os.environ.get("BME_N_LAYERS", "6")),
                      use_ppg=not args.no_ppg,
                      n_imu=int(imu.shape[2])).to(dev)   # 缓存通道数（6 或 7：gyro 高频通道）
-    if args.init_from:  # MO bite 预训练迁移：逐层拷贝 imu_in+tcn（BN 统计量一并）
-        sd = torch.load(args.init_from, map_location=dev)
+    norm_mean = norm_std = None
+    if args.init_from:  # 预训练迁移：支持 FD 格式（{encoder, norm_mean, norm_std}）与平铺格式
+        ckpt = torch.load(args.init_from, map_location=dev)
+        sd = ckpt["encoder"] if isinstance(ckpt, dict) and "encoder" in ckpt else ckpt
         loaded = 0
         with torch.no_grad():
             for k, v in model.state_dict().items():
                 if k in sd and sd[k].shape == v.shape:
                     v.copy_(sd[k]); loaded += 1
-        print(f"  MO 预训练迁移：{loaded} 层权重拷贝自 {args.init_from}", flush=True)
+        if isinstance(ckpt, dict) and "norm_mean" in ckpt:
+            norm_mean = np.asarray(ckpt["norm_mean"], np.float32)
+            norm_std = np.asarray(ckpt["norm_std"], np.float32)
+            print(f"  FD 预训练迁移：{loaded} 层权重 + z-score 归一化"
+                  f"（mean {norm_mean.round(2)} / std {norm_std.round(2)}）", flush=True)
+        else:
+            print(f"  预训练迁移：{loaded} 层权重拷贝自 {args.init_from}", flush=True)
+    if norm_mean is not None:  # FD 归一化统计量 → 本项目输入投影到 FD 尺度空间
+        n_ch = min(imu.shape[2], len(norm_mean))
+        imu[..., :n_ch] = (imu[..., :n_ch] - norm_mean[:n_ch]) / (norm_std[:n_ch] + 1e-6)
+        print(f"  输入 z-score 归一化（前 {n_ch} 通道）", flush=True)
     print(f"  MM-Ranker 参数 {count_params(model)/1e3:.0f}K（use_ppg={not args.no_ppg}）", flush=True)
 
     POS_REP = max(2, int((y[tr] == 0).sum() / max(y[tr].sum(), 1) / 4))  # 正:负 ≈ 1:4（1:8→1:4：提升正样本学习强度）

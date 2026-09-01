@@ -8,6 +8,7 @@ SENSOR_DIR = DATA_DIR / "t_zsstnnrj_sensororiginaldata_system附件0826_1857"
 CACHE_DIR = ROOT_DIR / "cache"
 OUTPUT_DIR = ROOT_DIR / "outputs"
 MODEL_DIR = ROOT_DIR / "models"
+CHECKPOINT_DIR = ROOT_DIR / "checkpoints"    # FD 预训练权重（阶段二）
 
 RANDOM_SEED = 42
 IMU_ROW_RATE = 105        # IMU 有效行率（行空间即时间网格, 行/s）
