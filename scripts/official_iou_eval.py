@@ -203,12 +203,15 @@ def run_fold(k, cfg_name, official_post=True, legacy_post=True, dilate_s=None, w
     return m_off, m_leg
 
 
-def build_router_weights(sids, fs_ref=105.0):
-    """会话级 AdaptiveRouter 权重（阶段三）：每会话 gyro 4-16Hz 能量 → α。
-    sids: 需要权重的会话列表。返回 {sid: alpha}。"""
+def build_router_weights(sids, fs_ref=105.0, hard=False, var_thresh=None):
+    """会话级路由权重（D3 重构）：每会话 gyro 4-16Hz 能量 → w。
+    hard=True：HardRouter（前 10min 方差阈值硬切换 w∈{0,1}，D3）；
+    hard=False：AdaptiveRouter（连续插值 α，阶段三旧版）。
+    返回 {sid: w}。"""
     from src.data.loader import load_session
-    from src.models.dualbranch import AdaptiveRouter, gyro_high_band_env
-    router = AdaptiveRouter()
+    from src.models.dualbranch import (AdaptiveRouter, HardRouter,
+                                       gyro_high_band_env)
+    router = HardRouter(var_thresh=var_thresh) if hard else AdaptiveRouter()
     out = {}
     for sid in sids:
         try:
@@ -217,6 +220,8 @@ def build_router_weights(sids, fs_ref=105.0):
             gh = gyro_high_band_env(s.gyro, fs)
             if len(gh) < 10:
                 out[sid] = 0.5
+            elif hard:
+                out[sid], _ = router.session_route(gh)
             else:
                 out[sid], _ = router.session_weight(gh)
         except Exception:
@@ -259,7 +264,11 @@ def main():
     ap.add_argument("--cfg", default=None, help="配置名 w.._t.._g.._p.._d.._k..（默认各折 best）")
     ap.add_argument("--all", action="store_true", help="5 折 best 配置全跑 + 汇总对比表")
     ap.add_argument("--routed", action="store_true",
-                    help="阶段三：解码层 w 用 AdaptiveRouter 会话级权重（4-16Hz 能量）")
+                    help="解码层 w 用会话级路由权重（默认硬路由 D3；--soft 用连续插值旧版）")
+    ap.add_argument("--soft", action="store_true",
+                    help="路由用 AdaptiveRouter 连续插值（旧版），默认 HardRouter 硬切换")
+    ap.add_argument("--var-thresh", type=float, default=None,
+                    help="HardRouter 前 10min 4-16Hz 能量方差阈值（默认数据驱动拟合）")
     ap.add_argument("--grid-post", action="store_true",
                     help="D1：官方后处理网格搜索 dilation[30,60,90,120] × fuse_gap[60,120,180]")
     args = ap.parse_args()
@@ -277,11 +286,13 @@ def main():
     print("-" * len(header))
     tot = {"raw": [], "off": [], "dil": [], "leg": []}
     w_sid = None
-    if args.routed:   # 阶段三：会话级自适应路由权重
+    if args.routed:   # D3：会话级路由权重（默认硬路由，--soft 连续插值旧版）
         all_sids = sorted({r[0] for k in folds_to_run
                            for r in v2.prepare_fold(k)[0]})
-        w_sid = build_router_weights(all_sids)
-        print(f"  [routed] AdaptiveRouter 权重 {len(w_sid)} 会话", flush=True)
+        w_sid = build_router_weights(all_sids, hard=not args.soft,
+                                     var_thresh=args.var_thresh)
+        kind = "HardRouter(硬切换)" if not args.soft else "AdaptiveRouter(连续)"
+        print(f"  [routed] {kind} 权重 {len(w_sid)} 会话", flush=True)
     for k in folds_to_run:
         cfg_name = args.cfg
         if not cfg_name:

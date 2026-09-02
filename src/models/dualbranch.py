@@ -44,6 +44,36 @@ class AdaptiveRouter:
         return alpha, {"p90": p90, "p50": p50, "peak_ratio": pr, "t": t}
 
 
+class HardRouter:
+    """硬路由（D3，用户指令）：废弃连续插值混合路由。
+
+    Session 前 10 分钟 IMU 4-16Hz 能量方差：
+      方差 ≥ 阈值 → 惯用手/动作丰富 → w=1（IMU 高频深度分支全权重）
+      方差 <  阈值 → 非惯用手/动作平缓 → w=0（弱信号上下文分支：
+      LGBM 活动分 + 会话门控 + 时间先验——目标数据 PPG HRV 不可行，设计文档 v1.1）
+    """
+
+    def __init__(self, var_thresh=1.0):
+        self.var_thresh = var_thresh
+
+    def session_route(self, gh_env, lookback_s=600):
+        """gh_env: 1s 网格 4-16Hz gyro 能量序列；返回 (w, var)。
+        前 10 分钟（若会话短于 lookback 用全部前段）。"""
+        seg = gh_env[:lookback_s]
+        if len(seg) < 30:
+            return 1.0, float(np.var(seg)) if len(seg) else 0.0
+        var = float(np.var(seg))
+        return (1.0 if var >= self.var_thresh else 0.0), var
+
+    def fit_thresh(self, gh_envs, sids_with_meals, pct=40.0):
+        """数据驱动阈值：用有餐会话（惯用手类）的方差分布低分位估计。"""
+        vars_ = [np.var(g[:600]) for g in gh_envs if len(g) > 30]
+        if not vars_:
+            return self.var_thresh
+        self.var_thresh = float(np.percentile(vars_, pct))
+        return self.var_thresh
+
+
 def gyro_high_band_env(gyro, fs, band=(4.0, 16.0), win_s=5.0, step_s=1.0):
     """原始 gyro (3, N) → 4-16Hz 带通能量包络（1s 网格，与 validate_baselines env 同构）。
 
