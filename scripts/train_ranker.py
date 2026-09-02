@@ -26,7 +26,7 @@ from torch.utils.data import Dataset, DataLoader
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import src.config as config
-from src.models.ranker import MMRanker, focal_loss, count_params
+from src.models.ranker import MMRanker, focal_loss, asymmetric_loss, count_params
 
 EPOCHS = 60
 BATCH = 64
@@ -81,6 +81,11 @@ def main():
                     help="MO bite 预训练权重（models/mo_bite.pt）：imu_in+tcn 特征提取器逐层拷贝（S1 迁移）")
     ap.add_argument("--freeze-first", type=int, default=0,
                     help="冻结 TCN 前 N 层（阶段三：FD 预训练特征保护；N=3 冻结 imu_in+前 3 层）")
+    ap.add_argument("--loss", choices=("focal", "asymmetric"), default="focal",
+                    help="D2：focal（α 可调）或 asymmetric（正 γ_pos=1 / 负 γ_neg=3）")
+    ap.add_argument("--session-norm", action="store_true",
+                    help="D2：会话级 Instance Normalization——按 sid 分组用会话内统计量"
+                         "归一化 IMU 通道（抹平受试者动作幅度基线差异）")
     args = ap.parse_args()
     fold_idx = args.fold
 
@@ -147,6 +152,15 @@ def main():
         n_ch = min(imu.shape[2], len(norm_mean))
         imu[..., :n_ch] = (imu[..., :n_ch] - norm_mean[:n_ch]) / (norm_std[:n_ch] + 1e-6)
         print(f"  输入 z-score 归一化（前 {n_ch} 通道）", flush=True)
+    if args.session_norm:  # D2：会话级 Instance Normalization（按 sid 分组，会话内统计）
+        sids = np.array([m["sid"] for m in META])
+        for sid in np.unique(sids):
+            mask = sids == sid
+            mu = imu[mask].mean((0, 1))
+            sd = imu[mask].std((0, 1)) + 1e-6
+            imu[mask] = (imu[mask] - mu) / sd
+        print(f"  会话级 Instance Normalization（{len(np.unique(sids))} 会话，逐会话通道统计）",
+              flush=True)
     if args.freeze_first > 0:   # 阶段三：冻结 TCN 前半（imu_in + 前 N 层），保护 FD 特征
         frozen = []
         for name, p in model.named_parameters():
@@ -194,7 +208,11 @@ def main():
         tot = 0.0; nb = 0
         for ii, pp, mm, mt, yy, ww in tr_loader:
             lg = model(ii.to(dev), pp.to(dev), mm.to(dev), mt.to(dev))
-            loss = focal_loss(lg, yy.to(dev), alpha=FOCAL_ALPHA, weights=ww.to(dev))
+            if args.loss == "asymmetric":   # D2：正 γ_pos=1 负 γ_neg=3（TP 提权）
+                loss = asymmetric_loss(lg, yy.to(dev), gamma_pos=1.0, gamma_neg=3.0,
+                                       alpha=FOCAL_ALPHA, weights=ww.to(dev))
+            else:
+                loss = focal_loss(lg, yy.to(dev), alpha=FOCAL_ALPHA, weights=ww.to(dev))
             opt.zero_grad(); loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
             opt.step()

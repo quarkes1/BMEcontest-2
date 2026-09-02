@@ -114,5 +114,22 @@ def focal_loss(logits, y, gamma=2.0, alpha=0.25, weights=None):
     return loss.mean()
 
 
+def asymmetric_loss(logits, y, gamma_pos=1.0, gamma_neg=3.0, alpha=0.75, weights=None):
+    """Asymmetric Loss（Ridnik et al. 2021，D2 深度优化）：正/负样本不同 γ 降权。
+
+    γ_pos 小 → 正样本（真餐候选）几乎不降权、梯度大 → 强制 TP 输出更高置信度
+    （解决真餐深度分偏低）；γ_neg 大 → 负样本重降权（难负样本挖掘自然完成）。
+    y: {0,1} float。"""
+    p = torch.sigmoid(logits)
+    ce = torch.nn.functional.binary_cross_entropy_with_logits(logits, y, reduction="none")
+    pt = p * y + (1 - p) * (1 - y)
+    gamma = gamma_pos * y + gamma_neg * (1 - y)        # 逐样本 γ（正 1.0 / 负 3.0）
+    w = alpha * y + (1 - alpha) * (1 - y)              # α 平衡（正样本提权）
+    loss = w * (1 - pt) ** gamma * ce
+    if weights is not None:
+        loss = loss * weights
+    return loss.mean()
+
+
 def count_params(m):
     return sum(p.numel() for p in m.parameters() if p.requires_grad)

@@ -140,11 +140,13 @@ def threshold_episodes(grid, series, tau):
     return evs
 
 
-def decode_official(row, gate_prob, cfg, clf_pri, post=True, dilate_s=None, w_sid=None):
+def decode_official(row, gate_prob, cfg, clf_pri, post=True, dilate_s=None, w_sid=None,
+                    fuse_gap_s=FUSE_GAP_S):
     """官方后处理解码（v1.1 Pipeline 锁定）：
-    候选概率 → 1Hz 连续时间轴 → 60s 平滑 → 阈值截断 → 180s 融合 → 120s 过滤
+    候选概率 → 1Hz 连续时间轴 → 60s 平滑 → 阈值截断 → fuse_gap 融合 → 120s 过滤
     →（可选）边界膨胀。post=False 仅原始选窗（跳过平滑，直接阈值选窗）。
-    w_sid：会话级自适应权重（阶段三 AdaptiveRouter），None 用配置固定 w。"""
+    w_sid：会话级自适应权重（阶段三 AdaptiveRouter），None 用配置固定 w。
+    fuse_gap_s：Episode Fusion 间隔（D1 网格搜索参数，默认官方 180s）。"""
     sid, act, sa, va_scores, pri, sp = row
     w, tau, thr_g, thr_p, dil, K = cfg
     if w_sid is not None:
@@ -159,7 +161,7 @@ def decode_official(row, gate_prob, cfg, clf_pri, post=True, dilate_s=None, w_si
             grid, series = map_to_1hz_timeseries(act, fuse, t0, t_end)
             series = smooth_series(series)
             evs = threshold_episodes(grid, series, tau)
-            evs = min_dur_filter(fuse_events(evs))
+            evs = min_dur_filter(fuse_events(evs, gap_s=fuse_gap_s))
             if dilate_s:
                 evs = [(max(0, int(s - dilate_s * 1000)), int(e + dilate_s * 1000)) for s, e in evs]
             out = evs
@@ -222,6 +224,35 @@ def build_router_weights(sids, fs_ref=105.0):
     return out
 
 
+def grid_postprocess(folds_to_run, w_sid=None):
+    """D1：官方后处理网格搜索（dilation × fuse_gap），FD canonical 分数，全局官方 F1。
+    返回按均值排序的 (mean_f1, dil, gap, per_fold_f1s)。"""
+    DILS = (30.0, 60.0, 90.0, 120.0)
+    GAPS = (60.0, 120.0, 180.0)
+    results = []
+    for gap in GAPS:
+        for dil in DILS:
+            f1s = []
+            for k in folds_to_run:
+                j = json.loads((config.OUTPUT_DIR / f"rank_events_v2_fold{k}_15m.json").read_text(encoding="utf-8"))
+                cfg_name = j["best"]["name"]
+                val_rows, gate_prob, clf_pri, true_sid, _, _ = v2.prepare_fold(k)
+                mm = re.match(r"w([\d.]+)_t([\d.]+)_g([\d.]+)_p([\d.]+)_d(\d+)_k(\d+)", cfg_name)
+                cfg = (float(mm[1]), float(mm[2]), float(mm[3]), float(mm[4]), int(mm[5]), int(mm[6]))
+                m = official_metrics(
+                    sum((decode_official(r, gate_prob, cfg, clf_pri, post=True, dilate_s=dil,
+                                         w_sid=w_sid, fuse_gap_s=gap) for r in val_rows), []),
+                    true_sid)
+                f1s.append(m["f1"])
+            results.append((float(np.mean(f1s)), dil, gap, f1s))
+            print(f"  dil={dil:.0f}s gap={gap:.0f}s → 均值 F1={np.mean(f1s):.3f}"
+                  f"（{'/'.join(f'{x:.3f}' for x in f1s)}）", flush=True)
+    results.sort(key=lambda t: -t[0])
+    print(f"\n★ 最优: dilation={results[0][1]:.0f}s fuse_gap={results[0][2]:.0f}s"
+          f" → 全局 F1={results[0][0]:.3f}", flush=True)
+    return results
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--fold", type=int, default=None)
@@ -229,7 +260,12 @@ def main():
     ap.add_argument("--all", action="store_true", help="5 折 best 配置全跑 + 汇总对比表")
     ap.add_argument("--routed", action="store_true",
                     help="阶段三：解码层 w 用 AdaptiveRouter 会话级权重（4-16Hz 能量）")
+    ap.add_argument("--grid-post", action="store_true",
+                    help="D1：官方后处理网格搜索 dilation[30,60,90,120] × fuse_gap[60,120,180]")
     args = ap.parse_args()
+    if args.grid_post:
+        grid_postprocess(range(5))
+        return
 
     if not args.all and args.fold is None:
         print("需 --fold k [--cfg name] 或 --all"); return
