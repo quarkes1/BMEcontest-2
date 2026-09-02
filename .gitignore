@@ -5,7 +5,6 @@ Data/
 __pycache__/
 cache/
 /models/
-outputs/
 refs/
 FDdatasets/
 checkpoints/
