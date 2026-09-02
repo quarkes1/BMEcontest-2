@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """MM-Ranker 训练：fold{k} 候选窗口 → Focal Loss + 硬负样本挖掘 → 模型 + val 分数。
 
-训练（方向 2/4）：
+训练目标：
 - Focal Loss（γ=2, α=0.25）替代 BCE，处理 ~1:12 候选类不平衡
 - 硬负样本挖掘：每 epoch 末对训练集全量前向，取"非进食但被高置信度判正"的负样本
   （活动池负样本天然是刷牙/摸脸/托腮/游戏类手部活跃非餐）→ 下 epoch 提权 ×5
@@ -76,16 +76,16 @@ def main():
     ap.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     ap.add_argument("--no-ppg", action="store_true", help="PPG 分支消融（纯 IMU）")
     ap.add_argument("--all-train", action="store_true",
-                    help="跨折训练扩充：训练集 = 全部会话 - val(k)（受试者级划分无泄漏，正样本 ×4）")
+                    help="跨折训练扩充：训练集 = 全部会话 - 本折验证会话（受试者级划分无泄漏）")
     ap.add_argument("--init-from", default=None,
                     help="MO bite 预训练权重（models/mo_bite.pt）：imu_in+tcn 特征提取器逐层拷贝（S1 迁移）")
     ap.add_argument("--freeze-first", type=int, default=0,
-                    help="冻结 TCN 前 N 层（阶段三：FD 预训练特征保护；N=3 冻结 imu_in+前 3 层）")
+                    help="冻结 TCN 前 N 层（保护预训练特征；N=3 冻结 imu_in+前 3 层）")
     ap.add_argument("--loss", choices=("focal", "asymmetric"), default="focal",
-                    help="D2：focal（α 可调）或 asymmetric（正 γ_pos=1 / 负 γ_neg=3）")
+                    help="focal（α 可调）或 asymmetric（正 γ_pos=1 / 负 γ_neg=3）")
     ap.add_argument("--session-norm", action="store_true",
-                    help="D2：会话级 Instance Normalization——按 sid 分组用会话内统计量"
-                         "归一化 IMU 通道（抹平受试者动作幅度基线差异）")
+                    help="会话级 Instance Normalization——按会话统计量归一化 IMU"
+                         "通道（抹平受试者动作幅度基线差异）")
     args = ap.parse_args()
     fold_idx = args.fold
 
@@ -152,7 +152,7 @@ def main():
         n_ch = min(imu.shape[2], len(norm_mean))
         imu[..., :n_ch] = (imu[..., :n_ch] - norm_mean[:n_ch]) / (norm_std[:n_ch] + 1e-6)
         print(f"  输入 z-score 归一化（前 {n_ch} 通道）", flush=True)
-    if args.session_norm:  # D2：会话级 Instance Normalization（按 sid 分组，会话内统计）
+    if args.session_norm:  # 会话级 Instance Normalization（按会话分组，会话内通道统计）
         sids = np.array([m["sid"] for m in META])
         for sid in np.unique(sids):
             mask = sids == sid
@@ -161,7 +161,7 @@ def main():
             imu[mask] = (imu[mask] - mu) / sd
         print(f"  会话级 Instance Normalization（{len(np.unique(sids))} 会话，逐会话通道统计）",
               flush=True)
-    if args.freeze_first > 0:   # 阶段三：冻结 TCN 前半（imu_in + 前 N 层），保护 FD 特征
+    if args.freeze_first > 0:   # 冻结 TCN 前半（imu_in + 前 N 层），保护预训练特征
         frozen = []
         for name, p in model.named_parameters():
             if name.startswith("imu_in.") or re.match(rf"tcn\.([0-{args.freeze_first - 1}])\.", name):
@@ -208,7 +208,7 @@ def main():
         tot = 0.0; nb = 0
         for ii, pp, mm, mt, yy, ww in tr_loader:
             lg = model(ii.to(dev), pp.to(dev), mm.to(dev), mt.to(dev))
-            if args.loss == "asymmetric":   # D2：正 γ_pos=1 负 γ_neg=3（TP 提权）
+            if args.loss == "asymmetric":   # 非对称损失：正样本几乎不降权（提升真餐置信度）
                 loss = asymmetric_loss(lg, yy.to(dev), gamma_pos=1.0, gamma_neg=3.0,
                                        alpha=FOCAL_ALPHA, weights=ww.to(dev))
             else:

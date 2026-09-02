@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
-"""rank_events v2：多模态分层融合解码（方向 1 落地 + 方向 3/4）。
+"""融合解码与事件评估主流程（rank_events 的完整流水线）。
 
-对比 v1（rank_events.py）的变更：
-1. 活动池排序 = LightGBM 14 特征分数 ⊕ MM-Ranker 深度分数（加权融合，w 网格搜索）
-   ——深度模型是"IMU 手势提案 → PPG+IMU 联合二次校验"分层中的细粒度校验器
-2. 解码：自动阈值搜索（方向 4）——融合分数 τ × 权重 w × 会话门控 g × 先验阈值 thr_p
-   × 膨胀 dilation 网格，validation 按受试者级 F1 选最优，替代手工 g×topk×p
-3. 事件级后处理（方向 3）：活动事件合并（gap<120s）→ 过滤 <2min 孤立段 → 边界膨胀
-4. 先验池通道不变（时间先验，无信号窗口 → 不做深度校验）；w=0 网格可复现 v1 的
-   top-k 解码（τ 代替 top-k 语义）
+流程：
+1. 活动池排序分数 = LightGBM 候选特征分数 ⊕ MM-Ranker 深度分数（加权融合）；
+2. 解码参数（融合权重 w、分数阈值 τ、会话门控阈值 g、先验阈值、边界膨胀、事件
+   数上限）在验证集上以受试者级 F1 网格搜索选取，替代手工规则；
+3. 事件级形态学后处理：相邻事件合并（间隔 <120s）→ 过滤 <2min 孤立段 →
+   边界膨胀；先验池事件为窄时间窗，不参与合并；
+4. 先验池按逐窗阈值输出至多 2 个与活动事件不重叠的事件（覆盖多餐会话）。
+
+prepare_fold()：加载缓存、训练会话门控与两池排序器、对齐深度分数，供评估脚本
+（official_iou_eval.py）复用同一打分函数，避免评估侧复刻引入偏差。
 
 运行：source activate bme && python scripts/rank_events_v2.py --fold 0 [--prior-grid 15m|60m]
 产物：outputs/rank_events_v2_fold{k}_{grid}.json
@@ -33,7 +35,7 @@ import rank_events as v1
 OUT_CACHE = config.CACHE_DIR / os.environ.get("BME_ENV_CACHE", "validate_baselines")
 IOU_LABEL = 0.25
 POST_MERGE_GAP_S = 120.0    # 事件合并 gap（<2min 断开视为同一餐）
-POST_MIN_DUR_S = 120.0      # 过滤 <2min 孤立段（方向 3）
+POST_MIN_DUR_S = 120.0      # 过滤 <2min 孤立段
 PRIOR_GRID_S = 900          # 先验网格步长 15min
 PRIOR_HALF_W_S = 450        # 先验窗半宽 15min（31% 餐 <10min，40min 窗 IoU=D/40<0.25 数学不可达
                             # → 15min 窗覆盖 88% vs 49%；覆盖分析 scripts/analysis_prior_grid.py）
@@ -48,9 +50,9 @@ TOPK = (0, 1, 2, 3, 4)                # 会话级最多事件数（0=不限；�
 def load_dl_scores(k, norm="none"):
     """读 MM-Ranker val 候选分数 → {(sid, s, e): score}。
 
-    norm='minmax'：用本折全部 val 候选的 5-95 分位做 min-max 归一（config 选择
-    本就在 val 上进行，无新增泄漏）。目的：消除逐折深度分尺度漂移——fold1 负样本
-    中位 0.151 vs fold0 0.050，固定 w 融合在逐折间含义不一致；归一化使 w 可比。
+    norm='minmax'：以本折全部验证候选的 5-95 分位做 min-max 归一（配置选择本身
+    在验证集上进行，不引入额外泄漏）。目的：消除不同折之间深度分数的尺度漂移
+    （各折负样本中位数差异可达 3 倍），使融合权重跨折可比。
     """
     p = config.OUTPUT_DIR / f"mm_ranker_fold{k}_val.npz"
     if not p.exists():
@@ -67,7 +69,7 @@ def load_dl_scores(k, norm="none"):
 
 def postprocess_events_prov(evs, idxs=None, merge_gap_s=POST_MERGE_GAP_S,
                             min_dur_s=POST_MIN_DUR_S, dilation_s=60.0):
-    """事件级形态学后处理（方向 3）：按起始排序合并相邻 → 过滤孤立短段 → 边界膨胀。
+    """事件级形态学后处理：按起始排序合并相邻 → 过滤孤立短段 → 边界膨胀。
     返回 (事件, 每事件对应的原始索引列表)；idxs=None 时事件原样编号。"""
     if not evs:
         return [], []
@@ -101,7 +103,7 @@ def decode_session(row, gate_prob, cfg, clf_pri, w_sid=None):
     src: 'act'（活动池，score=活动融合分）| 'pri'（先验池，score=先验分）。
     先验池 top-2 非重叠窗（多餐会话的第 2 餐靠它）；修复：旧 0.85 旁路复用
     argmax(sp) → 与 top-1 同窗，IoU 去重恒跳过（死代码）。
-    w_sid：AdaptiveRouter 会话级权重（阶段三），None 用配置固定 w。"""
+    w_sid：会话级自适应路由权重，None 用配置固定 w。"""
     sid, act, sa, va_scores, pri, sp = row
     w, tau, thr_g, thr_p, dil, K = cfg
     if w_sid is not None:
@@ -128,7 +130,7 @@ def decode_session(row, gate_prob, cfg, clf_pri, w_sid=None):
             sel = sel[np.array(picked)]
         act_out = [(sid, (act[j][0], act[j][1])) for j in sel]
     # 先验通道：门控与活动池同权（低门控会话不发先验事件，避免无餐会话 FP）
-    # 逐窗阈值：每个被选先验窗都须 sp ≥ thr_p（旧旁路只查 sp.max()，第 2 窗可低至 0.006）
+    # 逐窗阈值：每个被选先验窗都须 sp ≥ thr_p（旧旁路只查 sp.max，第 2 窗可低至 0.006）
     if gate_prob.get(sid, 1.0) >= thr_g and clf_pri is not None and len(sp) and sp.max() >= thr_p:
         act_evs = [(s0, e0) for _, (s0, e0) in act_out]
         pri_evs = [e for _, e in pri_out]  # pri_out 是 (sid,(s,e)) 元组
@@ -156,9 +158,9 @@ def decode_session(row, gate_prob, cfg, clf_pri, w_sid=None):
 
 
 def prepare_fold(k, prior_grid="15m", norm_score="none"):
-    """加载缓存 + 会话门控 + 两池 LGBM + 深度分对齐（official_iou_eval 复用同一函数，
-    避免复刻打分引入泄漏，E-20260831-01 教训）。
+    """加载缓存、训练会话门控与两池排序器、对齐深度分数。
 
+    评估脚本（official_iou_eval.py）复用本函数以保证打分口径一致。
     返回 (val_rows, gate_prob, clf_pri, true_sid, subject_of)。
     """
     grid_s, half_w_s = PRIOR_GRID_S, PRIOR_HALF_W_S

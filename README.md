@@ -42,14 +42,15 @@
 | 组件 | 位置 | 说明 |
 |---|---|---|
 | MM-Ranker | src/models/ranker.py | IMU TCN 分支（6 层膨胀因果卷积残差栈）+ Bi-GRU 融合 + meta 特征（时长/时刻先验/门控概率）→ 候选深度分；Focal Loss + 硬负样本挖掘 |
-| FD 预训练 | scripts/prep_fd.py, pretrain_fd.py | FD-I/FD-II（KU Leuven 61 人全天双腕 IMU 64Hz）→ Episode 级候选分类预训练（任务对齐 + z-score 归一化，valAUC 0.982）→ checkpoints/fd_pretrained_s1.pt |
-| 双分支路由 | src/models/dualbranch.py | AdaptiveRouter（连续插值）+ HardRouter（前 10min 方差硬切换）；实测单侧佩戴下均负向，代码保留供测试集含非惯用手时启用 |
+| FD 预训练 | scripts/prep_fd.py, pretrain_fd.py | FD-I/FD-II（KU Leuven 61 人全天双腕 IMU 64Hz）→ 餐次级候选分类预训练（任务对齐 + z-score 归一化，验证集 AUC 0.982）→ checkpoints/fd_pretrained_s1.pt |
+| 双分支路由 | src/models/dualbranch.py | AdaptiveRouter（连续插值）+ HardRouter（前 10min 方差硬切换）；单侧佩戴验证下无增益（见 §6.2），保留供含非惯用手佩戴的测试场景启用 |
 | 官方评估/后处理 | scripts/official_iou_eval.py | 全局 IoU≥0.25 评估 + 官方流水线（1Hz 映射→60s 平滑→阈值→180s 融合→120s 过滤→dilation 网格寻优 dil=120s） |
 
-**FD 预训练成功三要素**（对比 MO bite 级预训练负向的教训）：
-①Episode 级任务对齐（bite 级任务与餐次级排序不迁移）；②FD-I 全天干净负样本
-（0=确认非餐；FD-II 的 0=未标注不可用）；③z-score 归一化（FD acc 为 m/s² 物理单位
-vs 本项目 raw ADC，尺度差 ~385 倍——通道校验流程 scripts/prep_fd.py --check 抓出）。
+**FD 预训练有效的三个设计要点**（对照实验表明咬合级标注的预训练与餐次任务不匹配）：
+①预训练任务与目标任务一致（餐次级候选分类，而非咬合级）；②负样本取 FD-I 全天
+确认非餐时段（FD-II 仅在餐时段标注，其"0"不代表非餐，不可作负样本）；③z-score
+尺度对齐（FD 加速度为 m/s² 物理单位，本项目为原始 ADC，幅值差约 385 倍——
+接入前经 scripts/prep_fd.py --check 通道校验确认）。
 
 ## 4. 主要算法程序
 
@@ -62,7 +63,7 @@ vs 本项目 raw ADC，尺度差 ~385 倍——通道校验流程 scripts/prep_f
 | scripts/official_iou_eval.py | 官方评估 + 后处理 + 对比表（--all / --grid-post / --routed） |
 | scripts/prep_fd.py / pretrain_fd.py | FD 通道校验 + 缓存构建 / Episode 级预训练 |
 | scripts/analyze_label_offset.py | GT 标签时间偏移分析（详见 §6） |
-| scripts/run_fd_finetune.sh / run_7ch_chain.sh | 全链实验（FD 微调 / 7ch 通道） |
+| scripts/run_fd_finetune.sh | 一键实验链：FD 预训练微调 5 折 → 解码 → 官方评估对比 |
 
 运行流程见 §复现。
 
@@ -70,11 +71,11 @@ vs 本项目 raw ADC，尺度差 ~385 倍——通道校验流程 scripts/prep_f
 
 **最终成绩（全局官方口径，5 折均值）**：
 
-| 系统 | 现有管线 F1 | 官方后处理 F1 |
+| 系统 | 现有后处理 F1 | 官方后处理 F1 |
 |---|---|---|
-| ens3 基线（无预训练） | 0.298 | 0.159 |
-| **FD 预训练微调（最终提交）** | **0.333** | 0.210（网格最优 dil=120/gap=180 → **0.240**） |
-| FD + 7ch（gyro 高频） | 0.325 | —（负向，不采用） |
+| 无预训练基线 | 0.298 | 0.159 |
+| **FD 预训练微调（最终提交）** | **0.333** | 0.210（膨胀 120s/融合 180s 寻优后 → **0.240**） |
+| FD + gyro 高频通道（对照） | 0.325 | —（无增益，未采用） |
 
 逐折（FD 预训练，现有管线）：**0.367 / 0.258 / 0.364 / 0.229 / 0.447**（fold4 单折最高）。
 提交产物：outputs/archive_final_20260902/（FD 权重 + 5 折分数 + best 配置，15MB）。
@@ -85,19 +86,20 @@ vs 本项目 raw ADC，尺度差 ~385 倍——通道校验流程 scripts/prep_f
 
 | 实验方向 | 结果 | 结论 |
 |---|---|---|
-| FD Episode 级预训练（M2） | 0.298→0.333（+0.035，5 折全正向，fold1 +0.071） | **核心增益**：任务对齐+全天负样本+z-score |
-| 官方后处理网格（D1） | 0.210→0.240（dil=120/gap=180） | dilation 单调增益；仍低于现有管线 |
-| 7ch gyro 高频通道（M3） | 0.333→0.325（-0.008） | FD 已学到等价特征，通道冗余 |
-| AdaptiveRouter 连续路由（M3） | fold0 -0.059 | FD 深度分主导时降权有害 |
-| 冻结 TCN 前 3 层微调（M3） | fold0 -0.034 | 全量微调最优 |
-| 硬路由 HardRouter（D3） | fold1 0.258→0.171（-0.087） | 会话前 10min 静置致方差误判 |
-| 损失提权 α0.75 / Asymmetric（D2） | fold1 -0.014 / -0.016 | valAUC 提升与事件级脱节 |
-| Session IN（D2） | fold1 -0.025 | 破坏 FD 全局 z-score 分布 |
-| PPG 分支（前期） | -0.060 负向 | 有效采样 2Hz，HR/HRV 不可行 |
-| MO bite 预训练（前期） | -0.008 负向 | bite→餐次任务鸿沟 |
+| FD 餐次级预训练 | 0.298→0.333（+0.035，5 折全正向，fold1 +0.071） | **核心增益**：任务对齐+全天负样本+尺度归一 |
+| 官方后处理膨胀寻优 | 0.210→0.240（膨胀 120s/融合 180s） | 膨胀单调增益；仍低于现有后处理 |
+| gyro 4-16Hz 高频输入通道 | 0.333→0.325（-0.008） | 预训练已含该频段判别，通道冗余 |
+| 自适应连续路由 | fold0 -0.059 | 深度分为主导信号时降权有害 |
+| 冻结 TCN 前 3 层微调 | fold0 -0.034 | 全量微调最优 |
+| 硬路由（前 10min 方差切换） | fold1 0.258→0.171（-0.087） | 会话前段多为静置，方差误判 |
+| 损失提权（α0.75 / 非对称损失） | fold1 -0.014 / -0.016 | 置信度分布变化未转化为事件级增益 |
+| 会话级 Instance Normalization | fold1 -0.025 | 破坏预训练期望的全局尺度 |
+| PPG 分支（对照） | -0.060 无增益 | 有效采样 2Hz，HR/HRV 不可行 |
+| 咬合级预训练（对照） | -0.008 无增益 | 咬合级与餐次任务不匹配 |
 
-**负向实验的共性机理**：FD 深度分是主导信号（best 配置 w→1.0），任何降权/分布破坏
-（路由/损失调整/Session IN）都有害；排序头打分低根因是数据属性而非训练目标。
+**无增益实验的共性机理**：FD 深度分是主导信号（最优配置中其权重趋近 1），任何
+降权或输入分布改变（路由/损失调整/Instance Normalization）都会削弱它；排序头对
+真餐打分偏低的根因是数据属性（标注噪声），而非训练目标或特征归一化可解。
 
 ### 6.2 标签时间偏移数学证明（决定 F1 上限的关键发现）
 

@@ -53,7 +53,7 @@ def _density_one(args):
             return ("short", sid)
         n_w = (n - win) // st + 1
         envs = np.empty(n_w, dtype=np.float32)
-        zcrs = np.empty(n_w, dtype=np.float32)   # 0.1-0.5Hz 带通过零率（任务 #49：低频规律振荡信号）
+        zcrs = np.empty(n_w, dtype=np.float32)   # 0.1-0.5Hz 带通过零率（低频规律振荡度量）
         sos = scipy.signal.butter(4, [0.5, 2.0], btype="bandpass", fs=fs, output="sos")
         sos_z = scipy.signal.butter(4, [0.1, 0.5], btype="bandpass", fs=fs, output="sos")
         for b0 in range(0, n_w, 4000):

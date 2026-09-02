@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
-"""MM-Ranker：多模态分层候选排序头（L2 细粒度二次校验分类器）。
+"""MM-Ranker：候选窗口深度排序头。
 
-架构（方向 1 分层融合 + 方向 2 TCN）：
-- IMU 分支（高频手势）：6ch @10Hz → Conv1 → 膨胀 TCN 残差栈 → h_imu (T=2400, d)
-  → 5s 块平均池 → (48, d)  —— 粗粒度动作节奏特征
-- PPG 分支（低频生理）：22ch×3 块统计 (48, 66) → MLP → h_ppg (48, d)
-  —— 心率/灌注调制；调度采样天然由块统计吸收
-- MA 置信度掩码（方向 1）：acc 能量块统计 (48, 2) → MLP → sigmoid → gate (48, 1)
-  —— 运动伪影严重时 PPG 特征降权（可学习，等效软掩码）
-- 融合：concat(h_imu, h_ppg × gate) → (48, 2d) → Bi-GRU → 全局池(mean+max) → MLP → logit
+架构：
+- IMU 分支（动作特征）：6 通道 @10Hz → 卷积 → 膨胀 TCN 残差栈 →
+  5s 块平均池化（2400 样本 → 48 块）——粗粒度动作节奏特征
+- PPG 分支（生理特征，默认关闭）：22 通道 × 3 项块统计 (48, 66) → MLP
+  ——低采样率调度采样由块统计吸收
+- MA 置信度掩码：加速度能量块统计 → sigmoid 门控——运动伪影严重时对
+  PPG 特征降权（可学习软掩码）
+- 融合：concat(IMU 特征, PPG 特征 × 掩码) → 双向 GRU → 全局池化(均值+最大)
+  ⊕ 元特征（候选时长/时刻先验/会话门控概率）→ MLP → 置信度 logit
 
-训练配套（train_ranker.py）：Focal Loss（γ=2）+ 硬负样本挖掘（每 epoch 前向取
-top-k 高置信度误判负样本 → 下 epoch 提权）+ 强正则（dropout/weight decay/早停）。
-输入来自 build_candidate_windows.py 缓存（imu/ppg/ma/meta）。
+训练配套（train_ranker.py）：Focal Loss（γ=2）+ 硬负样本挖掘（每轮对高置信
+误判负样本提权）+ 早停与正则化。输入来自 build_candidate_windows.py 缓存。
 """
 import math
 
@@ -65,10 +65,10 @@ class MMRanker(nn.Module):
             nn.Linear(2, 16), nn.ReLU(), nn.Linear(16, 1), nn.Sigmoid())
         # ---- 融合 ----
         self.fuse = nn.GRU(2 * d_model, d_model, batch_first=True, bidirectional=True)
-        # 元特征（候选时长/时刻先验/会话门控）——长候选 FP 的关键判别（v1 LightGBM 靠 dur）。
-        # gate_prob：曾因 build 脚本只对 val 打分导致训练恒 0.5、推理真实值的分布不一致而移除
-        # （该消融 +0.059）；2026-08-30 修复 build 脚本对全体会话打分后重新加入——门控是
-        # 全场最有判别力的信号（AUC≈0.88），低门控会话的候选应被排序头压制。
+        # 元特征（候选时长/时刻先验/会话门控概率）——长候选误报的关键判别信号。
+        # 会话门控概率是判别力最强的信号之一（会话级 AUC≈0.88）：低门控会话的
+        # 候选应被排序头压制。注意训练/推理两侧须使用同一套门控打分（对全体
+        # 会话统一打分），否则分布不一致会损害排序头。
         self.meta_in = nn.Sequential(
             nn.Linear(3, 32), nn.ReLU(), nn.Dropout(dropout))
         self.head = nn.Sequential(
@@ -103,7 +103,7 @@ class MMRanker(nn.Module):
 
 
 def focal_loss(logits, y, gamma=2.0, alpha=0.25, weights=None):
-    """Focal Loss（方向 4）：类别不平衡直接优化。y: {0,1} float。"""
+    """Focal Loss：类别不平衡下的加权损失。y: {0,1} float。"""
     p = torch.sigmoid(logits)
     ce = torch.nn.functional.binary_cross_entropy_with_logits(logits, y, reduction="none")
     pt = p * y + (1 - p) * (1 - y)
@@ -115,7 +115,7 @@ def focal_loss(logits, y, gamma=2.0, alpha=0.25, weights=None):
 
 
 def asymmetric_loss(logits, y, gamma_pos=1.0, gamma_neg=3.0, alpha=0.75, weights=None):
-    """Asymmetric Loss（Ridnik et al. 2021，D2 深度优化）：正/负样本不同 γ 降权。
+    """Asymmetric Loss（Ridnik et al. 2021）：正/负样本不同 γ 降权。
 
     γ_pos 小 → 正样本（真餐候选）几乎不降权、梯度大 → 强制 TP 输出更高置信度
     （解决真餐深度分偏低）；γ_neg 大 → 负样本重降权（难负样本挖掘自然完成）。

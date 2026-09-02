@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""官方事件级（Episode-level）评估与 IoU 后处理模块（阶段一，Resources/试题.txt 口径）。
+"""官方事件级（Episode-level）评估与形态学后处理模块（评估口径依据 Resources/试题.txt）。
 
 官方指标（全局聚合，非按受试者）：
   IoU = Intersection / Union ≥ 0.25 → TP（贪心一对一匹配）
@@ -11,7 +11,7 @@ IoU 专属后处理流水线（官方要求）：
   2) Episode Fusion：时间间隔 < 180s 的相邻预测框合并
   3) Min Duration Filtering：总时长 < 120s 的孤立框过滤
 
-运行（复用 rank_events_v2.prepare_fold 打分，无复刻泄漏）：
+运行（复用 rank_events_v2.prepare_fold 打分，保证评估与训练打分口径一致）：
   python scripts/official_iou_eval.py --fold 0 --cfg w0.7_t0.325_g0.3_p0.5_d120_k2
   python scripts/official_iou_eval.py --all        # 5 折 best 配置全跑 + 汇总对比表
 """
@@ -145,8 +145,8 @@ def decode_official(row, gate_prob, cfg, clf_pri, post=True, dilate_s=None, w_si
     """官方后处理解码（v1.1 Pipeline 锁定）：
     候选概率 → 1Hz 连续时间轴 → 60s 平滑 → 阈值截断 → fuse_gap 融合 → 120s 过滤
     →（可选）边界膨胀。post=False 仅原始选窗（跳过平滑，直接阈值选窗）。
-    w_sid：会话级自适应权重（阶段三 AdaptiveRouter），None 用配置固定 w。
-    fuse_gap_s：Episode Fusion 间隔（D1 网格搜索参数，默认官方 180s）。"""
+    w_sid：会话级自适应路由权重，None 用配置固定 w。
+    fuse_gap_s：Episode Fusion 合并间隔（默认 180s）。"""
     sid, act, sa, va_scores, pri, sp = row
     w, tau, thr_g, thr_p, dil, K = cfg
     if w_sid is not None:
@@ -184,7 +184,7 @@ def decode_official(row, gate_prob, cfg, clf_pri, post=True, dilate_s=None, w_si
 
 def run_fold(k, cfg_name, official_post=True, legacy_post=True, dilate_s=None, w_sid=None):
     """对 fold k 指定配置：同时输出官方后处理与现有管线（legacy）的事件级 F1。
-    w_sid：AdaptiveRouter 会话级权重（阶段三）。"""
+    w_sid：会话级自适应路由权重。"""
     val_rows, gate_prob, clf_pri, true_sid, _, _ = v2.prepare_fold(k)
     mm = re.match(r"w([\d.]+)_t([\d.]+)_g([\d.]+)_p([\d.]+)_d(\d+)_k(\d+)", cfg_name)
     cfg = (float(mm[1]), float(mm[2]), float(mm[3]), float(mm[4]), int(mm[5]), int(mm[6]))
@@ -204,9 +204,9 @@ def run_fold(k, cfg_name, official_post=True, legacy_post=True, dilate_s=None, w
 
 
 def build_router_weights(sids, fs_ref=105.0, hard=False, var_thresh=None):
-    """会话级路由权重（D3 重构）：每会话 gyro 4-16Hz 能量 → w。
-    hard=True：HardRouter（前 10min 方差阈值硬切换 w∈{0,1}，D3）；
-    hard=False：AdaptiveRouter（连续插值 α，阶段三旧版）。
+    """会话级路由权重：每会话 gyro 4-16Hz 能量 → w。
+    hard=True：HardRouter（前 10min 方差阈值硬切换 w∈{0,1}）；
+    hard=False：AdaptiveRouter（连续插值 α）。
     返回 {sid: w}。"""
     from src.data.loader import load_session
     from src.models.dualbranch import (AdaptiveRouter, HardRouter,
@@ -230,7 +230,7 @@ def build_router_weights(sids, fs_ref=105.0, hard=False, var_thresh=None):
 
 
 def grid_postprocess(folds_to_run, w_sid=None):
-    """D1：官方后处理网格搜索（dilation × fuse_gap），FD canonical 分数，全局官方 F1。
+    """官方后处理网格搜索：dilation × fuse_gap 组合的全局官方 F1 对比。
     返回按均值排序的 (mean_f1, dil, gap, per_fold_f1s)。"""
     DILS = (30.0, 60.0, 90.0, 120.0)
     GAPS = (60.0, 120.0, 180.0)
@@ -264,13 +264,13 @@ def main():
     ap.add_argument("--cfg", default=None, help="配置名 w.._t.._g.._p.._d.._k..（默认各折 best）")
     ap.add_argument("--all", action="store_true", help="5 折 best 配置全跑 + 汇总对比表")
     ap.add_argument("--routed", action="store_true",
-                    help="解码层 w 用会话级路由权重（默认硬路由 D3；--soft 用连续插值旧版）")
+                    help="解码层 w 用会话级路由权重（默认硬路由；--soft 用连续插值）")
     ap.add_argument("--soft", action="store_true",
                     help="路由用 AdaptiveRouter 连续插值（旧版），默认 HardRouter 硬切换")
     ap.add_argument("--var-thresh", type=float, default=None,
                     help="HardRouter 前 10min 4-16Hz 能量方差阈值（默认数据驱动拟合）")
     ap.add_argument("--grid-post", action="store_true",
-                    help="D1：官方后处理网格搜索 dilation[30,60,90,120] × fuse_gap[60,120,180]")
+                    help="官方后处理网格搜索 dilation[30,60,90,120] × fuse_gap[60,120,180]")
     args = ap.parse_args()
     if args.grid_post:
         grid_postprocess(range(5))
@@ -286,7 +286,7 @@ def main():
     print("-" * len(header))
     tot = {"raw": [], "off": [], "dil": [], "leg": []}
     w_sid = None
-    if args.routed:   # D3：会话级路由权重（默认硬路由，--soft 连续插值旧版）
+    if args.routed:   # 会话级路由权重（默认硬路由，--soft 连续插值）
         all_sids = sorted({r[0] for k in folds_to_run
                            for r in v2.prepare_fold(k)[0]})
         w_sid = build_router_weights(all_sids, hard=not args.soft,

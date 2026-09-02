@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
-"""多频带信号存在性检验（任务 #49 S0-2 前置）。
+"""多频带时域特征判别力分析工具。
 
-问题：现有 env 是单频带（acc 0.5-2.0Hz 包络）。fold1/fold3 漏检餐的深度分
-普遍偏低——若它们的活动特征不在 0.5-2Hz 频带（如高频振动、腕部转动），
-多频带包络才有救。先于缓存重建/重训检验信号，避免为不存在的信号投入。
+用途：在投入缓存重建/模型重训之前，量化不同频带与时域特征对"餐窗 vs 非餐窗"
+的判别力，为特征工程提供证据（避免为不存在的信号投入算力）。
+
+说明：加载器返回原始采样率（约 105-113Hz）的信号，本工具按每个会话的实际
+采样率设计带通滤波器，并输出 5s 窗/1s 步的能量（E）与过零率（Z）逐窗特征。
 
 频带设计（腕部进食运动学）：
-  b0: acc 0.5-2.0 Hz  —— 现有 env（进食摆动主带）
-  b1: acc 2.0-4.0 Hz  —— 高频振动（餐具接触/精细动作）
-  b2: acc 0.1-0.5 Hz  —— 低频姿态漂移（慢速大动作）
-  b3: gyro 0.5-2.0 Hz —— 角速度摆动（腕部转动，进食强信号）
+  acc 0.5-32Hz 分四段（进食摆动/高频振动/慢速大动作/超高频），gyro 两段
+  （0.5-4Hz 角速度摆动、4-16Hz 咬合与器具接触高频）
 
 检验内容：
-  1. 逐频带 AUROC：真餐窗 vs 非餐窗（全局 + 逐受试者中位）
-  2. 检出 vs 未检出餐的频带剖面（会话内 p95 归一）：未检出餐在哪个频带突出
-  3. 融合增益估计：max/加权组合的 AUROC vs 单频带
+  1. 逐频带判别力 AUROC：餐窗 vs 非餐窗（全局 + 逐受试者中位）
+  2. 检出 vs 未检出餐的频带剖面：未检出餐在哪个频带突出
+  3. 融合增益估计：max/加权组合的判别力
 
 运行：python scripts/analyze_bands.py --fold 1
 """
@@ -129,7 +129,7 @@ def main():
 
     starts = {r["session_id"]: int(r["timeStamp.startTime"]) for _, r in idx.iterrows()}
     tasks = [(sid, starts.get(sid, 0), sid_meals.get(sid, [])) for sid in f["val_sessions"]]
-    # 深度分数（canonical = ens3）加载，判定检出/未检出
+    # 深度分数（canonical = 三次训练平均）加载，判定检出/未检出
     dl = {}
     if (config.OUTPUT_DIR / f"mm_ranker_fold{k}_val.npz").exists():
         z = np.load(config.OUTPUT_DIR / f"mm_ranker_fold{k}_val.npz", allow_pickle=True)

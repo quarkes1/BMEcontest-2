@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-"""FD-I/FD-II 数据预处理与通道映射校验（阶段二，设计文档 v1.1）。
+"""FD-I/FD-II 外部数据预处理与通道映射校验。
 
 FD 数据（Shimmer3 @64Hz，6ch [ax,ay,az,gx,gy,gz] 双腕）：
   FD-I: 34 人全天（≥6h），bite 级标签 0/1/2（others/eating/drinking）
   FD-II: 27 人全天，仅餐时段 bite 标签 + meal boundaries
   （ReadMe 2.5：github.com/Pituohai/Eating-Speed-Dataset）
 
-流程（设计文档锁定）：
+流程：
   1) 通道映射校验：提取 1-2 个 session → 合幅值 + PSD → 确认重采样 10Hz 后
      Mean/Std/Mag 与目标数据集同数量级（通过后才全量）
   2) Episode 推导：bite=1（eating）连续簇（gap<180s 合并）→ meal Episode（+膨胀）

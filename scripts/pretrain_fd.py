@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-"""FD-I/FD-II Episode 级预训练（阶段二 M2，设计文档 v1.1）。
+"""FD-I/FD-II 餐次级（Episode 级）候选分类预训练。
 
 数据：cache/fd_windows/fd_pretrain.npz（prep_fd.py --build 产出，z-score 归一化 240s 窗）
-任务：Episode 级候选分类（餐窗 vs 非餐窗，与 MM-Ranker 任务头对齐——非 bite 级，
-MO 教训：bite 级预训练不迁移到餐次级）
+任务：餐次级候选分类（餐窗 vs 非餐窗，与深度排序头任务头对齐——非咬合级；
+咬合级预训练经验表明其与餐次任务不匹配）
 结构：MMRanker（n_imu=6，无 PPG——FD 无 PPG 通道），Focal + 硬负样本 + 早停
 划分：subject-level（FD-I 双腕全部；按 subject 8:2 分 train/val）
 产物：checkpoints/fd_pretrained_s1.pt = {encoder: imu_in+tcn state_dict,

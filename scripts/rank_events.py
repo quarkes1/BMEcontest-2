@@ -1,15 +1,17 @@
 # -*- coding: utf-8 -*-
-"""阶段2：事件提案 + 排序头（检测即排序，不依赖密度模型）。
+"""事件提案与排序（检测即排序主路径的基础模块）。
 
-架构（S0-1 两池分治，2026-08-30）：
-- 活动池：env×先验多参数连通域（复用 windows_to_events）→ 活动候选（窄、尖峰）
-- 先验池：会话窗内整点 ±20min 时间窗候选（宽 40min，攻稀疏尖峰餐——餐内活动常
-  <25% 餐长，IoU≥0.25 数学上无法由活动连通覆盖；45-62% 餐的 before 落在整点 ±15-20min）
-- 两池独立训练 LightGBM 排序器（避免标签转移污染：贪心匹配把餐标给 IoU 更高的
-  先验候选会把活动池正标签偷走，单池混合时 val 活动池排序崩溃 0.043 vs 0.018）
-- 解码：活动池 top-k ∪ 先验池 top-1（先验分数 ≥pri_thr 且与活动已选 IoU<0.25 才追加），
-  会话门控（AUC≈0.88）过滤无餐会话
-- 评估：受试者级事件匹配 F1（IoU≥0.25 贪心，compute_metrics_by_subject）
+架构：
+- 活动池：活动包络 × 时刻先验的多参数连通域 → 活动候选（窄、尖峰）
+- 先验池：会话窗内整点 ±20min 时间窗候选（宽 40min，覆盖活动信号稀疏的餐——
+  餐内活动常不足餐长的 25%，纯活动连通域在 IoU≥0.25 匹配下数学上不可达）
+- 两池分别合并、独立排序（避免贪心标签转移：混合池会把正标签偏向 IoU 更高的
+  先验候选，使活动池排序器学不到有效信号）
+- 解码：活动池 top-k 与先验池 top-1 合并（先验分数 ≥pri_thr 且与已选活动
+  IoU<0.25 才追加），会话门控过滤无餐会话
+
+提供：make_proposals（提案生成）、candidate_features（候选特征矩阵）、
+match_labels（事件级标签）、_prior（时刻先验）——供 rank_events_v2 与评估复用。
 
 运行：conda activate bme && python scripts/rank_events.py --fold 0
 产物：outputs/rank_events_fold0.json"""
@@ -33,7 +35,7 @@ SMOOTH = 31
 PROP_PCT = (75, 82, 88, 92, 95)   # 提案追求召回（V2-B 最佳诚实配置 pct75 覆盖 19/38）
 PROP_GAP = (30, 60)
 PROP_DUR = (5, 10)
-LOOSE_PCT = (50, 55, 62, 70, 75)  # S0-1 门控分流：高门控会话用更松阈值（攻弱信号/短餐）
+LOOSE_PCT = (50, 55, 62, 70, 75)  # 门控分流：高门控会话用更松阈值（覆盖弱信号/短餐）
 LOOSE_GAP = (15, 30, 60)
 LOOSE_DUR = (3, 5)
 GATE_SPLIT = 0.5                  # 门控分流：gate_prob ≥ 此值 → loose 提案
@@ -57,7 +59,7 @@ def prior_candidates(sess_s, sess_e, grid_step_s=3600, half_w_s=PRIOR_HALF_W_S):
 
     餐的 before 45-62% 落在整点 ±15-20min（采集协议整点开餐），而餐内 IMU 活动常
     <25% 餐长（IoU≥0.25 数学上无法由活动连通覆盖）→ 网格铺先验窗。
-    宽度必须 ≤40min：90min 半宽的教训——宽 180min 候选与 15min 餐最大 IoU=0.083。
+    宽度必须 ≤40min：更宽（180min）的候选与 15min 餐最大 IoU 仅 0.083，无法匹配。
     覆盖分析（analysis_prior_grid.py, 2026-08-30）：31% 餐 <10min 在 40min 窗内
     IoU=D/40<0.25 数学不可达 → 15min 网格/15min 窗（grid_step_s=900, half_w_s=450）
     覆盖 88%（vs 整点 40min 窗 49%），且完全覆盖长餐（相邻窗无缝隙）。
@@ -115,9 +117,9 @@ def make_proposals(env, t0, prior, start_epoch, loose=False, no_prior=False, dil
                                             merge_gap_s=gap, min_dur_s=dur, smooth_win=SMOOTH)
                     act.extend((s, e, 0) for s, e in evs)
     if zseq is not None:
-        # 低频规律振荡池（0.1-0.5Hz 带通过零率低值；信号检验：餐窗 zcr 系统性更低，
-        # |AUROC| 0.63 双折一致，与能量包络正交）。取 -zcr top pct 连通域（低 zcr →
-        # 高 -zcr），is_prior=2 标记来源。
+        # 低频规律振荡池（0.1-0.5Hz 带通过零率低值；信号检验：餐窗 过零率 系统性更低，
+        # |AUROC| 0.63 双折一致，与能量包络正交）。取 -过零率 top pct 连通域（低 过零率 →
+        # 高 -过零率），is_prior=2 标记来源。
         zs = -zseq.astype(np.float64)
         for pct in PROP_PCT:
             for gap in PROP_GAP:
