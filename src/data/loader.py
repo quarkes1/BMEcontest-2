@@ -94,11 +94,11 @@ def load_session(session_id: str) -> SessionData:
     s = load_session_tsv(_find_collect_data(str(config.SENSOR_DIR / session_id)))
     try:
         bin_path.parent.mkdir(parents=True, exist_ok=True)
-        np.savez(bin_path,
-                 acc=s.acc, gyro=s.gyro, ppg=s.ppg,
-                 t_acc=s.t_acc, t_ppg=s.t_ppg,
-                 imu_valid=s.imu_valid, ppg_valid=s.ppg_valid,
-                 row_rate=np.float32(s.meta["row_rate"]), rows=np.int64(s.meta["rows"]))
+        np.savez_compressed(bin_path,   # 压缩存储：PPG raw ADC 可压缩 ~10 倍（109MB→11MB/会话）
+                            acc=s.acc, gyro=s.gyro, ppg=s.ppg,
+                            t_acc=s.t_acc, t_ppg=s.t_ppg,
+                            imu_valid=s.imu_valid, ppg_valid=s.ppg_valid,
+                            row_rate=np.float32(s.meta["row_rate"]), rows=np.int64(s.meta["rows"]))
     except OSError:
         pass    # 缓存写失败不影响主流程
     return s
