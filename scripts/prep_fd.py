@@ -167,10 +167,11 @@ def build_windows(which, norm_stats, use_neg=True):
                 continue
             gh = _gyro_high_env(x)         # 第 7 通道（10Hz 网格）
             xr, yr, _ = _resample_10hz(x, y)
-            if len(gh) < len(xr):          # 网格对齐（尾段截齐）
-                xr = xr[:len(gh)]
-                gh = gh[:len(xr)]
-            xr = np.concatenate([xr, gh[:, None]], axis=1)   # (N, 7)
+            if os.environ.get("BME_FD_NOGYRO", "0") != "1":   # 6ch 模式（与 6ch 目标缓存匹配）
+                if len(gh) < len(xr):      # 网格对齐（尾段截齐）
+                    xr = xr[:len(gh)]
+                    gh = gh[:len(xr)]
+                xr = np.concatenate([xr, gh[:, None]], axis=1)   # (N, 7)
             n_w = (len(xr) - win_n) // step_n + 1
             for b in range(n_w):
                 w0 = b * step_n
@@ -202,17 +203,19 @@ def build_windows(which, norm_stats, use_neg=True):
 
 
 def compute_norm_stats():
-    """归一化统计量：FD-I 全量（双腕）7 通道（6ch + gyro 高频）10Hz 信号的 mean/std。"""
+    """归一化统计量：FD-I 全量（双腕；6ch 或 7ch 视 BME_FD_NOGYRO）10Hz 信号的 mean/std。"""
     XL, XR, _, _ = load_fd("FD-I")
-    sums, sumsq, n = np.zeros(7), np.zeros(7), 0
+    n_ch = 6 if os.environ.get("BME_FD_NOGYRO", "0") == "1" else 7
+    sums, sumsq, n = np.zeros(n_ch), np.zeros(n_ch), 0
     for x in list(XL) + list(XR):
         xr, _ = _resample_10hz(x)
-        gh = _gyro_high_env(x)
-        m = min(len(xr), len(gh))
-        xr7 = np.concatenate([xr[:m], gh[:m, None]], axis=1)
-        sums += xr7.sum(0)
-        sumsq += (xr7 ** 2).sum(0)
-        n += len(xr7)
+        if n_ch == 7:
+            gh = _gyro_high_env(x)
+            m = min(len(xr), len(gh))
+            xr = np.concatenate([xr[:m], gh[:m, None]], axis=1)
+        sums += xr.sum(0)
+        sumsq += (xr ** 2).sum(0)
+        n += len(xr)
     mean = sums / n
     std = np.sqrt(sumsq / n - mean ** 2)
     return {"mean": mean, "std": std}

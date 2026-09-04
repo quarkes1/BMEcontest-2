@@ -16,6 +16,7 @@
 """
 import argparse
 import json
+import os
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor
@@ -66,17 +67,20 @@ def _extract(s, med_c, c_s, c_e, valid_ts):
     if not valid.any():
         return None
     t_v = t[valid]
-    imu = np.zeros((n_step, 7), np.float32)   # 7 通道：acc3 + gyro3 + gyro 高频能量（第 7）
+    no_gyro = os.environ.get("BME_NO_GYRO", "0") == "1"    # 6ch 模式（文档化最终配置，gyro 高频消融负向）
+    n_ch = 6 if no_gyro else 7
+    imu = np.zeros((n_step, n_ch), np.float32)   # acc3 + gyro3 (+ gyro 高频能量，7ch 可选)
     for i, ch in enumerate(np.concatenate([s.acc, s.gyro])[:, valid]):
         imu[:, i] = np.interp(grid, t_v, ch.astype(np.float64))
-    # gyro 高频能量（4-16Hz bandpass）：必须在原始采样率上滤波（10Hz 插值后信息已丢）
-    fs = float(s.meta.get("row_rate", 105.0))
-    if fs > 2 * GYRO_HI_BAND[1]:
-        sos = scipy.signal.butter(4, GYRO_HI_BAND, btype="bandpass", fs=fs, output="sos")
-        gy = s.gyro[:, valid].astype(np.float64)
-        gh = scipy.signal.sosfiltfilt(sos, gy, axis=1)
-        gh_env = np.sqrt((gh ** 2).sum(0))                 # (n_valid,) 高频角速度能量
-        imu[:, 6] = np.interp(grid, t_v, gh_env)
+    if not no_gyro:
+        # gyro 高频能量（4-16Hz bandpass）：必须在原始采样率上滤波（10Hz 插值后信息已丢）
+        fs = float(s.meta.get("row_rate", 105.0))
+        if fs > 2 * GYRO_HI_BAND[1]:
+            sos = scipy.signal.butter(4, GYRO_HI_BAND, btype="bandpass", fs=fs, output="sos")
+            gy = s.gyro[:, valid].astype(np.float64)
+            gh = scipy.signal.sosfiltfilt(sos, gy, axis=1)
+            gh_env = np.sqrt((gh ** 2).sum(0))             # (n_valid,) 高频角速度能量
+            imu[:, 6] = np.interp(grid, t_v, gh_env)
     e_norm = np.sqrt((imu[:, :3] ** 2).sum(1))            # acc 能量
     cov = ((grid >= t_v[0]) & (grid <= t_v[-1])).mean()
     if cov < MIN_EMPTY_RATIO:
@@ -135,6 +139,14 @@ def _process_sid(args):
     med_c = _session_ppg_stats(s)
     tv = s.t_acc[s.imu_valid]
     t_valid = (tv.min(), tv.max())
+    top_k = int(os.environ.get("BME_TOP_K", "0"))
+    if top_k > 0 and len(act) > top_k:   # 每会话 top-K 精选（窗内 env 峰值排序，标签无关）
+        scored = []
+        for (s0, e0, _) in act:
+            seg = (t0 >= s0) & (t0 < e0)
+            scored.append((float(env[seg].max()) if seg.any() else 0.0, s0, e0))
+        scored.sort(key=lambda t: -t[0])
+        act = [(s0, e0, 0) for _, s0, e0 in scored[:top_k]]
 
     # 深度模型只评活动池候选（信号级二次校验）：先验池是纯时间先验（40min 宽窗
     # 无统一信号片段），保留 LightGBM 通道，不建窗口缓存。

@@ -37,6 +37,8 @@ HARD_W = float(os.environ.get("BME_HARD_W", "5.0"))   # 硬负样本提权倍数
 HARD_K = int(os.environ.get("BME_HARD_K", "5"))       # top-k = K× 正样本数
 FOCAL_ALPHA = float(os.environ.get("BME_FOCAL_ALPHA", "0.35"))  # Focal α（0.25→0.35：更重视召回）
 SEED = int(os.environ.get("BME_SEED", "42"))   # 随机种子（BME_SEED 覆盖——多套训练选优）
+NEG_RATIO = int(os.environ.get("BME_NEG_RATIO", "0"))   # 负样本子采样比（>0：负:正 ≤ NEG_RATIO，抗 0.4% 稀释）
+AUG_POS = int(os.environ.get("BME_AUG_POS", "1"))   # 正样本增强倍数（>1：时间抖动±5s+噪声，正样本稀缺）
 
 
 class CandDS(Dataset):
@@ -86,6 +88,9 @@ def main():
     ap.add_argument("--session-norm", action="store_true",
                     help="会话级 Instance Normalization——按会话统计量归一化 IMU"
                          "通道（抹平受试者动作幅度基线差异）")
+    ap.add_argument("--mix-fd", default=None,
+                    help="FD 窗缓存（cache/fd_windows/*.npz）与目标候选联合训练"
+                         "——FD 正密度 7.9% 提供强判别信号（针对排序头 valAUC 瓶颈）")
     args = ap.parse_args()
     fold_idx = args.fold
 
@@ -118,7 +123,76 @@ def main():
     split_idx = np.array([0 if m["sid"] in tr_set else 1 for m in META])
     print(f"fold{fold_idx}: {len(y)} 候选（正 {y.sum()}，{y.mean()*100:.1f}%）", flush=True)
     tr, va = split_idx == 0, split_idx == 1
-    print(f"  train {(split_idx==0).sum()} 候选（正 {y[tr].sum()}）| val {(split_idx==1).sum()}（正 {y[va].sum()}）", flush=True)
+    if NEG_RATIO > 0 and (y[tr] == 0).any():   # 负样本子采样（方案 A：抗正样本稀释）
+        pos_n = int(y[tr].sum())
+        neg_idx = np.where((split_idx == 0) & (y == 0))[0]
+        keep_n = min(len(neg_idx), max(pos_n * NEG_RATIO, pos_n))
+        rng = np.random.RandomState(SEED)
+        keep_neg = rng.choice(neg_idx, keep_n, replace=False)
+        tr = (split_idx == 0) & (y == 1)
+        tr[keep_neg] = True
+        print(f"  负样本子采样：{len(neg_idx)} → {keep_n}（正:负 1:{NEG_RATIO}）", flush=True)
+    print(f"  train {tr.sum()} 候选（正 {y[tr].sum()}）| val {va.sum()}（正 {y[va].sum()}）", flush=True)
+    if args.mix_fd:   # FD 联合训练：FD 窗（正密度高）混合进 train（val 保持目标域）
+        zp = config.CACHE_DIR / "fd_windows" / f"{args.mix_fd}.npz"
+        assert zp.exists(), f"缺 FD 窗缓存 {zp}"
+        zf = np.load(zp, allow_pickle=True)
+        f_imu = zf["imu"].astype(np.float32)
+        f_y = zf["label"].astype(np.float32)
+        # FD 采样：正全量 + 负（混合后 FD 约占 train 半量，不淹没域校准）
+        f_pos = np.where(f_y == 1)[0]
+        f_neg = np.where(f_y == 0)[0]
+        rng = np.random.RandomState(SEED)
+        n_neg = min(len(f_neg), len(f_pos) * 10)
+        f_sel = np.concatenate([f_pos, rng.choice(f_neg, n_neg, replace=False)])
+        rng.shuffle(f_sel)
+        n_fd = len(f_sel)
+        n_tgt_tr = int(tr.sum())
+        # 目标候选采样至与 FD 相当（1:1 混合）
+        tgt_i = np.where(tr)[0]
+        n_tgt = min(n_tgt_tr, n_fd)
+        tgt_sel = rng.choice(tgt_i, n_tgt, replace=False)
+        # 组装（FD 窗已 z-score 归一化，与 FD-init 后的目标域同分布）
+        va_i = np.where(va)[0]                    # 原 val 全部保留
+        imu = np.concatenate([imu[tgt_sel], f_imu[f_sel], imu[va_i]])
+        ppg = np.concatenate([ppg[tgt_sel], np.zeros((n_fd,) + ppg.shape[1:], np.float32),
+                              ppg[va_i]])
+        ma = np.concatenate([ma[tgt_sel], np.zeros((n_fd,) + ma.shape[1:], np.float32),
+                             ma[va_i]])
+        y = np.concatenate([y[tgt_sel], f_y[f_sel], y[va_i]])
+        meta = np.concatenate([meta[tgt_sel],
+                               np.tile(np.array([[np.log1p(1800), 0.0, 0.5]], np.float32),
+                                       (n_fd, 1)),
+                               meta[va_i]])
+        META = [META[i] for i in np.concatenate([tgt_sel, va_i])] + [None] * n_fd
+        tr = np.concatenate([np.ones(n_tgt + n_fd, bool), np.zeros(len(va_i), bool)])
+        va = ~tr
+        n_tr_pos = int((y[:n_tgt] == 1).sum()) + int((f_y[f_sel] == 1).sum())
+        print(f"  FD 联合：目标 {n_tgt}（正 {int((y[:n_tgt]==1).sum())}）+ FD {n_fd}"
+              f"（正 {int((f_y[f_sel]==1).sum())}）+ val {len(va_i)}（正 {int((y[va_i]==1).sum())}）",
+              flush=True)
+    if AUG_POS > 1 and (y[tr] == 1).any():   # 正样本增强（时间抖动 + 幅值噪声）
+        pos_i = np.where(tr & (y == 1))[0]
+        rng = np.random.RandomState(SEED)
+        std_ch = imu[pos_i].std((0, 1)) + 1e-6
+        aug_i = np.concatenate([pos_i] + [
+            pos_i for _ in range(AUG_POS - 1)])
+        n_aug = len(pos_i) * (AUG_POS - 1)
+        imu = np.concatenate([imu, np.zeros((n_aug, imu.shape[1], imu.shape[2]), np.float32)])
+        ppg = np.concatenate([ppg, np.zeros((n_aug,) + ppg.shape[1:], np.float32)])
+        ma = np.concatenate([ma, np.zeros((n_aug,) + ma.shape[1:], np.float32)])
+        meta = np.concatenate([meta, np.zeros((n_aug, meta.shape[1]), np.float32)])
+        y = np.concatenate([y, np.ones(n_aug, np.int8)])
+        tr = np.concatenate([tr, np.ones(n_aug, bool)])
+        va = np.concatenate([va, np.zeros(n_aug, bool)])
+        for j, src in enumerate(pos_i):
+            for rep in range(AUG_POS - 1):
+                tgt = len(pos_i) + j * (AUG_POS - 1) + rep
+                shift = int(rng.randint(-50, 51))       # ±5s 时间抖动
+                imu[tgt] = np.roll(imu[src], shift, axis=0)
+                imu[tgt] += rng.randn(*imu[tgt].shape).astype(np.float32) * (0.03 * std_ch)
+        META = META + [None] * n_aug   # 仅占位（meta 数组已扩展；META 仅用于 sid 输出筛选——aug 不入 val）
+        print(f"  正样本增强：{len(pos_i)} → ×{AUG_POS}（+{n_aug} 抖动窗）", flush=True)
 
     import random
     random.seed(SEED)
@@ -255,7 +329,7 @@ def main():
 
     # ---- 保存：模型 + val 候选分数（解码用） ----
     torch.save(best_state, config.MODEL_DIR / f"mm_ranker_fold{fold_idx}.pt")
-    order = [i for i, m in enumerate(META) if m["sid"] in va_set]
+    order = [i for i, m in enumerate(META) if m is not None and m["sid"] in va_set]
     np.savez(config.OUTPUT_DIR / f"mm_ranker_fold{fold_idx}_val.npz",
              score=p_va, label=np.array([y[i] for i in order], np.int8),
              meta=np.array([json.dumps(META[i]).encode() for i in order]))
