@@ -136,6 +136,21 @@ def _process_sid(args):
                   "p95_ratio": float(ft["p95_ratio"]), "start": starts.get(sid, 0)}
     act, pri = re.make_proposals(env, t0, prior, starts.get(sid, 0), dilate_ms=60000)  # 活动候选 ±60s（短餐 IoU 修复）
     meals = meals.get(sid, [])
+    if os.environ.get("BME_ALIGN_GT", "0") == "1" and meals:
+        # GT 时间对齐（训练标签精化）：自报标注偏移中位 10-11min，把每餐中心
+        # 对齐到 ±15min 内 env（0.5-2Hz 活动）峰值；评估 GT 不变，仅训练用
+        aligned = []
+        for m in meals:
+            lo = m["before"] - 15 * 60000
+            hi = m["after"] + 15 * 60000
+            sel = (t0 >= lo) & (t0 <= hi)
+            if sel.sum() < 5:
+                aligned.append(m)
+                continue
+            pk = int(t0[sel][np.argmax(env[sel])])
+            dur = m["after"] - m["before"]
+            aligned.append({"before": int(pk - dur // 2), "after": int(pk + dur // 2)})
+        meals = aligned
     med_c = _session_ppg_stats(s)
     tv = s.t_acc[s.imu_valid]
     t_valid = (tv.min(), tv.max())

@@ -112,7 +112,7 @@ def main():
         z = np.load(p, allow_pickle=True)
         n = len(z["meta"])
         for j in range(n):
-            imu = z[f"c{j}"].astype(np.float32)
+            imu = z[f"c{j}"]  # float16（缓存原生，省内存）
             X.append((imu, z["ppg"][j], z["ma"][j]))
         m = [json.loads(x.decode()) for x in z["meta"]]
         META.extend(m)
@@ -137,7 +137,7 @@ def main():
         zp = config.CACHE_DIR / "fd_windows" / f"{args.mix_fd}.npz"
         assert zp.exists(), f"缺 FD 窗缓存 {zp}"
         zf = np.load(zp, allow_pickle=True)
-        f_imu = zf["imu"].astype(np.float32)
+        f_imu = zf["imu"].astype(np.float32)  # FD 窗 float32→下方转
         f_y = zf["label"].astype(np.float32)
         # FD 采样：正全量 + 负（混合后 FD 约占 train 半量，不淹没域校准）
         f_pos = np.where(f_y == 1)[0]
@@ -222,9 +222,10 @@ def main():
                   f"（mean {norm_mean.round(2)} / std {norm_std.round(2)}）", flush=True)
         else:
             print(f"  预训练迁移：{loaded} 层权重拷贝自 {args.init_from}", flush=True)
-    if norm_mean is not None:  # FD 归一化统计量 → 本项目输入投影到 FD 尺度空间
+    if norm_mean is not None:  # FD 归一化统计量 → 本项目输入投影到 FD 尺度空间（就地运算省内存）
         n_ch = min(imu.shape[2], len(norm_mean))
-        imu[..., :n_ch] = (imu[..., :n_ch] - norm_mean[:n_ch]) / (norm_std[:n_ch] + 1e-6)
+        imu[..., :n_ch] -= norm_mean[:n_ch]
+        imu[..., :n_ch] /= (norm_std[:n_ch] + 1e-6)
         print(f"  输入 z-score 归一化（前 {n_ch} 通道）", flush=True)
     if args.session_norm:  # 会话级 Instance Normalization（按会话分组，会话内通道统计）
         sids = np.array([m["sid"] for m in META])
