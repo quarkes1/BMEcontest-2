@@ -10,13 +10,9 @@ mkdir -p "$DIST/src/data" "$DIST/src/eval" "$DIST/src/models" "$DIST/models" "$D
 cp scripts/predict.py "$DIST/predict.py"
 
 # src 必需模块（loader=TSV 解析；config=路径；ranker=MMRanker 定义）
-cp src/__init__.py "$DIST/src/"
 cp src/config.py "$DIST/src/config.py"
-cp src/data/__init__.py "$DIST/src/data/"
 cp src/data/loader.py "$DIST/src/data/loader.py"
-cp src/eval/__init__.py "$DIST/src/eval/"
 cp src/eval/metrics.py "$DIST/src/eval/metrics.py"
-cp src/models/__init__.py "$DIST/src/models/"
 cp src/models/ranker.py "$DIST/src/models/ranker.py"
 
 # 权重：5 折微调模型 + FD 预训练（z-score 归一化统计量来源）
