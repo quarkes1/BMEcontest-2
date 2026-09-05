@@ -88,25 +88,42 @@ def load_session_tsv(txt_path):
     return acc, gyro, t, valid, fs
 
 
-def band_env(sig, fs, band=(0.5, 2.0)):
-    """1s 网格带通包络（5s 窗/1s 步，同 validate_baselines）。"""
-    win, st = int(WIN_S * fs), int(ST_S * fs)
-    n = sig.shape[1]
-    n_w = (n - win) // st + 1
+def band_env(sig, t_v, fs, band=(0.5, 2.0)):
+    """真实时间轴带通包络（5s 窗/1s 步，同 validate_baselines 修复版）。
+    返回 (env, t0_ms)：t0 为每窗起点真实 ACC 时间戳。"""
+    win_ms, st_ms = 5000, 1000
+    t0_real = int(t_v[0])
+    n_w = max(0, (int(t_v[-1]) - t0_real - win_ms) // st_ms + 1)
     if n_w <= 0:
         return np.zeros(0, np.float32), np.zeros(0, np.int64)
+    ws = t0_real + np.arange(n_w, dtype=np.int64) * st_ms
+    lo = np.searchsorted(t_v, ws)
+    hi = np.searchsorted(t_v, ws + win_ms)
     sos = scipy.signal.butter(4, band, btype="bandpass", fs=fs, output="sos")
-    out = np.empty(n_w, np.float32)
-    for b0 in range(0, n_w, 4000):
-        b1 = min(b0 + 4000, n_w)
+    out = np.zeros(n_w, np.float32)
+    min_rows = max(10, int(win_ms / 1000 * fs) // 2)
+    for b0 in range(0, n_w, 1000):
+        b1 = min(b0 + 1000, n_w)
+        cnts = hi[b0:b1] - lo[b0:b1]
+        ok = cnts >= min_rows
+        if not ok.any():
+            continue
+        maxc = int(cnts[ok].max())
         m = b1 - b0
-        idx = b0 * st + np.arange(m)[:, None] * st + np.arange(win)[None, :]
-        seg = sig[:, idx]
-        la = seg - np.median(seg, axis=2, keepdims=True)
-        lam = np.linalg.norm(la, axis=0)
+        segs = np.zeros((m, maxc, 3), np.float32)
+        for j, i in enumerate(range(b0, b1)):
+            if cnts[j] >= min_rows:
+                n_c = int(cnts[j])
+                seg = sig[:, lo[i]:hi[i]].T
+                segs[j, :n_c] = seg
+                if n_c < maxc:
+                    segs[j, n_c:] = seg[-1]
+        la = segs - np.median(segs, axis=1, keepdims=True)
+        lam = np.linalg.norm(la, axis=2)
         e = scipy.signal.sosfiltfilt(sos, lam, axis=1)
         out[b0:b1] = np.abs(e).mean(axis=1)
-    return out
+        out[b0:b1][cnts < min_rows] = 0.0
+    return out, ws
 
 
 def windows_to_events(score, t0, t0_end, thr, merge_gap_s=30, min_dur_s=5, smooth_win=31):
@@ -206,12 +223,10 @@ def predict_session(sid_dir, models, device, tau, merge_gap, min_dur, dilation):
     acc, gyro, t, valid, fs = load_session_tsv(str(txt))
     if not valid.any() or acc.shape[1] < int(WIN_S * fs):
         return []
-    env = band_env(acc, fs)
+    t_v = t[valid]
+    env, t0 = band_env(acc, t_v, fs)
     if len(env) < 60:
         return []
-    t_v = t[valid]
-    start_epoch = int(t_v[0])
-    t0 = start_epoch + np.arange(len(env), dtype=np.int64) * 1000
     act = make_proposals(env, t0, GLOBAL_PRIOR)
     if not act:
         return []

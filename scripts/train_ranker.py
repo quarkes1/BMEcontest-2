@@ -218,7 +218,8 @@ def main():
     torch.manual_seed(SEED)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(SEED)
-        torch.backends.cudnn.benchmark = True   # TCN 卷积内核自动选优（提速）
+        if os.environ.get("BME_CUDNN_BENCH", "0") == "1":
+            torch.backends.cudnn.benchmark = True   # 默认关：显存 ~96% 时 benchmark workspace 探索风险
 
     dev = torch.device(args.device)
     model = MMRanker(d_model=int(os.environ.get("BME_D_MODEL", "64")),
@@ -290,9 +291,9 @@ def main():
     def evaluate(ds):
         model.eval()
         logs, ys = [], []
-        with torch.no_grad():
+        with torch.no_grad(), torch.autocast("cuda", dtype=torch.float16):
             for ii, pp, mm, mt, yy, _ in DataLoader(ds, batch_size=EVAL_BATCH, shuffle=False):
-                logs.append(model(ii.to(dev), pp.to(dev), mm.to(dev), mt.to(dev)).cpu())
+                logs.append(model(ii.to(dev), pp.to(dev), mm.to(dev), mt.to(dev)).float().cpu())
                 ys.append(yy)
         l = torch.cat(logs); yt = torch.cat(ys)
         p = torch.sigmoid(l)
@@ -313,7 +314,9 @@ def main():
         t0 = time.time()
         tot = 0.0; nb = 0
         for ii, pp, mm, mt, yy, ww in tr_loader:
-            lg = model(ii.to(dev), pp.to(dev), mm.to(dev), mt.to(dev))
+            with torch.autocast("cuda", dtype=torch.float16):
+                lg = model(ii.to(dev), pp.to(dev), mm.to(dev), mt.to(dev))
+            lg = lg.float()   # loss 在 fp32 域（autocast 外），精度稳定
             if args.loss == "asymmetric":   # 非对称损失：正样本几乎不降权（提升真餐置信度）
                 loss = asymmetric_loss(lg, yy.to(dev), gamma_pos=1.0, gamma_neg=3.0,
                                        alpha=FOCAL_ALPHA, weights=ww.to(dev))
@@ -337,10 +340,10 @@ def main():
             break
         # ---- 硬负样本挖掘：train 全量前向 → 误判负样本 top-k 提权 ----
         model.eval()
-        with torch.no_grad():
+        with torch.no_grad(), torch.autocast("cuda", dtype=torch.float16):
             ltr = []
             for ii, pp, mm, mt, _, _ in DataLoader(hm_ds, batch_size=EVAL_BATCH, shuffle=False):
-                ltr.append(model(ii.to(dev), pp.to(dev), mm.to(dev), mt.to(dev)).cpu())
+                ltr.append(model(ii.to(dev), pp.to(dev), mm.to(dev), mt.to(dev)).float().cpu())
             ltr = torch.cat(ltr)
         ptr = torch.sigmoid(ltr).numpy()
         fp_mask = (y[tr] == 0) & (ptr > 0.5)
