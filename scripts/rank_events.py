@@ -30,7 +30,7 @@ from src.eval.metrics import compute_metrics_by_subject, event_iou
 from src.infer.events import windows_to_events
 
 OUT_CACHE = config.CACHE_DIR / "validate_baselines"
-WINDOW_MS = 525_000          # 每窗时间跨度（5s 窗 @105Hz → 与 validate_baselines 一致）
+WINDOW_MS = 1000             # 每窗时间单元（1s 网格；原 525000 把 525 行误当毫秒——事件右扩 8.75min bug）
 SMOOTH = 31
 PROP_PCT = (75, 82, 88, 92, 95)   # 提案追求召回（V2-B 最佳诚实配置 pct75 覆盖 19/38）
 PROP_GAP = (30, 60)

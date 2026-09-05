@@ -46,30 +46,57 @@ def _density_one(args):
             return ("binary", sid)
         s = load_session(sid)
         fs = s.meta.get("row_rate", FS)
-        a = s.acc
-        win, st = int(5 * fs), int(fs)
-        n = a.shape[1]
-        if n < win:
+        valid = s.imu_valid
+        t_v = s.t_acc[valid].astype(np.int64)
+        a_v = s.acc[:, valid]
+        if len(t_v) < int(5 * fs) or t_v[-1] <= t_v[0]:
             return ("short", sid)
-        n_w = (n - win) // st + 1
+        # 窗网格：真实时间轴（修复：原均匀行号轴漂移可达 5min/会话）。
+        # 数据为包级时间戳（每戳 10 行，94-95ms 包间），窗定位精度 ~0.1s。
+        win_ms, st_ms = 5000, 1000
+        t0_real = int(t_v[0])
+        n_w = max(0, (int(t_v[-1]) - t0_real - win_ms) // st_ms + 1)
+        if n_w < 50:
+            return ("short", sid)
+        ws = t0_real + np.arange(n_w, dtype=np.int64) * st_ms
+        lo = np.searchsorted(t_v, ws)
+        hi = np.searchsorted(t_v, ws + win_ms)          # 窗 [ws, ws+5s) 内行
         envs = np.empty(n_w, dtype=np.float32)
-        zcrs = np.empty(n_w, dtype=np.float32)   # 0.1-0.5Hz 带通过零率（低频规律振荡度量）
+        zcrs = np.empty(n_w, dtype=np.float32)
         sos = scipy.signal.butter(4, [0.5, 2.0], btype="bandpass", fs=fs, output="sos")
         sos_z = scipy.signal.butter(4, [0.1, 0.5], btype="bandpass", fs=fs, output="sos")
-        for b0 in range(0, n_w, 4000):
-            b1 = min(b0 + 4000, n_w)
+        min_rows = int(win_ms / 1000 * fs) // 2          # 窗内 <2.5s 数据 → 视为无数据
+        for b0 in range(0, n_w, 1000):
+            b1 = min(b0 + 1000, n_w)
+            cnts = hi[b0:b1] - lo[b0:b1]
+            ok = cnts >= min_rows
+            maxc = int(cnts[ok].max()) if ok.any() else 0
             m = b1 - b0
-            idx = b0 * st + np.arange(m)[:, None] * st + np.arange(win)[None, :]
-            seg = a[:, idx]                          # (3, m, win)
-            la = seg - np.median(seg, axis=2, keepdims=True)
-            lam = np.linalg.norm(la, axis=0)
-            env = scipy.signal.sosfiltfilt(sos, lam, axis=1)
-            envs[b0:b1] = np.abs(env).mean(axis=1)
-            ez = scipy.signal.sosfiltfilt(sos_z, lam, axis=1)
-            zcrs[b0:b1] = ((ez[:, 1:] * ez[:, :-1]) < 0).mean(axis=1)
-        t0_ms = start_epoch + np.arange(n_w, dtype=np.int64) * 1000   # epoch ms
+            if maxc == 0:
+                envs[b0:b1] = 0.0
+                zcrs[b0:b1] = 0.0
+                continue
+            segs = np.zeros((m, maxc, 3), np.float32)
+            for j, i in enumerate(range(b0, b1)):
+                if cnts[j] >= min_rows:
+                    n_c = int(cnts[j])
+                    seg = a_v[:, lo[i]:hi[i]].T           # (n_c, 3)
+                    segs[j, :n_c] = seg
+                    if n_c < maxc:                        # 缺口窗 edge pad
+                        segs[j, n_c:] = seg[-1]
+                # 无数据窗保持 0 → lam 0 → env 0（提案无）
+            la = segs - np.median(segs, axis=1, keepdims=True)
+            lam = np.linalg.norm(la, axis=2)              # (m, maxc)
+            with np.errstate(invalid="ignore"):
+                e = scipy.signal.sosfiltfilt(sos, lam, axis=1)
+                envs[b0:b1] = np.abs(e).mean(axis=1)
+                ez = scipy.signal.sosfiltfilt(sos_z, lam, axis=1)
+                zcrs[b0:b1] = ((ez[:, 1:] * ez[:, :-1]) < 0).mean(axis=1)
+            envs[b0:b1][cnts < min_rows] = 0.0
+            zcrs[b0:b1][cnts < min_rows] = 0.0
+        t0_ms = ws                                 # 窗起点 = 真实 ACC 时间戳
         feats = {
-            "dur_h": round(n / fs / 3600, 4),
+            "dur_h": round(len(t_v) / fs / 3600, 4),
             "env_mean": float(envs.mean()), "env_p50": float(np.median(envs)),
             "env_p95": float(np.percentile(envs, 95)), "env_std": float(envs.std()),
             "p95_ratio": float(np.percentile(envs, 95) / (envs.mean() + 1e-6)),
