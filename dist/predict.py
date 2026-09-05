@@ -99,7 +99,11 @@ def band_env(sig, t_v, fs, band=(0.5, 2.0)):
     ws = t0_real + np.arange(n_w, dtype=np.int64) * st_ms
     lo = np.searchsorted(t_v, ws)
     hi = np.searchsorted(t_v, ws + win_ms)
-    sos = scipy.signal.butter(4, band, btype="bandpass", fs=fs, output="sos")
+    # 保护：稀疏/短会话的 fs 估计可低至 <2×band 上界 → 带通设计崩溃（fs/2 约束）
+    b_hi = min(band[1], fs / 2 - 0.5) if fs / 2 - 0.5 > band[0] else None
+    if b_hi is None:
+        return np.zeros(n_w, np.float32), ws
+    sos = scipy.signal.butter(4, (band[0], b_hi), btype="bandpass", fs=fs, output="sos")
     out = np.zeros(n_w, np.float32)
     min_rows = max(10, int(win_ms / 1000 * fs) // 2)
     for b0 in range(0, n_w, 1000):

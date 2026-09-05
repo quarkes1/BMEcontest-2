@@ -77,8 +77,11 @@ class MMRanker(nn.Module):
         self.n_blocks = n_blocks
 
     def forward(self, imu, ppg, ma, meta):
-        """imu: (B, 2400, 6) fp16→float；ppg: (B, 48, 66)；ma: (B, 48, 2)；meta: (B, 3)。"""
-        x = imu.transpose(1, 2).float()                 # (B, 6, 2400)
+        """imu: (B, 2400, 6)；ppg: (B, 48, 66)；ma: (B, 48, 2)；meta: (B, 3)。
+        autocast 域内保持 fp16（TCN 卷积走 tensor core）；域外升 fp32（CPU/推理兼容）。"""
+        x = imu.transpose(1, 2)
+        if not torch.is_autocast_enabled():
+            x = x.float()                               # (B, 6, 2400)
         x = self.imu_in(x)
         for blk in self.tcn:
             x = blk(x)
