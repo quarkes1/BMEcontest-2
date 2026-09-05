@@ -109,6 +109,8 @@ def make_proposals(env, t0, prior, start_epoch, loose=False, no_prior=False, dil
                 evs = windows_to_events(score, t0, t0 + WINDOW_MS, float(np.percentile(score, pct)),
                                         merge_gap_s=gap, min_dur_s=dur, smooth_win=SMOOTH)
                 act.extend((s, e, 0) for s, e in evs)
+    act = _merge(act)   # 修复：多档并集去重（IoU>0.6 相邻候选合并）——原仅 zseq 分支合并，
+                        # 20 档重叠窗未去重 → 137 窗/会话（同一活动重复 ~15×）→ 解码重复事件 FP
     if loose:  # 双档并集：更松阈值攻弱信号短餐
         for pct in LOOSE_PCT:
             for gap in LOOSE_GAP:
