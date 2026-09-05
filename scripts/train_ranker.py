@@ -235,9 +235,21 @@ def main():
                 tgt = len(pos_i) + j * (AUG_POS - 1) + rep
                 shift = int(rng.randint(-50, 51))       # ±5s 时间抖动
                 imu[tgt] = np.roll(imu[src], shift, axis=0)
-                imu[tgt] += rng.randn(*imu[tgt].shape).astype(np.float32) * (0.03 * std_ch)
+                def _clip16(a):
+                    return np.clip(a, -60000.0, 60000.0).astype(np.float16)   # float16 上限保护
+                if rep % 3 == 2:                         # 变体 C：幅值缩放（raw 域 scale 非等价变换）
+                    sc_ = float(rng.uniform(0.82, 1.22))
+                    imu[tgt] = _clip16(imu[tgt].astype(np.float32) * sc_)
+                elif rep % 3 == 1:                       # 变体 B：噪声 + 单通道扰动
+                    imu[tgt] = _clip16(imu[tgt].astype(np.float32) +
+                                       rng.randn(*imu[tgt].shape) * (0.05 * std_ch))
+                    ch = int(rng.randint(0, imu.shape[2]))
+                    imu[tgt, :, ch] = _clip16(imu[src, :, ch].astype(np.float32) * 0.3)
+                else:                                    # 变体 A：标准噪声
+                    imu[tgt] = _clip16(imu[tgt].astype(np.float32) +
+                                       rng.randn(*imu[tgt].shape) * (0.03 * std_ch))
         META = META + [None] * n_aug   # 仅占位（meta 数组已扩展；META 仅用于 sid 输出筛选——aug 不入 val）
-        print(f"  正样本增强：{len(pos_i)} → ×{AUG_POS}（+{n_aug} 抖动窗）", flush=True)
+        print(f"  正样本增强：{len(pos_i)} → ×{AUG_POS}（+{n_aug}：抖动/噪声/缩放/通道扰动混合）", flush=True)
 
     import random
     random.seed(SEED)
