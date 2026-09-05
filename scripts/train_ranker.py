@@ -29,7 +29,8 @@ import src.config as config
 from src.models.ranker import MMRanker, focal_loss, asymmetric_loss, count_params
 
 EPOCHS = 60
-BATCH = 64
+BATCH = int(os.environ.get("BME_BATCH", "64"))   # 训练 batch（GPU 8GB：256 仍留余量；增速 ~4×）
+EVAL_BATCH = int(os.environ.get("BME_EVAL_BATCH", "256"))   # val/硬负挖掘前向 batch
 LR = 1e-3
 WD = 1e-4
 PATIENCE = 12
@@ -61,7 +62,7 @@ class CandDS(Dataset):
         self.ppg = torch.from_numpy(ppg) if ppg is not None else None
         self.ma = torch.from_numpy(ma) if ma is not None else None
         self.meta = torch.from_numpy(meta)
-        self.y = torch.from_numpy(y)
+        self.y = torch.from_numpy(y).float()   # focal loss 需 float（numpy 侧为 int8）
         self.weights = torch.ones(len(orig), dtype=torch.float32)
         self.n_orig = len(y)
 
@@ -217,6 +218,7 @@ def main():
     torch.manual_seed(SEED)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(SEED)
+        torch.backends.cudnn.benchmark = True   # TCN 卷积内核自动选优（提速）
 
     dev = torch.device(args.device)
     model = MMRanker(d_model=int(os.environ.get("BME_D_MODEL", "64")),
@@ -280,7 +282,7 @@ def main():
     print(f"  正样本过采样 ×{POS_REP} → train {len(train_ds)}", flush=True)
     hm_ds = CandDS(imu_tr, ppg_tr, ma_tr, meta_tr, y_tr)   # 硬负样本挖掘（共享 imu_tr——from_numpy 零复制）
     tr_loader = DataLoader(train_ds, batch_size=BATCH, shuffle=True, num_workers=0)
-    va_loader = DataLoader(val_ds, batch_size=256, shuffle=False, num_workers=0)
+    va_loader = DataLoader(val_ds, batch_size=EVAL_BATCH, shuffle=False, num_workers=0)
 
     opt = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=WD)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=args.epochs)
@@ -289,7 +291,7 @@ def main():
         model.eval()
         logs, ys = [], []
         with torch.no_grad():
-            for ii, pp, mm, mt, yy, _ in DataLoader(ds, batch_size=256, shuffle=False):
+            for ii, pp, mm, mt, yy, _ in DataLoader(ds, batch_size=EVAL_BATCH, shuffle=False):
                 logs.append(model(ii.to(dev), pp.to(dev), mm.to(dev), mt.to(dev)).cpu())
                 ys.append(yy)
         l = torch.cat(logs); yt = torch.cat(ys)
@@ -337,7 +339,7 @@ def main():
         model.eval()
         with torch.no_grad():
             ltr = []
-            for ii, pp, mm, mt, _, _ in DataLoader(hm_ds, batch_size=256, shuffle=False):
+            for ii, pp, mm, mt, _, _ in DataLoader(hm_ds, batch_size=EVAL_BATCH, shuffle=False):
                 ltr.append(model(ii.to(dev), pp.to(dev), mm.to(dev), mt.to(dev)).cpu())
             ltr = torch.cat(ltr)
         ptr = torch.sigmoid(ltr).numpy()
