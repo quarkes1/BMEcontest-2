@@ -41,9 +41,15 @@ NEG_RATIO = int(os.environ.get("BME_NEG_RATIO", "0"))   # 负样本子采样比�
 AUG_POS = int(os.environ.get("BME_AUG_POS", "1"))   # 正样本增强倍数（>1：时间抖动±5s+噪声，正样本稀缺）
 
 
+ZERO_PPG = torch.zeros(48, 66)   # --no-ppg 占位行（模型 use_ppg=False 不读；DataLoader stack 时逐行复制）
+ZERO_MA = torch.zeros(48, 2)
+
+
 class CandDS(Dataset):
     """候选窗口数据集。pos_rep>1 时训练集正样本复制（1:45 不平衡 → 过采样平衡）。
-    meta 特征：dur_s/log、gate_prob、prior_h（归一化在构造时完成）。"""
+    meta 特征：dur_s/log、gate_prob、prior_h（归一化在构造时完成）。
+    惰性索引：__getitem__ 按 orig 取行——torch.from_numpy 与 imu 共享内存，
+    正样本过采样与 train/hm 双 dataset 不再各复制一份全量候选（历史 OOM 根因）。"""
 
     def __init__(self, imu, ppg, ma, meta, y, pos_rep=1):
         orig = np.arange(len(y))
@@ -51,19 +57,22 @@ class CandDS(Dataset):
         if pos_rep > 1 and len(pos):
             orig = np.concatenate([orig, np.repeat(pos, pos_rep - 1)])
         self.orig = orig
-        self.imu = torch.from_numpy(imu[orig])
-        self.ppg = torch.from_numpy(ppg[orig])
-        self.ma = torch.from_numpy(ma[orig])
-        self.meta = torch.from_numpy(meta[orig].astype(np.float32))
-        self.y = torch.from_numpy(y[orig].astype(np.float32))
+        self.imu = torch.from_numpy(imu)          # 共享不复制（行索引在 __getitem__ 内）
+        self.ppg = torch.from_numpy(ppg) if ppg is not None else None
+        self.ma = torch.from_numpy(ma) if ma is not None else None
+        self.meta = torch.from_numpy(meta)
+        self.y = torch.from_numpy(y)
         self.weights = torch.ones(len(orig), dtype=torch.float32)
         self.n_orig = len(y)
 
     def __len__(self):
-        return len(self.y)
+        return len(self.orig)
 
     def __getitem__(self, i):
-        return self.imu[i], self.ppg[i], self.ma[i], self.meta[i], self.y[i], self.weights[i]
+        o = self.orig[i]
+        if self.ppg is None:   # --no-ppg：共享零行占位（模型不读）
+            return self.imu[o], ZERO_PPG, ZERO_MA, self.meta[o], self.y[o], self.weights[i]
+        return self.imu[o], self.ppg[o], self.ma[o], self.meta[o], self.y[o], self.weights[i]
 
 
 def load_fold(k):
@@ -107,17 +116,23 @@ def main():
     else:
         tr_set = set(folds[fold_idx]["train_sessions"])
     d = config.CACHE_DIR / "cand_windows" / f"fold{fold_idx}"
-    X, Y, META = [], [], []
+    need_ppg = not args.no_ppg
+    X, Xp, Xm, Y, META = [], [], [], [], []
     for p in sorted(d.glob("*.npz")):
-        z = np.load(p, allow_pickle=True)
-        n = len(z["meta"])
-        for j in range(n):
-            imu = z[f"c{j}"]  # float16（缓存原生，省内存）
-            X.append((imu, z["ppg"][j], z["ma"][j]))
-        m = [json.loads(x.decode()) for x in z["meta"]]
-        META.extend(m)
-        Y.extend(int(mm["label"]) for mm in m)
-    imu = np.stack([x[0] for x in X]); ppg = np.stack([x[1] for x in X]); ma = np.stack([x[2] for x in X])
+        with np.load(p, allow_pickle=True) as z:   # with: 释放 mmap 句柄（1108 文件累积致 OOM）
+            n = len(z["meta"])
+            for j in range(n):
+                X.append(z[f"c{j}"])               # float16（缓存原生）
+                if need_ppg:                        # --no-ppg 不读 ppg/ma（模型 use_ppg=False 忽略；省 ~2GB×N 份）
+                    Xp.append(z["ppg"][j]); Xm.append(z["ma"][j])
+            m = [json.loads(x.decode()) for x in z["meta"]]
+            META.extend(m)
+            Y.extend(int(mm["label"]) for mm in m)
+    imu = np.stack(X); del X
+    ppg = ma = None
+    if need_ppg:
+        ppg = np.stack(Xp); ma = np.stack(Xm)
+        del Xp, Xm
     y = np.array(Y, np.int8)
     meta = np.stack([[np.log1p(m["dur_s"]), m["prior_h"], m["gate_prob"]] for m in META]).astype(np.float32)  # gate_prob 全体会话真实分（build 脚本修复后一致）
     split_idx = np.array([0 if m["sid"] in tr_set else 1 for m in META])
@@ -134,6 +149,7 @@ def main():
         print(f"  负样本子采样：{len(neg_idx)} → {keep_n}（正:负 1:{NEG_RATIO}）", flush=True)
     print(f"  train {tr.sum()} 候选（正 {y[tr].sum()}）| val {va.sum()}（正 {y[va].sum()}）", flush=True)
     if args.mix_fd:   # FD 联合训练：FD 窗（正密度高）混合进 train（val 保持目标域）
+        assert need_ppg, "--mix-fd 需配合 PPG 分支（--no-ppg 时模型无 ppg 输入）"
         zp = config.CACHE_DIR / "fd_windows" / f"{args.mix_fd}.npz"
         assert zp.exists(), f"缺 FD 窗缓存 {zp}"
         zf = np.load(zp, allow_pickle=True)
@@ -179,8 +195,9 @@ def main():
             pos_i for _ in range(AUG_POS - 1)])
         n_aug = len(pos_i) * (AUG_POS - 1)
         imu = np.concatenate([imu, np.zeros((n_aug, imu.shape[1], imu.shape[2]), np.float32)])
-        ppg = np.concatenate([ppg, np.zeros((n_aug,) + ppg.shape[1:], np.float32)])
-        ma = np.concatenate([ma, np.zeros((n_aug,) + ma.shape[1:], np.float32)])
+        if need_ppg:   # --no-ppg：无 ppg/ma 可扩（模型不读）
+            ppg = np.concatenate([ppg, np.zeros((n_aug,) + ppg.shape[1:], np.float32)])
+            ma = np.concatenate([ma, np.zeros((n_aug,) + ma.shape[1:], np.float32)])
         meta = np.concatenate([meta, np.zeros((n_aug, meta.shape[1]), np.float32)])
         y = np.concatenate([y, np.ones(n_aug, np.int8)])
         tr = np.concatenate([tr, np.ones(n_aug, bool)])
@@ -222,11 +239,15 @@ def main():
                   f"（mean {norm_mean.round(2)} / std {norm_std.round(2)}）", flush=True)
         else:
             print(f"  预训练迁移：{loaded} 层权重拷贝自 {args.init_from}", flush=True)
-    if norm_mean is not None:  # FD 归一化统计量 → 本项目输入投影到 FD 尺度空间（就地运算省内存）
+    if norm_mean is not None:  # FD 归一化统计量 → 本项目输入投影到 FD 尺度空间
         n_ch = min(imu.shape[2], len(norm_mean))
-        imu[..., :n_ch] -= norm_mean[:n_ch]
-        imu[..., :n_ch] /= (norm_std[:n_ch] + 1e-6)
-        print(f"  输入 z-score 归一化（前 {n_ch} 通道）", flush=True)
+        mu, sd = norm_mean[:n_ch].astype(np.float32), norm_std[:n_ch].astype(np.float32) + 1e-6
+        blk = 4000   # 分块转 float32 归一化（原 float16-=float32 广播整量临时 ~7GB → OOM）
+        for i0 in range(0, imu.shape[0], blk):
+            b = imu[i0:i0 + blk].astype(np.float32)
+            b[..., :n_ch] = (b[..., :n_ch] - mu) / sd
+            imu[i0:i0 + blk] = b.astype(np.float16)
+        print(f"  输入 z-score 归一化（前 {n_ch} 通道，分块）", flush=True)
     if args.session_norm:  # 会话级 Instance Normalization（按会话分组，会话内通道统计）
         sids = np.array([m["sid"] for m in META])
         for sid in np.unique(sids):
@@ -246,10 +267,18 @@ def main():
     print(f"  MM-Ranker 参数 {count_params(model)/1e3:.0f}K（use_ppg={not args.no_ppg}）", flush=True)
 
     POS_REP = max(2, int((y[tr] == 0).sum() / max(y[tr].sum(), 1) / 4))  # 正:负 ≈ 1:4（1:8→1:4：提升正样本学习强度）
-    train_ds = CandDS(imu[tr], ppg[tr], ma[tr], meta[tr], y[tr], pos_rep=POS_REP)
-    val_ds = CandDS(imu[va], ppg[va], ma[va], meta[va], y[va])
+    imu_tr, imu_va = imu[tr], imu[va]
+    del imu   # 分区后释放全量（此后只持有 train/val 两份，CandDS 共享不复制）
+    ppg_tr = ppg[tr] if ppg is not None else None
+    ppg_va = ppg[va] if ppg is not None else None
+    ma_tr = ma[tr] if ma is not None else None
+    ma_va = ma[va] if ma is not None else None
+    meta_tr, meta_va = meta[tr], meta[va]
+    y_tr, y_va = y[tr], y[va]
+    train_ds = CandDS(imu_tr, ppg_tr, ma_tr, meta_tr, y_tr, pos_rep=POS_REP)
+    val_ds = CandDS(imu_va, ppg_va, ma_va, meta_va, y_va)
     print(f"  正样本过采样 ×{POS_REP} → train {len(train_ds)}", flush=True)
-    hm_ds = CandDS(imu[tr], ppg[tr], ma[tr], meta[tr], y[tr])   # 硬负样本挖掘全量（原始索引）
+    hm_ds = CandDS(imu_tr, ppg_tr, ma_tr, meta_tr, y_tr)   # 硬负样本挖掘（共享 imu_tr——from_numpy 零复制）
     tr_loader = DataLoader(train_ds, batch_size=BATCH, shuffle=True, num_workers=0)
     va_loader = DataLoader(val_ds, batch_size=256, shuffle=False, num_workers=0)
 
