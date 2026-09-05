@@ -54,7 +54,8 @@ def load_dl_scores(k, norm="none"):
     在验证集上进行，不引入额外泄漏）。目的：消除不同折之间深度分数的尺度漂移
     （各折负样本中位数差异可达 3 倍），使融合权重跨折可比。
     """
-    p = config.OUTPUT_DIR / f"mm_ranker_fold{k}_val.npz"
+    fname = os.environ.get("BME_DL_FILE", f"mm_ranker_fold{k}_val.npz")   # bag 集成评估：BME_DL_FILE=bag
+    p = config.OUTPUT_DIR / f"{fname.replace('{k}', str(k))}"
     if not p.exists():
         return None
     z = np.load(p, allow_pickle=True)

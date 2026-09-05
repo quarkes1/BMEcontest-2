@@ -217,11 +217,12 @@ def main():
     if AUG_POS > 1 and (y[tr] == 1).any():   # 正样本增强（时间抖动 + 幅值噪声）
         pos_i = np.where(tr & (y == 1))[0]
         rng = np.random.RandomState(SEED)
-        std_ch = imu[pos_i].std((0, 1)) + 1e-6
+        # float32 域算 std：raw ADC float16 累加溢出（sum 超 float16 上限 → inf）
+        std_ch = imu[pos_i].astype(np.float32).std((0, 1)) + 1e-6
         aug_i = np.concatenate([pos_i] + [
             pos_i for _ in range(AUG_POS - 1)])
         n_aug = len(pos_i) * (AUG_POS - 1)
-        imu = np.concatenate([imu, np.zeros((n_aug, imu.shape[1], imu.shape[2]), np.float32)])
+        imu = np.concatenate([imu, np.zeros((n_aug, imu.shape[1], imu.shape[2]), np.float16)])
         if need_ppg:   # --no-ppg：无 ppg/ma 可扩（模型不读）
             ppg = np.concatenate([ppg, np.zeros((n_aug,) + ppg.shape[1:], np.float32)])
             ma = np.concatenate([ma, np.zeros((n_aug,) + ma.shape[1:], np.float32)])
