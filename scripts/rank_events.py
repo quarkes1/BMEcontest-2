@@ -132,7 +132,11 @@ def make_proposals(env, t0, prior, start_epoch, loose=False, no_prior=False, dil
         t_beg, t_end = int(t0.min()), int(t0[0]) + len(env) * 1000
         act = [(max(t_beg, int(s - dilate_ms)), min(t_end, int(e + dilate_ms)), ip)
                for s, e, ip in act]
-    pri = [] if no_prior else prior_candidates(start_epoch, start_epoch + (len(env) - 1) * 1000,
+    # 先验网格基于 env 真实时间轴（修复：manifest startTime 与会话 TSV 首行时间戳
+    # 可偏移 60min → 用 start_epoch 铺网格会把先验窗放到 t0 范围外，candidate_features
+    # 过滤后 X/y 长度失配（decode 崩溃），且先验覆盖失真）
+    t0_s = int(t0.min())
+    pri = [] if no_prior else prior_candidates(t0_s, t0_s + (len(env) - 1) * 1000,
                                                grid_step_s=prior_grid_s, half_w_s=prior_half_w_s)
     return act, _merge(pri)
 

@@ -39,6 +39,7 @@ HARD_K = int(os.environ.get("BME_HARD_K", "5"))       # top-k = K× 正样本数
 FOCAL_ALPHA = float(os.environ.get("BME_FOCAL_ALPHA", "0.35"))  # Focal α（0.25→0.35：更重视召回）
 SEED = int(os.environ.get("BME_SEED", "42"))   # 随机种子（BME_SEED 覆盖——多套训练选优）
 NEG_RATIO = int(os.environ.get("BME_NEG_RATIO", "0"))   # 负样本子采样比（>0：负:正 ≤ NEG_RATIO，抗 0.4% 稀释）
+NO_GATE = os.environ.get("BME_NO_GATE", "0") == "1"   # 归零 gate_prob 元特征（gate AUC 0.729 弱 → 会话级捷径 → 窗级判别学不到）
 AUG_POS = int(os.environ.get("BME_AUG_POS", "1"))   # 正样本增强倍数（>1：时间抖动±5s+噪声，正样本稀缺）
 
 
@@ -135,7 +136,8 @@ def main():
         ppg = np.stack(Xp); ma = np.stack(Xm)
         del Xp, Xm
     y = np.array(Y, np.int8)
-    meta = np.stack([[np.log1p(m["dur_s"]), m["prior_h"], m["gate_prob"]] for m in META]).astype(np.float32)  # gate_prob 全体会话真实分（build 脚本修复后一致）
+    meta = np.stack([[np.log1p(m["dur_s"]), m["prior_h"],
+                      0.0 if NO_GATE else m["gate_prob"]] for m in META]).astype(np.float32)  # gate_prob 全体会话真实分；BME_NO_GATE=1 时归零（窗级判别实验）
     split_idx = np.array([0 if m["sid"] in tr_set else 1 for m in META])
     print(f"fold{fold_idx}: {len(y)} 候选（正 {y.sum()}，{y.mean()*100:.1f}%）", flush=True)
     tr, va = split_idx == 0, split_idx == 1
