@@ -146,7 +146,31 @@ def main():
         neg_idx = np.where((split_idx == 0) & (y == 0))[0]
         keep_n = min(len(neg_idx), max(pos_n * NEG_RATIO, pos_n))
         rng = np.random.RandomState(SEED)
-        keep_neg = rng.choice(neg_idx, keep_n, replace=False)
+        hard_frac = float(os.environ.get("BME_NEG_HARD_FRAC", "0"))   # 分层采样：优先含餐会话的负窗
+        if hard_frac > 0:
+            # 含餐会话 = label==1 窗所在会话 ∪（train 含餐会话，经 meal_meta 判断）
+            meal_sids = {m["sid"] for m in META if m["label"] == 1 and m["sid"] in tr_set}
+            try:
+                from src.data import manifests
+                meal_meta, _ = manifests.load_meal_meta()
+                idx = manifests.load_sensor_index()
+                for _, r in idx.iterrows():
+                    ext, sid, st, en = r["externalid"], r["session_id"], int(r["timeStamp.startTime"]), int(r["timeStamp.endTime"])
+                    if sid in tr_set and any(m["before"] >= st and m["after"] <= en
+                                             for m in meal_meta.get(ext, [])):
+                        meal_sids.add(sid)
+            except Exception:
+                pass
+            hard_pool = np.array([i for i in neg_idx if META[i]["sid"] in meal_sids])
+            easy_pool = np.array([i for i in neg_idx if META[i]["sid"] not in meal_sids])
+            n_hard = int(keep_n * hard_frac)
+            n_hard = min(n_hard, len(hard_pool))
+            keep_neg = np.concatenate([
+                rng.choice(hard_pool, n_hard, replace=False),
+                rng.choice(easy_pool, keep_n - n_hard, replace=False)])
+            print(f"  分层负采样：{keep_n}（含餐会话负窗 {n_hard} + 其余 {keep_n - n_hard}）", flush=True)
+        else:
+            keep_neg = rng.choice(neg_idx, keep_n, replace=False)
         tr = (split_idx == 0) & (y == 1)
         tr[keep_neg] = True
         print(f"  负样本子采样：{len(neg_idx)} → {keep_n}（正:负 1:{NEG_RATIO}）", flush=True)
