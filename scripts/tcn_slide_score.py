@@ -39,12 +39,21 @@ def main():
     ck = torch.load("checkpoints/fd_pretrained_s1.pt", map_location="cpu", weights_only=False)
     mu = np.asarray(ck["norm_mean"], np.float32)[:6]
     sd = np.asarray(ck["norm_std"], np.float32)[:6] + 1e-6
-    model = MMRanker(n_imu=6, use_ppg=False).to(dev).eval()
-    model.load_state_dict(torch.load(f"models/mm_ranker_fold{args.fold}.pt",
-                                     map_location="cpu", weights_only=False))
+    import os as _os
+    bag = _os.environ.get("BME_TCN_BAG", "0") == "1"
+    if bag:   # 5 模型 bagging（跨折模型 domain shift 在滑窗上重估——bag 降方差）
+        model_list = []
+        for kk in range(5):
+            m = MMRanker(n_imu=6, use_ppg=False).to(dev).eval()
+            m.load_state_dict(torch.load(f"models/mm_ranker_fold{kk}.pt",
+                                         map_location="cpu", weights_only=False))
+            model_list.append(m)
+    else:
+        model_list = [MMRanker(n_imu=6, use_ppg=False).to(dev).eval()]
+        model_list[0].load_state_dict(torch.load(f"models/mm_ranker_fold{args.fold}.pt",
+                                                 map_location="cpu", weights_only=False))
     z66 = torch.zeros(1, 48, 66, device=dev)
     z2 = torch.zeros(1, 48, 2, device=dev)
-    meta0 = torch.zeros(1, 3, device=dev)
 
     d = np.load(config.CACHE_DIR / "slide" / f"fold{args.fold}_{args.split}.npz", allow_pickle=True)
     wids = [json.loads(w) for w in d["wid"]]
@@ -120,8 +129,8 @@ def main():
         x = torch.stack(buf).to(dev)
         mb = torch.stack(mbs).to(dev)
         with torch.no_grad(), torch.autocast("cuda", dtype=torch.float16):
-            lg = model(x, z66, z2, mb).cpu()
-        p = torch.sigmoid(lg).numpy().reshape(-1)
+            lg = torch.stack([mm(x, z66, z2, mb) for mm in model_list]).cpu()
+        p = torch.sigmoid(lg).mean(0).numpy().reshape(-1)   # bag：5 模型 sigmoid 均值
         for i2, pp in zip(idxs, p):
             scores[i2] = pp
         n_done += len(idxs)
