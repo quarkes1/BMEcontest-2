@@ -1,0 +1,6 @@
+fold1 l2: F1=0.644 sens=0.594 ppv=0.704 (19/32 pred=27)
+fold1 ens05: F1=0.635 sens=0.625 ppv=0.645 (20/32 pred=31)
+fold1 ens03: F1=0.633 sens=0.594 ppv=0.679 (19/32 pred=28)
+fold3 l2: F1=0.431 sens=0.333 ppv=0.611 (11/33 pred=18)
+fold3 ens05: F1=0.413 sens=0.394 ppv=0.433 (13/33 pred=30)
+fold3 ens03: F1=0.419 sens=0.394 ppv=0.448 (13/33 pred=29)

@@ -7,6 +7,7 @@
 """
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -221,25 +222,62 @@ def main():
             out[j, 1] = GLOBAL_PRIOR[hh]
         return out
 
-    # ---- 窗模型（train 采样窗 + TCN 融合） ----
-    tr = np.load(config.CACHE_DIR / "slide" / f"fold{args.fold}_train.npz", allow_pickle=True)
-    keep = tr["label"] >= 0
-    tcn_tr_v = load_tcn_vec("train")
-    X_tr_w = tr["feat"] if tcn_tr_v is None else np.concatenate([tr["feat"], tcn_tr_v], 1)
-    imp = SimpleImputer(strategy="median").fit(X_tr_w[keep])
-    clf = HistGradientBoostingClassifier(
-        learning_rate=0.05, max_iter=150, max_leaf_nodes=15, max_depth=4,
-        min_samples_leaf=100, l2_regularization=1.0, early_stopping=False,
-        random_state=20260901)
-    clf.fit(imp.transform(X_tr_w[keep]), tr["label"][keep].astype(int))
-    print(f"窗模型训练 {keep.sum()} 窗（{'62+2 TCN 融合' if tcn_tr_v is not None else '62 特征'}）", flush=True)
+    # ---- 窗模型（train 采样窗 + TCN 融合；BME_WBAG=1 时 5 折模型平均——弱折（fold2 型）
+    #     对折内受试者迁移差，其他折模型平均候选 recall +0.12） ----
+    wbag = os.environ.get("BME_WBAG", "0") == "1"
+    if wbag:
+        models = []
+        for kk in range(5):
+            trk = np.load(config.CACHE_DIR / "slide" / f"fold{kk}_train.npz", allow_pickle=True)
+            keepk = trk["label"] >= 0
+            def ltv_k(sn, kk2=kk):
+                p = config.CACHE_DIR / "slide" / f"fold{kk2}_{sn}_tcn.npz"
+                if not p.exists():
+                    return None
+                d0 = np.load(config.CACHE_DIR / "slide" / f"fold{kk2}_{sn}.npz", allow_pickle=True)
+                t = np.load(p)
+                o = np.zeros((len(d0["wid"]), 2), np.float32)
+                for j, s in enumerate(t["score"]):
+                    if not np.isnan(s):
+                        o[j, 0] = s
+                for j, w in enumerate([json.loads(x) for x in d0["wid"]]):
+                    hh = int((w[1] / 3.6e6) % 24)
+                    o[j, 1] = GLOBAL_PRIOR[hh]
+                return o
+            tv = ltv_k("train")
+            Xk = trk["feat"] if tv is None else np.concatenate([trk["feat"], tv], 1)
+            impk = SimpleImputer(strategy="median").fit(Xk[keepk])
+            clfk = HistGradientBoostingClassifier(
+                learning_rate=0.05, max_iter=150, max_leaf_nodes=15, max_depth=4,
+                min_samples_leaf=100, l2_regularization=1.0, early_stopping=False,
+                random_state=20260901 + kk)
+            clfk.fit(impk.transform(Xk[keepk]), trk["label"][keepk].astype(int))
+            models.append((impk, clfk))
+        print("窗模型 bag：5 折平均", flush=True)
+    else:
+        tr = np.load(config.CACHE_DIR / "slide" / f"fold{args.fold}_train.npz", allow_pickle=True)
+        keep = tr["label"] >= 0
+        tcn_tr_v = load_tcn_vec("train")
+        X_tr_w = tr["feat"] if tcn_tr_v is None else np.concatenate([tr["feat"], tcn_tr_v], 1)
+        imp = SimpleImputer(strategy="median").fit(X_tr_w[keep])
+        clf = HistGradientBoostingClassifier(
+            learning_rate=0.05, max_iter=150, max_leaf_nodes=15, max_depth=4,
+            min_samples_leaf=100, l2_regularization=1.0, early_stopping=False,
+            random_state=20260901)
+        clf.fit(imp.transform(X_tr_w[keep]), tr["label"][keep].astype(int))
+        print(f"窗模型训练 {keep.sum()} 窗（{'62+2 TCN 融合' if tcn_tr_v is not None else '62 特征'}）", flush=True)
+        models = [(imp, clf)]
 
     # ---- 连续打分 ----
     def score(split_name):
         d = np.load(config.CACHE_DIR / "slide" / f"fold{args.fold}_{split_name}.npz", allow_pickle=True)
         wids = [json.loads(w) for w in d["wid"]]
-        Xw = d["feat"] if tcn_tr_v is None else np.concatenate([d["feat"], load_tcn_vec(split_name)], 1)
-        prob = clf.predict_proba(imp.transform(Xw))[:, 1]
+        Xw = d["feat"] if (not wbag and tcn_tr_v is None) else np.concatenate([d["feat"], load_tcn_vec(split_name)], 1)
+        if wbag:
+            ps = [clf2.predict_proba(imp2.transform(Xw))[:, 1] for imp2, clf2 in models]
+            prob = np.mean(ps, 0)
+        else:
+            prob = clf.predict_proba(imp.transform(Xw))[:, 1]
         from collections import defaultdict
         sw = defaultdict(list)
         for wid, p in zip(wids, prob):
@@ -272,15 +310,17 @@ def main():
     # ---- 密度候选 ----
     cand_tr = density_candidates(sw_tr, thr)
     cand_va = density_candidates(sw_va, thr)
-    import os
     nm_path = config.CACHE_DIR / "slide" / f"fold{args.fold}_no_meal_train.npz"
     if nm_path.exists() and not os.environ.get("BME_NO_NM", "0") == "1":
         dnm = np.load(nm_path, allow_pickle=True)
         wids_nm = [json.loads(w) for w in dnm["wid"]]
         from collections import defaultdict as _dd
         sw_nm = _dd(list)
-        Xnm_w = dnm["feat"] if tcn_tr_v is None else np.concatenate([dnm["feat"], load_tcn_vec("no_meal_train")], 1)
-        prob_nm = clf.predict_proba(imp.transform(Xnm_w))[:, 1]
+        Xnm_w = dnm["feat"] if (not wbag and tcn_tr_v is None) else np.concatenate([dnm["feat"], load_tcn_vec("no_meal_train")], 1)
+        if wbag:
+            prob_nm = np.mean([clf2.predict_proba(imp2.transform(Xnm_w))[:, 1] for imp2, clf2 in models], 0)
+        else:
+            prob_nm = clf.predict_proba(imp.transform(Xnm_w))[:, 1]
         for wid, p in zip(wids_nm, prob_nm):
             sw_nm[wid[0]].append((wid[1], wid[2], float(p)))
         cand_nm = density_candidates(sw_nm, thr)
