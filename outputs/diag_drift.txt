@@ -1,0 +1,12 @@
+fold1: train正候选 102 val正候选 27
+  dur: train中位 825.000 vs val中位 825.000
+  emax: train中位 0.138 vs val中位 0.137
+  tcnmax: train中位 0.374 vs val中位 0.333
+  tcnmean: train中位 0.298 vs val中位 0.277
+  hour: train中位 8.897 vs val中位 5.858
+fold2: train正候选 105 val正候选 19
+  dur: train中位 870.000 vs val中位 660.000
+  emax: train中位 0.138 vs val中位 0.173
+  tcnmax: train中位 0.458 vs val中位 0.388
+  tcnmean: train中位 0.302 vs val中位 0.255
+  hour: train中位 5.849 vs val中位 9.671

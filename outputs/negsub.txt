@@ -1,0 +1,6 @@
+fold3 all: F1=0.431 sens=0.333 ppv=0.611 (11/33 pred=18)
+fold3 r2: F1=0.431 sens=0.333 ppv=0.611 (11/33 pred=18)
+fold3 r5: F1=0.431 sens=0.333 ppv=0.611 (11/33 pred=18)
+fold1 all: F1=0.644 sens=0.594 ppv=0.704 (19/32 pred=27)
+fold1 r2: F1=0.644 sens=0.594 ppv=0.704 (19/32 pred=27)
+fold1 r5: F1=0.644 sens=0.594 ppv=0.704 (19/32 pred=27)
