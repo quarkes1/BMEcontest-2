@@ -176,8 +176,9 @@ def match_labels(cands, gts):
     return np.array(y, np.int8)
 
 
-def eligible_meals(sids):
-    """eligible 餐（会话 npz 存在 + 餐时段 ≥50% 数据覆盖）。"""
+def eligible_meals(sids, sw=None):
+    """eligible 餐（会话 npz 存在 + 餐时段数据覆盖 ≥50%；sw 给定时加"餐时段有滑窗覆盖 ≥120s"
+    检查——与官方 IMU 质量合格口径对齐，数据碎片/缺口餐不罚检测器）。"""
     out = []
     sid_meals = load_meals()
     for sid in sids:
@@ -186,10 +187,16 @@ def eligible_meals(sids):
             continue
         with np.load(p) as z:
             tv = z["t_acc"][z["imu_valid"]]
+        win_arr = sorted(sw.get(sid, [])) if sw else []
         for m in sid_meals.get(sid, []):
             lo = np.searchsorted(tv, m["before"]); hi = np.searchsorted(tv, m["after"])
-            if hi > lo and (tv[min(hi, len(tv) - 1)] - tv[max(lo, 0)]) >= 0.5 * (m["after"] - m["before"]):
-                out.append((sid, (m["before"], m["after"])))
+            if not (hi > lo and (tv[min(hi, len(tv) - 1)] - tv[max(lo, 0)]) >= 0.5 * (m["after"] - m["before"])):
+                continue
+            if sw is not None:
+                ov = max((min(w[1], m["after"]) - max(w[0], m["before"])) for w in win_arr) if win_arr else 0
+                if ov < 120_000:   # 餐时段无 ≥2min 窗覆盖 → 数据碎片不可达
+                    continue
+            out.append((sid, (m["before"], m["after"])))
     return out
 
 
@@ -330,8 +337,8 @@ def main():
     print(f"候选：train(含餐) {len(cand_tr)} + 无餐 {len(cand_nm)} | val {len(cand_va)}", flush=True)
 
     # ---- 复核标签（train 候选 vs eligible 餐） ----
-    true_tr = eligible_meals(set(sw_tr.keys()))
-    true_va = eligible_meals(set(sw_va.keys()))
+    true_tr = eligible_meals(set(sw_tr.keys()), sw_tr)
+    true_va = eligible_meals(set(sw_va.keys()), sw_va)
     print(f"eligible 餐：train {len(true_tr)} | val {len(true_va)}", flush=True)
 
     X_tr, meta_tr = verifier_features(cand_tr, sw_tr, tcn_tr)
