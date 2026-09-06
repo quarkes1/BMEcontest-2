@@ -1,0 +1,16 @@
+{
+ "fold": 2,
+ "thr_window": 0.28838,
+ "thr_verifier": 0.4492034566959183,
+ "candidate_layer": {
+  "n": 294
+ },
+ "verified": {
+  "f1": 0.27868852459016397,
+  "sensitivity": 0.5,
+  "ppv": 0.19318181818181818,
+  "n_tp": 17,
+  "n_pred": 88,
+  "n_true": 34
+ }
+}

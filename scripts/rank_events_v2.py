@@ -132,8 +132,30 @@ def decode_session(row, gate_prob, cfg, clf_pri, w_sid=None):
         act_out = [(sid, (act[j][0], act[j][1])) for j in sel]
     # 先验通道：门控与活动池同权（低门控会话不发先验事件，避免无餐会话 FP）
     # 逐窗阈值：每个被选先验窗都须 sp ≥ thr_p（旧旁路只查 sp.max，第 2 窗可低至 0.006）
-    if gate_prob.get(sid, 1.0) >= thr_g and clf_pri is not None and len(sp) and sp.max() >= thr_p:
-        act_evs = [(s0, e0) for _, (s0, e0) in act_out]
+    pri_agg = os.environ.get("BME_PRI_AGG", "0") == "1"   # V3：pri 窗分数 = 窗内 act 深度分 max
+    act_evs = [(s0, e0) for _, (s0, e0) in act_out]
+    if pri_agg:
+        # 聚合分：pri 窗覆盖范围内 act 窗（融合分）的 max——会内判别已验证 AUC 1.0（含餐会话）
+        fuse_loc = np.where(np.isnan(va_scores), sa, va_scores) if len(sa) else va_scores
+        pa = np.full(len(pri), -1.0, np.float64)
+        for j, c in enumerate(pri):
+            lo, hi = c[0] - 60_000, c[1] + 60_000
+            m = -1.0
+            for i, a in enumerate(act):
+                if a[0] >= lo and a[1] <= hi and not np.isnan(fuse_loc[i]):
+                    m = max(m, float(fuse_loc[i]))
+            pa[j] = m
+        pa_ok = pa >= thr_p
+        if gate_prob.get(sid, 1.0) >= thr_g and len(pri) and pa_ok.any():
+            for jp in np.argsort(pa)[::-1]:
+                if pa[jp] < thr_p or len(pri_out) >= 2:
+                    break
+                pc = (pri[jp][0], pri[jp][1])
+                if any(event_iou(pc, e) >= IOU_LABEL for e in act_evs + [x[1] for x in pri_out]):
+                    continue
+                pri_out.append((sid, pc))
+            sp = pa   # detail 用聚合分
+    elif gate_prob.get(sid, 1.0) >= thr_g and clf_pri is not None and len(sp) and sp.max() >= thr_p:
         pri_evs = [e for _, e in pri_out]  # pri_out 是 (sid,(s,e)) 元组
         for jp in np.argsort(sp)[::-1]:
             if sp[jp] < thr_p:
