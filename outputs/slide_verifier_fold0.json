@@ -1,7 +1,7 @@
 {
  "fold": 0,
  "thr_window": 0.28838,
- "thr_verifier": 0.7870111947474265,
+ "thr_verifier": 0.7606613210941587,
  "candidate_layer": {
   "n": 230
  },

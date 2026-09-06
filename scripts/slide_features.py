@@ -155,10 +155,10 @@ def main():
         sessions = f["train_sessions"]
     elif args.mode == "meal_train":   # 复核器训练：train 的含餐会话全窗（含 -1）
         sessions = [s for s in f["train_sessions"] if s in sid_meals]
-    elif args.mode == "no_meal_train":   # 复核负样本：无餐 train 会话抽样
+    elif args.mode == "no_meal_train":   # 复核负样本：无餐 train 会话抽样（150——60 对 val 190 无餐会话代表性不足）
         rng = np.random.default_rng(20260901)
         no_meal = [s for s in f["train_sessions"] if s not in sid_meals]
-        sessions = list(rng.choice(no_meal, min(60, len(no_meal)), replace=False))
+        sessions = list(rng.choice(no_meal, min(150, len(no_meal)), replace=False))
     elif args.mode == "all":
         sessions = f["train_sessions"] + f["val_sessions"]
     else:
