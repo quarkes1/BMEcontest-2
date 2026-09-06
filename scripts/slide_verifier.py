@@ -27,6 +27,10 @@ COV_MIN = 0.80
 MERGE_MS = 120_000
 WIN_MS = 240_000
 CTX_MS = 1_200_000
+GLOBAL_PRIOR = np.array(   # 训练数据餐时刻先验（predict.py 同款）
+    [0.174, 0.278, 0.546, 0.92, 0.889, 0.496, 0.187, 0.141, 0.408, 0.863,
+     1.0, 0.681, 0.368, 0.216, 0.127, 0.073, 0.037, 0.012, 0.002, 0.0,
+     0.0, 0.0, 0.0, 0.0], np.float32)
 
 
 def density_candidates(sid_windows, thr, sids=None):
@@ -87,8 +91,8 @@ def density_candidates(sid_windows, thr, sids=None):
     return cands
 
 
-def verifier_features(cands, sid_windows):
-    """33 特征（对方规格）：事件内概率形态 + 前/后 20min 上下文。"""
+def verifier_features(cands, sid_windows, tcn_scores=None):
+    """33 特征（对方规格）+ 可选 TCN 深度分（事件内 max/mean，特征 34-35）。"""
     X, meta = [], []
     for c in cands:
         sid, s, e, ps, pmax, pmean, dur = c
@@ -133,6 +137,16 @@ def verifier_features(cands, sid_windows):
                float(ps.max() - (np.percentile(both, 90) if len(both) else 0.0)),
                float(ps.mean() - (pre.mean() if len(pre) else 0.0)),
                float(ps.mean() - (post.mean() if len(post) else 0.0))]
+        # TCN 深度分（特征 34-35）：事件覆盖窗的深度分 max/mean（无 TCN 数据→0 列对齐）
+        tw_in = []
+        if tcn_scores is not None:
+            tw = tcn_scores.get(sid, [])
+            tw_in = [v for ts, v in tw if ts >= s - 1000 and ts < e]
+        xs += [float(max(tw_in)) if tw_in else 0.0,
+               float(np.mean(tw_in)) if tw_in else 0.0]
+        # 时刻先验（特征 36-37）：事件开始小时 + 全局时刻先验值（进食时刻分布强信号）
+        hh = (s / 3.6e6) % 24
+        xs += [float(hh), float(GLOBAL_PRIOR[int(hh) % 24])]
         X.append(xs)
         meta.append((sid, s, e, pmax, pmean))
     return np.array(X, np.float64), meta
@@ -190,22 +204,42 @@ def main():
     from sklearn.preprocessing import StandardScaler
     from sklearn.linear_model import LogisticRegression
 
-    # ---- 窗模型（train 采样窗） ----
+    # ---- TCN 深度分加载（窗模型融合特征 63-64；与 wid 对齐） ----
+    def load_tcn_vec(split_name):
+        p = config.CACHE_DIR / "slide" / f"fold{args.fold}_{split_name}_tcn.npz"
+        if not p.exists():
+            return None
+        d0 = np.load(config.CACHE_DIR / "slide" / f"fold{args.fold}_{split_name}.npz", allow_pickle=True)
+        t = np.load(p)
+        out = np.zeros((len(d0["wid"]), 2), np.float32)
+        for j, sc in enumerate(t["score"]):
+            if not np.isnan(sc):
+                out[j, 0] = sc
+        # 列 2：窗起点小时先验（62 特征外的补充）
+        for j, w in enumerate([json.loads(x) for x in d0["wid"]]):
+            hh = int((w[1] / 3.6e6) % 24)
+            out[j, 1] = GLOBAL_PRIOR[hh]
+        return out
+
+    # ---- 窗模型（train 采样窗 + TCN 融合） ----
     tr = np.load(config.CACHE_DIR / "slide" / f"fold{args.fold}_train.npz", allow_pickle=True)
     keep = tr["label"] >= 0
-    imp = SimpleImputer(strategy="median").fit(tr["feat"][keep])
+    tcn_tr_v = load_tcn_vec("train")
+    X_tr_w = tr["feat"] if tcn_tr_v is None else np.concatenate([tr["feat"], tcn_tr_v], 1)
+    imp = SimpleImputer(strategy="median").fit(X_tr_w[keep])
     clf = HistGradientBoostingClassifier(
         learning_rate=0.05, max_iter=150, max_leaf_nodes=15, max_depth=4,
         min_samples_leaf=100, l2_regularization=1.0, early_stopping=False,
         random_state=20260901)
-    clf.fit(imp.transform(tr["feat"][keep]), tr["label"][keep].astype(int))
-    print(f"窗模型训练 {keep.sum()} 窗", flush=True)
+    clf.fit(imp.transform(X_tr_w[keep]), tr["label"][keep].astype(int))
+    print(f"窗模型训练 {keep.sum()} 窗（{'62+2 TCN 融合' if tcn_tr_v is not None else '62 特征'}）", flush=True)
 
     # ---- 连续打分 ----
     def score(split_name):
         d = np.load(config.CACHE_DIR / "slide" / f"fold{args.fold}_{split_name}.npz", allow_pickle=True)
         wids = [json.loads(w) for w in d["wid"]]
-        prob = clf.predict_proba(imp.transform(d["feat"]))[:, 1]
+        Xw = d["feat"] if tcn_tr_v is None else np.concatenate([d["feat"], load_tcn_vec(split_name)], 1)
+        prob = clf.predict_proba(imp.transform(Xw))[:, 1]
         from collections import defaultdict
         sw = defaultdict(list)
         for wid, p in zip(wids, prob):
@@ -217,6 +251,24 @@ def main():
     thr = args.thr if args.thr is not None else 0.28838   # 对方冻结阈值（MCC 网格近似）
     print(f"窗口阈值 {thr}", flush=True)
 
+    # TCN 深度分（可选融合特征）：cache/slide/fold{k}_{split}_tcn.npz（与 wid 对齐）
+    def load_tcn(split_name):
+        p = config.CACHE_DIR / "slide" / f"fold{args.fold}_{split_name}_tcn.npz"
+        if not p.exists():
+            return None
+        d0 = np.load(config.CACHE_DIR / "slide" / f"fold{args.fold}_{split_name}.npz", allow_pickle=True)
+        t = np.load(p)
+        wids0 = [json.loads(w) for w in d0["wid"]]
+        from collections import defaultdict as _dd
+        out = _dd(list)
+        for w, sc in zip(wids0, t["score"]):
+            if not np.isnan(sc):
+                out[w[0]].append((w[1], float(sc)))
+        return dict(out)
+
+    tcn_tr = load_tcn("meal_train")
+    tcn_va = load_tcn("val")
+
     # ---- 密度候选 ----
     cand_tr = density_candidates(sw_tr, thr)
     cand_va = density_candidates(sw_va, thr)
@@ -227,7 +279,8 @@ def main():
         wids_nm = [json.loads(w) for w in dnm["wid"]]
         from collections import defaultdict as _dd
         sw_nm = _dd(list)
-        prob_nm = clf.predict_proba(imp.transform(dnm["feat"]))[:, 1]
+        Xnm_w = dnm["feat"] if tcn_tr_v is None else np.concatenate([dnm["feat"], load_tcn_vec("no_meal_train")], 1)
+        prob_nm = clf.predict_proba(imp.transform(Xnm_w))[:, 1]
         for wid, p in zip(wids_nm, prob_nm):
             sw_nm[wid[0]].append((wid[1], wid[2], float(p)))
         cand_nm = density_candidates(sw_nm, thr)
@@ -241,14 +294,14 @@ def main():
     true_va = eligible_meals(set(sw_va.keys()))
     print(f"eligible 餐：train {len(true_tr)} | val {len(true_va)}", flush=True)
 
-    X_tr, meta_tr = verifier_features(cand_tr, sw_tr)
+    X_tr, meta_tr = verifier_features(cand_tr, sw_tr, tcn_tr)
     y_tr = match_labels([(m[0], m[1], m[2]) for m in meta_tr], true_tr)
     if cand_nm:
         X_nm, meta_nm = verifier_features(cand_nm, sw_nm)
         X_tr = np.concatenate([X_tr, X_nm])
         meta_tr = meta_tr + meta_nm
         y_tr = np.concatenate([y_tr, np.zeros(len(meta_nm), np.int8)])
-    X_va, meta_va = verifier_features(cand_va, sw_va)
+    X_va, meta_va = verifier_features(cand_va, sw_va, tcn_va)
     y_va = match_labels([(m[0], m[1], m[2]) for m in meta_va], true_va)
     n_pos_tr = int(y_tr.sum())
     print(f"复核训练：{len(y_tr)} 候选（正 {n_pos_tr}，负 {len(y_tr) - n_pos_tr}）| val 候选正 {int(y_va.sum())}", flush=True)

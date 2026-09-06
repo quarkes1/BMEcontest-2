@@ -32,7 +32,7 @@ def extract_seg(acc, gyro, t_v, ws, we):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--fold", type=int, default=0)
-    ap.add_argument("--split", choices=("val", "meal_train", "no_meal_train"), default="val")
+    ap.add_argument("--split", choices=("val", "meal_train", "no_meal_train", "train"), default="val")
     args = ap.parse_args()
 
     dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
