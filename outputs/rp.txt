@@ -1,0 +1,3 @@
+fold0 maxF1: F1=0.435 (10/23) | recall85: F1=0.192 sens=0.652 ppv=0.113 (15/23)
+fold2 maxF1: F1=0.426 (13/27) | recall85: F1=0.299 sens=0.741 ppv=0.187 (20/27)
+fold3 maxF1: F1=0.516 (16/32) | recall85: F1=0.430 sens=0.719 ppv=0.307 (23/32)

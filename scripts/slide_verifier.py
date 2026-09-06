@@ -212,8 +212,18 @@ def main():
     from sklearn.preprocessing import StandardScaler
     from sklearn.linear_model import LogisticRegression
 
-    # ---- TCN 深度分加载（窗模型融合特征 63-64；与 wid 对齐） ----
+    # ---- TCN 深度分加载（窗模型融合特征 63-64；与 wid 对齐；BME_NO_TCN=1 禁用——
+    #     dist 纯 CPU 推理版：TCN 分缺失时窗模型/复核保持一致性） ----
+    no_tcn = os.environ.get("BME_NO_TCN", "0") == "1"
+
     def load_tcn_vec(split_name):
+        if no_tcn:   # 纯 CPU 推理版：TCN 列不可用，保留时刻先验列（推理可算）
+            d0 = np.load(config.CACHE_DIR / "slide" / f"fold{args.fold}_{split_name}.npz", allow_pickle=True)
+            out = np.zeros((len(d0["wid"]), 1), np.float32)
+            for j, w in enumerate([json.loads(x) for x in d0["wid"]]):
+                hh = int((w[1] / 3.6e6) % 24)
+                out[j, 0] = GLOBAL_PRIOR[hh]
+            return out
         p = config.CACHE_DIR / "slide" / f"fold{args.fold}_{split_name}_tcn.npz"
         if not p.exists():
             return None
@@ -238,6 +248,13 @@ def main():
             trk = np.load(config.CACHE_DIR / "slide" / f"fold{kk}_train.npz", allow_pickle=True)
             keepk = trk["label"] >= 0
             def ltv_k(sn, kk2=kk):
+                if no_tcn:   # 纯 CPU 版：仅时刻先验列（训练/推理一致）
+                    d0 = np.load(config.CACHE_DIR / "slide" / f"fold{kk2}_{sn}.npz", allow_pickle=True)
+                    o = np.zeros((len(d0["wid"]), 1), np.float32)
+                    for j, w in enumerate([json.loads(x) for x in d0["wid"]]):
+                        hh = int((w[1] / 3.6e6) % 24)
+                        o[j, 0] = GLOBAL_PRIOR[hh]
+                    return o
                 p = config.CACHE_DIR / "slide" / f"fold{kk2}_{sn}_tcn.npz"
                 if not p.exists():
                     return None
@@ -279,7 +296,8 @@ def main():
     def score(split_name):
         d = np.load(config.CACHE_DIR / "slide" / f"fold{args.fold}_{split_name}.npz", allow_pickle=True)
         wids = [json.loads(w) for w in d["wid"]]
-        Xw = d["feat"] if (not wbag and tcn_tr_v is None) else np.concatenate([d["feat"], load_tcn_vec(split_name)], 1)
+        tv_l = load_tcn_vec(split_name)
+        Xw = d["feat"] if tv_l is None else np.concatenate([d["feat"], tv_l], 1)
         if wbag:
             ps = [clf2.predict_proba(imp2.transform(Xw))[:, 1] for imp2, clf2 in models]
             prob = np.mean(ps, 0)
@@ -298,6 +316,8 @@ def main():
 
     # TCN 深度分（可选融合特征）：cache/slide/fold{k}_{split}_tcn.npz（与 wid 对齐）
     def load_tcn(split_name):
+        if no_tcn:
+            return None
         p = config.CACHE_DIR / "slide" / f"fold{args.fold}_{split_name}_tcn.npz"
         if not p.exists():
             return None
@@ -323,7 +343,8 @@ def main():
         wids_nm = [json.loads(w) for w in dnm["wid"]]
         from collections import defaultdict as _dd
         sw_nm = _dd(list)
-        Xnm_w = dnm["feat"] if (not wbag and tcn_tr_v is None) else np.concatenate([dnm["feat"], load_tcn_vec("no_meal_train")], 1)
+        tv_nm = load_tcn_vec("no_meal_train")
+        Xnm_w = dnm["feat"] if tv_nm is None else np.concatenate([dnm["feat"], tv_nm], 1)
         if wbag:
             prob_nm = np.mean([clf2.predict_proba(imp2.transform(Xnm_w))[:, 1] for imp2, clf2 in models], 0)
         else:
