@@ -34,8 +34,13 @@ GLOBAL_PRIOR = np.array(   # 训练数据餐时刻先验（predict.py 同款）
      0.0, 0.0, 0.0, 0.0], np.float32)
 
 
-def density_candidates(sid_windows, thr, sids=None):
-    """滑窗概率 → 密度候选事件（window_support 边界 + 120s 合并）。返回 (sid, s, e, probs 数组, prob_max, prob_mean, dur_s)。"""
+def density_candidates(sid_windows, thr, sids=None, min_pos=None, dens_ms=None,
+                       bridge_ms=None):
+    """滑窗概率 → 密度候选事件（window_support 边界 + 120s 合并）。返回 (sid, s, e, probs 数组, prob_max, prob_mean, dur_s)。
+    min_pos/dens_ms/bridge_ms 可覆盖全局（参数扫描用）。"""
+    min_pos = MIN_POS if min_pos is None else min_pos
+    dens_ms = DENSITY_MS if dens_ms is None else dens_ms
+    bridge_ms = BRIDGE_MS if bridge_ms is None else bridge_ms
     cands = []
     for sid in sorted(sid_windows):
         if sids is not None and sid not in sids:
@@ -45,7 +50,7 @@ def density_candidates(sid_windows, thr, sids=None):
         probs = np.array([a[2] for a in arr])
         seg, segs = [], []
         for i in range(len(starts)):
-            if seg and starts[i] - seg[-1][0] > STRIDE_MS + BRIDGE_MS:
+            if seg and starts[i] - seg[-1][0] > STRIDE_MS + bridge_ms:
                 segs.append(seg); seg = []
             if seg and starts[i] - seg[-1][0] > STRIDE_MS:
                 for gs in range(seg[-1][0] + STRIDE_MS, starts[i], STRIDE_MS):
@@ -57,10 +62,10 @@ def density_candidates(sid_windows, thr, sids=None):
             ss = np.array([s for s, _, _ in seg], np.int64)
             pp = np.array([p for _, p, _ in seg])
             oo = np.array([o for _, _, o in seg], np.float64)
-            ds = int(round(DENSITY_MS / STRIDE_MS))
+            ds = int(round(dens_ms / STRIDE_MS))
             cnt = np.convolve((pp >= thr).astype(np.int64), np.ones(ds, np.int64), "same")
             cov = np.convolve(oo, np.ones(ds) / ds, "same")
-            dense = (cnt >= MIN_POS) & (cov >= COV_MIN)
+            dense = (cnt >= min_pos) & (cov >= COV_MIN)
             i, n = 0, len(seg)
             while i < n:
                 if dense[i]:
@@ -334,9 +339,11 @@ def main():
     tcn_tr = load_tcn("meal_train")
     tcn_va = load_tcn("val")
 
-    # ---- 密度候选 ----
-    cand_tr = density_candidates(sw_tr, thr)
-    cand_va = density_candidates(sw_va, thr)
+    # ---- 密度候选（BME_DENS_MP/MS 覆盖——低阈值/密网格救碎片餐） ----
+    d_mp = int(os.environ.get("BME_DENS_MP", str(MIN_POS)))
+    d_ms = int(os.environ.get("BME_DENS_MS", str(DENSITY_MS)))
+    cand_tr = density_candidates(sw_tr, thr, min_pos=d_mp, dens_ms=d_ms)
+    cand_va = density_candidates(sw_va, thr, min_pos=d_mp, dens_ms=d_ms)
     nm_path = config.CACHE_DIR / "slide" / f"fold{args.fold}_no_meal_train.npz"
     if nm_path.exists() and not os.environ.get("BME_NO_NM", "0") == "1":
         dnm = np.load(nm_path, allow_pickle=True)
@@ -351,7 +358,7 @@ def main():
             prob_nm = clf.predict_proba(imp.transform(Xnm_w))[:, 1]
         for wid, p in zip(wids_nm, prob_nm):
             sw_nm[wid[0]].append((wid[1], wid[2], float(p)))
-        cand_nm = density_candidates(sw_nm, thr)
+        cand_nm = density_candidates(sw_nm, thr, min_pos=d_mp, dens_ms=d_ms)
         print(f"无餐会话候选（复核负样本）: {len(cand_nm)}", flush=True)
     else:
         cand_nm = []
