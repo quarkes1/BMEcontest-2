@@ -1,2 +1,0 @@
-feat dims: train 37 vs vfeat 37
-col 0 diff -225.0000 (train 690.000 vfeat 915.000)
