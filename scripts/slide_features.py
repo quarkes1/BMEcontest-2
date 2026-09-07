@@ -158,7 +158,7 @@ def main():
     elif args.mode == "no_meal_train":   # 复核负样本：无餐 train 会话抽样（150——60 对 val 190 无餐会话代表性不足）
         rng = np.random.default_rng(20260901)
         no_meal = [s for s in f["train_sessions"] if s not in sid_meals]
-        sessions = list(rng.choice(no_meal, min(150, len(no_meal)), replace=False))
+        sessions = list(rng.choice(no_meal, min(150, len(no_meal)), replace=False))   # 150 为复核负样本甜点（全量使复核保守 F1 降）
     elif args.mode == "all":
         sessions = f["train_sessions"] + f["val_sessions"]
     else:
