@@ -7,4 +7,5 @@ cache/
 /models/
 FDdatasets/
 checkpoints/
-
+outputs/*.log
+outputs/*.txt
