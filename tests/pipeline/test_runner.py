@@ -101,3 +101,26 @@ def test_outer_subjects_never_enter_fit_sets():
 
     assert result.outer_subjects.isdisjoint(result.window_fit_subjects)
     assert result.outer_subjects.isdisjoint(result.verifier_fit_subjects)
+
+
+def test_subject_cap_is_learned_inside_and_applied_outside():
+    dataset = synthetic_runner_dataset(subjects=8, windows_per_subject=40)
+    result = run_outer_fold(
+        RunConfig(
+            outer_fold=0,
+            inner_splits=3,
+            subject_cap_grid=(1, 2),
+            density=DensityConfig(
+                density_ms=60_000,
+                min_positive=2,
+                coverage_min=0.0,
+                window_threshold=0.05,
+            ),
+        ),
+        data_source=dataset,
+    )
+
+    assert result.max_events_per_subject in (1, 2)
+    assert result.outer_metrics.n_pred <= (
+        result.max_events_per_subject * len(result.outer_subjects)
+    )

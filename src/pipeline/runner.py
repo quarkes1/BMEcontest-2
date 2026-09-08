@@ -31,10 +31,13 @@ from src.pipeline.event_stack import (
     _GLOBAL_PRIOR,
     CandidateEvent,
     DensityConfig,
+    EventSelectionPolicy,
     EventMetrics,
     EventRef,
+    apply_event_policy,
     compute_event_metrics,
     density_candidates,
+    select_event_policy,
     select_event_threshold,
     verifier_features,
 )
@@ -54,7 +57,7 @@ VERIFIER_MODEL_PARAMETERS = {
     "class_weight": "balanced",
     "max_iter": 3000,
 }
-RUNNER_SCHEMA_VERSION = 1
+RUNNER_SCHEMA_VERSION = 2
 
 
 @dataclass(frozen=True)
@@ -65,6 +68,7 @@ class RunConfig:
     no_tcn: bool = True
     workers: int = 1
     device: str = "auto"
+    subject_cap_grid: tuple[int, ...] = ()
     density: DensityConfig = field(default_factory=DensityConfig)
 
 
@@ -72,6 +76,7 @@ class RunConfig:
 class FoldResult:
     config_hash: str
     threshold: float
+    max_events_per_subject: int | None
     inner_metrics: EventMetrics
     outer_metrics: EventMetrics
     candidate_count: int
@@ -373,11 +378,26 @@ def _run_outer_dataset(
         config.inner_splits,
         estimator_factory=lambda: _verifier_estimator(config.seed + 1),
     )
-    selection = select_event_threshold(
-        [candidate.event for candidate in train_candidates],
-        verifier_oof.probabilities,
-        data_source.train_truths,
-    )
+    train_candidate_events = [candidate.event for candidate in train_candidates]
+    if config.subject_cap_grid:
+        policy = select_event_policy(
+            train_candidate_events,
+            verifier_oof.probabilities,
+            data_source.train_truths,
+            train_candidate_groups,
+            max_events_options=config.subject_cap_grid,
+        )
+    else:
+        threshold_selection = select_event_threshold(
+            train_candidate_events,
+            verifier_oof.probabilities,
+            data_source.train_truths,
+        )
+        policy = EventSelectionPolicy(
+            threshold_selection.threshold,
+            None,
+            threshold_selection.metrics,
+        )
     verifier_oof_seconds = time.perf_counter() - stage_started
 
     stage_started = time.perf_counter()
@@ -411,11 +431,20 @@ def _run_outer_dataset(
         )
     else:
         validation_scores = np.empty(0, dtype=np.float64)
-    selected_predictions = [
-        candidate.event
-        for candidate, score in zip(validation_candidates, validation_scores)
-        if score >= selection.threshold
+    validation_candidate_events = [
+        candidate.event for candidate in validation_candidates
     ]
+    validation_candidate_groups = _groups_for(
+        validation_candidate_events,
+        data_source.subject_by_session,
+    )
+    selected_predictions = apply_event_policy(
+        validation_candidate_events,
+        validation_scores,
+        validation_candidate_groups,
+        threshold=policy.threshold,
+        max_events_per_group=policy.max_events_per_group,
+    )
     outer_metrics = compute_event_metrics(
         selected_predictions, data_source.validation_truths
     )
@@ -443,8 +472,9 @@ def _run_outer_dataset(
     )
     return FoldResult(
         config_hash=config_hash,
-        threshold=selection.threshold,
-        inner_metrics=selection.metrics,
+        threshold=policy.threshold,
+        max_events_per_subject=policy.max_events_per_group,
+        inner_metrics=policy.metrics,
         outer_metrics=outer_metrics,
         candidate_count=len(validation_candidates),
         candidate_match_recall=candidate_metrics.sensitivity,
@@ -640,6 +670,7 @@ def fold_result_to_dict(result: FoldResult) -> dict[str, object]:
     return {
         "config_hash": result.config_hash,
         "threshold": result.threshold,
+        "max_events_per_subject": result.max_events_per_subject,
         "inner_metrics": metrics_dict(result.inner_metrics),
         "outer_metrics": metrics_dict(result.outer_metrics),
         "candidate_count": result.candidate_count,
@@ -668,6 +699,11 @@ def _fold_result_from_dict(payload: Mapping[str, object]) -> FoldResult:
     return FoldResult(
         config_hash=str(payload["config_hash"]),
         threshold=float(payload["threshold"]),
+        max_events_per_subject=(
+            int(payload["max_events_per_subject"])
+            if payload.get("max_events_per_subject") is not None
+            else None
+        ),
         inner_metrics=metrics(payload["inner_metrics"]),
         outer_metrics=metrics(payload["outer_metrics"]),
         candidate_count=int(payload["candidate_count"]),
