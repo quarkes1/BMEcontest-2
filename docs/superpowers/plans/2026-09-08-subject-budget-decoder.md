@@ -1,8 +1,8 @@
 # Subject-budget decoder implementation plan
 
-> Date: 2026-09-08  
-> Baseline: locked nested CPU/no-TCN F1 0.416 (89/153 TP, 275 predictions)  
-> Coverage candidate ceiling: 132/153 matched candidates, but 324 predictions and F1 0.432  
+> Date: 2026-09-08
+> Baseline: locked nested CPU/no-TCN F1 0.416 (89/153 TP, 275 predictions)
+> Coverage candidate ceiling: 132/153 matched candidates, but 324 predictions and F1 0.432
 > Final project target: locked F1 >= 0.65
 
 ## Objective and rationale
