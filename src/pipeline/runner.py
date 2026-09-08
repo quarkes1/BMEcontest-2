@@ -34,6 +34,7 @@ from src.pipeline.event_stack import (
     EventSelectionPolicy,
     EventMetrics,
     EventRef,
+    aggregate_candidate_features,
     apply_event_policy,
     compute_event_metrics,
     density_candidates,
@@ -57,7 +58,7 @@ VERIFIER_MODEL_PARAMETERS = {
     "class_weight": "balanced",
     "max_iter": 3000,
 }
-RUNNER_SCHEMA_VERSION = 2
+RUNNER_SCHEMA_VERSION = 3
 
 
 @dataclass(frozen=True)
@@ -69,6 +70,8 @@ class RunConfig:
     workers: int = 1
     device: str = "auto"
     subject_cap_grid: tuple[int, ...] = ()
+    verifier_feature_mode: str = "probability"
+    verifier_c_grid: tuple[float, ...] = (0.1,)
     density: DensityConfig = field(default_factory=DensityConfig)
 
 
@@ -77,6 +80,8 @@ class FoldResult:
     config_hash: str
     threshold: float
     max_events_per_subject: int | None
+    verifier_c: float
+    verifier_feature_count: int
     inner_metrics: EventMetrics
     outer_metrics: EventMetrics
     candidate_count: int
@@ -203,15 +208,20 @@ def _window_estimator(seed: int) -> Pipeline:
     )
 
 
-def _verifier_estimator(seed: int) -> Pipeline:
+def _verifier_estimator(seed: int, regularization_c: float) -> Pipeline:
+    parameters = dict(VERIFIER_MODEL_PARAMETERS)
+    parameters["C"] = regularization_c
     return Pipeline(
         [
-            ("imputer", SimpleImputer(strategy="median")),
+            (
+                "imputer",
+                SimpleImputer(strategy="median", keep_empty_features=True),
+            ),
             ("scaler", StandardScaler()),
             (
                 "model",
                 LogisticRegression(
-                    **VERIFIER_MODEL_PARAMETERS,
+                    **parameters,
                     random_state=seed,
                 ),
             ),
@@ -253,6 +263,8 @@ def _candidate_matrix(
     candidates: Sequence[CandidateEvent],
     windows_by_sid: Mapping[str, Sequence[tuple[int, int, float]]],
     include_coverage: bool,
+    window_batch: WindowBatch,
+    feature_mode: str,
 ) -> tuple[tuple[CandidateEvent, ...], np.ndarray]:
     usable = tuple(candidate for candidate in candidates if len(candidate.probabilities) >= 2)
     features = verifier_features(
@@ -262,6 +274,15 @@ def _candidate_matrix(
     )
     if len(features) != len(usable):
         raise RuntimeError("verifier feature rows do not align with candidates")
+    if feature_mode == "raw_summary":
+        raw_features = aggregate_candidate_features(
+            usable,
+            window_batch.windows,
+            window_batch.features,
+        )
+        features = np.concatenate((features, raw_features), axis=1)
+    elif feature_mode != "probability":
+        raise ValueError("verifier_feature_mode must be probability or raw_summary")
     return usable, features
 
 
@@ -294,6 +315,12 @@ def _run_outer_dataset(
         raise ValueError("CUDA is not available in the no-TCN CPU foundation runner")
     if not config.no_tcn:
         raise ValueError("TCN scoring is not implemented by the CPU foundation runner")
+    if config.verifier_feature_mode not in {"probability", "raw_summary"}:
+        raise ValueError("verifier_feature_mode must be probability or raw_summary")
+    if not config.verifier_c_grid or any(value <= 0 for value in config.verifier_c_grid):
+        raise ValueError("verifier_c_grid must contain positive values")
+    if len(set(config.verifier_c_grid)) != len(config.verifier_c_grid):
+        raise ValueError("verifier_c_grid values must be unique")
     if not isinstance(data_source, FoldDataset):
         raise TypeError("data_source must be a FoldDataset")
     started = time.perf_counter()
@@ -353,6 +380,8 @@ def _run_outer_dataset(
         raw_train_candidates,
         oof_windows,
         include_coverage=config.density.coverage_fix,
+        window_batch=data_source.candidate_train,
+        feature_mode=config.verifier_feature_mode,
     )
     if not train_candidates:
         raise ValueError("inner window OOF produced no verifier candidates")
@@ -369,41 +398,57 @@ def _run_outer_dataset(
     window_oof_seconds = time.perf_counter() - stage_started
 
     stage_started = time.perf_counter()
-    verifier_oof = crossfit_predict_proba(
-        train_candidate_features,
-        train_candidate_labels,
-        train_candidate_groups,
-        train_candidate_features,
-        train_candidate_groups,
-        config.inner_splits,
-        estimator_factory=lambda: _verifier_estimator(config.seed + 1),
-    )
     train_candidate_events = [candidate.event for candidate in train_candidates]
-    if config.subject_cap_grid:
-        policy = select_event_policy(
-            train_candidate_events,
-            verifier_oof.probabilities,
-            data_source.train_truths,
+    best_verifier_rank: tuple[float, float, float] | None = None
+    selected_c: float | None = None
+    policy: EventSelectionPolicy | None = None
+    for regularization_c in config.verifier_c_grid:
+        verifier_oof = crossfit_predict_proba(
+            train_candidate_features,
+            train_candidate_labels,
             train_candidate_groups,
-            max_events_options=config.subject_cap_grid,
+            train_candidate_features,
+            train_candidate_groups,
+            config.inner_splits,
+            estimator_factory=lambda c=regularization_c: _verifier_estimator(
+                config.seed + 1, c
+            ),
         )
-    else:
-        threshold_selection = select_event_threshold(
-            train_candidate_events,
-            verifier_oof.probabilities,
-            data_source.train_truths,
+        if config.subject_cap_grid:
+            candidate_policy = select_event_policy(
+                train_candidate_events,
+                verifier_oof.probabilities,
+                data_source.train_truths,
+                train_candidate_groups,
+                max_events_options=config.subject_cap_grid,
+            )
+        else:
+            threshold_selection = select_event_threshold(
+                train_candidate_events,
+                verifier_oof.probabilities,
+                data_source.train_truths,
+            )
+            candidate_policy = EventSelectionPolicy(
+                threshold_selection.threshold,
+                None,
+                threshold_selection.metrics,
+            )
+        rank = (
+            candidate_policy.metrics.f1,
+            candidate_policy.metrics.ppv,
+            -float(regularization_c),
         )
-        policy = EventSelectionPolicy(
-            threshold_selection.threshold,
-            None,
-            threshold_selection.metrics,
-        )
+        if best_verifier_rank is None or rank > best_verifier_rank:
+            best_verifier_rank = rank
+            selected_c = float(regularization_c)
+            policy = candidate_policy
+    assert selected_c is not None and policy is not None
     verifier_oof_seconds = time.perf_counter() - stage_started
 
     stage_started = time.perf_counter()
     window_model = _window_estimator(config.seed + 2)
     window_model.fit(train_features, train_labels)
-    verifier_model = _verifier_estimator(config.seed + 3)
+    verifier_model = _verifier_estimator(config.seed + 3, selected_c)
     verifier_model.fit(train_candidate_features, train_candidate_labels)
     fit_seconds = time.perf_counter() - stage_started
 
@@ -424,6 +469,8 @@ def _run_outer_dataset(
         raw_validation_candidates,
         validation_windows,
         include_coverage=config.density.coverage_fix,
+        window_batch=data_source.validation,
+        feature_mode=config.verifier_feature_mode,
     )
     if validation_candidates:
         validation_scores = _positive_probability(
@@ -474,6 +521,8 @@ def _run_outer_dataset(
         config_hash=config_hash,
         threshold=policy.threshold,
         max_events_per_subject=policy.max_events_per_group,
+        verifier_c=selected_c,
+        verifier_feature_count=train_candidate_features.shape[1],
         inner_metrics=policy.metrics,
         outer_metrics=outer_metrics,
         candidate_count=len(validation_candidates),
@@ -671,6 +720,8 @@ def fold_result_to_dict(result: FoldResult) -> dict[str, object]:
         "config_hash": result.config_hash,
         "threshold": result.threshold,
         "max_events_per_subject": result.max_events_per_subject,
+        "verifier_c": result.verifier_c,
+        "verifier_feature_count": result.verifier_feature_count,
         "inner_metrics": metrics_dict(result.inner_metrics),
         "outer_metrics": metrics_dict(result.outer_metrics),
         "candidate_count": result.candidate_count,
@@ -704,6 +755,8 @@ def _fold_result_from_dict(payload: Mapping[str, object]) -> FoldResult:
             if payload.get("max_events_per_subject") is not None
             else None
         ),
+        verifier_c=float(payload.get("verifier_c", 0.1)),
+        verifier_feature_count=int(payload.get("verifier_feature_count", 37)),
         inner_metrics=metrics(payload["inner_metrics"]),
         outer_metrics=metrics(payload["outer_metrics"]),
         candidate_count=int(payload["candidate_count"]),
@@ -750,7 +803,10 @@ def run_outer_fold(
     if not isinstance(source, FilesystemDataSource):
         raise TypeError("data_source must be FoldDataset or FilesystemDataSource")
     input_files = source.input_files(config.outer_fold)
-    dimensions = (63, 42 if config.density.coverage_fix else 37)
+    verifier_dimensions = 42 if config.density.coverage_fix else 37
+    if config.verifier_feature_mode == "raw_summary":
+        verifier_dimensions += 312
+    dimensions = (63, verifier_dimensions)
     key = cache_key(config, dimensions, input_files)
     cached_path = source.cache_directory / f"fold{config.outer_fold}_{key}.json"
     if cached_path.exists() and not force:

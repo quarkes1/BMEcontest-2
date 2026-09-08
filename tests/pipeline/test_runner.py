@@ -102,6 +102,8 @@ def test_outer_subjects_never_enter_fit_sets():
 
     assert result.outer_subjects.isdisjoint(result.window_fit_subjects)
     assert result.outer_subjects.isdisjoint(result.verifier_fit_subjects)
+    assert result.verifier_feature_count == 37
+    assert result.verifier_c == 0.1
 
 
 def test_subject_cap_is_learned_inside_and_applied_outside():
@@ -132,3 +134,26 @@ def test_subject_cap_grid_parser_is_strict_and_deterministic():
     assert parse_subject_cap_grid("") == ()
     with pytest.raises(ValueError, match="positive unique integers"):
         parse_subject_cap_grid("2,2,0")
+
+
+def test_raw_summary_verifier_selects_registered_c_and_reports_width():
+    dataset = synthetic_runner_dataset(subjects=8, windows_per_subject=40)
+    result = run_outer_fold(
+        RunConfig(
+            outer_fold=0,
+            inner_splits=3,
+            verifier_feature_mode="raw_summary",
+            verifier_c_grid=(0.001, 0.01),
+            density=DensityConfig(
+                density_ms=60_000,
+                min_positive=2,
+                coverage_min=0.0,
+                window_threshold=0.05,
+            ),
+        ),
+        data_source=dataset,
+    )
+
+    assert result.verifier_c in (0.001, 0.01)
+    assert result.verifier_feature_count == 49
+    assert result.outer_subjects.isdisjoint(result.verifier_fit_subjects)
