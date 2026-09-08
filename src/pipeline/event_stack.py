@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Sequence
+from typing import Mapping, Sequence
 
 import numpy as np
 
@@ -120,3 +120,360 @@ def select_event_threshold(
 
     assert best is not None
     return best
+
+
+@dataclass(frozen=True)
+class DensityConfig:
+    """All parameters that define candidate-generation semantics."""
+
+    stride_ms: int = 15_000
+    window_ms: int = 240_000
+    bridge_ms: int = 60_000
+    density_ms: int = 600_000
+    min_positive: int = 10
+    coverage_min: float = 0.80
+    merge_ms: int = 120_000
+    window_threshold: float = 0.28838
+    context_ms: int = 1_200_000
+    coverage_fix: bool = False
+
+
+@dataclass(frozen=True)
+class CandidateEvent:
+    """One density candidate and the data-quality context that produced it."""
+
+    event: EventRef
+    probabilities: tuple[float, ...]
+    observed_fraction: float
+    bridged_gap_count: int
+    bridged_gap_ms: int
+    pre_observed_count: int
+    post_observed_count: int
+
+
+_GLOBAL_PRIOR = np.array(
+    [
+        0.174,
+        0.278,
+        0.546,
+        0.92,
+        0.889,
+        0.496,
+        0.187,
+        0.141,
+        0.408,
+        0.863,
+        1.0,
+        0.681,
+        0.368,
+        0.216,
+        0.127,
+        0.073,
+        0.037,
+        0.012,
+        0.002,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+    ],
+    dtype=np.float32,
+)
+
+
+def _candidate_quality(
+    starts: np.ndarray,
+    observed: np.ndarray,
+    event_start: int,
+    event_end: int,
+    config: DensityConfig,
+) -> tuple[float, int, int]:
+    center = (event_start + event_end) // 2
+    half = config.density_ms // 2
+    mask = (starts >= center - half) & (starts <= center + half)
+    local_observed = observed[mask]
+    if not len(local_observed):
+        return 0.0, 0, 0
+    missing = ~local_observed
+    gap_count = 0
+    in_gap = False
+    for value in missing:
+        if value and not in_gap:
+            gap_count += 1
+        in_gap = bool(value)
+    return (
+        float(local_observed.mean()),
+        gap_count,
+        int(missing.sum()) * config.stride_ms,
+    )
+
+
+def density_candidates(
+    windows_by_sid: Mapping[str, Sequence[tuple[int, int, float]]],
+    config: DensityConfig | None = None,
+) -> list[CandidateEvent]:
+    """Convert window probabilities into density candidates without file I/O."""
+
+    config = config or DensityConfig()
+    candidates: list[CandidateEvent] = []
+    for sid in sorted(windows_by_sid):
+        raw_windows = sorted(windows_by_sid[sid])
+        if not raw_windows:
+            continue
+        segments: list[list[tuple[int, float, bool]]] = []
+        segment: list[tuple[int, float, bool]] = []
+        for start, _, probability in raw_windows:
+            if (
+                segment
+                and start - segment[-1][0]
+                > config.stride_ms + config.bridge_ms
+            ):
+                segments.append(segment)
+                segment = []
+            if segment and start - segment[-1][0] > config.stride_ms:
+                for gap_start in range(
+                    segment[-1][0] + config.stride_ms,
+                    start,
+                    config.stride_ms,
+                ):
+                    segment.append((gap_start, 0.0, False))
+            segment.append((int(start), float(probability), True))
+        if segment:
+            segments.append(segment)
+
+        sid_candidates: list[CandidateEvent] = []
+        for segment in segments:
+            starts = np.array([row[0] for row in segment], dtype=np.int64)
+            probabilities = np.array([row[1] for row in segment], dtype=np.float64)
+            observed = np.array([row[2] for row in segment], dtype=bool)
+            if config.coverage_fix:
+                half = config.density_ms // 2
+                dense = np.zeros(len(segment), dtype=bool)
+                for index, start in enumerate(starts):
+                    left = int(np.searchsorted(starts, start - half))
+                    right = int(np.searchsorted(starts, start + half, side="right"))
+                    local_observed = observed[left:right]
+                    coverage = (
+                        float(local_observed.mean())
+                        if len(local_observed)
+                        else 0.0
+                    )
+                    positive = int(
+                        (probabilities[left:right] >= config.window_threshold).sum()
+                    )
+                    dense[index] = (
+                        positive >= config.min_positive
+                        and coverage >= config.coverage_min
+                    )
+            else:
+                density_size = int(round(config.density_ms / config.stride_ms))
+                positive = np.convolve(
+                    (probabilities >= config.window_threshold).astype(np.int64),
+                    np.ones(density_size, dtype=np.int64),
+                    mode="same",
+                )[: len(segment)]
+                coverage = np.convolve(
+                    observed.astype(np.float64),
+                    np.ones(density_size, dtype=np.float64) / density_size,
+                    mode="same",
+                )[: len(segment)]
+                dense = (
+                    (positive >= config.min_positive)
+                    & (coverage >= config.coverage_min)
+                )
+
+            index = 0
+            while index < len(segment):
+                if not dense[index]:
+                    index += 1
+                    continue
+                end_index = index
+                while end_index < len(segment) and dense[end_index]:
+                    end_index += 1
+                support = np.where(
+                    probabilities[index:end_index] >= config.window_threshold
+                )[0]
+                if not len(support):
+                    index = end_index
+                    continue
+                first = index + int(support[0])
+                last = index + int(support[-1])
+                event_start = int(starts[first])
+                event_end = int(starts[last] + config.window_ms)
+                quality = _candidate_quality(
+                    starts,
+                    observed,
+                    event_start,
+                    event_end,
+                    config,
+                )
+                centers = np.array(
+                    [(start + end) // 2 for start, end, _ in raw_windows],
+                    dtype=np.int64,
+                )
+                pre_count = int(
+                    ((centers >= event_start - config.context_ms) & (centers < event_start)).sum()
+                )
+                post_count = int(
+                    ((centers >= event_end) & (centers < event_end + config.context_ms)).sum()
+                )
+                candidate = CandidateEvent(
+                    event=EventRef(sid, event_start, event_end),
+                    probabilities=tuple(float(x) for x in probabilities[first : last + 1]),
+                    observed_fraction=quality[0],
+                    bridged_gap_count=quality[1],
+                    bridged_gap_ms=quality[2],
+                    pre_observed_count=pre_count,
+                    post_observed_count=post_count,
+                )
+                if (
+                    sid_candidates
+                    and event_start - sid_candidates[-1].event.end_ms
+                    <= config.merge_ms
+                ):
+                    previous = sid_candidates.pop()
+                    merged_start = previous.event.start_ms
+                    merged_end = max(previous.event.end_ms, event_end)
+                    merged_quality = _candidate_quality(
+                        starts,
+                        observed,
+                        merged_start,
+                        merged_end,
+                        config,
+                    )
+                    candidate = CandidateEvent(
+                        event=EventRef(sid, merged_start, merged_end),
+                        probabilities=previous.probabilities + candidate.probabilities,
+                        observed_fraction=merged_quality[0],
+                        bridged_gap_count=merged_quality[1],
+                        bridged_gap_ms=merged_quality[2],
+                        pre_observed_count=previous.pre_observed_count,
+                        post_observed_count=candidate.post_observed_count,
+                    )
+                sid_candidates.append(candidate)
+                index = end_index
+        candidates.extend(sid_candidates)
+    return candidates
+
+
+def _longest_above(probabilities: np.ndarray, threshold: float) -> int:
+    best = current = 0
+    for value in probabilities >= threshold:
+        current = current + 1 if value else 0
+        best = max(best, current)
+    return best
+
+
+def verifier_features(
+    candidates: Sequence[CandidateEvent],
+    windows_by_sid: Mapping[str, Sequence[tuple[int, int, float]]],
+    include_coverage: bool = False,
+    tcn_scores_by_sid: Mapping[str, Sequence[tuple[int, float]]] | None = None,
+) -> np.ndarray:
+    """Build the existing verifier feature surface plus optional gap features."""
+
+    rows: list[list[float]] = []
+    for candidate in candidates:
+        probabilities = np.asarray(candidate.probabilities, dtype=np.float64)
+        if len(probabilities) < 2:
+            continue
+        event = candidate.event
+        duration = len(probabilities) * 15.0
+        features = [
+            duration,
+            float(len(probabilities)),
+            float(probabilities.max() - probabilities.min()),
+            float(probabilities.std() / (probabilities.mean() + 1e-9)),
+        ]
+        positions = np.arange(len(probabilities))
+        slope = (
+            float(np.polyfit(positions, probabilities, 1)[0])
+            if len(probabilities) > 2
+            else 0.0
+        )
+        features.extend(
+            [
+                slope,
+                float(probabilities[0] - probabilities[-1]),
+                float((probabilities >= 0.35).mean()),
+                float((probabilities >= 0.45).mean()),
+                float(_longest_above(probabilities, 0.35)),
+                float(_longest_above(probabilities, 0.45)),
+                float(np.maximum(probabilities - 0.28838, 0.0).sum()),
+                float(probabilities.mean()),
+                float(probabilities.max()),
+                float(probabilities.std()),
+                float(np.percentile(probabilities, 10)),
+                float(np.percentile(probabilities, 50)),
+                float(np.percentile(probabilities, 90)),
+            ]
+        )
+        session_windows = sorted(windows_by_sid.get(event.sid, ()))
+        centers = np.array(
+            [(start + end) // 2 for start, end, _ in session_windows],
+            dtype=np.int64,
+        )
+        session_probabilities = np.array(
+            [probability for _, _, probability in session_windows],
+            dtype=np.float64,
+        )
+        before = session_probabilities[
+            (centers >= event.start_ms - 1_200_000) & (centers < event.start_ms)
+        ]
+        after = session_probabilities[
+            (centers >= event.end_ms) & (centers < event.end_ms + 1_200_000)
+        ]
+        for context in (before, after):
+            if len(context) >= 5:
+                features.extend(
+                    [
+                        float(context.mean()),
+                        float(context.max()),
+                        float(context.std()),
+                        float(np.percentile(context, 10)),
+                        float(np.percentile(context, 50)),
+                        float(np.percentile(context, 90)),
+                    ]
+                )
+            else:
+                features.extend([0.0] * 6)
+        before_safe = before if len(before) else np.zeros(1)
+        after_safe = after if len(after) else np.zeros(1)
+        both = np.concatenate((before_safe, after_safe))
+        features.extend(
+            [
+                float(probabilities.mean() - both.mean()),
+                float(probabilities.max() - np.percentile(both, 90)),
+                float(probabilities.mean() - before_safe.mean()),
+                float(probabilities.mean() - after_safe.mean()),
+            ]
+        )
+        tcn_values: list[float] = []
+        if tcn_scores_by_sid is not None:
+            tcn_values = [
+                float(value)
+                for timestamp, value in tcn_scores_by_sid.get(event.sid, ())
+                if timestamp >= event.start_ms - 1000 and timestamp < event.end_ms
+            ]
+        features.extend(
+            [
+                max(tcn_values) if tcn_values else 0.0,
+                float(np.mean(tcn_values)) if tcn_values else 0.0,
+            ]
+        )
+        hour = (event.start_ms / 3.6e6) % 24
+        features.extend([float(hour), float(_GLOBAL_PRIOR[int(hour) % 24])])
+        if include_coverage:
+            features.extend(
+                [
+                    candidate.observed_fraction,
+                    float(candidate.bridged_gap_count),
+                    float(candidate.bridged_gap_ms),
+                    float(candidate.pre_observed_count),
+                    float(candidate.post_observed_count),
+                ]
+            )
+        rows.append(features)
+    width = 42 if include_coverage else 37
+    return np.asarray(rows, dtype=np.float64).reshape((-1, width))

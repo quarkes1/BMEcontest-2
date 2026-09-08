@@ -141,8 +141,9 @@ Expected: all tests pass.
         result = density_candidates(
             windows, DensityConfig(density_ms=600_000, min_positive=10)
         )
+        # Characterized against scripts/slide_verifier.py legacy semantics.
         assert [(c.event.start_ms, c.event.end_ms) for c in result] == [
-            (150_000, 525_000)
+            (180_000, 525_000)
         ]
 
     def test_coverage_fix_does_not_zero_pad_segment_edges():
