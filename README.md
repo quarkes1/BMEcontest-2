@@ -144,6 +144,22 @@ F1 至少 +0.01）因 PPV 下降而**拒绝直接启用**；保留为后续 hard
 短餐专用复核实验。当前正式 locked F1 距 0.65 仍差 0.234，下一阶段必须优先
 解决 fold2/3 的阈值迁移与餐时高分 FP，而不是继续放宽密度参数。
 
+### 5.6 Subject-budget decoder 消融（2026-09-08）
+
+事件上限 K 仅从每个 outer-train 的 verifier OOF 候选上联合选择，预注册网格固定为
+2,3,4,5,6；outer 标签不参与 K 或阈值选择。baseline 五折选择 K=6/6/6/4/6，
+TP/eligible/pred=71/153/184，sensitivity 0.464、PPV 0.386、F1 0.421。对应 config
+hash 为 `d4ef023ebb47ef13` / `8d666bae3affcb47` / `e9f77082215bd8ee` /
+`bb7d6ff2cd686f76` / `261e63e3d8bb5e6e`。
+
+coverage+budget 五折均选择 K=6，TP/eligible/pred=86/153/217，sensitivity 0.562、
+PPV 0.396、F1 0.465；hash 为 `5a01228a4082bab1` / `699b1f0b4ac323c4` /
+`652d2b9f7cd64b05` / `967809d9818bf81a` / `dfa90527cc8ff5c0`。它相对 uncapped
+coverage 提升 F1 +0.033、PPV +0.078，但 sensitivity 下降 0.111，超过预注册允许
+的 0.05，故不采纳为默认。短餐 recall 仅 10/39=0.256、非惯用手 41/90=0.456。
+最佳结果仍低于 0.55 决策门槛，证明瓶颈主要是 verifier 组内排序信息不足，而非单纯
+阈值漂移；下一阶段转入候选内/上下文原始 62 维动作特征聚合与 hard-negative 建模。
+
 ## 6. 结果分析与评价
 
 ### 6.1 两方案瓶颈分解对比
