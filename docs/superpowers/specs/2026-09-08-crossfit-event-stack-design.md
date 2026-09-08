@@ -39,6 +39,9 @@ cannot label a meal of 120 seconds or less as positive.
 6. Keep runtime inference compatible with the existing CPU submission pipeline;
    TCN remains an optional score input rather than a deployment dependency for
    this phase.
+7. Keep nested training practical through bounded CPU parallelism, batched
+   scoring, and deterministic score caches; later neural stages must support
+   CUDA without making GPU availability part of correctness.
 
 ## Non-goals
 
@@ -86,7 +89,8 @@ from its training rows.
 - `scripts/crossfit_event_stack.py` — the only CLI entry point.  It loads cached
   slide tables, calls the pipeline, writes one compact JSON result under
   `outputs/`, and accepts `--fold`, `--inner-splits`, `--coverage-fix`, and
-  `--no-tcn`.
+  `--no-tcn`, plus `--workers` and `--device auto|cpu|cuda` for execution
+  control.
 - `tests/` — synthetic deterministic unit tests.  No test reads `Data/`,
   `cache/`, checkpoints, or large output files.
 - `scripts/slide_verifier.py` — retain its current diagnostic command, but
@@ -96,6 +100,25 @@ from its training rows.
 The new source package avoids adding another experimental top-level script with
 duplicated event logic.  Large candidate dumps remain in `outputs/` and are not
 committed.  The CLI result JSON is compact and reproducible.
+
+### Execution efficiency
+
+Array tables are loaded once per outer-fold worker, window probabilities are
+computed in batches, and reusable inner-OOF scores are stored under
+`cache/crossfit/` with a hash of fold IDs, features, model configuration, seed,
+and candidate configuration.  Cache files are never written to `scripts/` or
+`src/`.
+
+`--workers 0` selects `min(physical_cpu_count, number_of_requested_outer_folds)`.
+When fold processes run concurrently, each process limits native BLAS/OpenMP
+thread pools to one thread; `--workers 1` may use the configured native thread
+count.  This avoids nested parallel oversubscription.  All result files record
+wall-clock seconds per stage and whether each score cache was hit.
+
+The foundation HGB/LR stack is CPU-native.  Any later TCN or sequence verifier
+uses batched tensors and `--device auto|cpu|cuda`; `auto` selects CUDA only when
+available.  CPU and CUDA implementations must consume the same timestamps and
+emit the same candidate-score schema.
 
 ### Coverage-aware candidates
 
@@ -141,6 +164,8 @@ Every change is accepted only when all of the following are true:
    reducing the relevant candidate-miss slice.  A total-F1 change under 0.01 is
    recorded as inconclusive rather than adopted.
 5. Strict CPU LOSO is re-run before any change is copied into `dist/`.
+6. A one-fold smoke run reports stage timings and a second identical run hits the
+   score cache without changing metrics or selected thresholds.
 
 ## Delivery sequence
 
