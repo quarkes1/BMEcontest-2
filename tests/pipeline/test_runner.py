@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 
+from scripts.crossfit_event_stack import parse_subject_cap_grid
 from src.pipeline.event_stack import DensityConfig, EventRef
 from src.pipeline.runner import (
     FoldDataset,
@@ -124,3 +125,10 @@ def test_subject_cap_is_learned_inside_and_applied_outside():
     assert result.outer_metrics.n_pred <= (
         result.max_events_per_subject * len(result.outer_subjects)
     )
+
+
+def test_subject_cap_grid_parser_is_strict_and_deterministic():
+    assert parse_subject_cap_grid("2,3,4,5,6") == (2, 3, 4, 5, 6)
+    assert parse_subject_cap_grid("") == ()
+    with pytest.raises(ValueError, match="positive unique integers"):
+        parse_subject_cap_grid("2,2,0")

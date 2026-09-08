@@ -20,6 +20,19 @@ from src.pipeline.runner import (
 )
 
 
+def parse_subject_cap_grid(value: str) -> tuple[int, ...]:
+    stripped = value.strip()
+    if not stripped:
+        return ()
+    try:
+        parsed = tuple(int(item.strip()) for item in stripped.split(","))
+    except ValueError as exc:
+        raise ValueError("subject cap grid must contain positive unique integers") from exc
+    if any(item < 1 for item in parsed) or len(set(parsed)) != len(parsed):
+        raise ValueError("subject cap grid must contain positive unique integers")
+    return parsed
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Nested subject-disjoint window and event verification evaluation."
@@ -52,6 +65,12 @@ def parse_args() -> argparse.Namespace:
         "--device", choices=("auto", "cpu", "cuda"), default="auto"
     )
     parser.add_argument(
+        "--subject-cap-grid",
+        type=parse_subject_cap_grid,
+        default=(),
+        help="inner-OOF per-subject event caps, e.g. 2,3,4,5,6",
+    )
+    parser.add_argument(
         "--force", action="store_true", help="ignore matching fold-result caches"
     )
     return parser.parse_args()
@@ -72,6 +91,7 @@ def main() -> int:
             no_tcn=args.no_tcn,
             workers=args.workers,
             device=args.device,
+            subject_cap_grid=args.subject_cap_grid,
             density=DensityConfig(coverage_fix=args.coverage_fix),
         )
         for fold in fold_indices
@@ -87,11 +107,16 @@ def main() -> int:
         write_json_atomic(output_path, payload)
         metrics = result.outer_metrics
         cache_label = "cache" if result.cache_hits.get("fold_result") else "trained"
+        cap_label = (
+            str(result.max_events_per_subject)
+            if result.max_events_per_subject is not None
+            else "none"
+        )
         print(
             f"fold {config.outer_fold}: F1={metrics.f1:.3f} "
             f"sens={metrics.sensitivity:.3f} ppv={metrics.ppv:.3f} "
             f"TP={metrics.n_tp}/{metrics.n_true} pred={metrics.n_pred} "
-            f"threshold={result.threshold:.6f} [{cache_label}]"
+            f"threshold={result.threshold:.6f} cap={cap_label} [{cache_label}]"
         )
         print(f"  output: {output_path}")
     return 0
