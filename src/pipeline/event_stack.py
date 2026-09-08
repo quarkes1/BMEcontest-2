@@ -43,6 +43,15 @@ class ThresholdSelection:
     metrics: EventMetrics
 
 
+@dataclass(frozen=True)
+class EventSelectionPolicy:
+    """A score threshold with an optional per-group event budget."""
+
+    threshold: float
+    max_events_per_group: int | None
+    metrics: EventMetrics
+
+
 def compute_event_metrics(
     predictions: Sequence[EventRef],
     truths: Sequence[EventRef],
@@ -118,6 +127,101 @@ def select_event_threshold(
         ):
             best = choice
 
+    assert best is not None
+    return best
+
+
+def _policy_inputs(
+    candidates: Sequence[EventRef],
+    scores: np.ndarray,
+    groups: Sequence[str],
+) -> tuple[np.ndarray, np.ndarray]:
+    score_values = np.asarray(scores, dtype=np.float64)
+    group_values = np.asarray(groups)
+    if score_values.ndim != 1 or len(score_values) != len(candidates):
+        raise ValueError("scores must be one-dimensional and align with candidates")
+    if group_values.ndim != 1 or len(group_values) != len(candidates):
+        raise ValueError("groups must be one-dimensional and align with candidates")
+    if not np.isfinite(score_values).all():
+        raise ValueError("scores must contain only finite values")
+    return score_values, group_values.astype(str)
+
+
+def apply_event_policy(
+    candidates: Sequence[EventRef],
+    scores: np.ndarray,
+    groups: Sequence[str],
+    threshold: float,
+    max_events_per_group: int | None = None,
+) -> list[EventRef]:
+    """Apply a threshold and keep only each group's highest-scored K events."""
+
+    score_values, group_values = _policy_inputs(candidates, scores, groups)
+    if max_events_per_group is not None and (
+        isinstance(max_events_per_group, bool) or max_events_per_group < 1
+    ):
+        raise ValueError("max_events_per_group must be a positive integer or None")
+
+    eligible = np.flatnonzero(score_values >= threshold)
+    if max_events_per_group is None:
+        selected_indices = set(int(index) for index in eligible)
+    else:
+        selected_indices: set[int] = set()
+        for group in sorted(set(group_values[eligible])):
+            group_indices = [
+                int(index) for index in eligible if group_values[index] == group
+            ]
+            group_indices.sort(key=lambda index: (-score_values[index], index))
+            selected_indices.update(group_indices[:max_events_per_group])
+    return [
+        candidate
+        for index, candidate in enumerate(candidates)
+        if index in selected_indices
+    ]
+
+
+def select_event_policy(
+    candidates: Sequence[EventRef],
+    scores: np.ndarray,
+    truths: Sequence[EventRef],
+    groups: Sequence[str],
+    max_events_options: Sequence[int | None],
+    iou_threshold: float = 0.25,
+) -> EventSelectionPolicy:
+    """Select a threshold and registered group budget using only supplied truths."""
+
+    score_values, group_values = _policy_inputs(candidates, scores, groups)
+    options = tuple(max_events_options)
+    if not options:
+        raise ValueError("max_events_options must not be empty")
+    for option in options:
+        if option is not None and (
+            isinstance(option, bool) or not isinstance(option, int) or option < 1
+        ):
+            raise ValueError("event cap options must be positive integers or None")
+
+    thresholds = np.unique(
+        np.concatenate((score_values, [0.0, 1.0, np.nextafter(1.0, 2.0)]))
+    )
+    best: EventSelectionPolicy | None = None
+    best_rank: tuple[float, float, float, float] | None = None
+    for max_events in options:
+        cap_rank = -float(max_events) if max_events is not None else -float("inf")
+        for threshold in thresholds:
+            predictions = apply_event_policy(
+                candidates,
+                score_values,
+                group_values,
+                float(threshold),
+                max_events,
+            )
+            metrics = compute_event_metrics(predictions, truths, iou_threshold)
+            rank = (metrics.f1, metrics.ppv, cap_rank, float(threshold))
+            if best_rank is None or rank > best_rank:
+                best_rank = rank
+                best = EventSelectionPolicy(
+                    float(threshold), max_events, metrics
+                )
     assert best is not None
     return best
 

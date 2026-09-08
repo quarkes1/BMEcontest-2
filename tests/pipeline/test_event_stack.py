@@ -3,8 +3,10 @@ import numpy as np
 from src.pipeline.event_stack import (
     DensityConfig,
     EventRef,
+    apply_event_policy,
     compute_event_metrics,
     density_candidates,
+    select_event_policy,
     select_event_threshold,
     verifier_features,
 )
@@ -118,3 +120,46 @@ def test_verifier_feature_dimensions_are_explicit():
 
     assert legacy.shape == (1, 37)
     assert covered.shape == (1, 42)
+
+
+def test_apply_event_policy_caps_each_subject_after_thresholding():
+    candidates = [
+        EventRef("session-a", index * 100, index * 100 + 50)
+        for index in range(3)
+    ] + [EventRef("session-b", 0, 50)]
+    scores = np.array([0.7, 0.9, 0.8, 0.6])
+    groups = np.array(["subject-a", "subject-a", "subject-a", "subject-b"])
+
+    selected = apply_event_policy(
+        candidates,
+        scores,
+        groups,
+        threshold=0.5,
+        max_events_per_group=2,
+    )
+
+    assert selected == [candidates[1], candidates[2], candidates[3]]
+
+
+def test_select_event_policy_uses_only_registered_caps():
+    candidates = [
+        EventRef("session-a", 0, 100),
+        EventRef("session-a", 200, 300),
+        EventRef("session-b", 0, 100),
+        EventRef("session-b", 200, 300),
+    ]
+    scores = np.array([0.9, 0.8, 0.7, 0.6])
+    groups = np.array(["subject-a", "subject-a", "subject-b", "subject-b"])
+    truths = [candidates[0], candidates[2]]
+
+    selected = select_event_policy(
+        candidates,
+        scores,
+        truths,
+        groups,
+        max_events_options=(1, 2),
+    )
+
+    assert selected.max_events_per_group == 1
+    assert selected.max_events_per_group in (1, 2)
+    assert selected.metrics.f1 == 1.0
