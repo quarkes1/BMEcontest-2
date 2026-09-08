@@ -3,6 +3,8 @@ import numpy as np
 from src.pipeline.event_stack import (
     DensityConfig,
     EventRef,
+    CandidateEvent,
+    aggregate_candidate_features,
     apply_event_policy,
     compute_event_metrics,
     density_candidates,
@@ -163,3 +165,51 @@ def test_select_event_policy_uses_only_registered_caps():
     assert selected.max_events_per_group == 1
     assert selected.max_events_per_group in (1, 2)
     assert selected.metrics.f1 == 1.0
+
+
+def _candidate(sid: str, start_ms: int, end_ms: int) -> CandidateEvent:
+    return CandidateEvent(
+        event=EventRef(sid, start_ms, end_ms),
+        probabilities=(0.7, 0.8),
+        observed_fraction=1.0,
+        bridged_gap_count=0,
+        bridged_gap_ms=0,
+        pre_observed_count=1,
+        post_observed_count=1,
+    )
+
+
+def test_aggregate_candidate_features_uses_only_aligned_session_context():
+    windows = (
+        EventRef("s1", -100, 0),
+        EventRef("s1", 0, 100),
+        EventRef("s1", 100, 200),
+        EventRef("s1", 200, 300),
+        EventRef("s2", 0, 100),
+    )
+    features = np.array(
+        [[-1.0, -10.0], [1.0, 10.0], [3.0, 30.0], [5.0, 50.0], [999.0, 999.0]]
+    )
+
+    result = aggregate_candidate_features(
+        [_candidate("s1", 0, 200)], windows, features, context_ms=100
+    )
+
+    assert result.shape == (1, 12)
+    np.testing.assert_allclose(
+        result[0],
+        [2.0, 20.0, 1.0, 10.0, 1.2, 12.0, 2.8, 28.0, 0.0, 0.0, 2.0, 2.0],
+    )
+
+
+def test_aggregate_candidate_features_marks_missing_context():
+    windows = (EventRef("s1", 0, 100), EventRef("s1", 100, 200))
+    features = np.array([[1.0], [3.0]])
+
+    result = aggregate_candidate_features(
+        [_candidate("s1", 0, 200)], windows, features, context_ms=100
+    )
+
+    assert result.shape == (1, 7)
+    assert np.isnan(result[0, 4])
+    assert result[0, -2:].tolist() == [2.0, 0.0]

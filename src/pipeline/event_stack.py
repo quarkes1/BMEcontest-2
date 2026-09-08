@@ -581,3 +581,93 @@ def verifier_features(
         rows.append(features)
     width = 42 if include_coverage else 37
     return np.asarray(rows, dtype=np.float64).reshape((-1, width))
+
+
+def aggregate_candidate_features(
+    candidates: Sequence[CandidateEvent],
+    windows: Sequence[EventRef],
+    window_features: np.ndarray,
+    context_ms: int = 1_200_000,
+) -> np.ndarray:
+    """Summarize aligned raw window features inside and around each candidate."""
+
+    features = np.asarray(window_features, dtype=np.float64)
+    if features.ndim != 2:
+        raise ValueError("window_features must be two-dimensional")
+    if len(features) != len(windows):
+        raise ValueError("window_features must align with windows")
+    if len(set(windows)) != len(windows):
+        raise ValueError("windows must not contain duplicate references")
+    if context_ms < 0:
+        raise ValueError("context_ms must be non-negative")
+
+    rows_by_sid: dict[str, list[int]] = {}
+    for index, window in enumerate(windows):
+        rows_by_sid.setdefault(window.sid, []).append(index)
+
+    width = features.shape[1]
+    output: list[np.ndarray] = []
+    for candidate in candidates:
+        event = candidate.event
+        session_rows = np.asarray(rows_by_sid.get(event.sid, ()), dtype=np.int64)
+        if len(session_rows):
+            session_windows = [windows[index] for index in session_rows]
+            centers = np.asarray(
+                [
+                    (window.start_ms + window.end_ms) // 2
+                    for window in session_windows
+                ],
+                dtype=np.int64,
+            )
+            event_mask = np.asarray(
+                [
+                    window.start_ms >= event.start_ms
+                    and window.end_ms <= event.end_ms
+                    for window in session_windows
+                ],
+                dtype=bool,
+            )
+            context_mask = (
+                (
+                    (centers >= event.start_ms - context_ms)
+                    & (centers < event.start_ms)
+                )
+                | (
+                    (centers >= event.end_ms)
+                    & (centers < event.end_ms + context_ms)
+                )
+            )
+            event_values = features[session_rows[event_mask]]
+            context_values = features[session_rows[context_mask]]
+        else:
+            event_values = np.empty((0, width), dtype=np.float64)
+            context_values = np.empty((0, width), dtype=np.float64)
+
+        if len(event_values):
+            with np.errstate(invalid="ignore"):
+                event_mean = np.nanmean(event_values, axis=0)
+                event_std = np.nanstd(event_values, axis=0)
+                event_p10 = np.nanpercentile(event_values, 10, axis=0)
+                event_p90 = np.nanpercentile(event_values, 90, axis=0)
+        else:
+            event_mean = event_std = event_p10 = event_p90 = np.full(
+                width, np.nan
+            )
+        if len(context_values):
+            with np.errstate(invalid="ignore"):
+                contrast = event_mean - np.nanmean(context_values, axis=0)
+        else:
+            contrast = np.full(width, np.nan)
+        output.append(
+            np.concatenate(
+                (
+                    event_mean,
+                    event_std,
+                    event_p10,
+                    event_p90,
+                    contrast,
+                    [float(len(event_values)), float(len(context_values))],
+                )
+            )
+        )
+    return np.asarray(output, dtype=np.float64).reshape((-1, width * 5 + 2))
