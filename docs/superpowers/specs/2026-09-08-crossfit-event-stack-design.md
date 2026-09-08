@@ -25,14 +25,18 @@ cannot label a meal of 120 seconds or less as positive.
 
 ## Goals
 
-1. Produce a deterministic, subject-disjoint outer-CV estimate with a single
+1. Reach aggregate event F1 >= 0.65 on subject-disjoint outer CV, with every
+   outer-fold threshold frozen from inner OOF predictions.  This is the final
+   research acceptance target; an independently held-out competition score is
+   still the authority for submission performance.
+2. Produce a deterministic, subject-disjoint outer-CV estimate with a single
    threshold learned only from inner OOF predictions.
-2. Train the event verifier on candidates scored by a window model that did not
+3. Train the event verifier on candidates scored by a window model that did not
    train on that candidate subject.
-3. Support a coverage-aware candidate path so the existing density coverage
+4. Support a coverage-aware candidate path so the existing density coverage
    correction can be evaluated with a verifier trained on matching examples.
-4. Make short-meal and non-dominant-wrist recall first-class reported metrics.
-5. Keep runtime inference compatible with the existing CPU submission pipeline;
+5. Make short-meal and non-dominant-wrist recall first-class reported metrics.
+6. Keep runtime inference compatible with the existing CPU submission pipeline;
    TCN remains an optional score input rather than a deployment dependency for
    this phase.
 
@@ -148,6 +152,27 @@ Every change is accepted only when all of the following are true:
 5. Only if step 4 is positive, build a separate short-meal specialist design;
    it requires its own test matrix and does not share threshold tuning with the
    main stack.
+
+The full F1 >= 0.65 programme is deliberately split into sequential, measurable
+milestones:
+
+- Milestone A — trustworthy stack: nested subject OOF, frozen thresholds, and
+  CPU deployment parity.  This milestone establishes the score to beat and does
+  not claim an F1 increase by itself.
+- Milestone B — recall recovery: coverage-aware candidates and a 60/120-second
+  short-meal specialist.  Target candidate-match recall is at least 0.90 overall
+  and at least 0.70 for meals shorter than 10 minutes, without reducing outer
+  aggregate PPV.
+- Milestone C — precision recovery: reviewed hard-negative mining and an
+  event-level sequence verifier using the existing six-channel ACC+GYRO signal;
+  PPG is evaluated only as a candidate-level addition.  Variants are retained
+  only when locked outer-CV aggregate F1 improves by at least 0.01.
+
+The programme is complete only when locked outer-CV aggregate F1 is at least
+0.65 and the final `dist/` pipeline reproduces the selected feature set and
+threshold policy.  If Milestones B and C exhaust their registered variants below
+0.65, the result is reported as a data-information limit rather than presenting
+an optimistically tuned score.
 
 ## Risks and mitigations
 
