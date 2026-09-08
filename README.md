@@ -112,7 +112,37 @@ v2（较 v1 0.41）：复核训练纳入无餐会话候选负样本、复核特�
 v1（0.41）：全覆盖滑窗 + 密度 + 33 特征复核（借鉴组内方案）。
 
 对照系统（FD 预训练微调 + proposal 解码，eligible 校正）均值 ~0.27。
-逐折产物 outputs/slide_verifier_fold{k}.json；可复现命令见 §复现。
+逐折产物 outputs/slide_verifier_fold{k}.json（v6 干净协议）；可复现命令见 §复现。
+
+### 5.5 正式 locked nested 基线（2026-09-08）
+
+`scripts/crossfit_event_stack.py` 现在执行两层受试者互斥交叉拟合：inner 窗模型只给
+未见受试者生成 OOF 候选，inner verifier 再给未见受试者候选生成 OOF 分数并选择
+单一阈值；阈值冻结后才训练最终 outer-train 模型并评估 untouched outer-val。
+因此下表是当前正式 locked 结果；`slide_verifier.py` 的 val 最优阈值仅保留为
+`diagnostic_per_fold_optimum`，不得与下表混用。
+
+| fold | config hash | inner F1 | 冻结阈值 | outer TP/eligible/pred | outer F1 | 候选 recall |
+|---|---|---:|---:|---:|---:|---:|
+| 0 | `bfc9da3529e41979` | 0.580 | 0.578967 | 11/23/35 | 0.379 | 0.652 |
+| 1 | `fd13740c8bb6dcb2` | 0.532 | 0.640244 | 19/31/35 | 0.576 | 0.871 |
+| 2 | `07c5cbd5ea427303` | 0.568 | 0.487595 | 13/27/66 | 0.280 | 0.741 |
+| 3 | `5163cfde46f49819` | 0.559 | 0.543717 | 21/32/81 | 0.372 | 0.812 |
+| 4 | `1f4ed6da69c03265` | 0.565 | 0.525790 | 25/40/58 | 0.510 | 0.825 |
+| **聚合** | — | — | — | **89/153/275** | **0.416** | **121/153 = 0.791** |
+
+CPU/no-TCN baseline 聚合 sensitivity 0.582、PPV 0.324；短餐（<10min）recall
+16/39=0.410，非惯用手 recall 42/90=0.467。5 fold/4 inner splits 在 5 个受限
+CPU 进程下墙钟约 24s（各折阶段耗时合计 42.2s）；相同单折二次运行命中内容寻址
+缓存，从 13.3s 降至 3.0s。输出位于 `outputs/crossfit/`，可重建缓存位于
+`cache/crossfit/`，二者均已精确加入忽略规则。
+
+coverage-fix 配套 42 维 verifier 的 nested 消融：候选 recall 从 0.791 升至
+0.863（132/153），最终 TP 从 89 升至 103，但 pred 从 275 增至 324，PPV
+0.324→0.318，聚合 F1 0.416→0.432。按预注册规则（候选漏下降、PPV 不下降、
+F1 至少 +0.01）因 PPV 下降而**拒绝直接启用**；保留为后续 hard-negative/
+短餐专用复核实验。当前正式 locked F1 距 0.65 仍差 0.234，下一阶段必须优先
+解决 fold2/3 的阈值迁移与餐时高分 FP，而不是继续放宽密度参数。
 
 ## 6. 结果分析与评价
 
@@ -178,8 +208,12 @@ python scripts/slide_features.py --fold {0..4} --mode train
 python scripts/slide_features.py --fold {0..4} --mode meal_train
 python scripts/slide_features.py --fold {0..4} --mode no_meal_train
 python scripts/slide_features.py --fold {0..4} --mode val
-# 3. 滑窗管线（窗模型 → 密度候选 → 复核 → 评估）
-python scripts/slide_verifier.py --fold {0..4}      # → outputs/slide_verifier_fold{k}.json
+# 3. 正式 locked nested 滑窗评估（CPU 自动并行；重复运行复用内容寻址缓存）
+python scripts/crossfit_event_stack.py --fold all --inner-splits 4 --no-tcn --workers 0
+# coverage 召回消融（当前未采纳为默认）
+python scripts/crossfit_event_stack.py --fold all --inner-splits 4 --no-tcn --workers 0 --coverage-fix
+# 旧逐折 val 最优阈值脚本仅供诊断
+python scripts/slide_verifier.py --fold {0..4}
 # 4. （对照系统）FD 预训练微调 5 折
 python scripts/train_ranker.py --fold {0..4} --no-ppg --init-from checkpoints/fd_pretrained_s1.pt \
     #  环境：BME_BATCH=256 BME_NEG_RATIO=100 BME_AUG_POS=4（当前最优对照配置）
@@ -194,8 +228,8 @@ src/            # 核心库（config/data/eval/infer/models）
 scripts/        # 滑窗管线（slide_*）+ 对照系统 + FD 预训练 + 官方评估
 docs/           # 三阶段重构设计.md（架构/实验矩阵/变更日志）+ 数据处理说明.md
 checkpoints/    # FD 预训练权重（fd_pretrained_s1.pt）
-cache/          # 可重建缓存（sessions/slide/cand_windows/validate_baselines/splits）
-outputs/        # slide_verifier_fold{k}.json（当前结果）+ 对照系统产物
+cache/          # 可重建缓存（sessions/slide/crossfit/cand_windows/validate_baselines/splits）
+outputs/        # crossfit/ locked 结果 + slide_verifier 诊断结果 + 对照系统产物
 dist/           # 提交包（predict.py + 5 折权重 + src 子集）
 FDdatasets/     # FD-I/FD-II（KU Leuven 外部数据）
 ReferenceDocs/  # 文献综述（报告引用素材）

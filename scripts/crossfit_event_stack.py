@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from dataclasses import asdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -81,7 +82,9 @@ def main() -> int:
         output_path = output_directory / (
             f"fold{config.outer_fold}_{result.config_hash}.json"
         )
-        write_json_atomic(output_path, fold_result_to_dict(result))
+        payload = fold_result_to_dict(result)
+        payload["run_config"] = asdict(config)
+        write_json_atomic(output_path, payload)
         metrics = result.outer_metrics
         cache_label = "cache" if result.cache_hits.get("fold_result") else "trained"
         print(

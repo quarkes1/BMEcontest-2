@@ -4,8 +4,12 @@ Data/
 *.pyc
 __pycache__/
 cache/
+/cache/crossfit/
 /models/
 FDdatasets/
 checkpoints/
 outputs/*.log
 outputs/*.txt
+/outputs/crossfit/
+/outputs/slide_cand_fold*.npz
+/outputs/slide_diag_fold*.json

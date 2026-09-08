@@ -18,6 +18,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import src.config as config
 from src.data import manifests, splits
+from src.pipeline.event_stack import (
+    DensityConfig,
+    EventRef,
+    density_candidates as SHARED_DENSITY_CANDIDATES,
+    select_event_threshold,
+)
 import official_iou_eval as oe
 
 STRIDE_MS = 15_000
@@ -38,63 +44,41 @@ def density_candidates(sid_windows, thr, sids=None, min_pos=None, dens_ms=None,
                        bridge_ms=None):
     """滑窗概率 → 密度候选事件（window_support 边界 + 120s 合并）。返回 (sid, s, e, probs 数组, prob_max, prob_mean, dur_s)。
     min_pos/dens_ms/bridge_ms 可覆盖全局（参数扫描用）。"""
-    min_pos = MIN_POS if min_pos is None else min_pos
-    dens_ms = DENSITY_MS if dens_ms is None else dens_ms
-    bridge_ms = BRIDGE_MS if bridge_ms is None else bridge_ms
-    cands = []
-    for sid in sorted(sid_windows):
-        if sids is not None and sid not in sids:
-            continue
-        arr = sorted(sid_windows[sid])
-        starts = np.array([a[0] for a in arr], np.int64)
-        probs = np.array([a[2] for a in arr])
-        seg, segs = [], []
-        for i in range(len(starts)):
-            if seg and starts[i] - seg[-1][0] > STRIDE_MS + bridge_ms:
-                segs.append(seg); seg = []
-            if seg and starts[i] - seg[-1][0] > STRIDE_MS:
-                for gs in range(seg[-1][0] + STRIDE_MS, starts[i], STRIDE_MS):
-                    seg.append((gs, 0.0, 0))
-            seg.append((int(starts[i]), float(probs[i]), 1))
-        if seg:
-            segs.append(seg)
-        for seg in segs:
-            ss = np.array([s for s, _, _ in seg], np.int64)
-            pp = np.array([p for _, p, _ in seg])
-            oo = np.array([o for _, _, o in seg], np.float64)
-            ds = int(round(dens_ms / STRIDE_MS))
-            cnt = np.convolve((pp >= thr).astype(np.int64), np.ones(ds, np.int64), "same")
-            cov = np.convolve(oo, np.ones(ds) / ds, "same")
-            dense = (cnt >= min_pos) & (cov >= COV_MIN)
-            i, n = 0, len(seg)
-            while i < n:
-                if dense[i]:
-                    j = i
-                    while j < n and dense[j]:
-                        j += 1
-                    # 事件边界收缩到"越阈窗范围"（dense run 有 ±600s 缓冲膨胀；
-                    # 纯越阈窗跨度贴合餐时段——长 run 覆盖餐前后活动时 IoU 提升）
-                    pos_idx = np.where(pp[i:j] >= thr)[0]
-                    if len(pos_idx) == 0:
-                        i = j
-                        continue
-                    a, b = i + pos_idx[0], i + pos_idx[-1]
-                    ps = pp[a:b + 1]
-                    ev = [sid, int(ss[a]), int(ss[b] + WIN_MS), ps,
-                          float(ps.max()), float(ps.mean()), (b - a + 1) * STRIDE_MS / 1000.0]
-                    if cands and cands[-1][0] == sid and ev[1] - cands[-1][2] <= MERGE_MS:
-                        c0 = cands[-1]
-                        c0[2] = max(c0[2], ev[2])
-                        c0[3] = np.concatenate([c0[3], ps])
-                        c0[4] = max(c0[4], ev[4])
-                        c0[5] = float(np.mean(c0[3]))
-                        c0[6] = c0[6] + ev[6]
-                    else:
-                        cands.append(ev)
-                    i = j
-                else:
-                    i += 1
-    return cands
+    selected = (
+        sid_windows
+        if sids is None
+        else {sid: rows for sid, rows in sid_windows.items() if sid in sids}
+    )
+    shared = SHARED_DENSITY_CANDIDATES(
+        selected,
+        DensityConfig(
+            stride_ms=STRIDE_MS,
+            window_ms=WIN_MS,
+            bridge_ms=BRIDGE_MS if bridge_ms is None else bridge_ms,
+            density_ms=DENSITY_MS if dens_ms is None else dens_ms,
+            min_positive=MIN_POS if min_pos is None else min_pos,
+            coverage_min=COV_MIN,
+            merge_ms=MERGE_MS,
+            window_threshold=thr,
+            context_ms=CTX_MS,
+            coverage_fix=os.environ.get("BME_DENS_COVFIX", "0") == "1",
+        ),
+    )
+    output = []
+    for candidate in shared:
+        probabilities = np.asarray(candidate.probabilities, dtype=np.float64)
+        output.append(
+            [
+                candidate.event.sid,
+                candidate.event.start_ms,
+                candidate.event.end_ms,
+                probabilities,
+                float(probabilities.max()),
+                float(probabilities.mean()),
+                len(probabilities) * STRIDE_MS / 1000.0,
+            ]
+        )
+    return output
 
 
 def verifier_features(cands, sid_windows, tcn_scores=None):
@@ -394,17 +378,25 @@ def main():
     ver.fit(X_tr, y_tr)
     vs = ver.predict_proba(X_va)[:, 1]
 
-    # 阈值：val 上 max event F1（阶段 1 近似乐观；严格版在嵌套 OOF 选）
-    best_t, best_m = None, None
-    for t in sorted(set(np.concatenate([vs, [0.5, 0.6, 0.7, 0.8]]))):
-        acc = vs >= t
-        preds = [(m[0], (m[1], m[2])) for m, a in zip(meta_va, acc) if a]
-        m = oe.official_metrics(preds, true_va)
-        if best_m is None or m["f1"] > best_m["f1"]:
-            best_t, best_m = t, m
+    # 仅作旧脚本诊断：阈值仍来自 val，不能作为 locked 指标或部署阈值。
+    selection = select_event_threshold(
+        [EventRef(m[0], m[1], m[2]) for m in meta_va],
+        vs,
+        [EventRef(sid, start, end) for sid, (start, end) in true_va],
+    )
+    best_t = selection.threshold
+    best_m = {
+        "f1": selection.metrics.f1,
+        "sensitivity": selection.metrics.sensitivity,
+        "ppv": selection.metrics.ppv,
+        "n_tp": selection.metrics.n_tp,
+        "n_pred": selection.metrics.n_pred,
+        "n_true": selection.metrics.n_true,
+    }
     print(f"[复核后] 阈值 {best_t:.3f}：F1={best_m['f1']:.3f} sens={best_m['sensitivity']:.3f} "
           f"ppv={best_m['ppv']:.3f} ({best_m['n_tp']}/{best_m['n_true']}, pred={best_m['n_pred']})", flush=True)
     out = {"fold": args.fold, "thr_window": thr, "thr_verifier": best_t,
+           "threshold_role": "diagnostic_per_fold_optimum",
            "candidate_layer": {"n": len(cand_va)}, "verified": {kk: best_m[kk] for kk in
            ("f1", "sensitivity", "ppv", "n_tp", "n_pred", "n_true")}}
     (config.OUTPUT_DIR / f"slide_verifier_fold{args.fold}.json").write_text(
