@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import math
 import sys
 from dataclasses import asdict
 from pathlib import Path
@@ -30,6 +31,22 @@ def parse_subject_cap_grid(value: str) -> tuple[int, ...]:
         raise ValueError("subject cap grid must contain positive unique integers") from exc
     if any(item < 1 for item in parsed) or len(set(parsed)) != len(parsed):
         raise ValueError("subject cap grid must contain positive unique integers")
+    return parsed
+
+
+def parse_verifier_c_grid(value: str) -> tuple[float, ...]:
+    try:
+        parsed = tuple(float(item.strip()) for item in value.split(","))
+    except ValueError as exc:
+        raise ValueError(
+            "verifier C grid must contain positive unique finite values"
+        ) from exc
+    if (
+        not parsed
+        or any(value <= 0 or not math.isfinite(value) for value in parsed)
+        or len(set(parsed)) != len(parsed)
+    ):
+        raise ValueError("verifier C grid must contain positive unique finite values")
     return parsed
 
 
@@ -71,6 +88,17 @@ def parse_args() -> argparse.Namespace:
         help="inner-OOF per-subject event caps, e.g. 2,3,4,5,6",
     )
     parser.add_argument(
+        "--verifier-features",
+        choices=("probability", "raw_summary"),
+        default="probability",
+    )
+    parser.add_argument(
+        "--verifier-c-grid",
+        type=parse_verifier_c_grid,
+        default=(0.1,),
+        help="inner-OOF LogisticRegression C values, e.g. 0.001,0.01,0.1",
+    )
+    parser.add_argument(
         "--force", action="store_true", help="ignore matching fold-result caches"
     )
     return parser.parse_args()
@@ -92,6 +120,8 @@ def main() -> int:
             workers=args.workers,
             device=args.device,
             subject_cap_grid=args.subject_cap_grid,
+            verifier_feature_mode=args.verifier_features,
+            verifier_c_grid=args.verifier_c_grid,
             density=DensityConfig(coverage_fix=args.coverage_fix),
         )
         for fold in fold_indices
@@ -116,7 +146,9 @@ def main() -> int:
             f"fold {config.outer_fold}: F1={metrics.f1:.3f} "
             f"sens={metrics.sensitivity:.3f} ppv={metrics.ppv:.3f} "
             f"TP={metrics.n_tp}/{metrics.n_true} pred={metrics.n_pred} "
-            f"threshold={result.threshold:.6f} cap={cap_label} [{cache_label}]"
+            f"threshold={result.threshold:.6f} cap={cap_label} "
+            f"C={result.verifier_c:g} features={result.verifier_feature_count} "
+            f"[{cache_label}]"
         )
         print(f"  output: {output_path}")
     return 0

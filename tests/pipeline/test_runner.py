@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from scripts.crossfit_event_stack import parse_subject_cap_grid
+from scripts.crossfit_event_stack import parse_subject_cap_grid, parse_verifier_c_grid
 from src.pipeline.event_stack import DensityConfig, EventRef
 from src.pipeline.runner import (
     FoldDataset,
@@ -134,6 +134,12 @@ def test_subject_cap_grid_parser_is_strict_and_deterministic():
     assert parse_subject_cap_grid("") == ()
     with pytest.raises(ValueError, match="positive unique integers"):
         parse_subject_cap_grid("2,2,0")
+
+
+def test_verifier_c_grid_parser_rejects_nonfinite_or_duplicate_values():
+    assert parse_verifier_c_grid("0.001,0.01,0.1") == (0.001, 0.01, 0.1)
+    with pytest.raises(ValueError, match="positive unique finite"):
+        parse_verifier_c_grid("0.01,nan,0.01")
 
 
 def test_raw_summary_verifier_selects_registered_c_and_reports_width():
