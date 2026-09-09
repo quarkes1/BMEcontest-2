@@ -286,6 +286,22 @@ class MultiScaleCandidate:
     micro: CandidateEvent | None
 
 
+def _candidate_canonical_key(item: CandidateEvent) -> tuple[object, ...]:
+    """Order every candidate field to make geometry ties deterministic."""
+
+    return (
+        item.event.sid,
+        item.event.start_ms,
+        item.event.end_ms,
+        item.probabilities,
+        item.observed_fraction,
+        item.bridged_gap_count,
+        item.bridged_gap_ms,
+        item.pre_observed_count,
+        item.post_observed_count,
+    )
+
+
 def union_candidates(
     macro: Sequence[CandidateEvent],
     micro: Sequence[CandidateEvent],
@@ -293,21 +309,13 @@ def union_candidates(
 ) -> list[MultiScaleCandidate]:
     """Pair each micro candidate with at most one overlapping macro candidate."""
 
-    macro_sorted = sorted(
-        macro,
-        key=lambda item: (
-            item.event.sid,
-            item.event.start_ms,
-            item.event.end_ms,
-        ),
-    )
+    macro_sorted = sorted(macro, key=_candidate_canonical_key)
     micro_sorted = sorted(
         micro,
         key=lambda item: (
             item.event.sid,
             -max(item.probabilities, default=0.0),
-            item.event.start_ms,
-            item.event.end_ms,
+            _candidate_canonical_key(item),
         ),
     )
     unmatched = set(range(len(macro_sorted)))
@@ -1019,6 +1027,8 @@ def multiscale_verifier_features(
             ],
             dtype=np.float64,
         )
+        if micro_missing:
+            micro_block[4:17] = 0.0
         rows.append(np.concatenate((macro_block, micro_block)))
     result = np.asarray(rows, dtype=np.float64).reshape((-1, 56))
     return np.nan_to_num(result, nan=0.0, posinf=0.0, neginf=0.0)

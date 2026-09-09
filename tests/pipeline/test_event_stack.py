@@ -354,6 +354,22 @@ def test_union_is_independent_of_input_order():
     )
 
 
+def test_union_uses_canonical_evidence_ties_for_duplicate_geometry():
+    low_evidence = CandidateEvent(
+        EventRef("s1", 0, 100), (0.1,), 1.0, 0, 0, 1, 1
+    )
+    high_evidence = CandidateEvent(
+        EventRef("s1", 0, 100), (0.2,), 1.0, 0, 0, 1, 1
+    )
+    micro = [_candidate("s1", 10, 90)]
+
+    forward = union_candidates([low_evidence, high_evidence], micro)
+    reverse = union_candidates([high_evidence, low_evidence], micro)
+
+    assert forward == reverse
+    assert forward[0].macro is high_evidence
+
+
 def test_multiscale_verifier_has_exact_width_and_distinct_source_missing_flags():
     candidate = MultiScaleCandidate(
         EventRef("s1", 0, 60_000), None, _candidate("s1", 0, 60_000)
@@ -391,6 +407,36 @@ def test_multiscale_verifier_keeps_macro_only_candidate_without_micro_samples():
     assert result.shape == (1, 56)
     assert result[0, 37:39].tolist() == [1.0, 0.0]
     assert result[0, 54:56].tolist() == [0.0, 1.0]
+
+
+def test_multiscale_verifier_zero_sample_micro_stream_zeros_score_features():
+    candidate = MultiScaleCandidate(
+        EventRef("s1", 0, 60_000), None, _candidate("s1", 0, 60_000)
+    )
+    micro_windows = {"s1": [(60_000, 75_000, 0.9)]}
+
+    result = multiscale_verifier_features([candidate], {}, micro_windows)
+
+    assert result[0, 37:39].tolist() == [0.0, 1.0]
+    assert result[0, 39] == 0.0
+    np.testing.assert_allclose(result[0, 41:54], 0.0)
+    assert result[0, 54:56].tolist() == [1.0, 1.0]
+
+
+def test_multiscale_verifier_one_sample_micro_stream_zeros_score_features():
+    candidate = MultiScaleCandidate(
+        EventRef("s1", 0, 60_000), None, _candidate("s1", 0, 60_000)
+    )
+    micro_windows = {
+        "s1": [(0, 15_000, 0.4), (60_000, 75_000, 0.9)]
+    }
+
+    result = multiscale_verifier_features([candidate], {}, micro_windows)
+
+    assert result[0, 37:39].tolist() == [0.0, 1.0]
+    assert result[0, 39] == 1.0
+    np.testing.assert_allclose(result[0, 41:54], 0.0)
+    assert result[0, 54:56].tolist() == [1.0, 1.0]
 
 
 def test_apply_event_policy_caps_each_subject_after_thresholding():
