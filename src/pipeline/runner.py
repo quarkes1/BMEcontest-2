@@ -46,6 +46,7 @@ from src.pipeline.crossfit import crossfit_predict_proba
 from src.pipeline.event_stack import (
     _GLOBAL_PRIOR,
     CandidateEvent,
+    MultiScaleCandidate,
     DensityConfig,
     MicroCandidateConfig,
     EventSelectionPolicy,
@@ -55,9 +56,13 @@ from src.pipeline.event_stack import (
     apply_event_policy,
     compute_event_metrics,
     density_candidates,
+    micro_candidates,
+    multiscale_verifier_features,
+    select_micro_candidate_threshold,
     select_event_policy,
     select_event_threshold,
     verifier_features,
+    union_candidates,
 )
 
 
@@ -300,7 +305,7 @@ def _windows_by_session(
 
 
 def _candidate_labels(
-    candidates: Sequence[CandidateEvent], truths: Sequence[EventRef]
+    candidates: Sequence[CandidateEvent | MultiScaleCandidate], truths: Sequence[EventRef]
 ) -> np.ndarray:
     labels = []
     for candidate in candidates:
@@ -360,6 +365,32 @@ def _validate_binary(labels: np.ndarray, stage: str) -> None:
         raise ValueError(f"{stage} requires both binary classes")
 
 
+def _micro_training_keep(
+    batch: WindowBatch,
+    truths: Sequence[EventRef],
+    middle_fraction: float | None,
+) -> np.ndarray:
+    """Exclude ambiguous labels and optionally retain pure positive centers."""
+    keep = np.asarray(batch.labels) >= 0
+    if middle_fraction is None:
+        return keep
+    if not 0 < middle_fraction <= 1:
+        raise ValueError("micro_positive_middle_fraction must be in (0, 1]")
+    truths_by_sid: defaultdict[str, list[EventRef]] = defaultdict(list)
+    for truth in truths:
+        truths_by_sid[truth.sid].append(truth)
+    for index in np.flatnonzero(np.asarray(batch.labels) == 1):
+        window = batch.windows[index]
+        center = (window.start_ms + window.end_ms) // 2
+        keep[index] = any(
+            truth.start_ms + (truth.end_ms - truth.start_ms) * (1 - middle_fraction) / 2
+            <= center <=
+            truth.end_ms - (truth.end_ms - truth.start_ms) * (1 - middle_fraction) / 2
+            for truth in truths_by_sid[window.sid]
+        )
+    return keep
+
+
 def _run_outer_dataset(
     config: RunConfig,
     data_source: FoldDataset,
@@ -380,6 +411,8 @@ def _run_outer_dataset(
         raise ValueError("verifier_c_grid values must be unique")
     if not isinstance(data_source, FoldDataset):
         raise TypeError("data_source must be a FoldDataset")
+    if config.external_fd_weight_grid != (0.0,):
+        raise ValueError("external_fd_weight_grid must be (0.0,) in the target-domain runner")
     started = time.perf_counter()
     for name, batch in (
         ("window_train", data_source.window_train),
@@ -405,6 +438,40 @@ def _run_outer_dataset(
     validate_outer_isolation(
         frozenset(candidate_window_groups), data_source.outer_subjects
     )
+
+    micro_fit_subjects: frozenset[str] = frozenset()
+    micro_selection = None
+    micro_oof_seconds = 0.0
+    if config.micro_enabled:
+        for name in ("micro_window_train", "micro_candidate_train", "micro_validation"):
+            batch = getattr(data_source, name)
+            if batch is None:
+                raise ValueError(f"{name} is required when micro_enabled=True")
+            _validate_batch(batch, name)
+            if batch.features.shape[1] != 47:
+                raise ValueError(f"{name}.features must have 47 columns")
+        micro_train = data_source.micro_window_train
+        micro_candidates_batch = data_source.micro_candidate_train
+        micro_validation = data_source.micro_validation
+        micro_groups = _groups_for(micro_train.windows, data_source.subject_by_session)
+        micro_candidate_groups = _groups_for(
+            micro_candidates_batch.windows, data_source.subject_by_session
+        )
+        micro_validation_groups = _groups_for(
+            micro_validation.windows, data_source.subject_by_session
+        )
+        validate_outer_isolation(frozenset(micro_groups), data_source.outer_subjects)
+        validate_outer_isolation(frozenset(micro_candidate_groups), data_source.outer_subjects)
+        if frozenset(micro_validation_groups) != data_source.outer_subjects:
+            raise ValueError("micro validation does not match outer subject manifest")
+        micro_keep = _micro_training_keep(
+            micro_train, data_source.train_truths, config.micro_positive_middle_fraction
+        )
+        micro_train_labels = np.asarray(micro_train.labels[micro_keep], dtype=np.int8)
+        _validate_binary(micro_train_labels, "micro window training")
+        micro_train_features = micro_train.features[micro_keep]
+        micro_train_groups = micro_groups[micro_keep]
+        micro_fit_subjects = frozenset(micro_train_groups)
 
     keep = np.asarray(data_source.window_train.labels) >= 0
     train_labels = np.asarray(data_source.window_train.labels[keep], dtype=np.int8)
@@ -433,13 +500,38 @@ def _run_outer_dataset(
         data_source.candidate_train.windows, window_oof.probabilities
     )
     raw_train_candidates = density_candidates(oof_windows, config.density)
-    train_candidates, train_candidate_features = _candidate_matrix(
-        raw_train_candidates,
-        oof_windows,
-        include_coverage=config.density.coverage_fix,
-        window_batch=data_source.candidate_train,
-        feature_mode=config.verifier_feature_mode,
-    )
+    if config.micro_enabled:
+        window_oof_seconds = time.perf_counter() - stage_started
+        stage_started = time.perf_counter()
+        micro_oof = crossfit_predict_proba(
+            micro_train_features, micro_train_labels, micro_train_groups,
+            micro_candidates_batch.features, micro_candidate_groups,
+            config.inner_splits,
+            estimator_factory=lambda: _micro_window_estimator(config.seed + 10),
+        )
+        micro_oof_windows = _windows_by_session(
+            micro_candidates_batch.windows, micro_oof.probabilities
+        )
+        micro_selection = select_micro_candidate_threshold(
+            micro_oof_windows, data_source.train_truths,
+            config.micro_threshold_grid, config.micro_candidate,
+        )
+        raw_micro_train_candidates = micro_candidates(
+            micro_oof_windows, micro_selection.threshold, config.micro_candidate
+        )
+        train_candidates = union_candidates(raw_train_candidates, raw_micro_train_candidates)
+        train_candidate_features = multiscale_verifier_features(
+            train_candidates, oof_windows, micro_oof_windows
+        )
+        micro_oof_seconds = time.perf_counter() - stage_started
+    else:
+        train_candidates, train_candidate_features = _candidate_matrix(
+            raw_train_candidates,
+            oof_windows,
+            include_coverage=config.density.coverage_fix,
+            window_batch=data_source.candidate_train,
+            feature_mode=config.verifier_feature_mode,
+        )
     if not train_candidates:
         raise ValueError("inner window OOF produced no verifier candidates")
     train_candidate_labels = _candidate_labels(
@@ -452,7 +544,8 @@ def _run_outer_dataset(
     )
     verifier_fit_subjects = frozenset(train_candidate_groups)
     validate_outer_isolation(verifier_fit_subjects, data_source.outer_subjects)
-    window_oof_seconds = time.perf_counter() - stage_started
+    if not config.micro_enabled:
+        window_oof_seconds = time.perf_counter() - stage_started
 
     stage_started = time.perf_counter()
     train_candidate_events = [candidate.event for candidate in train_candidates]
@@ -505,6 +598,9 @@ def _run_outer_dataset(
     stage_started = time.perf_counter()
     window_model = _window_estimator(config.seed + 2)
     window_model.fit(train_features, train_labels)
+    if config.micro_enabled:
+        micro_model = _micro_window_estimator(config.seed + 12)
+        micro_model.fit(micro_train_features, micro_train_labels)
     verifier_model = _verifier_estimator(config.seed + 3, selected_c)
     verifier_model.fit(train_candidate_features, train_candidate_labels)
     fit_seconds = time.perf_counter() - stage_started
@@ -522,13 +618,29 @@ def _run_outer_dataset(
     raw_validation_candidates = density_candidates(
         validation_windows, config.density
     )
-    validation_candidates, validation_candidate_features = _candidate_matrix(
-        raw_validation_candidates,
-        validation_windows,
-        include_coverage=config.density.coverage_fix,
-        window_batch=data_source.validation,
-        feature_mode=config.verifier_feature_mode,
-    )
+    raw_micro_validation_candidates = []
+    if config.micro_enabled:
+        micro_validation_scores = _positive_probability(micro_model, micro_validation.features)
+        micro_validation_windows = _windows_by_session(
+            micro_validation.windows, micro_validation_scores
+        )
+        raw_micro_validation_candidates = micro_candidates(
+            micro_validation_windows, micro_selection.threshold, config.micro_candidate
+        )
+        validation_candidates = union_candidates(
+            raw_validation_candidates, raw_micro_validation_candidates
+        )
+        validation_candidate_features = multiscale_verifier_features(
+            validation_candidates, validation_windows, micro_validation_windows
+        )
+    else:
+        validation_candidates, validation_candidate_features = _candidate_matrix(
+            raw_validation_candidates,
+            validation_windows,
+            include_coverage=config.density.coverage_fix,
+            window_batch=data_source.validation,
+            feature_mode=config.verifier_feature_mode,
+        )
     if validation_candidates:
         validation_scores = _positive_probability(
             verifier_model, validation_candidate_features
@@ -567,13 +679,33 @@ def _run_outer_dataset(
         slices[name] = compute_event_metrics(slice_predictions, truths)
     inference_seconds = time.perf_counter() - stage_started
 
+    micro_metrics = compute_event_metrics(
+        [candidate.event for candidate in raw_micro_validation_candidates],
+        data_source.validation_truths,
+    ) if config.micro_enabled else None
+    short_candidate_metrics = compute_event_metrics(
+        validation_candidate_events,
+        data_source.validation_truth_slices.get("duration_lt10", ()),
+    ) if config.micro_enabled else None
+    feature_dimensions = (train_features.shape[1], train_candidate_features.shape[1])
+    if config.micro_enabled:
+        feature_dimensions += (micro_train_features.shape[1],)
     config_hash = cache_key(
         config,
-        feature_dimensions=(
-            train_features.shape[1],
-            train_candidate_features.shape[1],
-        ),
+        feature_dimensions=feature_dimensions,
     )
+    timings = {
+        "feature_extraction": 0.0,
+        "window_oof": window_oof_seconds,
+        "verifier_oof": verifier_oof_seconds,
+        "final_fit": fit_seconds,
+        "outer_inference": inference_seconds,
+        "total": time.perf_counter() - started,
+    }
+    if config.micro_enabled:
+        timings["feature_extraction"] = data_source.micro_cache_extraction_seconds
+        timings["macro_window_oof"] = timings.pop("window_oof")
+        timings["micro_window_oof"] = micro_oof_seconds
     return FoldResult(
         config_hash=config_hash,
         threshold=policy.threshold,
@@ -585,19 +717,18 @@ def _run_outer_dataset(
         candidate_count=len(validation_candidates),
         candidate_match_recall=candidate_metrics.sensitivity,
         slices=slices,
-        timings_seconds={
-            "feature_extraction": 0.0,
-            "window_oof": window_oof_seconds,
-            "verifier_oof": verifier_oof_seconds,
-            "final_fit": fit_seconds,
-            "outer_inference": inference_seconds,
-            "total": time.perf_counter() - started,
-        },
+        timings_seconds=timings,
         cache_hits={"fold_result": False},
         outer_subjects=data_source.outer_subjects,
         window_fit_subjects=window_fit_subjects,
         verifier_fit_subjects=verifier_fit_subjects,
         macro_window_feature_count=train_features.shape[1],
+        micro_threshold=micro_selection.threshold if micro_selection is not None else None,
+        micro_candidate_count=len(raw_micro_validation_candidates),
+        micro_candidate_match_recall=micro_metrics.sensitivity if micro_metrics else 0.0,
+        short_meal_candidate_recall=short_candidate_metrics.sensitivity if short_candidate_metrics else 0.0,
+        micro_window_feature_count=micro_train_features.shape[1] if config.micro_enabled else 0,
+        micro_window_fit_subjects=micro_fit_subjects,
     )
 
 
