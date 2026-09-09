@@ -22,7 +22,7 @@ labels or a separately reserved audit split.
 
 ## 2. Evidence and chosen approach
 
-The current nested baseline misses 32 of 39 meals shorter than 10 minutes at final selection,
+The current nested baseline misses 23 of 39 meals shorter than 10 minutes at final selection,
 and its 240-second training window requires more than 120 seconds of meal overlap to become a
 positive. The audited teammate pipeline uses 15-second ACC+GYRO windows and supplies two useful
 ideas: local motion windows and gyroscope statistics. Its reported F1 is not adopted because
