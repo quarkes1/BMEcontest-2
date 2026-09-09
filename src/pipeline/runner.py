@@ -12,10 +12,23 @@ from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Mapping, Sequence
 
-# Modern Windows installations may not provide WMIC, which joblib uses as a
-# physical-core fallback. Respect an existing user limit; otherwise give loky a
-# stable ceiling before sklearn imports it.
-os.environ.setdefault("LOKY_MAX_CPU_COUNT", str(os.cpu_count() or 1))
+def _physical_cpu_count() -> int:
+    """Prefer physical cores, with a conservative limit when detection is absent."""
+    try:
+        import psutil
+
+        physical = psutil.cpu_count(logical=False)
+        if physical is not None and physical > 0:
+            return int(physical)
+    except (ImportError, OSError, NotImplementedError):
+        pass
+    return max(1, (os.cpu_count() or 1) // 2)
+
+
+# Set the physical limit before sklearn initializes joblib. A logical-core limit
+# leaves loky free to probe WMIC, which modern Windows may no longer provide.
+# Preserve a caller's explicit worker limit.
+os.environ.setdefault("LOKY_MAX_CPU_COUNT", str(_physical_cpu_count()))
 
 import numpy as np
 from sklearn.ensemble import HistGradientBoostingClassifier
@@ -31,6 +44,7 @@ from src.pipeline.event_stack import (
     _GLOBAL_PRIOR,
     CandidateEvent,
     DensityConfig,
+    MicroCandidateConfig,
     EventSelectionPolicy,
     EventMetrics,
     EventRef,
@@ -58,7 +72,18 @@ VERIFIER_MODEL_PARAMETERS = {
     "class_weight": "balanced",
     "max_iter": 3000,
 }
-RUNNER_SCHEMA_VERSION = 3
+MICRO_WINDOW_MODEL_PARAMETERS = {
+    "n_estimators": 300,
+    "num_leaves": 31,
+    "min_child_samples": 100,
+    "learning_rate": 0.05,
+    "colsample_bytree": 0.8,
+    "reg_lambda": 5.0,
+    "class_weight": "balanced",
+    "n_jobs": 1,
+    "verbosity": -1,
+}
+RUNNER_SCHEMA_VERSION = 4
 
 
 @dataclass(frozen=True)
@@ -73,6 +98,12 @@ class RunConfig:
     verifier_feature_mode: str = "probability"
     verifier_c_grid: tuple[float, ...] = (0.1,)
     density: DensityConfig = field(default_factory=DensityConfig)
+    micro_enabled: bool = False
+    micro_gravity_align: bool = True
+    micro_threshold_grid: tuple[float, ...] = (0.10, 0.20, 0.30, 0.40, 0.50)
+    micro_candidate: MicroCandidateConfig = field(default_factory=MicroCandidateConfig)
+    micro_positive_middle_fraction: float | None = None
+    external_fd_weight_grid: tuple[float, ...] = (0.0,)
 
 
 @dataclass(frozen=True)
@@ -92,6 +123,14 @@ class FoldResult:
     outer_subjects: frozenset[str]
     window_fit_subjects: frozenset[str]
     verifier_fit_subjects: frozenset[str]
+    micro_threshold: float | None = None
+    micro_candidate_count: int = 0
+    micro_candidate_match_recall: float = 0.0
+    short_meal_candidate_recall: float = 0.0
+    external_weight: float = 0.0
+    macro_window_feature_count: int = 0
+    micro_window_feature_count: int = 0
+    micro_window_fit_subjects: frozenset[str] = field(default_factory=frozenset)
 
 
 @dataclass(frozen=True)
@@ -117,6 +156,10 @@ class FoldDataset:
     validation_truth_slices: Mapping[str, tuple[EventRef, ...]] = field(
         default_factory=dict
     )
+    micro_window_train: WindowBatch | None = None
+    micro_candidate_train: WindowBatch | None = None
+    micro_validation: WindowBatch | None = None
+    micro_cache_extraction_seconds: float = 0.0
 
 
 def _file_signature(path: Path) -> dict[str, int | str]:
@@ -138,6 +181,7 @@ def cache_key(
 
     models = model_parameters or {
         "window": WINDOW_MODEL_PARAMETERS,
+        "micro_window": MICRO_WINDOW_MODEL_PARAMETERS,
         "verifier": VERIFIER_MODEL_PARAMETERS,
     }
     payload = {
@@ -205,6 +249,16 @@ def _window_estimator(seed: int) -> Pipeline:
                 ),
             ),
         ]
+    )
+
+
+def _micro_window_estimator(seed: int) -> Pipeline:
+    from lightgbm import LGBMClassifier
+
+    parameters = dict(MICRO_WINDOW_MODEL_PARAMETERS)
+    parameters["random_state"] = seed
+    return Pipeline(
+        [("imputer", SimpleImputer(strategy="median")), ("model", LGBMClassifier(**parameters))]
     )
 
 
@@ -529,6 +583,7 @@ def _run_outer_dataset(
         candidate_match_recall=candidate_metrics.sensitivity,
         slices=slices,
         timings_seconds={
+            "feature_extraction": 0.0,
             "window_oof": window_oof_seconds,
             "verifier_oof": verifier_oof_seconds,
             "final_fit": fit_seconds,
@@ -539,6 +594,7 @@ def _run_outer_dataset(
         outer_subjects=data_source.outer_subjects,
         window_fit_subjects=window_fit_subjects,
         verifier_fit_subjects=verifier_fit_subjects,
+        macro_window_feature_count=train_features.shape[1],
     )
 
 
@@ -552,19 +608,29 @@ class FilesystemDataSource:
             root = project_config.ROOT_DIR
         self.root = Path(root)
         self.slide_dir = self.root / "cache" / "slide"
+        self.micro_dir = self.root / "cache" / "micro15"
         self.session_dir = self.root / "cache" / "sessions"
         self.cache_directory = self.root / "cache" / "crossfit"
 
     def _split_path(self, fold: int, split: str) -> Path:
         return self.slide_dir / f"fold{fold}_{split}.npz"
 
-    def input_files(self, fold: int) -> tuple[Path, ...]:
+    def _micro_split_path(self, fold: int, split: str) -> Path:
+        return self.micro_dir / f"fold{fold}_{split}.npz"
+
+    def input_files(self, config: RunConfig) -> tuple[Path, ...]:
         from src.data import manifests
 
+        fold = config.outer_fold
         paths = [
             self._split_path(fold, split)
             for split in ("train", "meal_train", "no_meal_train", "val")
         ]
+        if config.micro_enabled:
+            paths.extend(
+                self._micro_split_path(fold, split)
+                for split in ("train", "meal_train", "no_meal_train", "val")
+            )
         paths.extend((manifests.INDEX_CSV, manifests.MEALS_CSV))
         split_manifest = self.root / "cache" / "splits" / f"fold{fold}.json"
         if split_manifest.exists():
@@ -592,6 +658,31 @@ class FilesystemDataSource:
                 for sid, start, end in (json.loads(str(value)) for value in data["wid"])
             )
         return WindowBatch(features, labels, windows)
+
+    @staticmethod
+    def _load_micro_batch(path: Path, expected_metadata: Mapping[str, object]) -> tuple[WindowBatch, float]:
+        from src.pipeline.micro_cache import read_micro_cache, read_micro_metadata
+
+        arrays = read_micro_cache(path, expected_metadata)
+        windows = tuple(
+            EventRef(str(sid), int(start), int(end))
+            for sid, start, end in (json.loads(str(value)) for value in arrays.wid)
+        )
+        return (
+            WindowBatch(arrays.feat, arrays.label, windows),
+            float(read_micro_metadata(path)["extraction_seconds"]),
+        )
+
+    def _micro_expected_metadata(self, config: RunConfig, split: str) -> dict:
+        from src.pipeline.imu_features import MicroFeatureConfig
+        from src.pipeline.micro_cache import cache_metadata, split_sessions
+
+        sessions = split_sessions(self.root, config.outer_fold, split)
+        source_files = [self.session_dir / f"{sid}.npz" for sid in sessions]
+        source_files.append(self.root / "cache" / "splits" / f"fold{config.outer_fold}.json")
+        return cache_metadata(
+            MicroFeatureConfig(gravity_align=config.micro_gravity_align), source_files
+        )
 
     @staticmethod
     def _combine_batches(*batches: WindowBatch) -> WindowBatch:
@@ -673,9 +764,10 @@ class FilesystemDataSource:
             name: tuple(events) for name, events in sorted(slices.items())
         }
 
-    def load_outer_fold(self, fold: int) -> FoldDataset:
+    def load_outer_fold(self, config: RunConfig) -> FoldDataset:
         from src.data import manifests
 
+        fold = config.outer_fold
         window_train = self._load_batch(self._split_path(fold, "train"))
         meal_train = self._load_batch(self._split_path(fold, "meal_train"))
         no_meal_train = self._load_batch(
@@ -683,6 +775,16 @@ class FilesystemDataSource:
         )
         validation = self._load_batch(self._split_path(fold, "val"))
         candidate_train = self._combine_batches(meal_train, no_meal_train)
+
+        micro_batches: dict[str, WindowBatch] = {}
+        extraction_seconds = 0.0
+        if config.micro_enabled:
+            for split in ("train", "meal_train", "no_meal_train", "val"):
+                micro_batches[split], seconds = self._load_micro_batch(
+                    self._micro_split_path(fold, split),
+                    self._micro_expected_metadata(config, split),
+                )
+                extraction_seconds += seconds
 
         index = manifests.load_sensor_index()
         subject_by_session = {
@@ -709,6 +811,13 @@ class FilesystemDataSource:
             subject_by_session=subject_by_session,
             outer_subjects=outer_subjects,
             validation_truth_slices=validation_slices,
+            micro_window_train=micro_batches.get("train"),
+            micro_candidate_train=(
+                self._combine_batches(micro_batches["meal_train"], micro_batches["no_meal_train"])
+                if config.micro_enabled else None
+            ),
+            micro_validation=micro_batches.get("val"),
+            micro_cache_extraction_seconds=extraction_seconds,
         )
 
 
@@ -735,6 +844,14 @@ def fold_result_to_dict(result: FoldResult) -> dict[str, object]:
         "outer_subjects": sorted(result.outer_subjects),
         "window_fit_subjects": sorted(result.window_fit_subjects),
         "verifier_fit_subjects": sorted(result.verifier_fit_subjects),
+        "micro_threshold": result.micro_threshold,
+        "micro_candidate_count": result.micro_candidate_count,
+        "micro_candidate_match_recall": result.micro_candidate_match_recall,
+        "short_meal_candidate_recall": result.short_meal_candidate_recall,
+        "external_weight": result.external_weight,
+        "macro_window_feature_count": result.macro_window_feature_count,
+        "micro_window_feature_count": result.micro_window_feature_count,
+        "micro_window_fit_subjects": sorted(result.micro_window_fit_subjects),
     }
 
 
@@ -773,6 +890,14 @@ def _fold_result_from_dict(payload: Mapping[str, object]) -> FoldResult:
         outer_subjects=frozenset(payload.get("outer_subjects", ())),
         window_fit_subjects=frozenset(payload.get("window_fit_subjects", ())),
         verifier_fit_subjects=frozenset(payload.get("verifier_fit_subjects", ())),
+        micro_threshold=(float(payload["micro_threshold"]) if payload.get("micro_threshold") is not None else None),
+        micro_candidate_count=int(payload.get("micro_candidate_count", 0)),
+        micro_candidate_match_recall=float(payload.get("micro_candidate_match_recall", 0.0)),
+        short_meal_candidate_recall=float(payload.get("short_meal_candidate_recall", 0.0)),
+        external_weight=float(payload.get("external_weight", 0.0)),
+        macro_window_feature_count=int(payload.get("macro_window_feature_count", 63)),
+        micro_window_feature_count=int(payload.get("micro_window_feature_count", 0)),
+        micro_window_fit_subjects=frozenset(payload.get("micro_window_fit_subjects", ())),
     )
 
 
@@ -802,7 +927,7 @@ def run_outer_fold(
     source = data_source or FilesystemDataSource()
     if not isinstance(source, FilesystemDataSource):
         raise TypeError("data_source must be FoldDataset or FilesystemDataSource")
-    input_files = source.input_files(config.outer_fold)
+    input_files = source.input_files(config)
     verifier_dimensions = 42 if config.density.coverage_fix else 37
     if config.verifier_feature_mode == "raw_summary":
         verifier_dimensions += 312
@@ -815,7 +940,7 @@ def run_outer_fold(
         )
         return replace(cached, cache_hits={"fold_result": True})
 
-    dataset = source.load_outer_fold(config.outer_fold)
+    dataset = source.load_outer_fold(config)
     result = replace(
         _run_outer_dataset(config, dataset),
         config_hash=key,
@@ -823,15 +948,6 @@ def run_outer_fold(
     )
     write_json_atomic(cached_path, fold_result_to_dict(result))
     return result
-
-
-def _physical_cpu_count() -> int:
-    try:
-        import psutil
-
-        return int(psutil.cpu_count(logical=False) or os.cpu_count() or 1)
-    except ImportError:
-        return int(os.cpu_count() or 1)
 
 
 def _run_outer_fold_limited(config: RunConfig, force: bool) -> FoldResult:
