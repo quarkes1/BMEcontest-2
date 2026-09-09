@@ -120,6 +120,8 @@ def verifier_features(cands, sid_windows, tcn_scores=None):
                        float(np.percentile(cq, 90))]
             else:
                 xs += [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        if os.environ.get("BME_VER_CTXN", "0") == "1":   # 实验：显式上下文窗计数（缺口邻域无上下文的"状态"特征）
+            xs += [float(len(ctx)), float(len(ctx2))]
         pre = ctx if len(ctx) else np.zeros(1)
         post = ctx2 if len(ctx2) else np.zeros(1)
         both = np.concatenate([pre, post])
@@ -229,9 +231,76 @@ def main():
         return out
 
     # ---- 窗模型（train 采样窗 + TCN 融合；BME_WBAG=1 时 5 折模型平均——弱折（fold2 型）
-    #     对折内受试者迁移差，其他折模型平均候选 recall +0.12） ----
+    #     对折内受试者迁移差，其他折模型平均候选 recall +0.12）
+    #     注意：WBAG 的 5 折模型对折 k 的 val 有跨折受试者可见性（fold m≠k 模型训练过 S_k 会话）
+    #     ——不是严格受试者互斥 bag（peer review 泄漏指控）。BME_SEEDS=n 修复：只在本折
+    #     train 上训练 n 个模型，全部仅见过本折 train 受试者 → 严格互斥 bag。
+    #     sklearn HGB 确定性（early_stopping=False 时 random_state 无效）→ 同数据同模型；
+    #     BME_SEEDS_RESEED=1 时每种子从 meal/no_meal 全窗池按"≤3× 正/会话"重采样负样本
+    #     → 真实多样 bag（与 train npz 构建同构）。 ----
     wbag = os.environ.get("BME_WBAG", "0") == "1"
-    if wbag:
+    in_seeds = int(os.environ.get("BME_SEEDS", "0"))
+    reseed = os.environ.get("BME_SEEDS_RESEED", "0") == "1"
+    if in_seeds:
+        models = []
+        if reseed and in_seeds > 1:
+            # 全窗池（本折 train 受试者：meal_train 含餐会话全窗 + no_meal_train 无餐会话全窗）
+            from collections import defaultdict
+            grp = defaultdict(list)   # sid -> 行号（先后接 meal_train / no_meal_train）
+            X_pool_l, y_pool_l = [], []
+            for sn in ("meal_train", "no_meal_train"):
+                d = np.load(config.CACHE_DIR / "slide" / f"fold{args.fold}_{sn}.npz", allow_pickle=True)
+                wl = [json.loads(w) for w in d["wid"]]
+                tv_l = load_tcn_vec(sn)
+                Xs = d["feat"] if tv_l is None else np.concatenate([d["feat"], tv_l], 1)
+                start = sum(len(x) for x in X_pool_l)   # 本 split 起始行号（拼接序）
+                X_pool_l.append(Xs)
+                y_pool_l.append(d["label"])
+                for i, wj in enumerate(wl):
+                    grp[wj[0]].append(start + i)
+            X_pool = np.concatenate(X_pool_l)
+            y_pool = np.concatenate(y_pool_l)
+            for s in range(in_seeds):
+                rng = np.random.default_rng(20260901 + s * 7919)
+                rows = []
+                for sid, ids in grp.items():
+                    ids = np.array(ids)
+                    labs = y_pool[ids]
+                    pos = ids[labs == 1]
+                    negs = ids[labs == 0]
+                    if len(pos):
+                        n_allow = max(3 * len(pos), 1)
+                        if len(negs) > n_allow:
+                            negs = rng.choice(negs, n_allow, replace=False)
+                        rows.append(np.concatenate([pos, negs]))
+                    elif len(negs):
+                        rows.append(negs[rng.integers(len(negs)):rng.integers(len(negs)) + 1])
+                sel = np.concatenate(rows)
+                X_s, y_s = X_pool[sel], y_pool[sel].astype(int)
+                imp_s = SimpleImputer(strategy="median").fit(X_s)
+                clf_s = HistGradientBoostingClassifier(
+                    learning_rate=0.05, max_iter=150, max_leaf_nodes=15, max_depth=4,
+                    min_samples_leaf=100, l2_regularization=1.0, early_stopping=False,
+                    random_state=20260901)
+                clf_s.fit(imp_s.transform(X_s), y_s)
+                models.append((imp_s, clf_s))
+            print(f"干净多样 bag：{in_seeds} 种子 × 负样本重采样（受试者互斥）", flush=True)
+        else:
+            tr = np.load(config.CACHE_DIR / "slide" / f"fold{args.fold}_train.npz", allow_pickle=True)
+            keep = tr["label"] >= 0
+            tcn_tr_v = load_tcn_vec("train")
+            X_tr_w = tr["feat"] if tcn_tr_v is None else np.concatenate([tr["feat"], tcn_tr_v], 1)
+            for s in range(in_seeds):
+                imp_s = SimpleImputer(strategy="median").fit(X_tr_w[keep])
+                clf_s = HistGradientBoostingClassifier(
+                    learning_rate=0.05, max_iter=150, max_leaf_nodes=15, max_depth=4,
+                    min_samples_leaf=100, l2_regularization=1.0, early_stopping=False,
+                    random_state=20260901 + s)
+                clf_s.fit(imp_s.transform(X_tr_w[keep]), tr["label"][keep].astype(int))
+                models.append((imp_s, clf_s))
+            print(f"干净 bag：本折 train 训练 {in_seeds} 种子（受试者互斥）", flush=True)
+        wbag = True   # 下游走平均分支（模型均为本折 train 训练，val 受试者完全未见）
+    elif wbag:
         models = []
         for kk in range(5):
             trk = np.load(config.CACHE_DIR / "slide" / f"fold{kk}_train.npz", allow_pickle=True)
@@ -372,9 +441,16 @@ def main():
         return
 
     # ---- L2 复核器（嵌套近似：直接 fit train 候选 → val 打分） ----
-    ver = Pipeline([("imp", SimpleImputer(strategy="median")), ("scl", StandardScaler()),
-                    ("lr", LogisticRegression(C=0.1, class_weight="balanced", max_iter=3000,
-                                              random_state=20260904))])
+    if os.environ.get("BME_VER_HGB", "0") == "1":   # 实验：HGB 复核器（非线性）
+        ver = Pipeline([("imp", SimpleImputer(strategy="median")),
+                        ("hgb", HistGradientBoostingClassifier(
+                            learning_rate=0.05, max_iter=200, max_leaf_nodes=8,
+                            min_samples_leaf=20, l2_regularization=1.0,
+                            early_stopping=False, random_state=20260904))])
+    else:
+        ver = Pipeline([("imp", SimpleImputer(strategy="median")), ("scl", StandardScaler()),
+                        ("lr", LogisticRegression(C=0.1, class_weight="balanced", max_iter=3000,
+                                                  random_state=20260904))])
     ver.fit(X_tr, y_tr)
     vs = ver.predict_proba(X_va)[:, 1]
 
@@ -401,6 +477,80 @@ def main():
            ("f1", "sensitivity", "ppv", "n_tp", "n_pred", "n_true")}}
     (config.OUTPUT_DIR / f"slide_verifier_fold{args.fold}.json").write_text(
         json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
+
+    # ---- 误差诊断（BME_DUMP=1）：每 GT 的分类（候选层漏/复核漏/阈值漏）+ FP 结构 ----
+    if os.environ.get("BME_DUMP", "0") == "1" and len(meta_va):
+        preds = [(m[0], (m[1], m[2])) for m, a in zip(meta_va, vs >= best_t) if a]
+        ev_list = [(m[0], m[1], m[2], float(v)) for m, v in zip(meta_va, vs)]
+        # 事件在 ev_list 的原始索引（pair 匹配用 preds 索引 → 映射回 ev_list）
+        pass_idx = [k for k, (m, a) in enumerate(zip(meta_va, vs >= best_t)) if a]
+        pairs = []
+        for pi, i in enumerate(pass_idx):
+            sid_p, (ps, pe) = preds[pi][0], preds[pi][1]
+            for j, (sid_g, (gs, ge)) in enumerate(true_va):
+                if sid_p == sid_g:
+                    iou = oe.event_iou((ps, pe), (gs, ge))
+                    if iou >= 0.25:
+                        pairs.append((iou, pi, j))
+        pairs.sort(key=lambda t: -t[0])
+        used_p, used_g = set(), set()
+        match = {}
+        for iou, pi, j in pairs:
+            if pi in used_p or j in used_g:
+                continue
+            used_p.add(pi); used_g.add(j)
+            match[j] = (pi, iou)
+        # 每 GT：覆盖最佳候选（meta_va 全候选含 <thr）
+        gt_diag = []
+        for j, (gsid, (gs, ge)) in enumerate(true_va):
+            best_iou, best_v = 0.0, -1.0
+            for (sid_c, cs, ce, vv) in ev_list:
+                if sid_c != gsid:
+                    continue
+                io2 = oe.event_iou((cs, ce), (gs, ge))
+                if io2 > best_iou:
+                    best_iou, best_v = io2, vv
+            if j in match:
+                pi, iou = match[j]
+                kind = "TP"
+            elif best_iou >= 0.25:
+                kind = "THR_MISS"      # 候选 IoU 达标但复核分 < 阈值
+            elif best_iou > 0:
+                kind = "VER_MISS"      # 候选层有覆盖但 IoU<0.25（框太偏/太窄）
+            else:
+                kind = "CAND_MISS"     # 候选层完全无覆盖
+            gt_diag.append({"sid": gsid, "s": gs, "e": ge, "kind": kind,
+                            "best_cand_iou": round(best_iou, 3), "best_cand_v": round(best_v, 3)})
+        # FP 结构（未匹配事件）
+        fp_diag = []
+        for pi, (sid_p, (ps, pe)) in enumerate(preds):
+            if pi in used_p:
+                continue
+            near = max((oe.event_iou((ps, pe), (gs, ge)) for sid_g, (gs, ge) in true_va if sid_g == sid_p), default=0.0)
+            fp_diag.append({"sid": sid_p, "s": ps, "e": pe, "v": round(ev_list[pass_idx[pi]][3], 3),
+                            "near_iou": round(near, 3), "dur_s": round((pe - ps) / 1000)})
+        (config.OUTPUT_DIR / f"slide_diag_fold{args.fold}.json").write_text(
+            json.dumps({"fold": args.fold, "thr": best_t, "gt": gt_diag, "fp": fp_diag},
+                       ensure_ascii=False), encoding="utf-8")
+        import collections
+        kinds = collections.Counter(d["kind"] for d in gt_diag)
+        print(f"[诊断] GT {len(gt_diag)}: {dict(kinds)} | FP {len(fp_diag)}", flush=True)
+        # 候选级全量 dump（离线判别分析）：特征 + 复核分 + 与 GT 最佳 IoU
+        lab_c = np.zeros(len(meta_va), np.int8)   # 1 = 匹配 GT / -1 标签由 IoU 定（0.25 阈值）
+        iou_c = np.zeros(len(meta_va))
+        for j, (gsid, (gs, ge)) in enumerate(true_va):
+            for i2, (sid_c, cs, ce, _p1, _p2) in enumerate(meta_va):
+                if sid_c != gsid:
+                    continue
+                io2 = oe.event_iou((cs, ce), (gs, ge))
+                if io2 > iou_c[i2]:
+                    iou_c[i2] = io2
+        lab_c = (iou_c >= 0.25).astype(np.int8)
+        np.savez_compressed(config.OUTPUT_DIR / f"slide_cand_fold{args.fold}.npz",
+                            X=X_va.astype(np.float32), v=vs.astype(np.float32),
+                            iou=iou_c.astype(np.float32), lab=lab_c,
+                            thr=np.float32(best_t),
+                            meta=np.array([json.dumps(m[:3]) for m in meta_va]))
 
 
 if __name__ == "__main__":

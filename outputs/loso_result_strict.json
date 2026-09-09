@@ -1,0 +1,15 @@
+{
+ "protocol": "strict-losо v2: window+verifier retrained per subject, fixed thr",
+ "thr_verifier": 0.717,
+ "n_subjects": 38,
+ "mean_subject_f1": 0.3875240256819204,
+ "aggregate": {
+  "tp": 67,
+  "eligible": 153,
+  "pred": 169,
+  "sens": 0.43790849673202614,
+  "ppv": 0.39644970414201186,
+  "f1": 0.4161490683229814
+ },
+ "secs_total": 166.10887742042542
+}
