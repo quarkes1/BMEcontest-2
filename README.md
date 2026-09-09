@@ -160,6 +160,20 @@ coverage 提升 F1 +0.033、PPV +0.078，但 sensitivity 下降 0.111，超过�
 最佳结果仍低于 0.55 决策门槛，证明瓶颈主要是 verifier 组内排序信息不足，而非单纯
 阈值漂移；下一阶段转入候选内/上下文原始 62 维动作特征聚合与 hard-negative 建模。
 
+### 5.7 Raw-summary verifier 消融（2026-09-08）
+
+将候选内 62 维窗口特征的 mean/std/P10/P90、相对前后 20min 上下文差与窗口计数
+拼接到原 verifier，共 349 维（coverage 为 354 维）；LogisticRegression 的 C 从
+inner OOF 固定网格 0.001/0.01/0.1 选择。三组 locked 聚合结果：legacy raw
+92/153/295、F1 0.411；coverage raw 98/153/306、F1 0.427；coverage raw + budget
+77/153/207、F1 0.428。均未达到相对 matching probability 配置 +0.02 的采纳门槛。
+
+raw coverage 的短餐 recall 17/39、非惯用手 53/90，说明原始统计能找回部分弱餐，
+但同时放大跨受试者绝对尺度差异和 FP；加 K 后短餐又降至 10/39。该 349/354 维
+表示不作为默认，但聚合器保留供后续特征筛选。下一阶段采用事件序列约束（同一
+受试者局部候选簇只保留最高分、最小餐间隔由 inner OOF 选择），目标是在不裁掉
+其他时段真餐的前提下降低 fold2/3 重复误报。
+
 ## 6. 结果分析与评价
 
 ### 6.1 两方案瓶颈分解对比
