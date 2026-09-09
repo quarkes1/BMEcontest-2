@@ -6,6 +6,7 @@ from src.pipeline.event_stack import (
     EventRef,
     CandidateEvent,
     MicroCandidateConfig,
+    MultiScaleCandidate,
     aggregate_candidate_features,
     apply_event_policy,
     compute_event_metrics,
@@ -14,6 +15,8 @@ from src.pipeline.event_stack import (
     select_event_policy,
     select_event_threshold,
     select_micro_candidate_threshold,
+    multiscale_verifier_features,
+    union_candidates,
     verifier_features,
 )
 
@@ -326,6 +329,68 @@ def test_verifier_feature_dimensions_are_explicit():
 
     assert legacy.shape == (1, 37)
     assert covered.shape == (1, 42)
+
+
+def test_union_preserves_macro_geometry_and_keeps_micro_only_rescue():
+    macro = [_candidate("s1", 100, 300)]
+    micro = [_candidate("s1", 150, 250), _candidate("s1", 500, 620)]
+
+    result = union_candidates(macro, micro, merge_iou=0.25)
+
+    assert [item.event for item in result] == [
+        EventRef("s1", 100, 300),
+        EventRef("s1", 500, 620),
+    ]
+    assert result[0].macro is macro[0] and result[0].micro is micro[0]
+    assert result[1].macro is None and result[1].micro is micro[1]
+
+
+def test_union_is_independent_of_input_order():
+    macro = [_candidate("s1", 0, 100), _candidate("s1", 200, 300)]
+    micro = [_candidate("s1", 10, 90), _candidate("s1", 210, 290)]
+
+    assert union_candidates(macro, micro) == union_candidates(
+        tuple(reversed(macro)), tuple(reversed(micro))
+    )
+
+
+def test_multiscale_verifier_has_exact_width_and_distinct_source_missing_flags():
+    candidate = MultiScaleCandidate(
+        EventRef("s1", 0, 60_000), None, _candidate("s1", 0, 60_000)
+    )
+    micro_windows = {
+        "s1": [
+            (index * 7_500, index * 7_500 + 15_000, 0.8)
+            for index in range(8)
+        ]
+    }
+
+    result = multiscale_verifier_features(
+        [candidate], macro_windows_by_sid={}, micro_windows_by_sid=micro_windows
+    )
+
+    assert result.shape == (1, 56)
+    assert np.isfinite(result).all()
+    assert result[0, 37:39].tolist() == [0.0, 1.0]
+    assert result[0, 54:56].tolist() == [1.0, 0.0]
+
+
+def test_multiscale_verifier_keeps_macro_only_candidate_without_micro_samples():
+    candidate = MultiScaleCandidate(
+        EventRef("s1", 0, 240_000), _candidate("s1", 0, 240_000), None
+    )
+    macro_windows = {
+        "s1": [
+            (index * 15_000, index * 15_000 + 240_000, 0.7)
+            for index in range(4)
+        ]
+    }
+
+    result = multiscale_verifier_features([candidate], macro_windows, {})
+
+    assert result.shape == (1, 56)
+    assert result[0, 37:39].tolist() == [1.0, 0.0]
+    assert result[0, 54:56].tolist() == [0.0, 1.0]
 
 
 def test_apply_event_policy_caps_each_subject_after_thresholding():

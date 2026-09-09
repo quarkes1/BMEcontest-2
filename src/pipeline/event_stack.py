@@ -277,6 +277,76 @@ class CandidateEvent:
     post_observed_count: int
 
 
+@dataclass(frozen=True)
+class MultiScaleCandidate:
+    """A candidate supported by macro, micro, or both score streams."""
+
+    event: EventRef
+    macro: CandidateEvent | None
+    micro: CandidateEvent | None
+
+
+def union_candidates(
+    macro: Sequence[CandidateEvent],
+    micro: Sequence[CandidateEvent],
+    merge_iou: float = 0.25,
+) -> list[MultiScaleCandidate]:
+    """Pair each micro candidate with at most one overlapping macro candidate."""
+
+    macro_sorted = sorted(
+        macro,
+        key=lambda item: (
+            item.event.sid,
+            item.event.start_ms,
+            item.event.end_ms,
+        ),
+    )
+    micro_sorted = sorted(
+        micro,
+        key=lambda item: (
+            item.event.sid,
+            -max(item.probabilities, default=0.0),
+            item.event.start_ms,
+            item.event.end_ms,
+        ),
+    )
+    unmatched = set(range(len(macro_sorted)))
+    result: list[MultiScaleCandidate] = []
+    for micro_item in micro_sorted:
+        matches = []
+        for index in unmatched:
+            macro_item = macro_sorted[index]
+            if macro_item.event.sid != micro_item.event.sid:
+                continue
+            overlap = event_iou(macro_item.event.interval, micro_item.event.interval)
+            if overlap >= merge_iou:
+                matches.append(
+                    (
+                        overlap,
+                        -macro_item.event.start_ms,
+                        -macro_item.event.end_ms,
+                        index,
+                    )
+                )
+        if matches:
+            index = max(matches)[-1]
+            unmatched.remove(index)
+            macro_item = macro_sorted[index]
+            result.append(
+                MultiScaleCandidate(macro_item.event, macro_item, micro_item)
+            )
+        else:
+            result.append(MultiScaleCandidate(micro_item.event, None, micro_item))
+    result.extend(
+        MultiScaleCandidate(macro_sorted[index].event, macro_sorted[index], None)
+        for index in sorted(unmatched)
+    )
+    return sorted(
+        result,
+        key=lambda item: (item.event.sid, item.event.start_ms, item.event.end_ms),
+    )
+
+
 _GLOBAL_PRIOR = np.array(
     [
         0.174,
@@ -853,6 +923,105 @@ def verifier_features(
         rows.append(features)
     width = 42 if include_coverage else 37
     return np.asarray(rows, dtype=np.float64).reshape((-1, width))
+
+
+def _scores_for_event(
+    event: EventRef,
+    windows_by_sid: Mapping[str, Sequence[tuple[int, int, float]]],
+) -> np.ndarray:
+    """Return scores whose window centers fall inside an event."""
+
+    return np.asarray(
+        [
+            float(score)
+            for start, end, score in windows_by_sid.get(event.sid, ())
+            if event.start_ms <= (start + end) // 2 < event.end_ms
+        ],
+        dtype=np.float64,
+    )
+
+
+def _context_scores(
+    event: EventRef,
+    windows_by_sid: Mapping[str, Sequence[tuple[int, int, float]]],
+    context_ms: int,
+) -> np.ndarray:
+    """Return same-session scores from the context surrounding an event."""
+
+    return np.asarray(
+        [
+            float(score)
+            for start, end, score in windows_by_sid.get(event.sid, ())
+            if event.start_ms - context_ms <= (start + end) // 2 < event.start_ms
+            or event.end_ms <= (start + end) // 2 < event.end_ms + context_ms
+        ],
+        dtype=np.float64,
+    )
+
+
+def multiscale_verifier_features(
+    candidates: Sequence[MultiScaleCandidate],
+    macro_windows_by_sid: Mapping[str, Sequence[tuple[int, int, float]]],
+    micro_windows_by_sid: Mapping[str, Sequence[tuple[int, int, float]]],
+) -> np.ndarray:
+    """Build the fixed 56-feature verifier surface for fused candidates."""
+
+    rows = []
+    for candidate in candidates:
+        event = candidate.event
+        macro_values = _scores_for_event(event, macro_windows_by_sid)
+        micro_values = _scores_for_event(event, micro_windows_by_sid)
+        macro_missing = len(macro_values) < 2
+        micro_missing = len(micro_values) < 2
+        if macro_missing:
+            macro_block = np.zeros(37, dtype=np.float64)
+        else:
+            synthetic = CandidateEvent(
+                event, tuple(macro_values), 1.0, 0, 0, 0, 0
+            )
+            macro_block = verifier_features(
+                (synthetic,), macro_windows_by_sid, include_coverage=False
+            )[0]
+        micro_safe = micro_values if len(micro_values) else np.zeros(1)
+        context = _context_scores(event, micro_windows_by_sid, 1_200_000)
+        context_safe = context if len(context) else np.zeros(1)
+        mean_difference = (
+            float(macro_values.mean() - micro_values.mean())
+            if not macro_missing and not micro_missing
+            else 0.0
+        )
+        max_difference = (
+            float(macro_values.max() - micro_values.max())
+            if not macro_missing and not micro_missing
+            else 0.0
+        )
+        micro_block = np.asarray(
+            [
+                float(candidate.macro is not None),
+                float(candidate.micro is not None),
+                float(len(micro_values)),
+                (event.end_ms - event.start_ms) / 1000.0,
+                float(micro_safe.mean()),
+                float(micro_safe.max()),
+                float(micro_safe.std()),
+                float(np.percentile(micro_safe, 10)),
+                float(np.median(micro_safe)),
+                float(np.percentile(micro_safe, 90)),
+                float((micro_values >= 0.30).mean()) if len(micro_values) else 0.0,
+                float((micro_values >= 0.50).mean()) if len(micro_values) else 0.0,
+                float(_longest_above(micro_values, 0.30)),
+                float(micro_safe.mean() - context_safe.mean()),
+                float(micro_safe.max() - np.percentile(context_safe, 90)),
+                mean_difference,
+                max_difference,
+                float(macro_missing),
+                float(micro_missing),
+            ],
+            dtype=np.float64,
+        )
+        rows.append(np.concatenate((macro_block, micro_block)))
+    result = np.asarray(rows, dtype=np.float64).reshape((-1, 56))
+    return np.nan_to_num(result, nan=0.0, posinf=0.0, neginf=0.0)
 
 
 def aggregate_candidate_features(
