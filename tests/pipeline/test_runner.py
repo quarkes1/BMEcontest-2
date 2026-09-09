@@ -357,7 +357,7 @@ def test_multiscale_result_json_round_trip_preserves_every_field():
 
 
 @pytest.mark.parametrize("physical_count, logical_count, user_limit, expected", [
-    (4, 8, None, 4), (None, 8, None, 4), (4, 8, "2", 2),
+    (4, 8, None, 4), (None, 8, None, 4), (4, 8, "2", 2), (8, 8, None, 7),
 ])
 def test_runner_import_and_use_avoid_joblib_physical_core_warning(physical_count, logical_count, user_limit, expected):
     script = f'''

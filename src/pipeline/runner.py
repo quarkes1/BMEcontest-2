@@ -25,10 +25,13 @@ def _physical_cpu_count() -> int:
     return max(1, (os.cpu_count() or 1) // 2)
 
 
-# Set the physical limit before sklearn initializes joblib. A logical-core limit
-# leaves loky free to probe WMIC, which modern Windows may no longer provide.
-# Preserve a caller's explicit worker limit.
-os.environ.setdefault("LOKY_MAX_CPU_COUNT", str(_physical_cpu_count()))
+# Set the limit before sklearn initializes joblib. Loky skips WMIC detection
+# only below the logical count, including machines without hyperthreading.
+# Keep a positive floor and preserve a caller's explicit worker limit.
+os.environ.setdefault(
+    "LOKY_MAX_CPU_COUNT",
+    str(max(1, min(_physical_cpu_count(), (os.cpu_count() or 1) - 1))),
+)
 
 import numpy as np
 from sklearn.ensemble import HistGradientBoostingClassifier
