@@ -52,6 +52,15 @@ class EventSelectionPolicy:
     metrics: EventMetrics
 
 
+@dataclass(frozen=True)
+class MicroCandidateSelection:
+    """A registered micro threshold and its inner-fold candidate metrics."""
+
+    threshold: float
+    metrics: EventMetrics
+    candidate_count: int
+
+
 def compute_event_metrics(
     predictions: Sequence[EventRef],
     truths: Sequence[EventRef],
@@ -240,6 +249,19 @@ class DensityConfig:
     window_threshold: float = 0.28838
     context_ms: int = 1_200_000
     coverage_fix: bool = False
+
+
+@dataclass(frozen=True)
+class MicroCandidateConfig:
+    """Parameters for gap-safe, high-resolution candidate construction."""
+
+    stride_ms: int = 7_500
+    window_ms: int = 15_000
+    smooth_sigma_ms: int = 30_000
+    smooth_radius_ms: int = 60_000
+    merge_ms: int = 180_000
+    min_duration_ms: int = 60_000
+    context_ms: int = 1_200_000
 
 
 @dataclass(frozen=True)
@@ -459,6 +481,256 @@ def density_candidates(
                 index = end_index
         candidates.extend(sid_candidates)
     return candidates
+
+
+def _validate_micro_config(config: MicroCandidateConfig) -> None:
+    values = {
+        "stride_ms": config.stride_ms,
+        "window_ms": config.window_ms,
+        "smooth_sigma_ms": config.smooth_sigma_ms,
+        "smooth_radius_ms": config.smooth_radius_ms,
+        "merge_ms": config.merge_ms,
+        "min_duration_ms": config.min_duration_ms,
+        "context_ms": config.context_ms,
+    }
+    if any(
+        isinstance(value, bool) or not isinstance(value, (int, np.integer))
+        for value in values.values()
+    ):
+        raise ValueError("micro candidate durations must be integer milliseconds")
+    if config.stride_ms <= 0:
+        raise ValueError("micro stride must be positive")
+    if config.window_ms <= 0 or config.min_duration_ms <= 0:
+        raise ValueError("micro window and minimum duration must be positive")
+    if any(
+        value < 0
+        for name, value in values.items()
+        if name not in {"stride_ms", "window_ms", "min_duration_ms"}
+    ):
+        raise ValueError(
+            "micro smoothing, merge, and context durations must be non-negative"
+        )
+    if any(value % config.stride_ms for value in values.values()):
+        raise ValueError("micro candidate durations must be multiples of stride_ms")
+
+
+def _gaussian_kernel(config: MicroCandidateConfig) -> np.ndarray:
+    if config.smooth_sigma_ms == 0 or config.smooth_radius_ms == 0:
+        return np.ones(1, dtype=np.float64)
+    offsets = np.arange(
+        -config.smooth_radius_ms,
+        config.smooth_radius_ms + config.stride_ms,
+        config.stride_ms,
+    )
+    kernel = np.exp(-0.5 * (offsets / config.smooth_sigma_ms) ** 2)
+    return kernel / kernel.sum()
+
+
+def _normalized_smooth(values: Sequence[float] | np.ndarray, kernel: np.ndarray) -> np.ndarray:
+    values = np.asarray(values, dtype=np.float64)
+    if len(kernel) == 1:
+        return values
+    start = (len(kernel) - 1) // 2
+    numerator = np.convolve(values, kernel, mode="full")[start : start + len(values)]
+    denominator = np.convolve(np.ones(len(values)), kernel, mode="full")[
+        start : start + len(values)
+    ]
+    return numerator / np.maximum(denominator, 1e-12)
+
+
+def _micro_candidate(
+    sid: str,
+    starts: np.ndarray,
+    ends: np.ndarray,
+    smoothed: np.ndarray,
+    first: int,
+    last: int,
+    centers: np.ndarray,
+    config: MicroCandidateConfig,
+) -> CandidateEvent:
+    """Construct one micro candidate from an inclusive support-index range."""
+
+    event_start = int(starts[first])
+    event_end = int(ends[last])
+    gaps = np.diff(starts[first : last + 1]) - config.stride_ms
+    gap_mask = gaps > 0
+    return CandidateEvent(
+        event=EventRef(sid, event_start, event_end),
+        probabilities=tuple(float(value) for value in smoothed[first : last + 1]),
+        observed_fraction=1.0,
+        bridged_gap_count=int(gap_mask.sum()),
+        bridged_gap_ms=int(gaps[gap_mask].sum()),
+        pre_observed_count=int(
+            ((centers >= event_start - config.context_ms) & (centers < event_start)).sum()
+        ),
+        post_observed_count=int(
+            ((centers >= event_end) & (centers < event_end + config.context_ms)).sum()
+        ),
+    )
+
+
+def micro_candidates(
+    windows_by_sid: Mapping[str, Sequence[tuple[int, int, float]]],
+    threshold: float,
+    config: MicroCandidateConfig | None = None,
+) -> list[CandidateEvent]:
+    """Build smoothed micro candidates without crossing acquisition gaps."""
+
+    config = config or MicroCandidateConfig()
+    _validate_micro_config(config)
+    try:
+        threshold = float(threshold)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("micro threshold must be a finite value in [0, 1]") from exc
+    if not np.isfinite(threshold) or threshold < 0 or threshold > 1:
+        raise ValueError("micro threshold must be a finite value in [0, 1]")
+
+    kernel = _gaussian_kernel(config)
+    candidates: list[CandidateEvent] = []
+    for sid in sorted(windows_by_sid):
+        raw_windows = sorted(windows_by_sid[sid], key=lambda row: (row[0], row[1]))
+        normalized_windows: list[tuple[int, int, float]] = []
+        for row in raw_windows:
+            if len(row) != 3:
+                raise ValueError("micro windows must be (start_ms, end_ms, probability)")
+            start, end, probability = row
+            try:
+                start_ms = int(start)
+                end_ms = int(end)
+                score = float(probability)
+            except (TypeError, ValueError, OverflowError) as exc:
+                raise ValueError("micro windows must contain numeric values") from exc
+            if end_ms <= start_ms:
+                raise ValueError("micro windows must have strictly positive durations")
+            if not np.isfinite(score):
+                raise ValueError("micro probabilities must contain only finite values")
+            normalized_windows.append((start_ms, end_ms, score))
+        if not normalized_windows:
+            continue
+
+        segments: list[list[tuple[int, int, float]]] = []
+        segment: list[tuple[int, int, float]] = []
+        for row in normalized_windows:
+            if segment and row[0] - segment[-1][0] > 2 * config.stride_ms:
+                segments.append(segment)
+                segment = []
+            segment.append(row)
+        if segment:
+            segments.append(segment)
+
+        centers = np.asarray(
+            [(start + end) // 2 for start, end, _ in normalized_windows],
+            dtype=np.int64,
+        )
+        for acquisition_segment in segments:
+            starts = np.asarray([row[0] for row in acquisition_segment], dtype=np.int64)
+            ends = np.asarray([row[1] for row in acquisition_segment], dtype=np.int64)
+            scores = np.asarray([row[2] for row in acquisition_segment], dtype=np.float64)
+            smoothed = _normalized_smooth(scores, kernel)
+            if not np.isfinite(smoothed).all():
+                raise ValueError("micro smoothed probabilities must be finite")
+            above = smoothed >= threshold
+
+            retained: list[CandidateEvent] = []
+            index = 0
+            while index < len(acquisition_segment):
+                if not above[index]:
+                    index += 1
+                    continue
+                end_index = index + 1
+                while end_index < len(acquisition_segment) and above[end_index]:
+                    end_index += 1
+                candidate = _micro_candidate(
+                    sid,
+                    starts,
+                    ends,
+                    smoothed,
+                    index,
+                    end_index - 1,
+                    centers,
+                    config,
+                )
+                if candidate.event.end_ms - candidate.event.start_ms >= config.min_duration_ms:
+                    retained.append(candidate)
+                index = end_index
+
+            merged: list[CandidateEvent] = []
+            for candidate in retained:
+                if (
+                    merged
+                    and candidate.event.start_ms - merged[-1].event.end_ms
+                    <= config.merge_ms
+                ):
+                    previous = merged.pop()
+                    merged.append(
+                        CandidateEvent(
+                            event=EventRef(
+                                sid,
+                                previous.event.start_ms,
+                                max(previous.event.end_ms, candidate.event.end_ms),
+                            ),
+                            probabilities=previous.probabilities + candidate.probabilities,
+                            observed_fraction=1.0,
+                            bridged_gap_count=(
+                                previous.bridged_gap_count
+                                + candidate.bridged_gap_count
+                            ),
+                            bridged_gap_ms=(
+                                previous.bridged_gap_ms + candidate.bridged_gap_ms
+                            ),
+                            pre_observed_count=previous.pre_observed_count,
+                            post_observed_count=candidate.post_observed_count,
+                        )
+                    )
+                else:
+                    merged.append(candidate)
+            candidates.extend(merged)
+    return candidates
+
+
+def select_micro_candidate_threshold(
+    windows_by_sid: Mapping[str, Sequence[tuple[int, int, float]]],
+    truths: Sequence[EventRef],
+    thresholds: Sequence[float],
+    config: MicroCandidateConfig | None = None,
+) -> MicroCandidateSelection:
+    """Select a registered micro threshold using only supplied inner truths."""
+
+    try:
+        options = tuple(float(value) for value in thresholds)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("micro thresholds must be unique finite values in [0, 1]") from exc
+    if (
+        not options
+        or len(set(options)) != len(options)
+        or any(not np.isfinite(value) or value < 0 or value > 1 for value in options)
+    ):
+        raise ValueError("micro thresholds must be unique finite values in [0, 1]")
+
+    budget = 3 * max(len(truths), 1)
+    feasible: list[MicroCandidateSelection] = []
+    fallback: list[MicroCandidateSelection] = []
+    for threshold in options:
+        candidates = micro_candidates(windows_by_sid, threshold, config)
+        metrics = compute_event_metrics([candidate.event for candidate in candidates], truths)
+        selection = MicroCandidateSelection(threshold, metrics, len(candidates))
+        fallback.append(selection)
+        if len(candidates) <= budget:
+            feasible.append(selection)
+
+    if feasible:
+        return max(
+            feasible,
+            key=lambda item: (
+                item.metrics.sensitivity,
+                -item.candidate_count,
+                item.threshold,
+            ),
+        )
+    return max(
+        fallback,
+        key=lambda item: (item.metrics.f1, item.metrics.ppv, item.threshold),
+    )
 
 
 def _longest_above(probabilities: np.ndarray, threshold: float) -> int:

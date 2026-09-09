@@ -1,15 +1,19 @@
 import numpy as np
+import pytest
 
 from src.pipeline.event_stack import (
     DensityConfig,
     EventRef,
     CandidateEvent,
+    MicroCandidateConfig,
     aggregate_candidate_features,
     apply_event_policy,
     compute_event_metrics,
     density_candidates,
+    micro_candidates,
     select_event_policy,
     select_event_threshold,
+    select_micro_candidate_threshold,
     verifier_features,
 )
 
@@ -102,6 +106,206 @@ def test_coverage_metadata_counts_internal_gap():
 
     assert result[0].bridged_gap_count == 1
     assert result[0].bridged_gap_ms == 15_000
+
+
+def test_micro_candidates_never_bridge_more_than_two_strides():
+    rows = [
+        (index * 7_500, index * 7_500 + 15_000, 0.9)
+        for index in range(8)
+    ]
+    rows += [
+        (180_000 + index * 7_500, 195_000 + index * 7_500, 0.9)
+        for index in range(8)
+    ]
+    config = MicroCandidateConfig(
+        smooth_sigma_ms=0,
+        smooth_radius_ms=0,
+        merge_ms=180_000,
+        min_duration_ms=60_000,
+    )
+
+    result = micro_candidates({"s1": rows}, threshold=0.5, config=config)
+
+    assert [(item.event.start_ms, item.event.end_ms) for item in result] == [
+        (0, 67_500),
+        (180_000, 247_500),
+    ]
+
+
+def test_micro_candidates_use_normalized_gaussian_smoothing():
+    rows = [
+        (0, 15_000, 0.0),
+        (7_500, 22_500, 1.0),
+        (15_000, 30_000, 0.0),
+    ]
+    config = MicroCandidateConfig(
+        smooth_sigma_ms=7_500,
+        smooth_radius_ms=7_500,
+        merge_ms=0,
+        min_duration_ms=15_000,
+    )
+
+    result = micro_candidates({"s1": rows}, threshold=0.4, config=config)
+
+    assert [(item.event.start_ms, item.event.end_ms) for item in result] == [
+        (7_500, 22_500)
+    ]
+    np.testing.assert_allclose(result[0].probabilities, [0.45186276])
+
+
+def test_micro_candidates_smooth_each_acquisition_segment_independently():
+    rows = [
+        (0, 15_000, 1.0),
+        (7_500, 22_500, 1.0),
+        (30_000, 45_000, 0.0),
+    ]
+    config = MicroCandidateConfig(
+        smooth_sigma_ms=7_500,
+        smooth_radius_ms=7_500,
+        merge_ms=0,
+        min_duration_ms=15_000,
+    )
+
+    result = micro_candidates({"s1": rows}, threshold=0.9, config=config)
+
+    assert [(item.event.start_ms, item.event.end_ms) for item in result] == [
+        (0, 22_500)
+    ]
+    np.testing.assert_allclose(result[0].probabilities, [1.0, 1.0])
+
+
+def test_micro_candidates_merge_runs_within_registered_gap():
+    rows = [
+        (
+            start,
+            start + 15_000,
+            0.9 if start < 60_000 or start >= 120_000 else 0.1,
+        )
+        for start in range(0, 180_000, 7_500)
+    ]
+    config = MicroCandidateConfig(
+        smooth_sigma_ms=0,
+        smooth_radius_ms=0,
+        merge_ms=60_000,
+        min_duration_ms=60_000,
+    )
+
+    result = micro_candidates({"s1": rows}, threshold=0.5, config=config)
+
+    assert [(item.event.start_ms, item.event.end_ms) for item in result] == [
+        (0, 187_500)
+    ]
+
+
+def test_micro_candidates_discard_short_runs_before_merging():
+    starts = list(range(0, 45_000, 7_500)) + list(
+        range(90_000, 142_500, 7_500)
+    )
+    rows = [(start, start + 15_000, 0.9) for start in starts]
+    config = MicroCandidateConfig(
+        smooth_sigma_ms=0,
+        smooth_radius_ms=0,
+        merge_ms=60_000,
+        min_duration_ms=60_000,
+    )
+
+    result = micro_candidates({"s1": rows}, threshold=0.5, config=config)
+
+    assert [(item.event.start_ms, item.event.end_ms) for item in result] == [
+        (90_000, 150_000)
+    ]
+
+
+def test_micro_threshold_selection_maximizes_recall_with_candidate_budget():
+    rows = {
+        "s1": [
+            (index * 7_500, index * 7_500 + 15_000, 0.35)
+            for index in range(8)
+        ],
+        "s2": [
+            (index * 7_500, index * 7_500 + 15_000, 0.15)
+            for index in range(8)
+        ],
+    }
+    truths = (EventRef("s1", 0, 67_500),)
+    config = MicroCandidateConfig(smooth_sigma_ms=0, smooth_radius_ms=0)
+
+    selected = select_micro_candidate_threshold(
+        rows,
+        truths,
+        (0.1, 0.2, 0.3, 0.4),
+        config,
+    )
+
+    assert selected.threshold == 0.3
+    assert selected.metrics.sensitivity == 1.0
+    assert selected.candidate_count == 1
+
+
+def test_micro_threshold_selection_prefers_stricter_deterministic_tie():
+    rows = {
+        "s1": [
+            (index * 7_500, index * 7_500 + 15_000, 0.9)
+            for index in range(8)
+        ]
+    }
+    truths = (EventRef("s1", 0, 67_500),)
+    config = MicroCandidateConfig(smooth_sigma_ms=0, smooth_radius_ms=0)
+
+    selected = select_micro_candidate_threshold(rows, truths, (0.2, 0.1), config)
+
+    assert selected.threshold == 0.2
+
+
+def test_micro_threshold_selection_uses_f1_when_every_choice_exceeds_budget():
+    scores = (0.9, 0.8, 0.7, 0.6, 0.4, 0.3)
+    rows = {
+        f"s{sid}": [
+            (index * 7_500, index * 7_500 + 15_000, score)
+            for index in range(8)
+        ]
+        for sid, score in enumerate(scores, start=1)
+    }
+    truths = (EventRef("s1", 0, 67_500),)
+    config = MicroCandidateConfig(smooth_sigma_ms=0, smooth_radius_ms=0)
+
+    selected = select_micro_candidate_threshold(rows, truths, (0.2, 0.5), config)
+
+    assert selected.threshold == 0.5
+    assert selected.candidate_count == 4
+    assert selected.metrics.f1 == 0.4
+
+
+@pytest.mark.parametrize("thresholds", [(), (0.2, 0.2), (float("nan"),), (1.1,)])
+def test_micro_threshold_selection_rejects_unregistered_grids(thresholds):
+    with pytest.raises(ValueError, match="unique finite values"):
+        select_micro_candidate_threshold({}, (), thresholds)
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        MicroCandidateConfig(stride_ms=0),
+        MicroCandidateConfig(window_ms=10_000),
+        MicroCandidateConfig(smooth_sigma_ms=-7_500),
+        MicroCandidateConfig(min_duration_ms=0),
+    ],
+)
+def test_micro_candidates_require_valid_stride_multiple_configuration(config):
+    with pytest.raises(ValueError):
+        micro_candidates({}, threshold=0.5, config=config)
+
+
+@pytest.mark.parametrize(
+    "row, message",
+    [
+        ((0, 0, 0.5), "strictly positive durations"),
+        ((0, 15_000, float("nan")), "finite values"),
+    ],
+)
+def test_micro_candidates_validate_window_rows(row, message):
+    with pytest.raises(ValueError, match=message):
+        micro_candidates({"s1": [row]}, threshold=0.5)
 
 
 def test_verifier_feature_dimensions_are_explicit():
