@@ -214,6 +214,33 @@ raw coverage 的短餐 recall 17/39、非惯用手 53/90，说明原始统计能
 受试者局部候选簇只保留最高分、最小餐间隔由 inner OOF 选择），目标是在不裁掉
 其他时段真餐的前提下降低 fold2/3 重复误报。
 
+### 5.8 ACC+GYRO 微窗口并集消融（2026-09-10，拒绝设为默认）
+
+预注册配置在不改动 outer 标签、阈值网格或 macro baseline 分母的前提下，先以
+15s/7.5s 的 47 维 ACC+GYRO 微窗口模型生成候选，再与原 240s macro 候选取并集，
+由 56 维事件复核器评分。所有选择仅来自 outer-train 的 subject-disjoint OOF；下表
+的 `短餐 final recall` 是 `<10min` outer 事件的最终检出率，而非候选率。
+
+| fold | config hash | micro 阈值 | TP/eligible/pred | F1 | union 候选 recall | micro-only recall | 短餐 final recall | union 候选数 | 运行 s* |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| 0 | `b66281c96383ccee` | 0.10 | 15/23/35 | 0.517 | 0.826 | 0.783 | 0.143 | 713 | 26.8 |
+| 1 | `670a483d50e59c48` | 0.20 | 28/31/88 | 0.471 | 1.000 | 1.000 | 1.000 | 726 | 25.9 |
+| 2 | `16834e85ac78c41f` | 0.10 | 17/27/60 | 0.391 | 0.926 | 0.741 | 0.500 | 644 | 26.1 |
+| 3 | `b0fddb538990ad28` | 0.10 | 25/32/73 | 0.476 | 0.969 | 0.625 | 0.615 | 710 | 25.7 |
+| 4 | `42082593914869d9` | 0.10 | 27/40/59 | 0.545 | 0.975 | 0.900 | 0.429 | 620 | 24.0 |
+| **聚合** | `fabfba0da8d8dc91` | — | **112/153/315** | **0.479** | **0.948** | **0.817** | **20/39 = 0.513** | **3,413** | **128.5** |
+
+\* 运行时间是各折已训练阶段之和，排除了 20 个可复用 micro cache 的一次性提取；
+五折命令实测墙钟约 41.3s。缓存提取累计为 2,316.1s（3,552,881 个 47 维窗口）。
+
+该消融通过了分数、短餐、PPV 和运行时间门槛：F1 0.479 ≥ 0.436、短餐 0.513 ≥
+0.510、PPV 0.356 ≥ 0.294、五折墙钟 <600s；相对 locked macro baseline F1=0.416
+提高 0.063。但它**未通过候选体积门槛**：3,413 个 union 候选远高于 `4 × 153 =
+612`，故不得将 `micro_enabled` 设为默认。它距最终 F1 0.65 仍差 **0.171**，仅保留
+可复用的微窗口表示与紧凑 JSON 证据，下一步应在训练内解决候选去重/精度，而不是按
+outer 结果调阈值。FD-I/FD-II 外部数据在竞赛规则下可用，但迁移实验仍推迟到单独的
+门控计划；使用其 CC BY-NC-N 数据前仍须遵守许可条款。
+
 ## 6. 结果分析与评价
 
 ### 6.1 两方案瓶颈分解对比
@@ -286,6 +313,9 @@ python scripts/slide_features.py --fold {0..4} --mode no_meal_train
 python scripts/slide_features.py --fold {0..4} --mode val
 # 3. 正式 locked nested 滑窗评估（CPU 自动并行；重复运行复用内容寻址缓存）
 python scripts/crossfit_event_stack.py --fold all --inner-splits 4 --no-tcn --workers 0
+# 3b. ACC+GYRO 微窗口候选并集消融（当前因候选体积门槛未采纳为默认）
+D:/Anaconda3/envs/bme/python.exe scripts/build_micro_features.py --fold all --split all --workers 8
+D:/Anaconda3/envs/bme/python.exe scripts/crossfit_event_stack.py --fold all --inner-splits 4 --no-tcn --workers 0 --micro-enabled
 # coverage 召回消融（当前未采纳为默认）
 python scripts/crossfit_event_stack.py --fold all --inner-splits 4 --no-tcn --workers 0 --coverage-fix
 # 旧逐折 val 最优阈值脚本仅供诊断
