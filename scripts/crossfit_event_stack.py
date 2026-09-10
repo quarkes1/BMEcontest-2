@@ -67,6 +67,43 @@ def parse_probability_grid(value: str) -> tuple[float, ...]:
     return tuple(sorted(parsed))
 
 
+def parse_admission_nms_iou_grid(value: str) -> tuple[float, ...]:
+    message = "NMS IoU grid must contain unique finite values in (0, 1]"
+    try:
+        parsed = tuple(float(item.strip()) for item in value.split(","))
+    except ValueError as exc:
+        raise ValueError(message) from exc
+    if (
+        not parsed
+        or any(not math.isfinite(item) or not 0 < item <= 1 for item in parsed)
+        or len(set(parsed)) != len(parsed)
+    ):
+        raise ValueError(message)
+    return tuple(sorted(parsed))
+
+
+def parse_admission_subject_cap_grid(value: str) -> tuple[int, ...]:
+    message = "admission subject cap grid must contain positive unique integers"
+    try:
+        parsed = tuple(int(item.strip()) for item in value.split(","))
+    except ValueError as exc:
+        raise ValueError(message) from exc
+    if not parsed or any(item < 1 for item in parsed) or len(set(parsed)) != len(parsed):
+        raise ValueError(message)
+    return tuple(sorted(parsed))
+
+
+def parse_admission_minimum_recall(value: str) -> float:
+    message = "admission minimum recall must be a finite value in [0, 1]"
+    try:
+        parsed = float(value)
+    except ValueError as exc:
+        raise ValueError(message) from exc
+    if not math.isfinite(parsed) or not 0 <= parsed <= 1:
+        raise ValueError(message)
+    return parsed
+
+
 def parse_middle_fraction(value: str) -> float | None:
     if value.strip().lower() == "none":
         return None
@@ -133,6 +170,41 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--micro-enabled", action="store_true")
     parser.add_argument(
+        "--candidate-control-enabled",
+        action="store_true",
+        help="enable nested OOF admission and verifier blending (requires --micro-enabled)",
+    )
+    parser.add_argument(
+        "--admission-nms-iou-grid",
+        type=parse_admission_nms_iou_grid,
+        default=(0.3, 0.5, 0.7),
+        help="candidate-control NMS IoU values, e.g. 0.3,0.5,0.7",
+    )
+    parser.add_argument(
+        "--admission-threshold-grid",
+        type=parse_probability_grid,
+        default=(0.2, 0.35, 0.5, 0.65),
+        help="candidate-control probability thresholds",
+    )
+    parser.add_argument(
+        "--admission-subject-cap-grid",
+        type=parse_admission_subject_cap_grid,
+        default=(3, 4, 5, 6, 8),
+        help="candidate-control per-subject candidate caps",
+    )
+    parser.add_argument(
+        "--verifier-blend-weight-grid",
+        type=parse_probability_grid,
+        default=(0.0, 0.25, 0.5, 0.75, 1.0),
+        help="LogisticRegression weights for logistic/LightGBM blending",
+    )
+    parser.add_argument(
+        "--admission-minimum-recall",
+        type=parse_admission_minimum_recall,
+        default=0.88,
+        help="minimum inner-OOF candidate recall required by admission selection",
+    )
+    parser.add_argument(
         "--micro-threshold-grid", type=parse_probability_grid,
         default=(0.10, 0.20, 0.30, 0.40, 0.50),
     )
@@ -154,6 +226,8 @@ def main() -> int:
         )
     if args.micro_enabled and args.verifier_features == "raw_summary":
         raise SystemExit("--micro-enabled does not support --verifier-features raw_summary")
+    if args.candidate_control_enabled and not args.micro_enabled:
+        raise SystemExit("--candidate-control-enabled requires --micro-enabled")
     fold_indices = range(5) if args.fold == "all" else (int(args.fold),)
     configs = [
         RunConfig(
@@ -167,6 +241,12 @@ def main() -> int:
             verifier_c_grid=args.verifier_c_grid,
             density=DensityConfig(coverage_fix=args.coverage_fix),
             micro_enabled=args.micro_enabled,
+            candidate_control_enabled=args.candidate_control_enabled,
+            admission_nms_iou_grid=args.admission_nms_iou_grid,
+            admission_threshold_grid=args.admission_threshold_grid,
+            admission_subject_cap_grid=args.admission_subject_cap_grid,
+            verifier_blend_weight_grid=args.verifier_blend_weight_grid,
+            admission_minimum_recall=args.admission_minimum_recall,
             micro_threshold_grid=args.micro_threshold_grid,
             micro_gravity_align=args.micro_gravity_align,
             micro_positive_middle_fraction=args.micro_positive_middle_fraction,

@@ -656,3 +656,162 @@ def test_cli_rejects_unsupported_modes_before_training(monkeypatch, arguments, m
     monkeypatch.setattr(cli, "run_folds", lambda *args, **kwargs: pytest.fail("unsupported mode reached training"))
     with pytest.raises(SystemExit, match=message):
         cli.main()
+
+
+def test_schema_five_cache_key_changes_for_stacked_candidate_control_settings():
+    from src.pipeline import runner
+
+    base = RunConfig(outer_fold=0, candidate_control_enabled=True)
+    assert runner.RUNNER_SCHEMA_VERSION == 5
+    assert cache_key(base) != cache_key(
+        replace(base, verifier_blend_weight_grid=(0.0, 1.0))
+    )
+    assert cache_key(base) != cache_key(
+        replace(base, admission_threshold_grid=(0.2, 0.5))
+    )
+    assert cache_key(base) != cache_key(
+        replace(base, admission_subject_cap_grid=(3, 4))
+    )
+
+
+def test_stacked_result_round_trip_preserves_admission_diagnostics_and_timings():
+    from src.pipeline.runner import _fold_result_from_dict, fold_result_to_dict
+
+    base = _fold_result_from_dict(historical_result_payload())
+    result = replace(
+        base,
+        selected_blend_weight=0.25,
+        selected_admission_nms_iou=0.5,
+        selected_admission_threshold=0.35,
+        selected_admission_subject_cap=4,
+        raw_union_candidate_count=700,
+        admitted_candidate_count=120,
+        verifier_logistic_oof_seconds=1.25,
+        verifier_lgbm_oof_seconds=2.5,
+        verifier_logistic_outer_seconds=0.125,
+        verifier_lgbm_outer_seconds=0.25,
+    )
+    payload = json.loads(json.dumps(fold_result_to_dict(result)))
+
+    assert _fold_result_from_dict(payload) == result
+    assert fold_result_to_dict(_fold_result_from_dict(payload)) == payload
+
+
+def test_schema_four_result_defaults_stacked_admission_diagnostics_to_neutral_values():
+    from src.pipeline.runner import _fold_result_from_dict
+
+    result = _fold_result_from_dict(historical_result_payload())
+
+    assert result.selected_blend_weight is None
+    assert result.selected_admission_nms_iou is None
+    assert result.selected_admission_threshold is None
+    assert result.selected_admission_subject_cap is None
+    assert result.raw_union_candidate_count == 0
+    assert result.admitted_candidate_count == 0
+    assert result.verifier_logistic_oof_seconds == 0.0
+    assert result.verifier_lgbm_oof_seconds == 0.0
+    assert result.verifier_logistic_outer_seconds == 0.0
+    assert result.verifier_lgbm_outer_seconds == 0.0
+
+
+def test_verifier_lgbm_factory_is_single_threaded_seeded_and_median_imputed():
+    from src.pipeline import runner
+
+    estimator = runner._verifier_lgbm_estimator(20260910)
+    parameters = estimator.get_params()
+
+    assert runner.VERIFIER_LGBM_PARAMETERS == {
+        "n_estimators": 200,
+        "num_leaves": 15,
+        "max_depth": 4,
+        "min_child_samples": 40,
+        "learning_rate": 0.03,
+        "colsample_bytree": 0.8,
+        "reg_lambda": 5.0,
+        "class_weight": "balanced",
+        "n_jobs": 1,
+        "verbosity": -1,
+    }
+    assert parameters["imputer__strategy"] == "median"
+    assert parameters["model__random_state"] == 20260910
+    assert parameters["model__n_jobs"] == 1
+
+
+@pytest.mark.parametrize("parser, value", [
+    ("parse_admission_nms_iou_grid", "0.7,0.3,1"),
+    ("parse_probability_grid", "0.5,0,1,0.1"),
+])
+def test_stacked_float_grid_parsers_canonicalize_ascending_unique_finite_values(parser, value):
+    from scripts import crossfit_event_stack as cli
+
+    assert getattr(cli, parser)(value) == tuple(sorted(float(item) for item in value.split(",")))
+
+
+@pytest.mark.parametrize("parser, values", [
+    ("parse_admission_nms_iou_grid", ("", "0", "-0.1", "1.1", "nan", "inf", "0.3,0.30")),
+    ("parse_probability_grid", ("", "-0.1", "1.1", "nan", "inf", "0.3,0.30")),
+])
+def test_stacked_float_grid_parsers_reject_noncanonical_domains(parser, values):
+    from scripts import crossfit_event_stack as cli
+
+    for value in values:
+        with pytest.raises(ValueError):
+            getattr(cli, parser)(value)
+
+
+def test_admission_subject_cap_parser_rejects_bool_and_canonicalizes_order():
+    from scripts.crossfit_event_stack import parse_admission_subject_cap_grid
+
+    assert parse_admission_subject_cap_grid("8,3,4") == (3, 4, 8)
+    for value in ("", "0", "-1", "3,3", "True", "3,True"):
+        with pytest.raises(ValueError, match="positive unique integers"):
+            parse_admission_subject_cap_grid(value)
+
+
+@pytest.mark.parametrize("kwargs", [
+    {"admission_nms_iou_grid": (0.7, 0.3)},
+    {"admission_threshold_grid": (0.5, float("nan"))},
+    {"verifier_blend_weight_grid": (0.0, 0.0)},
+    {"admission_subject_cap_grid": (True,)},
+])
+def test_stacked_run_config_rejects_invalid_or_noncanonical_registered_grids(kwargs):
+    # Construction itself must reject invalid settings before they reach a cache key.
+    with pytest.raises(ValueError):
+        RunConfig(outer_fold=0, **kwargs)
+
+
+def test_cli_candidate_control_requires_micro_and_propagates_registered_grids(tmp_path, monkeypatch):
+    from scripts import crossfit_event_stack as cli
+
+    monkeypatch.setattr(sys, "argv", ["crossfit", "--candidate-control-enabled"])
+    with pytest.raises(SystemExit, match="micro-enabled"):
+        cli.main()
+
+    monkeypatch.setattr(sys, "argv", [
+        "crossfit", "--fold", "0", "--micro-enabled", "--candidate-control-enabled",
+        "--admission-nms-iou-grid", "0.7,0.3",
+        "--admission-threshold-grid", "0.65,0.2",
+        "--admission-subject-cap-grid", "8,3",
+        "--verifier-blend-weight-grid", "1,0.25,0",
+        "--admission-minimum-recall", "0.9",
+    ])
+    monkeypatch.setattr(cli.project_config, "OUTPUT_DIR", tmp_path)
+    recorded = []
+    monkeypatch.setattr(
+        cli,
+        "run_folds",
+        lambda configs, workers, force: recorded.extend(configs) or [
+            replace(aggregate_test_results()[0], config_hash="stacked-contract")
+        ],
+    )
+
+    assert cli.main() == 0
+    assert len(recorded) == 1
+    config = recorded[0]
+    assert config.outer_fold == 0
+    assert config.micro_enabled and config.candidate_control_enabled
+    assert config.admission_nms_iou_grid == (0.3, 0.7)
+    assert config.admission_threshold_grid == (0.2, 0.65)
+    assert config.admission_subject_cap_grid == (3, 8)
+    assert config.verifier_blend_weight_grid == (0.0, 0.25, 1.0)
+    assert config.admission_minimum_recall == 0.9

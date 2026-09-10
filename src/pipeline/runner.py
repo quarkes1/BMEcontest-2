@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import time
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import asdict, dataclass, field, replace
+from numbers import Integral, Real
 from pathlib import Path
 from typing import Mapping, Sequence
 
@@ -91,7 +93,47 @@ MICRO_WINDOW_MODEL_PARAMETERS = {
     "n_jobs": 1,
     "verbosity": -1,
 }
-RUNNER_SCHEMA_VERSION = 4
+VERIFIER_LGBM_PARAMETERS = {
+    "n_estimators": 200,
+    "num_leaves": 15,
+    "max_depth": 4,
+    "min_child_samples": 40,
+    "learning_rate": 0.03,
+    "colsample_bytree": 0.8,
+    "reg_lambda": 5.0,
+    "class_weight": "balanced",
+    "n_jobs": 1,
+    "verbosity": -1,
+}
+RUNNER_SCHEMA_VERSION = 5
+
+
+def _validate_registered_probability_grid(
+    values: tuple[float, ...], name: str, *, lower_exclusive: bool = False
+) -> None:
+    """Reject noncanonical stacked-control probability grids at the boundary."""
+    if not values:
+        raise ValueError(f"{name} must be a nonempty grid")
+    if any(
+        not isinstance(value, Real)
+        or not math.isfinite(float(value))
+        or float(value) > 1.0
+        or (float(value) <= 0.0 if lower_exclusive else float(value) < 0.0)
+        for value in values
+    ):
+        interval = "(0, 1]" if lower_exclusive else "[0, 1]"
+        raise ValueError(f"{name} must contain finite values in {interval}")
+    if len(set(values)) != len(values) or tuple(sorted(values)) != values:
+        raise ValueError(f"{name} must be unique and sorted")
+
+
+def _validate_registered_subject_cap_grid(values: tuple[int, ...]) -> None:
+    if not values:
+        raise ValueError("admission_subject_cap_grid must be a nonempty grid")
+    if any(isinstance(value, bool) or not isinstance(value, Integral) or value < 1 for value in values):
+        raise ValueError("admission_subject_cap_grid must contain positive integers")
+    if len(set(values)) != len(values) or tuple(sorted(values)) != values:
+        raise ValueError("admission_subject_cap_grid must be unique and sorted")
 
 
 @dataclass(frozen=True)
@@ -112,6 +154,34 @@ class RunConfig:
     micro_candidate: MicroCandidateConfig = field(default_factory=MicroCandidateConfig)
     micro_positive_middle_fraction: float | None = None
     external_fd_weight_grid: tuple[float, ...] = (0.0,)
+    candidate_control_enabled: bool = False
+    admission_nms_iou_grid: tuple[float, ...] = (0.3, 0.5, 0.7)
+    admission_threshold_grid: tuple[float, ...] = (0.2, 0.35, 0.5, 0.65)
+    admission_subject_cap_grid: tuple[int, ...] = (3, 4, 5, 6, 8)
+    verifier_blend_weight_grid: tuple[float, ...] = (0.0, 0.25, 0.5, 0.75, 1.0)
+    admission_minimum_recall: float = 0.88
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.candidate_control_enabled, bool):
+            raise ValueError("candidate_control_enabled must be boolean")
+        _validate_registered_probability_grid(
+            self.admission_nms_iou_grid,
+            "admission_nms_iou_grid",
+            lower_exclusive=True,
+        )
+        _validate_registered_probability_grid(
+            self.admission_threshold_grid, "admission_threshold_grid"
+        )
+        _validate_registered_subject_cap_grid(self.admission_subject_cap_grid)
+        _validate_registered_probability_grid(
+            self.verifier_blend_weight_grid, "verifier_blend_weight_grid"
+        )
+        if (
+            not isinstance(self.admission_minimum_recall, Real)
+            or not math.isfinite(float(self.admission_minimum_recall))
+            or not 0.0 <= float(self.admission_minimum_recall) <= 1.0
+        ):
+            raise ValueError("admission_minimum_recall must be finite in [0, 1]")
 
 
 @dataclass(frozen=True)
@@ -139,6 +209,16 @@ class FoldResult:
     macro_window_feature_count: int = 0
     micro_window_feature_count: int = 0
     micro_window_fit_subjects: frozenset[str] = field(default_factory=frozenset)
+    selected_blend_weight: float | None = None
+    selected_admission_nms_iou: float | None = None
+    selected_admission_threshold: float | None = None
+    selected_admission_subject_cap: int | None = None
+    raw_union_candidate_count: int = 0
+    admitted_candidate_count: int = 0
+    verifier_logistic_oof_seconds: float = 0.0
+    verifier_lgbm_oof_seconds: float = 0.0
+    verifier_logistic_outer_seconds: float = 0.0
+    verifier_lgbm_outer_seconds: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -191,6 +271,7 @@ def cache_key(
         "window": WINDOW_MODEL_PARAMETERS,
         "micro_window": MICRO_WINDOW_MODEL_PARAMETERS,
         "verifier": VERIFIER_MODEL_PARAMETERS,
+        "verifier_lgbm": VERIFIER_LGBM_PARAMETERS,
     }
     payload = {
         "schema_version": RUNNER_SCHEMA_VERSION,
@@ -287,6 +368,20 @@ def _verifier_estimator(seed: int, regularization_c: float) -> Pipeline:
                     random_state=seed,
                 ),
             ),
+        ]
+    )
+
+
+def _verifier_lgbm_estimator(seed: int) -> Pipeline:
+    """Return the registered single-threaded nonlinear candidate verifier."""
+    from lightgbm import LGBMClassifier
+
+    parameters = dict(VERIFIER_LGBM_PARAMETERS)
+    parameters["random_state"] = seed
+    return Pipeline(
+        [
+            ("imputer", SimpleImputer(strategy="median")),
+            ("model", LGBMClassifier(**parameters)),
         ]
     )
 
@@ -1003,6 +1098,16 @@ def fold_result_to_dict(result: FoldResult) -> dict[str, object]:
         "macro_window_feature_count": result.macro_window_feature_count,
         "micro_window_feature_count": result.micro_window_feature_count,
         "micro_window_fit_subjects": sorted(result.micro_window_fit_subjects),
+        "selected_blend_weight": result.selected_blend_weight,
+        "selected_admission_nms_iou": result.selected_admission_nms_iou,
+        "selected_admission_threshold": result.selected_admission_threshold,
+        "selected_admission_subject_cap": result.selected_admission_subject_cap,
+        "raw_union_candidate_count": result.raw_union_candidate_count,
+        "admitted_candidate_count": result.admitted_candidate_count,
+        "verifier_logistic_oof_seconds": result.verifier_logistic_oof_seconds,
+        "verifier_lgbm_oof_seconds": result.verifier_lgbm_oof_seconds,
+        "verifier_logistic_outer_seconds": result.verifier_logistic_outer_seconds,
+        "verifier_lgbm_outer_seconds": result.verifier_lgbm_outer_seconds,
     }
 
 
@@ -1049,6 +1154,38 @@ def _fold_result_from_dict(payload: Mapping[str, object]) -> FoldResult:
         macro_window_feature_count=int(payload.get("macro_window_feature_count", 63)),
         micro_window_feature_count=int(payload.get("micro_window_feature_count", 0)),
         micro_window_fit_subjects=frozenset(payload.get("micro_window_fit_subjects", ())),
+        selected_blend_weight=(
+            float(payload["selected_blend_weight"])
+            if payload.get("selected_blend_weight") is not None
+            else None
+        ),
+        selected_admission_nms_iou=(
+            float(payload["selected_admission_nms_iou"])
+            if payload.get("selected_admission_nms_iou") is not None
+            else None
+        ),
+        selected_admission_threshold=(
+            float(payload["selected_admission_threshold"])
+            if payload.get("selected_admission_threshold") is not None
+            else None
+        ),
+        selected_admission_subject_cap=(
+            int(payload["selected_admission_subject_cap"])
+            if payload.get("selected_admission_subject_cap") is not None
+            else None
+        ),
+        raw_union_candidate_count=int(payload.get("raw_union_candidate_count", 0)),
+        admitted_candidate_count=int(payload.get("admitted_candidate_count", 0)),
+        verifier_logistic_oof_seconds=float(
+            payload.get("verifier_logistic_oof_seconds", 0.0)
+        ),
+        verifier_lgbm_oof_seconds=float(payload.get("verifier_lgbm_oof_seconds", 0.0)),
+        verifier_logistic_outer_seconds=float(
+            payload.get("verifier_logistic_outer_seconds", 0.0)
+        ),
+        verifier_lgbm_outer_seconds=float(
+            payload.get("verifier_lgbm_outer_seconds", 0.0)
+        ),
     )
 
 
