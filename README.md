@@ -220,6 +220,8 @@ raw coverage 的短餐 recall 17/39、非惯用手 53/90，说明原始统计能
 15s/7.5s 的 47 维 ACC+GYRO 微窗口模型生成候选，再与原 240s macro 候选取并集，
 由 56 维事件复核器评分。所有选择仅来自 outer-train 的 subject-disjoint OOF；下表
 的 `短餐 final recall` 是 `<10min` outer 事件的最终检出率，而非候选率。
+由于已对同一 outer-CV 进行重复开发比较，本次 0.478632 仅属于开发证据，不是最终
+untouched 泛化分数；最终报告仍需新的未触碰测试。
 
 | fold | config hash | micro 阈值 | TP/eligible/pred | F1 | union 候选 recall | micro-only recall | 短餐 final recall | union 候选数 | 运行 s* |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -239,7 +241,7 @@ raw coverage 的短餐 recall 17/39、非惯用手 53/90，说明原始统计能
 612`，故不得将 `micro_enabled` 设为默认。它距最终 F1 0.65 仍差 **0.171**，仅保留
 可复用的微窗口表示与紧凑 JSON 证据，下一步应在训练内解决候选去重/精度，而不是按
 outer 结果调阈值。FD-I/FD-II 外部数据在竞赛规则下可用，但迁移实验仍推迟到单独的
-门控计划；使用其 CC BY-NC-N 数据前仍须遵守许可条款。
+门控计划；使用其 CC BY-NC-ND 4.0 数据前仍须遵守许可条款。
 
 ## 6. 结果分析与评价
 
