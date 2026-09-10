@@ -35,6 +35,9 @@ def cache_metadata(config: MicroFeatureConfig, source_files) -> dict:
     """Fingerprint feature semantics and every source artifact used to build them."""
     sources = []
     for path in sorted((Path(value) for value in source_files), key=str):
+        if not path.exists():
+            sources.append({"path": str(path.resolve()), "missing": True})
+            continue
         stat = path.stat()
         sources.append({"path": str(path.resolve()), "size": stat.st_size, "mtime_ns": stat.st_mtime_ns})
     payload = json.dumps(asdict(config), sort_keys=True, separators=(",", ":"))
@@ -194,6 +197,8 @@ def _empty_micro_arrays() -> MicroCacheArrays:
 def _session_rows(task) -> MicroCacheArrays:
     """Extract complete, covered windows for one session; safe for process workers."""
     path, session_id, meals, config = task
+    if not Path(path).exists():
+        return _empty_micro_arrays()
     with np.load(path, allow_pickle=False) as data:
         valid = np.asarray(data["imu_valid"], dtype=bool)
         time_ms = np.asarray(data["t_acc"], dtype=np.int64)[valid]

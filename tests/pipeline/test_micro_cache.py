@@ -87,6 +87,59 @@ def test_build_micro_split_uses_timestamp_coverage_and_session_rotation(tmp_path
     assert arrays.label.tolist() == [0, 0, 0]
 
 
+def test_build_micro_split_skips_unavailable_binary_session_and_invalidates_on_arrival(tmp_path, monkeypatch):
+    from src.pipeline.micro_cache import (
+        _session_rows,
+        build_micro_split,
+        cache_metadata,
+        read_micro_cache,
+        read_micro_metadata,
+    )
+
+    session_dir = tmp_path / "cache" / "sessions"
+    session_dir.mkdir(parents=True)
+    manifest_dir = tmp_path / "cache" / "splits"
+    manifest_dir.mkdir()
+    manifest = manifest_dir / "fold0.json"
+    manifest.write_text('{"train_sessions": ["present", "absent"], "val_sessions": []}', encoding="utf-8")
+    present = session_dir / "present.npz"
+    absent = session_dir / "absent.npz"
+    time_ms = np.arange(0, 30_000, 10, dtype=np.int64)
+    acc = np.vstack((np.zeros(len(time_ms)), np.zeros(len(time_ms)), np.ones(len(time_ms)))).astype(np.float32)
+    np.savez(
+        present,
+        acc=acc,
+        gyro=np.zeros_like(acc),
+        t_acc=time_ms,
+        imu_valid=np.ones(len(time_ms), dtype=bool),
+    )
+    monkeypatch.setattr("src.pipeline.micro_cache.split_sessions", lambda root, fold, split: ("present", "absent"))
+    monkeypatch.setattr("src.pipeline.micro_cache.meals_by_session", lambda root: {"present": (), "absent": ()})
+
+    empty = _session_rows((absent, "absent", (), MicroFeatureConfig()))
+    assert empty.feat.shape == (0, 47)
+    assert empty.label.shape == empty.wid.shape == (0,)
+
+    output = build_micro_split(tmp_path, fold=0, split="val", config=MicroFeatureConfig(), workers=1)
+    arrays = read_micro_cache(output)
+    assert arrays.feat.shape == (3, 47)
+    assert all('"present"' in window for window in arrays.wid)
+    old_metadata = read_micro_metadata(output)
+    assert {"path": str(absent.resolve()), "missing": True} in old_metadata["sources"]
+
+    np.savez(
+        absent,
+        acc=acc,
+        gyro=np.zeros_like(acc),
+        t_acc=time_ms,
+        imu_valid=np.ones(len(time_ms), dtype=bool),
+    )
+    changed_metadata = cache_metadata(MicroFeatureConfig(), (present, absent, manifest))
+    assert changed_metadata != {key: value for key, value in old_metadata.items() if key != "extraction_seconds"}
+    with pytest.raises(ValueError, match="metadata mismatch"):
+        read_micro_cache(output, changed_metadata)
+
+
 @pytest.mark.parametrize(
     ("split", "expected"),
     (
