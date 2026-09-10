@@ -15,6 +15,8 @@ from src import config as project_config
 from src.pipeline.event_stack import DensityConfig
 from src.pipeline.runner import (
     RunConfig,
+    aggregate_fold_results,
+    experiment_key,
     fold_result_to_dict,
     run_folds,
     write_json_atomic,
@@ -47,6 +49,34 @@ def parse_verifier_c_grid(value: str) -> tuple[float, ...]:
         or len(set(parsed)) != len(parsed)
     ):
         raise ValueError("verifier C grid must contain positive unique finite values")
+    return parsed
+
+
+def parse_probability_grid(value: str) -> tuple[float, ...]:
+    message = "grid must contain unique finite probabilities in [0, 1]"
+    try:
+        parsed = tuple(float(item.strip()) for item in value.split(","))
+    except ValueError as exc:
+        raise ValueError(message) from exc
+    if (
+        not parsed
+        or any(not math.isfinite(item) or not 0 <= item <= 1 for item in parsed)
+        or len(set(parsed)) != len(parsed)
+    ):
+        raise ValueError(message)
+    return tuple(sorted(parsed))
+
+
+def parse_middle_fraction(value: str) -> float | None:
+    if value.strip().lower() == "none":
+        return None
+    message = "middle fraction must be none or a finite value in (0, 1]"
+    try:
+        parsed = float(value)
+    except ValueError as exc:
+        raise ValueError(message) from exc
+    if not math.isfinite(parsed) or not 0 < parsed <= 1:
+        raise ValueError(message)
     return parsed
 
 
@@ -101,6 +131,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--force", action="store_true", help="ignore matching fold-result caches"
     )
+    parser.add_argument("--micro-enabled", action="store_true")
+    parser.add_argument(
+        "--micro-threshold-grid", type=parse_probability_grid,
+        default=(0.10, 0.20, 0.30, 0.40, 0.50),
+    )
+    parser.add_argument(
+        "--micro-gravity-align", action=argparse.BooleanOptionalAction, default=True,
+    )
+    parser.add_argument(
+        "--micro-positive-middle-fraction", type=parse_middle_fraction, default=None,
+    )
     return parser.parse_args()
 
 
@@ -111,6 +152,8 @@ def main() -> int:
             "--device cuda is unavailable in the no-TCN foundation runner; "
             "use --device auto/cpu"
         )
+    if args.micro_enabled and args.verifier_features == "raw_summary":
+        raise SystemExit("--micro-enabled does not support --verifier-features raw_summary")
     fold_indices = range(5) if args.fold == "all" else (int(args.fold),)
     configs = [
         RunConfig(
@@ -123,6 +166,10 @@ def main() -> int:
             verifier_feature_mode=args.verifier_features,
             verifier_c_grid=args.verifier_c_grid,
             density=DensityConfig(coverage_fix=args.coverage_fix),
+            micro_enabled=args.micro_enabled,
+            micro_threshold_grid=args.micro_threshold_grid,
+            micro_gravity_align=args.micro_gravity_align,
+            micro_positive_middle_fraction=args.micro_positive_middle_fraction,
         )
         for fold in fold_indices
     ]
@@ -151,6 +198,18 @@ def main() -> int:
             f"[{cache_label}]"
         )
         print(f"  output: {output_path}")
+    if args.fold == "all":
+        summary = aggregate_fold_results(configs, results)
+        summary["run_configs"] = [asdict(config) for config in configs]
+        summary_path = output_directory / f"summary_{experiment_key(configs)}.json"
+        write_json_atomic(summary_path, summary)
+        metrics = summary["outer_metrics"]
+        print(
+            f"all folds: F1={metrics['f1']:.3f} "
+            f"sens={metrics['sensitivity']:.3f} ppv={metrics['ppv']:.3f} "
+            f"TP={metrics['n_tp']}/{metrics['n_true']} pred={metrics['n_pred']}"
+        )
+        print(f"  summary: {summary_path}")
     return 0
 
 

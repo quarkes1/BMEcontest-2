@@ -387,3 +387,183 @@ print(os.environ["LOKY_MAX_CPU_COUNT"])
     assert "Could not find the number of physical cores" not in completed.stderr
     assert completed.stderr == ""
     assert completed.stdout.strip() == str(expected)
+
+
+def test_probability_grid_parser_is_strict_and_deterministic():
+    from scripts.crossfit_event_stack import parse_probability_grid
+
+    assert parse_probability_grid(" 0.5,0, 1,0.1 ") == (0.0, 0.1, 0.5, 1.0)
+    for value in ("", "0.1,nan,0.1", "inf", "-0.1,0.5", "1.1", "0.1,0.10", "bad", "0.1,"):
+        with pytest.raises(ValueError, match="unique finite probabilities"):
+            parse_probability_grid(value)
+
+
+def test_middle_fraction_parser_accepts_none_or_unit_interval():
+    from scripts.crossfit_event_stack import parse_middle_fraction
+
+    assert parse_middle_fraction(" None ") is None
+    assert parse_middle_fraction("0.6") == 0.6
+    assert parse_middle_fraction("1") == 1.0
+    for value in ("0", "-0.2", "1.1", "nan", "inf", "", "bad"):
+        with pytest.raises(ValueError, match=r"\(0, 1\]"):
+            parse_middle_fraction(value)
+
+
+def aggregate_test_results():
+    from src.pipeline.event_stack import EventMetrics
+    from src.pipeline.runner import _fold_result_from_dict
+
+    base = _fold_result_from_dict(historical_result_payload())
+    return (
+        replace(base, config_hash="fold-a", micro_threshold=0.2,
+                outer_metrics=EventMetrics(1, 2, 4, 0.25, 0.5, 1 / 3),
+                inner_metrics=EventMetrics(1, 2, 4, 0.25, 0.5, 1 / 3),
+                candidate_count=10, candidate_match_recall=0.5,
+                micro_candidate_count=6, micro_candidate_match_recall=0.25,
+                short_meal_candidate_recall=1.0,
+                slices={"duration_lt10": EventMetrics(1, 2, 1, 1.0, 0.5, 2 / 3)},
+                timings_seconds={"total": 10.0, "micro_window_oof": 3.0}),
+        replace(base, config_hash="fold-b", micro_threshold=0.4,
+                outer_metrics=EventMetrics(2, 5, 3, 2 / 3, 0.4, 0.5),
+                inner_metrics=EventMetrics(2, 5, 3, 2 / 3, 0.4, 0.5),
+                candidate_count=7, candidate_match_recall=1.0,
+                micro_candidate_count=5, micro_candidate_match_recall=1.0,
+                short_meal_candidate_recall=0.5,
+                slices={"duration_lt10": EventMetrics(1, 5, 2, 0.5, 0.2, 2 / 7)},
+                timings_seconds={"total": 20.0, "micro_window_oof": 4.0}),
+    )
+
+
+def test_aggregate_fold_results_recomputes_counts_and_truth_weighted_recalls():
+    from src.pipeline.runner import aggregate_fold_results
+
+    configs = [RunConfig(outer_fold=0), RunConfig(outer_fold=1)]
+    summary = aggregate_fold_results(configs, aggregate_test_results())
+    for name in ("inner_metrics", "outer_metrics"):
+        assert summary[name] == {"n_tp": 3, "n_pred": 7, "n_true": 7,
+                                 "sensitivity": 3 / 7, "ppv": 3 / 7, "f1": 3 / 7}
+    assert summary["candidate_count"] == 17
+    assert summary["micro_candidate_count"] == 11
+    assert summary["candidate_match_recall"] == pytest.approx(5 / 7)
+    assert summary["micro_candidate_match_recall"] == pytest.approx(4 / 7)
+    assert summary["short_meal_candidate_recall"] == pytest.approx(2 / 3)
+    assert summary["slices"]["duration_lt10"]["n_true"] == 3
+    assert summary["slices"]["duration_lt10"]["sensitivity"] == pytest.approx(2 / 3)
+    assert summary["timings_seconds"] == {"total": 30.0, "micro_window_oof": 7.0}
+    assert summary["folds"] == [
+        {"outer_fold": 0, "config_hash": "fold-a", "micro_threshold": 0.2},
+        {"outer_fold": 1, "config_hash": "fold-b", "micro_threshold": 0.4},
+    ]
+
+
+@pytest.mark.parametrize("folds,count", [([], 0), ([0], 0), ([0, 1], 1), ([0, 0], 2)])
+def test_aggregate_fold_results_rejects_empty_mismatched_or_duplicate_folds(folds, count):
+    from src.pipeline.runner import aggregate_fold_results
+
+    with pytest.raises(ValueError):
+        aggregate_fold_results([RunConfig(outer_fold=fold) for fold in folds], aggregate_test_results()[:count])
+
+
+def test_aggregate_fold_results_handles_no_truths_or_predictions():
+    from src.pipeline.runner import aggregate_fold_results, _fold_result_from_dict
+
+    summary = aggregate_fold_results([RunConfig(outer_fold=0)], [_fold_result_from_dict(historical_result_payload())])
+    assert summary["outer_metrics"]["f1"] == 0.0
+    assert summary["candidate_match_recall"] == 0.0
+    assert summary["micro_candidate_match_recall"] == 0.0
+    assert summary["short_meal_candidate_recall"] == 0.0
+
+
+def test_experiment_key_is_configuration_only_and_order_independent():
+    from src.pipeline.runner import experiment_key
+
+    a = RunConfig(outer_fold=0, micro_enabled=True)
+    b = replace(a, outer_fold=1, micro_gravity_align=False)
+    assert experiment_key([a, b]) == experiment_key([b, a])
+    assert experiment_key([a, b]) == experiment_key([replace(a, outer_fold=4), replace(b, outer_fold=3)])
+    assert experiment_key([a, b]) != experiment_key([a, replace(b, micro_threshold_grid=(0.3,))])
+
+
+@pytest.mark.parametrize("micro,coverage,dimensions", [
+    (True, False, (63, 56, 47)), (True, True, (63, 56, 47)),
+    (False, False, (63, 37)), (False, True, (63, 42)),
+])
+def test_filesystem_fold_cache_uses_registered_feature_dimensions(filesystem_runner_source, monkeypatch, micro, coverage, dimensions):
+    from src.pipeline.runner import fold_result_to_dict, _fold_result_from_dict, write_json_atomic
+
+    source = filesystem_runner_source
+    config = RunConfig(outer_fold=0, micro_enabled=micro, density=DensityConfig(coverage_fix=coverage))
+    key = cache_key(config, dimensions, source.input_files(config))
+    result = replace(_fold_result_from_dict(historical_result_payload()), config_hash=key,
+                     micro_threshold=0.3 if micro else None, verifier_feature_count=dimensions[1])
+    write_json_atomic(source.cache_directory / f"fold0_{key}.json", fold_result_to_dict(result))
+
+    def unexpected_load(config):
+        pytest.fail("registered cache identity was missed")
+
+    monkeypatch.setattr(source, "load_outer_fold", unexpected_load)
+    restored = run_outer_fold(config, source)
+    assert restored.config_hash == key
+    assert restored.cache_hits == {"fold_result": True}
+    assert restored.micro_threshold == result.micro_threshold
+
+
+@pytest.mark.parametrize("micro", [False, True])
+def test_external_weights_rejected_before_any_file_or_cache_access(tmp_path, monkeypatch, micro):
+    from src.pipeline import runner
+
+    source = runner.FilesystemDataSource(tmp_path)
+    calls = []
+
+    def forbidden_access(*args, **kwargs):
+        calls.append("access")
+        pytest.fail("external weight rejection happened after filesystem/cache access")
+
+    monkeypatch.setattr(source, "input_files", forbidden_access)
+    monkeypatch.setattr(source, "load_outer_fold", forbidden_access)
+    monkeypatch.setattr(runner, "cache_key", forbidden_access)
+    with pytest.raises(ValueError, match="external_fd_weight_grid"):
+        run_outer_fold(RunConfig(outer_fold=0, micro_enabled=micro, external_fd_weight_grid=(0.0, 0.5)), source)
+    assert calls == []
+
+
+def test_cli_all_writes_multiscale_configs_fold_outputs_and_summary(tmp_path, monkeypatch):
+    from scripts import crossfit_event_stack as cli
+
+    monkeypatch.setattr(sys, "argv", ["crossfit", "--fold", "all", "--micro-enabled", "--no-micro-gravity-align",
+                                    "--micro-threshold-grid", "0.4,0.2", "--micro-positive-middle-fraction", "0.6"])
+    monkeypatch.setattr(cli.project_config, "OUTPUT_DIR", tmp_path)
+    recorded_configs = []
+
+    def evaluate(configs, workers, force):
+        recorded_configs.extend(configs)
+        return [replace(aggregate_test_results()[0], config_hash=f"hash-{config.outer_fold}") for config in configs]
+
+    monkeypatch.setattr(cli, "run_folds", evaluate)
+    assert cli.main() == 0
+    assert [config.outer_fold for config in recorded_configs] == list(range(5))
+    assert all(config.micro_enabled and not config.micro_gravity_align for config in recorded_configs)
+    assert all(config.micro_threshold_grid == (0.2, 0.4) and config.micro_positive_middle_fraction == 0.6 for config in recorded_configs)
+    output = tmp_path / "crossfit"
+    assert len(list(output.glob("fold*.json"))) == 5
+    summaries = list(output.glob("summary_*.json"))
+    assert len(summaries) == 1
+    summary = json.loads(summaries[0].read_text(encoding="utf-8"))
+    assert summary["outer_metrics"]["n_tp"] == 5
+    assert summary["outer_metrics"]["n_true"] == 20
+    assert [config["outer_fold"] for config in summary["run_configs"]] == list(range(5))
+    assert summaries[0].stem == f"summary_{cli.experiment_key(recorded_configs)}"
+    assert not list(output.glob("*.tmp"))
+
+
+@pytest.mark.parametrize("arguments,message", [
+    (["--device", "cuda"], "cuda is unavailable"),
+    (["--micro-enabled", "--verifier-features", "raw_summary"], "raw_summary"),
+])
+def test_cli_rejects_unsupported_modes_before_training(monkeypatch, arguments, message):
+    from scripts import crossfit_event_stack as cli
+
+    monkeypatch.setattr(sys, "argv", ["crossfit", *arguments])
+    monkeypatch.setattr(cli, "run_folds", lambda *args, **kwargs: pytest.fail("unsupported mode reached training"))
+    with pytest.raises(SystemExit, match=message):
+        cli.main()

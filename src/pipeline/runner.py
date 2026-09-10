@@ -1035,6 +1035,75 @@ def _fold_result_from_dict(payload: Mapping[str, object]) -> FoldResult:
     )
 
 
+def experiment_key(configs: Sequence[RunConfig]) -> str:
+    """Identify registered settings independently of fold numbers and outcomes."""
+    normalized = sorted(
+        json.dumps(asdict(replace(config, outer_fold=-1)), sort_keys=True, separators=(",", ":"))
+        for config in configs
+    )
+    canonical = json.dumps(normalized, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
+
+
+def aggregate_fold_results(
+    configs: Sequence[RunConfig], results: Sequence[FoldResult]
+) -> dict[str, object]:
+    """Pool event counts and truth-weight candidate recall across outer folds."""
+    if not configs or len(configs) != len(results):
+        raise ValueError("configs and results must have equal nonzero lengths")
+    if len({config.outer_fold for config in configs}) != len(configs):
+        raise ValueError("duplicate outer folds are not allowed")
+
+    def pooled_metrics(metrics: Sequence[EventMetrics]) -> dict[str, int | float]:
+        n_tp = sum(item.n_tp for item in metrics)
+        n_pred = sum(item.n_pred for item in metrics)
+        n_true = sum(item.n_true for item in metrics)
+        return asdict(EventMetrics(
+            n_tp=n_tp, n_pred=n_pred, n_true=n_true,
+            sensitivity=n_tp / n_true if n_true else 0.0,
+            ppv=n_tp / n_pred if n_pred else 0.0,
+            f1=2 * n_tp / (n_pred + n_true) if n_pred + n_true else 0.0,
+        ))
+
+    truth_counts = [result.outer_metrics.n_true for result in results]
+    short_counts = [
+        result.slices["duration_lt10"].n_true if "duration_lt10" in result.slices else 0
+        for result in results
+    ]
+
+    def weighted_recall(field_name: str, counts: Sequence[int]) -> float:
+        denominator = sum(counts)
+        return (
+            sum(getattr(result, field_name) * count for result, count in zip(results, counts)) / denominator
+            if denominator else 0.0
+        )
+
+    slice_names = sorted({name for result in results for name in result.slices})
+    timing_names = sorted({name for result in results for name in result.timings_seconds})
+    return {
+        "inner_metrics": pooled_metrics([result.inner_metrics for result in results]),
+        "outer_metrics": pooled_metrics([result.outer_metrics for result in results]),
+        "candidate_count": sum(result.candidate_count for result in results),
+        "candidate_match_recall": weighted_recall("candidate_match_recall", truth_counts),
+        "micro_candidate_count": sum(result.micro_candidate_count for result in results),
+        "micro_candidate_match_recall": weighted_recall("micro_candidate_match_recall", truth_counts),
+        "short_meal_candidate_recall": weighted_recall("short_meal_candidate_recall", short_counts),
+        "slices": {
+            name: pooled_metrics([result.slices[name] for result in results if name in result.slices])
+            for name in slice_names
+        },
+        "timings_seconds": {
+            name: sum(result.timings_seconds.get(name, 0.0) for result in results)
+            for name in timing_names
+        },
+        "folds": [
+            {"outer_fold": config.outer_fold, "config_hash": result.config_hash,
+             "micro_threshold": result.micro_threshold}
+            for config, result in sorted(zip(configs, results), key=lambda pair: pair[0].outer_fold)
+        ],
+    }
+
+
 def write_json_atomic(path: Path, payload: Mapping[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
@@ -1056,6 +1125,8 @@ def run_outer_fold(
 ) -> FoldResult:
     """Resolve a data source, reuse a valid cache, and run one nested fold."""
 
+    if config.external_fd_weight_grid != (0.0,):
+        raise ValueError("external_fd_weight_grid must be (0.0,) in the target-domain runner")
     if isinstance(data_source, FoldDataset):
         return _run_outer_dataset(config, data_source)
     source = data_source or FilesystemDataSource()
@@ -1066,6 +1137,8 @@ def run_outer_fold(
     if config.verifier_feature_mode == "raw_summary":
         verifier_dimensions += 312
     dimensions = (63, verifier_dimensions)
+    if config.micro_enabled:
+        dimensions = (63, 56, 47)
     key = cache_key(config, dimensions, input_files)
     cached_path = source.cache_directory / f"fold{config.outer_fold}_{key}.json"
     if cached_path.exists() and not force:
