@@ -293,6 +293,95 @@ def test_filesystem_source_loads_optional_micro_splits_and_extraction_time(files
     }
 
 
+@pytest.fixture
+def filesystem_source_with_orphan_micro_sessions(filesystem_runner_source):
+    from src.data import manifests
+    from src.pipeline.imu_features import MicroFeatureConfig
+    from src.pipeline.micro_cache import MicroCacheArrays, cache_metadata, write_micro_cache_atomic
+
+    source = filesystem_runner_source
+    # Extra sessions share existing subjects; s4 also adds an outer-only subject.
+    manifests.INDEX_CSV.write_text(
+        manifests.INDEX_CSV.read_text(encoding="utf-8")
+        + "p1,s1-extra.zip,0,600000\np2,s2-extra.zip,0,600000\n"
+        + "p3,s3-extra.zip,0,600000\np4,s4.zip,0,600000\n",
+        encoding="utf-8",
+    )
+    manifest = source.root / "cache" / "splits" / "fold0.json"
+    manifest.write_text(json.dumps({
+        "train_sessions": ["s1", "s2", "s1-extra", "s2-extra"],
+        "val_sessions": ["s3", "s3-extra", "s4"],
+    }), encoding="utf-8")
+    for sid in ("s1-extra", "s2-extra", "s3-extra", "s4"):
+        np.savez(source.session_dir / f"{sid}.npz", t_acc=np.arange(0, 600001, 1000),
+                 imu_valid=np.ones(601, bool))
+
+    # Distinguish the macro training SID universe from candidate training.
+    np.savez(source.slide_dir / "fold0_train.npz", feat=np.zeros((1, 62), np.float32),
+             label=np.array([1], np.int8), wid=np.array(['["s1", 0, 240000]']))
+    split_rows = {
+        "train": [("s1-extra", 90, 1), ("s2", 20, 0), ("s2-extra", 91, 0), ("s1", 10, 1)],
+        "meal_train": [("s1-extra", 90, 1), ("s1", 10, 1)],
+        "no_meal_train": [("s2", 20, 0), ("s2-extra", 91, 0)],
+        "val": [("s3-extra", 90, 1), ("s3", 30, 1), ("s4", 91, 0), ("s3", 31, 0)],
+    }
+    for split, rows in split_rows.items():
+        metadata = cache_metadata(MicroFeatureConfig(), (
+            *[source.session_dir / f"{sid}.npz" for sid in dict.fromkeys(row[0] for row in rows)],
+            manifest,
+        ))
+        metadata["extraction_seconds"] = {"train": 1.0, "meal_train": 2.0, "no_meal_train": 3.0, "val": 4.0}[split]
+        arrays = MicroCacheArrays(
+            np.array([[marker] * 47 for _, marker, _ in rows], np.float32),
+            np.array([label for _, _, label in rows], np.int8),
+            np.array([json.dumps((sid, marker * 1000, marker * 1000 + 15000)) for sid, marker, _ in rows]),
+        )
+        write_micro_cache_atomic(source.micro_dir / f"fold0_{split}.npz", arrays, metadata)
+    return source
+
+
+@pytest.mark.parametrize("micro_name, macro_name, expected_windows, markers, labels", [
+    ("micro_window_train", "window_train", (EventRef("s1", 10000, 25000),), [10], [1]),
+    ("micro_candidate_train", "candidate_train",
+     (EventRef("s1", 10000, 25000), EventRef("s2", 20000, 35000)), [10, 20], [1, 0]),
+    ("micro_validation", "validation",
+     (EventRef("s3", 30000, 45000), EventRef("s3", 31000, 46000)), [30, 31], [1, 0]),
+])
+def test_filesystem_source_filters_micro_orphan_sids_at_each_macro_boundary(
+    filesystem_source_with_orphan_micro_sessions, micro_name, macro_name, expected_windows, markers, labels,
+):
+    from src.pipeline.micro_cache import read_micro_metadata
+
+    source = filesystem_source_with_orphan_micro_sessions
+    config = RunConfig(outer_fold=0, micro_enabled=True)
+    macro_dataset = source.load_outer_fold(replace(config, micro_enabled=False))
+    inputs_before = source.input_files(config)
+    fingerprint_before = cache_key(config, input_files=inputs_before)
+    metadata_before = {path: read_micro_metadata(path) for path in inputs_before if path.parent == source.micro_dir}
+    dataset = source.load_outer_fold(config)
+    micro = getattr(dataset, micro_name)
+    macro = getattr(dataset, macro_name)
+
+    # SID identity, not subject identity: these orphans share macro subjects.
+    assert dataset.subject_by_session["s1-extra"] == dataset.subject_by_session["s1"]
+    assert dataset.subject_by_session["s3-extra"] == dataset.subject_by_session["s3"]
+    assert {window.sid for window in micro.windows} <= {window.sid for window in macro.windows}
+    assert micro.windows == expected_windows
+    np.testing.assert_array_equal(micro.features, np.array([[marker] * 47 for marker in markers], np.float32))
+    assert micro.labels.tolist() == labels
+    assert {window.sid for window in dataset.micro_validation.windows} == {
+        window.sid for window in dataset.validation.windows
+    }
+    assert dataset.train_truths == macro_dataset.train_truths
+    assert dataset.validation_truths == macro_dataset.validation_truths
+    assert dataset.validation_truth_slices == macro_dataset.validation_truth_slices
+    assert dataset.outer_subjects == macro_dataset.outer_subjects == frozenset({"p3"})
+    assert dataset.micro_cache_extraction_seconds == 10.0
+    assert source.input_files(config) == inputs_before
+    assert cache_key(config, input_files=source.input_files(config)) == fingerprint_before
+    assert {path: read_micro_metadata(path) for path in metadata_before} == metadata_before
+
+
 @pytest.mark.parametrize("change", ["gravity", "session", "manifest"])
 def test_filesystem_source_rejects_stale_micro_semantics(filesystem_runner_source, change):
     source = filesystem_runner_source

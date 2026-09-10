@@ -919,6 +919,26 @@ class FilesystemDataSource:
                     self._micro_expected_metadata(config, split),
                 )
                 extraction_seconds += seconds
+            micro_batches["candidate_train"] = self._combine_batches(
+                micro_batches["meal_train"], micro_batches["no_meal_train"]
+            )
+            # Macro coverage defines the frozen evaluation session universe.
+            # Micro extraction can retain sessions with no eligible macro rows.
+            for split, macro_batch in (
+                ("train", window_train),
+                ("candidate_train", candidate_train),
+                ("val", validation),
+            ):
+                allowed_sids = {window.sid for window in macro_batch.windows}
+                batch = micro_batches[split]
+                keep = np.asarray(
+                    [window.sid in allowed_sids for window in batch.windows], dtype=bool
+                )
+                micro_batches[split] = WindowBatch(
+                    batch.features[keep],
+                    batch.labels[keep],
+                    tuple(window for window, retained in zip(batch.windows, keep) if retained),
+                )
 
         index = manifests.load_sensor_index()
         subject_by_session = {
@@ -946,10 +966,7 @@ class FilesystemDataSource:
             outer_subjects=outer_subjects,
             validation_truth_slices=validation_slices,
             micro_window_train=micro_batches.get("train"),
-            micro_candidate_train=(
-                self._combine_batches(micro_batches["meal_train"], micro_batches["no_meal_train"])
-                if config.micro_enabled else None
-            ),
+            micro_candidate_train=micro_batches.get("candidate_train"),
             micro_validation=micro_batches.get("val"),
             micro_cache_extraction_seconds=extraction_seconds,
         )
