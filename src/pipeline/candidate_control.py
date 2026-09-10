@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import numbers
 from typing import Sequence
 
 import numpy as np
@@ -26,28 +27,24 @@ class CandidateAdmissionConfig:
     max_candidates_per_subject: int | None = None
 
     def __post_init__(self) -> None:
-        try:
-            nms_iou = float(self.nms_iou)
-            threshold = float(self.threshold)
-        except (TypeError, ValueError) as exc:
-            raise ValueError("nms_iou and threshold must be finite numbers") from exc
-        if (
-            isinstance(self.nms_iou, bool)
-            or not np.isfinite(nms_iou)
-            or not 0.0 < nms_iou <= 1.0
-        ):
+        for name, value in (("nms_iou", self.nms_iou), ("threshold", self.threshold)):
+            if isinstance(value, bool) or not isinstance(value, numbers.Real):
+                raise ValueError(f"{name} must be a real number")
+        nms_iou = float(self.nms_iou)
+        threshold = float(self.threshold)
+        if not np.isfinite(nms_iou) or not 0.0 < nms_iou <= 1.0:
             raise ValueError("nms_iou must be finite and in (0, 1]")
-        if (
-            isinstance(self.threshold, bool)
-            or not np.isfinite(threshold)
-            or not 0.0 <= threshold <= 1.0
-        ):
+        if not np.isfinite(threshold) or not 0.0 <= threshold <= 1.0:
             raise ValueError("threshold must be finite and in [0, 1]")
         cap = self.max_candidates_per_subject
         if cap is not None and (
-            isinstance(cap, bool) or not isinstance(cap, int) or cap < 1
+            isinstance(cap, bool) or not isinstance(cap, numbers.Integral) or cap < 1
         ):
             raise ValueError("max_candidates_per_subject must be a positive integer or None")
+        object.__setattr__(self, "nms_iou", nms_iou)
+        object.__setattr__(self, "threshold", threshold)
+        if cap is not None:
+            object.__setattr__(self, "max_candidates_per_subject", int(cap))
 
 
 @dataclass(frozen=True)

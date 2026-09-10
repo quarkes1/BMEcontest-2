@@ -59,6 +59,24 @@ def test_admission_config_rejects_invalid_values(kwargs):
         CandidateAdmissionConfig(**kwargs)
 
 
+@pytest.mark.parametrize("field", ["nms_iou", "threshold"])
+@pytest.mark.parametrize("value", ["0.5", True])
+def test_admission_config_rejects_string_and_bool_real_parameters(field, value):
+    with pytest.raises(ValueError, match=field + r" must be a real number"):
+        CandidateAdmissionConfig(**{field: value})
+
+
+def test_admission_config_normalizes_real_scalars_to_python_float():
+    config = CandidateAdmissionConfig(
+        nms_iou=np.float32(0.5),
+        threshold=np.int64(0),
+        max_candidates_per_subject=np.int64(3),
+    )
+    assert type(config.nms_iou) is float
+    assert type(config.threshold) is float
+    assert type(config.max_candidates_per_subject) is int
+
+
 def test_admission_budget_is_per_subject_not_per_session():
     candidates = (
         multi("s1", 0, 100, "micro"),
