@@ -21,6 +21,7 @@
 - Do not add one-off scripts. Delete verified smoke/temp/bytecode outputs and keep the worktree clean after each commit.
 - Subagents must use Terra for runner/model/artifact integration and Luna for pure utilities, cleanup, and documentation.
 - Any aggregate F1 above 0.478632 triggers artifact serialization, `dist/` refresh, README/architecture updates, and one coherent promotion commit.
+- Dist inference accepts `--device auto|cpu|gpu|cuda`; `gpu` aliases `cuda`, forced GPU errors when unavailable, and auto reports its resolved backend.
 
 ---
 
@@ -426,7 +427,7 @@ git commit -m "feat: persist verified event stack bundles"
 
 ---
 
-### Task 5: Deployable `dist/event_stack` package
+### Task 5: Deployable CPU/GPU-selectable `dist/event_stack` package
 
 **Files:**
 - Create: `scripts/package_event_stack.py`
@@ -437,7 +438,7 @@ git commit -m "feat: persist verified event stack bundles"
 
 **Interfaces:**
 - Consumes: Task 4 deployment bundle.
-- Produces: standalone CPU inference package and repository/dist prediction parity.
+- Produces: standalone inference package with explicit device routing and repository/dist prediction parity.
 
 - [ ] **Step 1: Write failing package-content and parity tests**
 
@@ -453,6 +454,13 @@ def test_failed_package_build_keeps_previous_dist(tmp_path, monkeypatch):
     with pytest.raises(RuntimeError):
         package_event_stack(bundle_path=bundle_path, destination=dist_path)
     assert snapshot_dist(tmp_path) == previous
+
+def test_device_resolution_is_explicit(monkeypatch):
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
+    assert resolve_device("cpu", has_cuda_component=False) == torch.device("cpu")
+    assert resolve_device("auto", has_cuda_component=False) == torch.device("cpu")
+    with pytest.raises(RuntimeError, match="CUDA-capable component"):
+        resolve_device("gpu", has_cuda_component=False)
 ```
 
 - [ ] **Step 2: Run RED**
@@ -463,11 +471,22 @@ Run: `D:/Anaconda3/envs/bme/python.exe -m pytest -p no:cacheprovider tests/pipel
 
 Package only runtime modules, `predict_event_stack.py`, requirements, bundle files and manifest into a sibling temp directory. Validate imports in an isolated subprocess, verify checksums and fixture parity, then atomically replace only `dist/event_stack`. Never recreate or delete the unrelated legacy files elsewhere in `dist/`.
 
-- [ ] **Step 4: Implement CPU inference and schema rejection**
+- [ ] **Step 4: Implement device-selectable inference and schema rejection**
 
-The entrypoint accepts raw session directories, uses the bundle feature schema, outputs canonical JSON events, refuses incompatible schema/model hashes, and has no training-data or CUDA dependency.
+The entrypoint accepts raw session directories and `--device auto|cpu|gpu|cuda`; normalize `gpu`
+to `cuda`. CPU is always supported. Forced CUDA must fail clearly when CUDA is unavailable or the
+bundle has no CUDA-capable component. Auto chooses CUDA only when both are true, otherwise CPU, and
+prints the resolved device. The entrypoint uses the bundle feature schema, outputs canonical JSON
+events, refuses incompatible schema/model hashes, and has no training-data dependency.
 
-- [ ] **Step 5: Run focused/full tests and commit**
+- [ ] **Step 5: Verify CPU/GPU parity rules**
+
+Always run forced-CPU and no-CUDA-auto smoke tests. On a CUDA host with a CUDA-capable packaged
+component, run the same fixture on both backends, require score absolute error `<=1e-5`, and require
+byte-identical canonical event geometry. Until such a component exists, forced gpu/cuda must be an
+explicit tested error rather than silently running CPU.
+
+- [ ] **Step 6: Run focused/full tests and commit**
 
 Run: `D:/Anaconda3/envs/bme/python.exe -m pytest -p no:cacheprovider tests/pipeline/test_event_stack_dist.py -q`
 

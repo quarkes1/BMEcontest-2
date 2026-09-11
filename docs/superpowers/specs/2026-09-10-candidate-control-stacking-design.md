@@ -24,6 +24,15 @@ OOF 选择后的五折 aggregate F1 高于 `0.478632`，最终持续迭代到 `0
 
 ## 3. 方案比较与选择
 
+### 组内 0.652 结果的协议审计
+
+组内仓库公开结果为 F1 `0.652`（TP/true/pred=`162/276/221`），其主要 FP 清理来自
+双 LightGBM 窗分数、`min_duration=180s`、`fuse=600s` 和 13 维事件级 LightGBM。
+这些机制可借鉴，但数值不可与本项目 `112/153/315` 直接比较：其窗分数先在全体41人上
+生成 LOSO OOF，随后另做事件级5折，因此 outer-train 事件特征的窗模型可能训练过
+outer-test 被试。对方 `64_leak_audit.py` 也将其标记为 L2 间接信息共享。这里仅移植
+事件级树模型、时长和前后上下文信号；所有分数重新在本项目每个 outer fold 内交叉拟合。
+
 ### 方案 A：仅提高 micro threshold
 
 实现简单且会减少候选，但当前四折已在训练内选择 `0.10`，单独收紧阈值容易损失短餐
@@ -124,6 +133,17 @@ aggregate F1 提升都触发“模型晋级流程”；但成为 README 推荐�
 `dist/` 更新必须来自注册的打包命令，不允许手工复制遗漏依赖。模型晋级脚本失败时，
 保留旧 dist 完整可用，不能部分覆盖。
 
+### 设备选择契约
+
+部署入口必须接受 `--device auto|cpu|gpu|cuda`，其中 `gpu` 是 `cuda` 的别名。
+`cpu` 强制所有组件走 CPU；`gpu/cuda` 在 CUDA 不可用或模型不含 CUDA-capable 组件时
+给出明确错误，不能假装加速；`auto` 在包内存在 GPU 组件且 CUDA 可用时选择 CUDA，
+否则回退 CPU，并在 stderr/manifest runtime report 中写明实际设备。当前 sklearn 和
+LightGBM 树组件仍在 CPU；后续 Transformer 可在相同接口下使用 CUDA。
+
+同一 bundle 和固定输入的 CPU/GPU 分数绝对误差必须 `<=1e-5`，最终事件几何必须完全
+一致。若未来 GPU 浮点误差跨越阈值，打包测试必须失败，而不是放宽事件一致性要求。
+
 ## 9. 测试与审查
 
 - 纯单元测试覆盖稳定 NMS、同分排序、每被试预算、无候选、单类候选和准入选择平局。
@@ -131,6 +151,8 @@ aggregate F1 提升都触发“模型晋级流程”；但成为 README 推荐�
 - 外层 truth/label 变更不得改变融合权重、准入配置、verifier C、事件阈值或 cap。
 - legacy macro-only、现有 multiscale-disabled-controller 路径必须逐字段保持原结果。
 - artifact round-trip、校验和、原子失败恢复、dist smoke 和仓库/dist 一致性必须自动化。
+- dist 测试覆盖强制 CPU、无 CUDA 的 auto 回退、无 GPU 组件时强制 gpu 的明确错误；
+  有真实 CUDA 环境时额外运行 CPU/GPU 分数容差与事件几何一致性测试。
 - 每个实现任务由独立审查者检查；按用户要求，复杂 runner/模型/发布集成使用 Terra，
   边界单元测试、清理和文档任务使用 Luna，不使用其他子代理模型。
 
