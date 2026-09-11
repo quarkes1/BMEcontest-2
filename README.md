@@ -251,9 +251,11 @@ canonical aggregate summary、五个 outer-fold evidence bundle、一个 deploym
 SHA-256。打包器只接受这一完整结构，且只原子替换仓库 `dist/event_stack`。
 
 部署特征输入必须同时携带稳定 `subject_id` 与会话 `sid`：前者用于冻结的 candidate admission
-预算和 event budget，后者只用于同会话 NMS 与输出事件几何。CPU 是当前唯一可发布后端；
-`auto` 因此解析为 CPU，强制 CUDA 失败。未来 CUDA 适配器必须作为可加载、校验和覆盖的运行时
-组件打包，并在打包期通过 `<=1e-5` 分数误差及完全一致的事件几何对照。
+预算和 event budget，后者只用于同会话 NMS 与输出事件几何；同一 payload 中的 `sid` 必须全局唯一，
+即使它们属于同一受试者也会被拒绝。CPU 是当前唯一可发布后端；`auto` 因此解析为 CPU，强制 CUDA
+失败。当前 CUDA adapter registry 为空，打包/加载阶段会拒绝 `cuda_adapter.py` 及任何 CUDA/component
+声明。未来只能通过代码内显式、审计过的注册协议添加设备实现；CPU/CUDA 输出相近本身不能证明实际
+在 CUDA 上执行。
 
 ## 6. 结果分析与评价
 

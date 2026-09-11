@@ -68,7 +68,7 @@ def _write_requirements(destination: Path) -> None:
     )
 
 
-def _build_runtime_manifest(staging: Path, *, has_cuda_adapter: bool) -> None:
+def _build_runtime_manifest(staging: Path) -> None:
     bundle_manifest = staging / "bundle" / "manifest.json"
     files = {
         path.relative_to(staging).as_posix(): _sha256(path)
@@ -78,14 +78,10 @@ def _build_runtime_manifest(staging: Path, *, has_cuda_adapter: bool) -> None:
     payload = {
         "package_version": 1,
         "bundle_manifest_sha256": _sha256(bundle_manifest),
-        "capabilities": {
-            "cuda_adapter": (
-                {"module": "cuda_adapter.py", "factory": "load_adapter"}
-                if has_cuda_adapter else None
-            ),
-            "components": {name: "cpu" for name in ("macro", "micro", "verifier_logistic", "verifier_lgbm")},
-            "future_cuda_parity": {"score_absolute_error_max": 1e-5, "event_geometry": "exact"},
-        },
+        # CUDA support can only be added through the source-controlled registry
+        # in the runtime, after an audited component release.  Package metadata
+        # must never self-declare a hardware backend.
+        "capabilities": {},
         "files": files,
     }
     (staging / "runtime_manifest.json").write_bytes(_canonical_json(payload))
@@ -100,15 +96,9 @@ def verify_packaged_bundle(destination: Path) -> None:
     except (OSError, json.JSONDecodeError) as exc:
         raise ValueError(f"runtime manifest cannot be read: {exc}") from exc
     capabilities = runtime.get("capabilities")
-    adapter = capabilities.get("cuda_adapter") if isinstance(capabilities, dict) else None
-    if not isinstance(capabilities, dict) or "has_cuda_component" in capabilities:
-        raise ValueError("runtime manifest must bind a registered CUDA adapter or null")
-    expected_paths = EXPECTED_EVENT_STACK_PATHS
-    if adapter is not None:
-        if not isinstance(adapter, dict) or adapter != {"module": "cuda_adapter.py", "factory": "load_adapter"}:
-            raise ValueError("runtime manifest CUDA adapter is not registered")
-        expected_paths = frozenset(set(expected_paths) | {"cuda_adapter.py"})
-    if required_paths(destination) != expected_paths:
+    if not isinstance(capabilities, dict) or capabilities:
+        raise ValueError("runtime manifest CUDA declarations/components are unsupported")
+    if required_paths(destination) != EXPECTED_EVENT_STACK_PATHS:
         raise ValueError("packaged file set is incomplete or contains unexpected files")
     expected_hash = runtime.get("bundle_manifest_sha256")
     if not isinstance(expected_hash, str) or _sha256(destination / "bundle" / "manifest.json") != expected_hash:
@@ -147,7 +137,7 @@ def _run_smoke(script: Path, bundle: Path, payload: Path, output: Path, *, devic
     return output.read_bytes()
 
 
-def _verify_fixture_parity(staging: Path, source_bundle: Path, *, has_cuda_adapter: bool) -> None:
+def _verify_fixture_parity(staging: Path, source_bundle: Path) -> None:
     spec = __import__("importlib.util").util.spec_from_file_location("event_stack_repo_predict", _PREDICTOR)
     if spec is None or spec.loader is None:
         raise RuntimeError("cannot load repository event-stack predictor for parity verification")
@@ -166,17 +156,6 @@ def _verify_fixture_parity(staging: Path, source_bundle: Path, *, has_cuda_adapt
         packaged = _run_smoke(staging / "predict_event_stack.py", staging / "bundle", payload, dist_output)
         if repository != packaged:
             raise RuntimeError("repository and packaged fixture predictions differ")
-        if has_cuda_adapter:
-            cuda_output = staging / ".cuda-output.json"
-            try:
-                cuda = _run_smoke(
-                    staging / "predict_event_stack.py", staging / "bundle", payload,
-                    cuda_output, device="cuda"
-                )
-                module.assert_backend_parity(json.loads(packaged), json.loads(cuda))
-            finally:
-                if cuda_output.exists():
-                    cuda_output.unlink()
     finally:
         shutil.rmtree(scratch, ignore_errors=True)
 
@@ -227,6 +206,10 @@ def package_event_stack(
     """Package one verified deployment bundle through a same-parent atomic swap."""
 
     bundle_path = Path(bundle_path).absolute()
+    if cuda_adapter_path is not None:
+        raise ValueError(
+            "CUDA adapters are not supported by the current empty CUDA adapter registry"
+        )
     trusted_root = Path(trusted_dist_root or (_ROOT / "dist"))
     destination = _trusted_event_stack_destination(destination, trusted_root)
     problems = verify_bundle_manifest(bundle_path, expected_run_key="deployment")
@@ -259,14 +242,8 @@ def package_event_stack(
         shutil.copy2(_PREDICTOR, staging / "predict_event_stack.py")
         _write_requirements(staging / "requirements.txt")
         shutil.copytree(bundle_path, staging / "bundle", symlinks=False)
-        has_cuda_adapter = cuda_adapter_path is not None
-        if cuda_adapter_path is not None:
-            adapter_source = Path(cuda_adapter_path).absolute()
-            if adapter_source.name != "cuda_adapter.py" or not adapter_source.is_file() or _is_link_or_reparse_point(adapter_source):
-                raise ValueError("cuda_adapter_path must be a regular file named cuda_adapter.py")
-            shutil.copy2(adapter_source, staging / "cuda_adapter.py")
-        _build_runtime_manifest(staging, has_cuda_adapter=has_cuda_adapter)
-        _verify_fixture_parity(staging, bundle_path, has_cuda_adapter=has_cuda_adapter)
+        _build_runtime_manifest(staging)
+        _verify_fixture_parity(staging, bundle_path)
         verify_packaged_bundle(staging)
         subprocess.run([sys.executable, "-I", str(staging / "predict_event_stack.py"), "--help"], check=True, cwd=staging.parent, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         if destination.exists():
@@ -295,14 +272,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bundle", type=Path, required=True, help="Task-4 deployment bundle directory")
     parser.add_argument("--destination", type=Path, default=_ROOT / "dist" / "event_stack")
-    parser.add_argument("--cuda-adapter", type=Path, default=None, help="registered cuda_adapter.py; requires CPU/CUDA fixture parity")
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
-        package_event_stack(bundle_path=args.bundle, destination=args.destination, cuda_adapter_path=args.cuda_adapter)
+        package_event_stack(bundle_path=args.bundle, destination=args.destination)
     except (OSError, ValueError, RuntimeError) as exc:
         print(f"event-stack package refused: {exc}", file=sys.stderr)
         return 2

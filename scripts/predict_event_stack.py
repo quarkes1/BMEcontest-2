@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import importlib.util
 import json
 import math
 import sys
@@ -26,6 +25,10 @@ import numpy as np
 _MODEL_NAMES = ("macro", "micro", "verifier_logistic", "verifier_lgbm")
 _METADATA_NAMES = ("policy.json", "run_config.json", "feature_schema.json")
 _DEVICE_CHOICES = ("auto", "cpu", "gpu", "cuda")
+# TODO: Add an audited, source-controlled CUDA component identifier here only
+# after its implementation and release verification are available.  A package
+# file, manifest flag, or arbitrary callable is never a registration protocol.
+_SUPPORTED_CUDA_ADAPTER_IDS = frozenset()
 
 
 def _canonical_json(payload: object) -> bytes:
@@ -48,18 +51,14 @@ def _schema_hash(schema: Mapping[str, int]) -> str:
     ).hexdigest()
 
 
-def _cuda_available() -> bool:
-    """Check CUDA lazily so CPU tree-only environments do not require torch."""
+def _has_registered_cuda_component() -> bool:
+    """Resolve hardware support solely from the source-controlled registry."""
 
-    try:
-        import torch
-    except ImportError:
-        return False
-    return bool(torch.cuda.is_available())
+    return bool(_SUPPORTED_CUDA_ADAPTER_IDS)
 
 
-def resolve_device(requested: str, *, has_cuda_component: bool) -> str:
-    """Resolve an honest backend without ever treating CPU trees as CUDA models."""
+def resolve_device(requested: str) -> str:
+    """Resolve the only currently supported device without inferring CUDA support."""
 
     normalized = str(requested).lower()
     if normalized not in _DEVICE_CHOICES:
@@ -69,41 +68,8 @@ def resolve_device(requested: str, *, has_cuda_component: bool) -> str:
     if normalized == "cpu":
         return "cpu"
     if normalized == "auto":
-        return "cuda" if has_cuda_component and _cuda_available() else "cpu"
-    if not has_cuda_component:
-        raise RuntimeError("forced CUDA requested, but bundle has no CUDA-capable component")
-    if not _cuda_available():
-        raise RuntimeError("forced CUDA requested, but CUDA is not available")
-    return "cuda"
-
-
-def assert_backend_parity(cpu_output: Mapping[str, Any], cuda_output: Mapping[str, Any]) -> None:
-    """Enforce the future CUDA-component parity contract before release.
-
-    A CUDA adapter may differ only in score by at most 1e-5; event identity and
-    geometry are a hard equality constraint so a floating-point wobble cannot
-    silently alter the decoded event set.
-    """
-
-    cpu_events = cpu_output.get("events")
-    cuda_events = cuda_output.get("events")
-    if not isinstance(cpu_events, list) or not isinstance(cuda_events, list):
-        raise ValueError("backend parity outputs must contain event arrays")
-    if len(cpu_events) != len(cuda_events):
-        raise ValueError("backend parity event geometry differs")
-    for cpu_event, cuda_event in zip(cpu_events, cuda_events):
-        if not isinstance(cpu_event, Mapping) or not isinstance(cuda_event, Mapping):
-            raise ValueError("backend parity event entries must be objects")
-        cpu_geometry = tuple(cpu_event.get(key) for key in ("sid", "start_ms", "end_ms"))
-        cuda_geometry = tuple(cuda_event.get(key) for key in ("sid", "start_ms", "end_ms"))
-        if cpu_geometry != cuda_geometry:
-            raise ValueError("backend parity event geometry differs")
-        try:
-            difference = abs(float(cpu_event["score"]) - float(cuda_event["score"]))
-        except (KeyError, TypeError, ValueError) as exc:
-            raise ValueError("backend parity scores must be numeric") from exc
-        if not math.isfinite(difference) or difference > 1e-5:
-            raise ValueError("backend parity score difference exceeds 1e-5")
+        return "cuda" if _has_registered_cuda_component() else "cpu"
+    raise RuntimeError("forced CUDA requested, but no supported CUDA component is registered")
 
 
 def _read_json(path: Path, label: str) -> dict[str, Any]:
@@ -153,7 +119,7 @@ def _verify_bundle(bundle_path: Path) -> tuple[dict[str, Any], dict[str, Any], d
 
 
 def _runtime_capabilities(bundle_path: Path) -> bool:
-    """Return whether an integrity-bound CUDA adapter is registered."""
+    """Reject package CUDA claims; only the empty source registry can answer false."""
 
     runtime_manifest = bundle_path.parent / "runtime_manifest.json"
     if not runtime_manifest.is_file():
@@ -168,6 +134,8 @@ def _runtime_capabilities(bundle_path: Path) -> bool:
         for path in package_root.rglob("*")
         if path.is_file() and path.name != "runtime_manifest.json" and "__pycache__" not in path.parts
     }
+    if any(Path(name).name == "cuda_adapter.py" for name in actual):
+        raise ValueError("runtime manifest CUDA declarations/components are unsupported")
     if files != actual:
         raise ValueError("runtime manifest checksum does not match package contents")
     bundle_manifest_hash = payload.get("bundle_manifest_sha256")
@@ -176,48 +144,9 @@ def _runtime_capabilities(bundle_path: Path) -> bool:
     capabilities = payload.get("capabilities")
     if not isinstance(capabilities, dict):
         raise ValueError("runtime manifest capabilities must be an object")
-    # A boolean is only a claim. CUDA can be selected only through a concrete,
-    # checksummed adapter module that the package actually carries.
-    if "has_cuda_component" in capabilities:
-        raise ValueError("runtime manifest must declare a registered CUDA adapter, not a CUDA boolean")
-    adapter = capabilities.get("cuda_adapter")
-    if adapter is None:
-        return False
-    if not isinstance(adapter, dict) or set(adapter) != {"module", "factory"}:
-        raise ValueError("runtime manifest CUDA adapter is not registered")
-    module_name = adapter["module"]
-    factory_name = adapter["factory"]
-    if (
-        not isinstance(module_name, str)
-        or Path(module_name).name != module_name
-        or not module_name.endswith(".py")
-        or not isinstance(factory_name, str)
-        or not factory_name.isidentifier()
-        or not (package_root / module_name).is_file()
-    ):
-        raise ValueError("runtime manifest CUDA adapter is not registered")
-    return True
-
-
-def _load_cuda_adapter(bundle_path: Path):
-    """Load only the adapter declared by the already-checksummed package manifest."""
-
-    runtime_manifest = _read_json(bundle_path.parent / "runtime_manifest.json", "runtime manifest")
-    adapter = runtime_manifest["capabilities"]["cuda_adapter"]
-    assert isinstance(adapter, dict)
-    module_path = bundle_path.parent / str(adapter["module"])
-    spec = importlib.util.spec_from_file_location("event_stack_cuda_adapter", module_path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError("registered CUDA adapter cannot be loaded")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    factory = getattr(module, str(adapter["factory"]), None)
-    if not callable(factory):
-        raise RuntimeError("registered CUDA adapter factory is unavailable")
-    adapter_callable = factory()
-    if not callable(adapter_callable):
-        raise RuntimeError("registered CUDA adapter factory did not return a callable")
-    return adapter_callable
+    if capabilities:
+        raise ValueError("runtime manifest CUDA declarations/components are unsupported")
+    return _has_registered_cuda_component()
 
 
 def _probability(model: object, row: list[float], width: int, name: str) -> float:
@@ -310,8 +239,8 @@ def predict_feature_payload(bundle_path: Path, payload: Mapping[str, Any], *, de
 
     bundle_path = Path(bundle_path)
     _, policy, schema = _verify_bundle(bundle_path)
-    has_cuda_adapter = _runtime_capabilities(bundle_path)
-    resolved_device = resolve_device(device, has_cuda_component=has_cuda_adapter)
+    _runtime_capabilities(bundle_path)
+    resolved_device = resolve_device(device)
     if not isinstance(payload, Mapping):
         raise ValueError("input feature payload must be an object")
     unknown_payload = set(payload) - {"feature_schema", "schema_hash", "sessions"}
@@ -341,8 +270,8 @@ def predict_feature_payload(bundle_path: Path, payload: Mapping[str, Any], *, de
             raise ValueError("each session must have a nonempty string subject_id")
         if not isinstance(sid, str) or not sid:
             raise ValueError("each session must have a nonempty string sid")
-        if sid in subject_by_sid and subject_by_sid[sid] != subject_id:
-            raise ValueError("each sid must map to exactly one subject_id")
+        if sid in subject_by_sid:
+            raise ValueError("each sid must be globally unique within the input sessions")
         subject_by_sid[sid] = subject_id
         candidates = session.get("candidates")
         if not isinstance(candidates, list):
@@ -380,15 +309,7 @@ def predict_feature_payload(bundle_path: Path, payload: Mapping[str, Any], *, de
         ],
         "resolved_device": "cpu",
     }
-    if resolved_device == "cpu":
-        return cpu_output
-    adapter = _load_cuda_adapter(bundle_path)
-    cuda_output = adapter(bundle_path, payload)
-    if not isinstance(cuda_output, Mapping) or not isinstance(cuda_output.get("events"), list):
-        raise RuntimeError("registered CUDA adapter returned an incompatible prediction payload")
-    result = dict(cuda_output)
-    result["resolved_device"] = "cuda"
-    return result
+    return cpu_output
 
 
 def build_smoke_fixture(schema: Mapping[str, int]) -> dict[str, Any]:

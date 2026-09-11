@@ -19,10 +19,9 @@ python event_stack/predict_event_stack.py \
 
 `--device` 仅接受 `auto|cpu|gpu|cuda`，其中 `gpu` 等同 `cuda`。当前 sklearn/LightGBM
 组件均为 CPU：`auto` 会报告 `resolved_device=cpu`，而强制 `gpu/cuda` 会明确失败，绝不将
-CPU 树模型伪报为 GPU 推理。torch 是可选依赖；没有 CUDA 组件的 CPU 包无需安装 torch。
-CUDA 不能由 manifest 中的 boolean 声明；未来组件必须打入经 SHA-256 覆盖的、可加载的
-`cuda_adapter.py`，打包时强制 CPU/CUDA 分数误差 `<=1e-5`、事件几何完全一致。当前没有该
-adapter，因此 `auto` 固定 CPU，强制 CUDA 明确拒绝。
+CPU 树模型伪报为 GPU 推理。当前 CUDA adapter registry 为空，因此无需安装 torch；打包或加载
+发现 `cuda_adapter.py` 或任何 CUDA/component 声明都会拒绝该包。未来只有代码内显式、审计过的
+注册协议可以启用设备实现；CPU/CUDA 输出相近或事件几何一致都不能证明推理实际使用 CUDA。
 
 输入不是原始 `collect_data*.txt` 会话，而是已生成的、可审计的候选特征 JSON：
 
@@ -46,7 +45,7 @@ adapter，因此 `auto` 固定 CPU，强制 CUDA 明确拒绝。
 运行时会校验 bundle manifest 的每个模型/metadata SHA-256、完整模型集合和 deployment role，
 并拒绝 schema/hash 不匹配。`subject_id` 与 `sid` 都是必填；`sid` 仅定义会话几何，冻结的
 candidate NMS/准入阈值/每受试者 cap 以及 event 阈值/每受试者 event cap 均按 `subject_id`
-执行。未知或遗留字段、缺失 subject_id、同 sid 关联多个 subject_id 均会被拒绝。输出为稳定
+执行。未知或遗留字段、缺失 subject_id、任何重复 sid（包括同一 subject_id 内）均会被拒绝。输出为稳定
 排序、紧凑 canonical JSON：
 `{"events":[{"sid":...,"start_ms":...,"end_ms":...,"score":...}],"resolved_device":"cpu"}`。
 

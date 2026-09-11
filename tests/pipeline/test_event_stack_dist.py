@@ -19,7 +19,6 @@ from scripts.package_event_stack import (
     required_paths,
 )
 from scripts.predict_event_stack import (
-    assert_backend_parity,
     build_smoke_fixture,
     predict_feature_payload,
     resolve_device,
@@ -222,32 +221,15 @@ def test_failed_package_build_keeps_previous_dist_and_legacy_files(tmp_path: Pat
     assert legacy.read_text(encoding="utf-8") == "legacy"
 
 
-def test_device_resolution_is_explicit_and_torch_is_lazy(monkeypatch):
-    import scripts.predict_event_stack as predict_module
-
-    monkeypatch.setattr(predict_module, "_cuda_available", lambda: False)
-    assert resolve_device("cpu", has_cuda_component=False) == "cpu"
-    assert resolve_device("auto", has_cuda_component=False) == "cpu"
-    with pytest.raises(RuntimeError, match="CUDA-capable component"):
-        resolve_device("gpu", has_cuda_component=False)
-    with pytest.raises(RuntimeError, match="CUDA-capable component"):
-        resolve_device("cuda", has_cuda_component=False)
-
-    with pytest.raises(RuntimeError, match="CUDA is not available"):
-        resolve_device("cuda", has_cuda_component=True)
+def test_device_resolution_is_explicit_with_an_empty_cuda_registry():
+    assert resolve_device("cpu") == "cpu"
+    assert resolve_device("auto") == "cpu"
+    with pytest.raises(RuntimeError, match="no supported CUDA component"):
+        resolve_device("gpu")
+    with pytest.raises(RuntimeError, match="no supported CUDA component"):
+        resolve_device("cuda")
     with pytest.raises(ValueError, match="auto, cpu, gpu, cuda"):
-        resolve_device("metal", has_cuda_component=True)
-
-
-def test_future_cuda_backend_parity_hook_requires_score_tolerance_and_exact_geometry():
-    cpu = {"events": [{"sid": "s", "start_ms": 0, "end_ms": 100, "score": 0.5}]}
-    cuda_close = {"events": [{"sid": "s", "start_ms": 0, "end_ms": 100, "score": 0.500009}]}
-    assert_backend_parity(cpu, cuda_close)
-
-    with pytest.raises(ValueError, match="score"):
-        assert_backend_parity(cpu, {"events": [{"sid": "s", "start_ms": 0, "end_ms": 100, "score": 0.50002}]})
-    with pytest.raises(ValueError, match="geometry"):
-        assert_backend_parity(cpu, {"events": [{"sid": "s", "start_ms": 1, "end_ms": 100, "score": 0.5}]})
+        resolve_device("metal")
 
 
 def test_precomputed_feature_contract_rejects_schema_or_manifest_hash_mismatch(tmp_path: Path):
@@ -355,6 +337,21 @@ def test_runtime_requires_explicit_subject_ids_and_applies_the_frozen_two_stage_
         packaged.predict_feature_payload(dist / "bundle", old_group_field, device="cpu")
 
 
+def test_runtime_rejects_duplicate_sid_even_when_the_subject_is_the_same(tmp_path: Path):
+    dist, _ = package_fixture_bundle(tmp_path)
+    packaged = _load_module(dist / "predict_event_stack.py")
+    fixture = build_smoke_fixture({"macro": 1, "micro": 1, "verifier": 1})
+    fixture["schema_hash"] = _schema_hash(fixture["feature_schema"])
+    first_session = fixture["sessions"][0]
+    fixture["sessions"].append({
+        **first_session,
+        "candidates": [],
+    })
+
+    with pytest.raises(ValueError, match="sid.*unique"):
+        packaged.predict_feature_payload(dist / "bundle", fixture, device="cpu")
+
+
 def test_runtime_golden_policy_is_subject_scoped_across_multiple_sessions(tmp_path: Path):
     dist, _ = package_fixture_bundle(tmp_path, fitted_scored_deployment_bundle)
     packaged = _load_module(dist / "predict_event_stack.py")
@@ -426,16 +423,57 @@ def test_packager_destination_is_exactly_anchored_to_one_trusted_dist_root(tmp_p
         )
 
 
-def test_runtime_manifest_cuda_boolean_cannot_claim_an_unregistered_adapter(tmp_path: Path, monkeypatch):
+def test_runtime_manifest_cuda_boolean_cannot_claim_an_unregistered_adapter(tmp_path: Path):
     dist, _ = package_fixture_bundle(tmp_path)
     packaged = _load_module(dist / "predict_event_stack.py")
     runtime_manifest = dist / "runtime_manifest.json"
     runtime = json.loads(runtime_manifest.read_text(encoding="utf-8"))
     runtime["capabilities"]["has_cuda_component"] = True
     runtime_manifest.write_text(json.dumps(runtime), encoding="utf-8")
-    monkeypatch.setattr(packaged, "_cuda_available", lambda: True)
     fixture = build_smoke_fixture({"macro": 1, "micro": 1, "verifier": 1})
     fixture["schema_hash"] = _schema_hash(fixture["feature_schema"])
 
-    with pytest.raises(ValueError, match="registered CUDA adapter"):
+    with pytest.raises(ValueError, match="CUDA declarations"):
         packaged.predict_feature_payload(dist / "bundle", fixture, device="cuda")
+
+
+def test_packager_rejects_callable_cuda_adapter_that_secretly_returns_cpu_predictions(tmp_path: Path):
+    _, bundle = package_fixture_bundle(tmp_path)
+    adapter = tmp_path / "cuda_adapter.py"
+    adapter.write_text(
+        "def load_adapter():\n"
+        "    return lambda bundle_path, payload: {'events': [], 'resolved_device': 'cpu'}\n",
+        encoding="utf-8",
+    )
+    destination = tmp_path / "second" / "dist" / "event_stack"
+
+    with pytest.raises(ValueError, match="CUDA adapters are not supported"):
+        package_event_stack(
+            bundle_path=bundle,
+            destination=destination,
+            trusted_dist_root=destination.parent,
+            cuda_adapter_path=adapter,
+        )
+
+    assert not destination.exists()
+
+
+def test_runtime_rejects_a_checksummed_cpu_backed_cuda_adapter_before_it_can_report_cuda(tmp_path: Path):
+    dist, _ = package_fixture_bundle(tmp_path)
+    packaged = _load_module(dist / "predict_event_stack.py")
+    adapter = dist / "cuda_adapter.py"
+    adapter.write_text(
+        "def load_adapter():\n"
+        "    return lambda bundle_path, payload: {'events': [], 'resolved_device': 'cpu'}\n",
+        encoding="utf-8",
+    )
+    runtime_manifest = dist / "runtime_manifest.json"
+    runtime = json.loads(runtime_manifest.read_text(encoding="utf-8"))
+    runtime["capabilities"] = {"cuda_adapter": {"module": "cuda_adapter.py", "factory": "load_adapter"}}
+    runtime["files"]["cuda_adapter.py"] = package_module._sha256(adapter)
+    runtime_manifest.write_text(json.dumps(runtime), encoding="utf-8")
+    fixture = build_smoke_fixture({"macro": 1, "micro": 1, "verifier": 1})
+    fixture["schema_hash"] = _schema_hash(fixture["feature_schema"])
+
+    with pytest.raises(ValueError, match="CUDA declarations"):
+        packaged.predict_feature_payload(dist / "bundle", fixture, device="auto")
