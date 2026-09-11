@@ -289,6 +289,25 @@ class FoldDataset:
     micro_cache_extraction_seconds: float = 0.0
 
 
+@dataclass(frozen=True)
+class _FinalModelFit:
+    """Private fitted state retained during one outer-fold evaluation.
+
+    Keeping model objects with their train-only selected decoding policy makes
+    artifact extraction possible without widening ``run_outer_fold``'s public
+    ``FoldResult`` contract.  A legal full-target trainer is deliberately not
+    constructed here.
+    """
+
+    macro: Pipeline
+    micro: Pipeline | None
+    verifier_logistic: Pipeline
+    verifier_lgbm: Pipeline | None
+    policy: EventSelectionPolicy
+    admission: CandidateAdmissionConfig | None
+    blend_weight: float | None
+
+
 def _file_signature(path: Path) -> dict[str, int | str]:
     stat = path.stat()
     return {
@@ -422,6 +441,47 @@ def _verifier_lgbm_estimator(seed: int) -> Pipeline:
             ("imputer", SimpleImputer(strategy="median")),
             ("model", LGBMClassifier(**parameters)),
         ]
+    )
+
+
+def _fit_final_models(
+    config: RunConfig,
+    *,
+    train_features: np.ndarray,
+    train_labels: np.ndarray,
+    micro_train_features: np.ndarray | None,
+    micro_train_labels: np.ndarray | None,
+    train_candidate_features: np.ndarray,
+    train_candidate_labels: np.ndarray,
+    verifier_c: float,
+    policy: EventSelectionPolicy,
+    admission: CandidateAdmissionConfig | None,
+    blend_weight: float | None,
+) -> _FinalModelFit:
+    """Fit the frozen outer-train models after all OOF choices are final."""
+
+    macro = _window_estimator(config.seed + 2)
+    macro.fit(train_features, train_labels)
+    micro = None
+    if config.micro_enabled:
+        if micro_train_features is None or micro_train_labels is None:
+            raise ValueError("micro model inputs are required when micro_enabled=True")
+        micro = _micro_window_estimator(config.seed + 12)
+        micro.fit(micro_train_features, micro_train_labels)
+    verifier_logistic = _verifier_estimator(config.seed + 3, verifier_c)
+    verifier_logistic.fit(train_candidate_features, train_candidate_labels)
+    verifier_lgbm = None
+    if config.candidate_control_enabled:
+        verifier_lgbm = _verifier_lgbm_estimator(config.seed + 23)
+        verifier_lgbm.fit(train_candidate_features, train_candidate_labels)
+    return _FinalModelFit(
+        macro=macro,
+        micro=micro,
+        verifier_logistic=verifier_logistic,
+        verifier_lgbm=verifier_lgbm,
+        policy=policy,
+        admission=admission,
+        blend_weight=blend_weight,
     )
 
 
@@ -878,17 +938,19 @@ def _run_outer_dataset(
     )
 
     stage_started = time.perf_counter()
-    window_model = _window_estimator(config.seed + 2)
-    window_model.fit(train_features, train_labels)
-    if config.micro_enabled:
-        micro_model = _micro_window_estimator(config.seed + 12)
-        micro_model.fit(micro_train_features, micro_train_labels)
-    verifier_model = _verifier_estimator(config.seed + 3, selected_c)
-    verifier_model.fit(train_candidate_features, train_candidate_labels)
-    verifier_lgbm_model = None
-    if config.candidate_control_enabled:
-        verifier_lgbm_model = _verifier_lgbm_estimator(config.seed + 23)
-        verifier_lgbm_model.fit(train_candidate_features, train_candidate_labels)
+    final_fit = _fit_final_models(
+        config,
+        train_features=train_features,
+        train_labels=train_labels,
+        micro_train_features=(micro_train_features if config.micro_enabled else None),
+        micro_train_labels=(micro_train_labels if config.micro_enabled else None),
+        train_candidate_features=train_candidate_features,
+        train_candidate_labels=train_candidate_labels,
+        verifier_c=selected_c,
+        policy=policy,
+        admission=selected_admission,
+        blend_weight=selected_blend_weight,
+    )
     fit_seconds = time.perf_counter() - stage_started
 
     stage_started = time.perf_counter()
@@ -896,7 +958,7 @@ def _run_outer_dataset(
         data_source.validation.features, data_source.validation.windows
     )
     validation_window_scores = _positive_probability(
-        window_model, validation_features
+        final_fit.macro, validation_features
     )
     validation_windows = _windows_by_session(
         data_source.validation.windows, validation_window_scores
@@ -906,7 +968,10 @@ def _run_outer_dataset(
     )
     raw_micro_validation_candidates = []
     if config.micro_enabled:
-        micro_validation_scores = _positive_probability(micro_model, micro_validation.features)
+        assert final_fit.micro is not None
+        micro_validation_scores = _positive_probability(
+            final_fit.micro, micro_validation.features
+        )
         micro_validation_windows = _windows_by_session(
             micro_validation.windows, micro_validation_scores
         )
@@ -933,15 +998,16 @@ def _run_outer_dataset(
     if validation_candidates:
         verifier_started = time.perf_counter()
         logistic_validation_scores = _positive_probability(
-            verifier_model, validation_candidate_features
+            final_fit.verifier_logistic, validation_candidate_features
         )
         logistic_outer_elapsed = time.perf_counter() - verifier_started
         if config.candidate_control_enabled:
             verifier_logistic_outer_seconds = logistic_outer_elapsed
         if config.candidate_control_enabled:
             verifier_started = time.perf_counter()
+            assert final_fit.verifier_lgbm is not None
             lgbm_validation_scores = _positive_probability(
-                verifier_lgbm_model, validation_candidate_features
+                final_fit.verifier_lgbm, validation_candidate_features
             )
             verifier_lgbm_outer_seconds = time.perf_counter() - verifier_started
             validation_scores = (
