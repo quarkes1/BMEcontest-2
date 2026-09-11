@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import platform
 import shutil
@@ -27,6 +28,9 @@ import sklearn
 PROMOTION_F1_FLOOR = 0.47863247863247865
 _BUNDLE_VERSION = 1
 _ROLES = frozenset(("outer-fold-evidence", "deployment"))
+_METADATA_FILENAMES = frozenset(
+    ("policy.json", "run_config.json", "feature_schema.json")
+)
 
 
 class PromotionContractError(RuntimeError):
@@ -126,22 +130,43 @@ def _dependency_versions() -> dict[str, str | None]:
     }
 
 
-def _event_stack_parent(destination: Path) -> Path:
-    parent = destination.parent
-    event_stack = parent if parent.name == "event_stack" else parent.parent
-    is_direct_bundle = parent.name == "event_stack"
-    is_run_bundle = parent.parent.name == "event_stack"
-    if destination.name in {"", ".", ".."} or not (is_direct_bundle or is_run_bundle):
+def _trusted_event_stack_root(event_stack_root: Path) -> Path:
+    """Normalize an explicit caller-authorized root without accepting symlinks."""
+
+    root = Path(event_stack_root).absolute()
+    if root.name != "event_stack":
+        raise ValueError("trusted event_stack_root must be named event_stack")
+    current = root
+    while True:
+        if current.exists() and current.is_symlink():
+            raise ValueError("trusted event_stack_root must not contain symlink components")
+        if current.parent == current:
+            break
+        current = current.parent
+    return root
+
+
+def _event_stack_parent(destination: Path, *, event_stack_root: Path) -> Path:
+    """Validate that a bundle destination is anchored below one trusted root."""
+
+    root = _trusted_event_stack_root(event_stack_root)
+    destination = Path(destination).absolute()
+    try:
+        relative = destination.relative_to(root)
+    except ValueError as exc:
+        raise ValueError("bundle destination is outside the trusted event_stack_root") from exc
+    if len(relative.parts) not in (1, 2) or destination.name in {"", ".", ".."}:
         raise ValueError(
-            "bundle destination must be directly under models/event_stack or one run-key beneath it"
+            "bundle destination must be directly under the trusted root or one run-key beneath it"
         )
+    current = root
+    for part in relative.parts[:-1]:
+        current = current / part
+        if current.exists() and current.is_symlink():
+            raise ValueError("bundle destination must not traverse symlink components")
     if destination.exists() and destination.is_symlink():
         raise ValueError("bundle destination must not be a symlink")
-    if (parent.exists() and parent.is_symlink()) or (
-        event_stack.exists() and event_stack.is_symlink()
-    ):
-        raise ValueError("models/event_stack and its run-key directory must not be symlinks")
-    return parent
+    return destination.parent
 
 
 def _safe_remove(path: Path) -> None:
@@ -153,11 +178,13 @@ def _safe_remove(path: Path) -> None:
         shutil.rmtree(path)
 
 
-def cleanup_stale_bundle_temporary_directories(destination: Path) -> tuple[Path, ...]:
+def cleanup_stale_bundle_temporary_directories(
+    destination: Path, *, event_stack_root: Path
+) -> tuple[Path, ...]:
     """Remove only this run key's sibling temp/backup paths; never traverse links."""
 
     destination = Path(destination)
-    parent = _event_stack_parent(destination)
+    parent = _event_stack_parent(destination, event_stack_root=event_stack_root)
     if not parent.exists():
         return ()
     prefixes = (
@@ -234,46 +261,79 @@ def verify_bundle_manifest(
     if not isinstance(files, dict) or not files:
         problems.append("manifest files must be a nonempty object")
         return tuple(problems)
-    expected_names = set(files)
+    models = manifest.get("models")
+    valid_model_names = (
+        isinstance(models, list)
+        and all(
+            isinstance(name, str) and name and Path(name).name == name
+            for name in models
+        )
+        and len(set(models)) == len(models)
+    )
+    if not valid_model_names:
+        problems.append("manifest model entries do not match serialized model files")
+        expected_model_files: set[str] = set()
+    else:
+        expected_model_files = {f"{name}.joblib" for name in models}
+    expected_names = _METADATA_FILENAMES | expected_model_files
     actual_names = {
         path.name
         for path in destination.iterdir()
         if path.is_file() and path.name != "manifest.json"
     }
-    if expected_names != actual_names:
-        problems.append("manifest file set does not match bundle contents")
+    listed_names = set(files)
+    if not _METADATA_FILENAMES <= listed_names or not _METADATA_FILENAMES <= actual_names:
+        problems.append("required metadata files are missing")
+    if listed_names != expected_names or actual_names != expected_names:
+        problems.append("manifest file set does not match required metadata and models")
     for name, expected_hash in sorted(files.items()):
         path = destination / name
         if Path(name).name != name or not path.is_file() or path.is_symlink():
             problems.append(f"invalid manifest file entry: {name}")
         elif not isinstance(expected_hash, str) or _sha256(path) != expected_hash:
             problems.append(f"SHA-256 mismatch for {name}")
-    models = manifest.get("models")
-    expected_model_files = {name for name in expected_names if name.endswith(".joblib")}
-    if (
-        not isinstance(models, list)
-        or len(set(models)) != len(models)
-        or any(
-            not isinstance(name, str)
-            or not name
-            or Path(name).name != name
-            or f"{name}.joblib" not in expected_model_files
-            for name in models
-        )
-        or {f"{name}.joblib" for name in models} != expected_model_files
+    metadata: dict[str, Mapping[str, object]] = {}
+    for name in sorted(_METADATA_FILENAMES):
+        path = destination / name
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            problems.append(f"metadata JSON cannot be read for {name}: {exc}")
+            continue
+        if not isinstance(payload, dict):
+            problems.append(f"metadata JSON must be an object: {name}")
+            continue
+        metadata[name] = payload
+    feature_schema = metadata.get("feature_schema.json")
+    if feature_schema is not None and any(
+        not isinstance(name, str)
+        or not isinstance(width, (int, np.integer))
+        or isinstance(width, (bool, np.bool_))
+        or int(width) < 1
+        for name, width in feature_schema.items()
     ):
-        problems.append("manifest model entries do not match serialized model files")
+        problems.append("feature schema must map names to positive integer widths")
+    if not isinstance(manifest.get("metrics"), dict):
+        problems.append("manifest metrics must be an object")
+    fingerprints = manifest.get("source_fingerprints")
+    if not isinstance(fingerprints, list) or not all(
+        isinstance(item, dict) for item in fingerprints
+    ):
+        problems.append("manifest source_fingerprints must be an array of objects")
     return tuple(problems)
 
 
-def write_event_stack_bundle(destination: Path, bundle: EventStackBundle) -> None:
+def write_event_stack_bundle(
+    destination: Path, bundle: EventStackBundle, *, event_stack_root: Path
+) -> None:
     """Write a complete verified bundle then atomically install it at *destination*."""
 
     destination = Path(destination)
-    parent = _event_stack_parent(destination)
+    root = _trusted_event_stack_root(event_stack_root)
+    parent = _event_stack_parent(destination, event_stack_root=root)
     parent.mkdir(parents=True, exist_ok=True)
-    if parent.is_symlink():
-        raise ValueError("models/event_stack must not be a symlink")
+    if parent.is_symlink() or root.is_symlink():
+        raise ValueError("trusted event_stack_root must not contain symlink components")
     temporary = parent / f".{destination.name}.tmp-{uuid.uuid4().hex}"
     backup = parent / f".{destination.name}.backup-{uuid.uuid4().hex}"
     moved_existing = False
@@ -340,6 +400,58 @@ def load_event_stack_bundle(
     )
 
 
+def _verify_run_bundles(
+    run_root: Path, bundles: Mapping[str, EventStackBundle]
+) -> None:
+    """Verify and deserialize every staged bundle before a run-root install."""
+
+    for key in sorted(bundles):
+        bundle_path = run_root / key
+        problems = verify_bundle_manifest(bundle_path)
+        if problems:
+            raise ValueError(
+                f"staged bundle {key!r} failed verification: " + "; ".join(problems)
+            )
+        load_event_stack_bundle(bundle_path, expected_role=bundles[key].role)
+
+
+def _install_run_root(
+    destination: Path,
+    staging: Path,
+    bundles: Mapping[str, EventStackBundle],
+) -> None:
+    """Atomically replace a complete run root, restoring any verified predecessor."""
+
+    parent = destination.parent
+    backup = parent / f".{destination.name}.backup-{uuid.uuid4().hex}"
+    moved_existing = False
+    promoted_new = False
+    installed = False
+    try:
+        if destination.exists():
+            if destination.is_symlink():
+                raise ValueError("promotion destination must not be a symlink")
+            os.replace(destination, backup)
+            moved_existing = True
+        os.replace(staging, destination)
+        promoted_new = True
+        _verify_run_bundles(destination, bundles)
+        installed = True
+        if backup.exists() or backup.is_symlink():
+            _safe_remove(backup)
+    except Exception:
+        if promoted_new and (destination.exists() or destination.is_symlink()):
+            _safe_remove(destination)
+        if moved_existing and (backup.exists() or backup.is_symlink()):
+            os.replace(backup, destination)
+        raise
+    finally:
+        if staging.exists() or staging.is_symlink():
+            _safe_remove(staging)
+        if installed and (backup.exists() or backup.is_symlink()):
+            _safe_remove(backup)
+
+
 def promote_summary(
     summary_path: Path,
     *,
@@ -358,6 +470,8 @@ def promote_summary(
         f1 = float(summary["outer_metrics"]["f1"])
     except (KeyError, TypeError, ValueError) as exc:
         raise PromotionContractError("summary lacks aggregate outer_metrics.f1") from exc
+    if not math.isfinite(f1) or not 0.0 <= f1 <= 1.0:
+        raise PromotionContractError("aggregate F1 must be finite and in [0, 1]")
     if not f1 > PROMOTION_F1_FLOOR:
         raise PromotionContractError(
             f"aggregate F1 must be strictly greater than {PROMOTION_F1_FLOOR:.10f}; got {f1:.10f}"
@@ -370,6 +484,8 @@ def promote_summary(
     bundles = trainer(summary)
     if not isinstance(bundles, Mapping) or not bundles:
         raise PromotionContractError("trainer must return a nonempty mapping of bundles")
+    if any(not isinstance(bundle, EventStackBundle) for bundle in bundles.values()):
+        raise PromotionContractError("trainer must return EventStackBundle values")
     deployment = [key for key, bundle in bundles.items() if bundle.role == "deployment"]
     evidence = [key for key, bundle in bundles.items() if bundle.role == "outer-fold-evidence"]
     if len(deployment) != 1 or len(evidence) != 5 or len(bundles) != 6:
@@ -379,12 +495,24 @@ def promote_summary(
     run_key = str(summary.get("experiment_key") or Path(summary_path).stem)
     if Path(run_key).name != run_key:
         raise PromotionContractError("summary experiment key is not a safe directory name")
-    destination = Path(output_root) / "event_stack" / run_key
-    written: list[Path] = []
     for key in sorted(bundles):
         if not isinstance(key, str) or not key or Path(key).name != key:
             raise PromotionContractError("trainer bundle keys must be safe directory names")
-        bundle_destination = destination / str(key)
-        write_event_stack_bundle(bundle_destination, bundles[key])
-        written.append(bundle_destination)
-    return tuple(written)
+    event_stack_root = _trusted_event_stack_root(Path(output_root) / "event_stack")
+    destination = event_stack_root / run_key
+    _event_stack_parent(destination / "deployment", event_stack_root=event_stack_root)
+    event_stack_root.mkdir(parents=True, exist_ok=True)
+    if event_stack_root.is_symlink():
+        raise ValueError("trusted event_stack_root must not contain symlink components")
+    staging = event_stack_root / f".{run_key}.staging-{uuid.uuid4().hex}"
+    try:
+        staging.mkdir(parents=False)
+        for key in sorted(bundles):
+            bundle_destination = staging / key
+            _write_bundle_contents(bundle_destination, bundle_destination, bundles[key])
+        _verify_run_bundles(staging, bundles)
+        _install_run_root(destination, staging, bundles)
+    finally:
+        if staging.exists() or staging.is_symlink():
+            _safe_remove(staging)
+    return tuple(destination / key for key in sorted(bundles))

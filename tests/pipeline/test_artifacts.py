@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import replace
 from pathlib import Path
@@ -44,7 +45,7 @@ def test_bundle_round_trip_preserves_predictions_and_manifest(tmp_path: Path):
     bundle = fitted_tiny_bundle()
     destination = tmp_path / "models" / "event_stack" / "run-key"
 
-    write_event_stack_bundle(destination, bundle)
+    write_event_stack_bundle(destination, bundle, event_stack_root=destination.parent)
     loaded = load_event_stack_bundle(destination)
 
     probe = np.array([[0.25], [0.75]])
@@ -58,7 +59,9 @@ def test_bundle_round_trip_preserves_predictions_and_manifest(tmp_path: Path):
 
 def test_tampered_model_is_rejected(tmp_path: Path):
     destination = tmp_path / "models" / "event_stack" / "run-key"
-    write_event_stack_bundle(destination, fitted_tiny_bundle())
+    write_event_stack_bundle(
+        destination, fitted_tiny_bundle(), event_stack_root=destination.parent
+    )
     (destination / "verifier_lgbm.joblib").write_bytes(b"tampered")
 
     with pytest.raises(ValueError, match="SHA-256"):
@@ -67,7 +70,9 @@ def test_tampered_model_is_rejected(tmp_path: Path):
 
 def test_manifest_model_path_escape_is_rejected_before_deserialization(tmp_path: Path):
     destination = tmp_path / "models" / "event_stack" / "run-key"
-    write_event_stack_bundle(destination, fitted_tiny_bundle())
+    write_event_stack_bundle(
+        destination, fitted_tiny_bundle(), event_stack_root=destination.parent
+    )
     manifest_path = destination / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     manifest["models"] = ["../outside"]
@@ -79,7 +84,9 @@ def test_manifest_model_path_escape_is_rejected_before_deserialization(tmp_path:
 
 def test_failed_directory_swap_restores_exact_previous_bundle(tmp_path: Path, monkeypatch):
     destination = tmp_path / "models" / "event_stack" / "run-key"
-    write_event_stack_bundle(destination, fitted_tiny_bundle())
+    write_event_stack_bundle(
+        destination, fitted_tiny_bundle(), event_stack_root=destination.parent
+    )
     previous = {
         path.relative_to(destination).as_posix(): path.read_bytes()
         for path in destination.rglob("*")
@@ -100,7 +107,9 @@ def test_failed_directory_swap_restores_exact_previous_bundle(tmp_path: Path, mo
 
     monkeypatch.setattr(artifacts.os, "replace", fail_only_new_bundle)
     with pytest.raises(OSError, match="injected replacement failure"):
-        write_event_stack_bundle(destination, fitted_tiny_bundle())
+        write_event_stack_bundle(
+            destination, fitted_tiny_bundle(), event_stack_root=destination.parent
+        )
 
     current = {
         path.relative_to(destination).as_posix(): path.read_bytes()
@@ -113,7 +122,9 @@ def test_failed_directory_swap_restores_exact_previous_bundle(tmp_path: Path, mo
 
 def test_failed_post_install_verification_restores_previous_bundle(tmp_path: Path, monkeypatch):
     destination = tmp_path / "models" / "event_stack" / "run-key"
-    write_event_stack_bundle(destination, fitted_tiny_bundle())
+    write_event_stack_bundle(
+        destination, fitted_tiny_bundle(), event_stack_root=destination.parent
+    )
     previous = (destination / "manifest.json").read_bytes()
 
     import src.pipeline.artifacts as artifacts
@@ -130,6 +141,7 @@ def test_failed_post_install_verification_restores_previous_bundle(tmp_path: Pat
         write_event_stack_bundle(
             destination,
             replace(fitted_tiny_bundle(), metrics={"f1": 0.5}),
+            event_stack_root=destination.parent,
         )
 
     assert (destination / "manifest.json").read_bytes() == previous
@@ -153,7 +165,9 @@ def test_stale_cleanup_is_scoped_and_never_follows_external_symlink(tmp_path: Pa
     except OSError as exc:
         pytest.skip(f"symlinks are not available: {exc}")
 
-    removed = cleanup_stale_bundle_temporary_directories(event_stack / "run-key")
+    removed = cleanup_stale_bundle_temporary_directories(
+        event_stack / "run-key", event_stack_root=event_stack
+    )
 
     assert removed == (stale, linked)
     assert not stale.exists()
@@ -177,7 +191,11 @@ def test_non_improving_summary_performs_zero_writes(tmp_path: Path):
 
 def test_deployment_cannot_be_loaded_as_outer_fold_evidence(tmp_path: Path):
     destination = tmp_path / "models" / "event_stack" / "deployment"
-    write_event_stack_bundle(destination, fitted_tiny_bundle(role="deployment"))
+    write_event_stack_bundle(
+        destination,
+        fitted_tiny_bundle(role="deployment"),
+        event_stack_root=destination.parent,
+    )
 
     with pytest.raises(ValueError, match="outer-fold-evidence"):
         load_event_stack_bundle(destination, expected_role="outer-fold-evidence")
@@ -237,3 +255,155 @@ def test_qualified_promotion_writes_five_evidence_bundles_and_one_deployment(
     assert all(path.parent.name == "registered-key" for path in written)
     deployment = next(path for path in written if path.name == "deployment")
     assert load_event_stack_bundle(deployment, expected_role="deployment").role == "deployment"
+
+
+def test_bundle_write_rejects_same_named_directory_outside_trusted_root(tmp_path: Path):
+    trusted_root = tmp_path / "models" / "event_stack"
+    outside_destination = tmp_path / "outside" / "event_stack" / "run-key"
+
+    with pytest.raises(ValueError, match="trusted event_stack_root"):
+        write_event_stack_bundle(
+            outside_destination,
+            fitted_tiny_bundle(),
+            event_stack_root=trusted_root,
+        )
+
+    assert not outside_destination.exists()
+
+
+def test_manifest_requires_all_metadata_before_model_deserialization(tmp_path: Path):
+    destination = tmp_path / "models" / "event_stack" / "run-key"
+    write_event_stack_bundle(
+        destination, fitted_tiny_bundle(), event_stack_root=destination.parent
+    )
+    (destination / "policy.json").unlink()
+    manifest_path = destination / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["files"].pop("policy.json")
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    assert any("required metadata" in item for item in verify_bundle_manifest(destination))
+    with pytest.raises(ValueError, match="required metadata"):
+        load_event_stack_bundle(destination)
+
+
+@pytest.mark.parametrize(
+    "metadata_name", ("policy.json", "run_config.json", "feature_schema.json")
+)
+def test_metadata_must_be_json_object(tmp_path: Path, metadata_name: str):
+    destination = tmp_path / "models" / "event_stack" / "run-key"
+    write_event_stack_bundle(
+        destination, fitted_tiny_bundle(), event_stack_root=destination.parent
+    )
+    metadata_path = destination / metadata_name
+    metadata_path.write_text("[]", encoding="utf-8")
+    manifest_path = destination / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["files"][metadata_name] = hashlib.sha256(metadata_path.read_bytes()).hexdigest()
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    assert any(
+        "metadata JSON must be an object" in item
+        for item in verify_bundle_manifest(destination)
+    )
+    with pytest.raises(ValueError, match="metadata JSON must be an object"):
+        load_event_stack_bundle(destination)
+
+
+@pytest.mark.parametrize("f1", (float("nan"), float("inf"), -0.1, 1.1))
+def test_invalid_aggregate_f1_performs_zero_writes(tmp_path: Path, f1: float):
+    summary = tmp_path / "summary.json"
+    summary.write_text(json.dumps({"outer_metrics": {"f1": f1}}), encoding="utf-8")
+    output_root = tmp_path / "models"
+
+    with pytest.raises(PromotionContractError, match="finite"):
+        promote_summary(summary, output_root=output_root, trainer=lambda _: {})
+
+    assert not output_root.exists()
+
+
+def _qualified_summary(tmp_path: Path) -> Path:
+    summary = tmp_path / "summary.json"
+    summary.write_text(
+        json.dumps(
+            {
+                "experiment_key": "registered-key",
+                "outer_metrics": {"f1": PROMOTION_F1_FLOOR + 0.01},
+            }
+        ),
+        encoding="utf-8",
+    )
+    return summary
+
+
+def _six_bundle_trainer(_summary):
+    return {
+        **{f"outer-fold-{fold}": fitted_tiny_bundle() for fold in range(5)},
+        "deployment": fitted_tiny_bundle(role="deployment"),
+    }
+
+
+def test_promotion_failure_while_staging_third_bundle_leaves_no_run_key(
+    tmp_path: Path, monkeypatch
+):
+    import src.pipeline.artifacts as artifacts
+
+    real_write = artifacts._write_bundle_contents
+    calls = 0
+
+    def fail_third_bundle(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 3:
+            raise OSError("injected third bundle failure")
+        return real_write(*args, **kwargs)
+
+    monkeypatch.setattr(artifacts, "_write_bundle_contents", fail_third_bundle)
+    output_root = tmp_path / "models"
+    with pytest.raises(OSError, match="injected third bundle failure"):
+        promote_summary(
+            _qualified_summary(tmp_path),
+            output_root=output_root,
+            trainer=_six_bundle_trainer,
+        )
+
+    event_stack = output_root / "event_stack"
+    assert not (event_stack / "registered-key").exists()
+    assert not tuple(event_stack.glob(".registered-key.*"))
+
+
+def test_promotion_staging_failure_keeps_existing_run_key_byte_identical(
+    tmp_path: Path, monkeypatch
+):
+    summary = _qualified_summary(tmp_path)
+    output_root = tmp_path / "models"
+    promote_summary(summary, output_root=output_root, trainer=_six_bundle_trainer)
+    run_root = output_root / "event_stack" / "registered-key"
+    previous = {
+        path.relative_to(run_root).as_posix(): path.read_bytes()
+        for path in run_root.rglob("*")
+        if path.is_file()
+    }
+
+    import src.pipeline.artifacts as artifacts
+
+    real_write = artifacts._write_bundle_contents
+    calls = 0
+
+    def fail_third_bundle(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 3:
+            raise OSError("injected third bundle failure")
+        return real_write(*args, **kwargs)
+
+    monkeypatch.setattr(artifacts, "_write_bundle_contents", fail_third_bundle)
+    with pytest.raises(OSError, match="injected third bundle failure"):
+        promote_summary(summary, output_root=output_root, trainer=_six_bundle_trainer)
+
+    current = {
+        path.relative_to(run_root).as_posix(): path.read_bytes()
+        for path in run_root.rglob("*")
+        if path.is_file()
+    }
+    assert current == previous
