@@ -134,7 +134,7 @@ def _validate_registered_probability_grid(
     return normalized
 
 
-def _validate_registered_subject_cap_grid(values: tuple[int, ...]) -> None:
+def _validate_registered_subject_cap_grid(values: tuple[int, ...]) -> tuple[int, ...]:
     if not values:
         raise ValueError("admission_subject_cap_grid must be a nonempty grid")
     if any(
@@ -146,6 +146,7 @@ def _validate_registered_subject_cap_grid(values: tuple[int, ...]) -> None:
         raise ValueError("admission_subject_cap_grid must contain positive integers")
     if len(set(values)) != len(values) or tuple(sorted(values)) != values:
         raise ValueError("admission_subject_cap_grid must be unique and sorted")
+    return tuple(int(value) for value in values)
 
 
 @dataclass(frozen=True)
@@ -194,7 +195,11 @@ class RunConfig:
                 self.admission_threshold_grid, "admission_threshold_grid"
             ),
         )
-        _validate_registered_subject_cap_grid(self.admission_subject_cap_grid)
+        object.__setattr__(
+            self,
+            "admission_subject_cap_grid",
+            _validate_registered_subject_cap_grid(self.admission_subject_cap_grid),
+        )
         object.__setattr__(
             self,
             "verifier_blend_weight_grid",

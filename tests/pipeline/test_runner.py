@@ -818,6 +818,17 @@ def test_stacked_float_config_normalizes_numpy_real_values_to_python_floats():
     assert type(config.admission_minimum_recall) is float
 
 
+def test_admission_subject_cap_normalizes_numpy_integer_for_cache_identity():
+    config = RunConfig(
+        outer_fold=0,
+        admission_subject_cap_grid=(np.int64(3),),
+    )
+
+    assert cache_key(config)
+    assert config.admission_subject_cap_grid == (3,)
+    assert type(config.admission_subject_cap_grid[0]) is int
+
+
 def test_cli_candidate_control_requires_micro_and_propagates_registered_grids(tmp_path, monkeypatch):
     from scripts import crossfit_event_stack as cli
 
