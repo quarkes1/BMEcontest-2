@@ -138,3 +138,20 @@ def test_candidate_control_disabled_keeps_neutral_stacking_fields():
     assert result.verifier_lgbm_oof_seconds == 0.0
     assert result.verifier_logistic_outer_seconds == 0.0
     assert result.verifier_lgbm_outer_seconds == 0.0
+
+
+def test_admission_falls_back_to_highest_recall_when_floor_is_unreachable():
+    config = registered_stacking_config(
+        admission_nms_iou_grid=(0.3,),
+        admission_threshold_grid=(1.0,),
+        admission_subject_cap_grid=(1,),
+    )
+
+    result = run_outer_fold(config, multiscale_dataset())
+
+    assert result.selected_admission_nms_iou == 0.3
+    assert result.selected_admission_threshold == 1.0
+    assert result.selected_admission_subject_cap == 1
+    assert result.selected_blend_weight in config.verifier_blend_weight_grid
+    assert np.isfinite(result.inner_metrics.f1)
+    assert np.isfinite(result.outer_metrics.f1)

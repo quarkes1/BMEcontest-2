@@ -730,7 +730,16 @@ def _run_outer_dataset(
             for cap in config.admission_subject_cap_grid
         )
         stage_started = time.perf_counter()
-        best_stacked_rank: tuple[object, ...] | None = None
+        stacked_choices: list[
+            tuple[
+                float,
+                tuple[object, ...],
+                float,
+                float,
+                CandidateAdmissionConfig,
+                EventSelectionPolicy,
+            ]
+        ] = []
         for c_rank, regularization_c in enumerate(config.verifier_c_grid):
             logistic_oof = logistic_oof_by_c[float(regularization_c)]
             if (
@@ -759,8 +768,6 @@ def _run_outer_dataset(
                     admission_metrics = compute_event_metrics(
                         admitted_events, data_source.train_truths
                     )
-                    if admission_metrics.sensitivity < config.admission_minimum_recall:
-                        continue
                     if config.subject_cap_grid:
                         candidate_policy = select_event_policy(
                             admitted_events,
@@ -780,7 +787,7 @@ def _run_outer_dataset(
                             None,
                             threshold_selection.metrics,
                         )
-                    rank = (
+                    event_rank = (
                         candidate_policy.metrics.f1,
                         candidate_policy.metrics.ppv,
                         -len(admitted),
@@ -790,17 +797,36 @@ def _run_outer_dataset(
                         -candidate_policy.threshold,
                         -float(candidate_policy.max_events_per_group or math.inf),
                     )
-                    if best_stacked_rank is None or rank > best_stacked_rank:
-                        best_stacked_rank = rank
-                        selected_c = float(regularization_c)
-                        selected_blend_weight = float(blend_weight)
-                        selected_admission = admission
-                        policy = candidate_policy
+                    stacked_choices.append(
+                        (
+                            admission_metrics.sensitivity,
+                            event_rank,
+                            float(regularization_c),
+                            float(blend_weight),
+                            admission,
+                            candidate_policy,
+                        )
+                    )
         admission_selection_seconds = time.perf_counter() - stage_started
-        if best_stacked_rank is None:
-            raise ValueError(
-                "no candidate admission configuration satisfies admission_minimum_recall"
+        feasible_choices = [
+            choice
+            for choice in stacked_choices
+            if choice[0] >= config.admission_minimum_recall
+        ]
+        if feasible_choices:
+            selected_choice = max(feasible_choices, key=lambda choice: choice[1])
+        else:
+            selected_choice = max(
+                stacked_choices, key=lambda choice: (choice[0], *choice[1])
             )
+        (
+            _,
+            _,
+            selected_c,
+            selected_blend_weight,
+            selected_admission,
+            policy,
+        ) = selected_choice
     else:
         for regularization_c in config.verifier_c_grid:
             verifier_oof = crossfit_predict_proba(
