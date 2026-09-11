@@ -44,6 +44,10 @@ from sklearn.preprocessing import StandardScaler
 from threadpoolctl import threadpool_limits
 
 from src.eval.metrics import event_iou
+from src.pipeline.candidate_control import (
+    CandidateAdmissionConfig,
+    admit_candidates,
+)
 from src.pipeline.crossfit import crossfit_predict_proba
 from src.pipeline.event_stack import (
     _GLOBAL_PRIOR,
@@ -682,48 +686,170 @@ def _run_outer_dataset(
     best_verifier_rank: tuple[float, float, float] | None = None
     selected_c: float | None = None
     policy: EventSelectionPolicy | None = None
-    for regularization_c in config.verifier_c_grid:
-        verifier_oof = crossfit_predict_proba(
+    selected_blend_weight: float | None = None
+    selected_admission: CandidateAdmissionConfig | None = None
+    verifier_logistic_oof_seconds = 0.0
+    verifier_lgbm_oof_seconds = 0.0
+    admission_selection_seconds = 0.0
+
+    if config.candidate_control_enabled:
+        stage_started = time.perf_counter()
+        logistic_oof_by_c = {}
+        for regularization_c in config.verifier_c_grid:
+            logistic_oof_by_c[float(regularization_c)] = crossfit_predict_proba(
+                train_candidate_features,
+                train_candidate_labels,
+                train_candidate_groups,
+                train_candidate_features,
+                train_candidate_groups,
+                config.inner_splits,
+                estimator_factory=lambda c=regularization_c: _verifier_estimator(
+                    config.seed + 20, c
+                ),
+            ).probabilities
+        verifier_logistic_oof_seconds = time.perf_counter() - stage_started
+
+        stage_started = time.perf_counter()
+        lgbm_oof = crossfit_predict_proba(
             train_candidate_features,
             train_candidate_labels,
             train_candidate_groups,
             train_candidate_features,
             train_candidate_groups,
             config.inner_splits,
-            estimator_factory=lambda c=regularization_c: _verifier_estimator(
-                config.seed + 1, c
-            ),
+            estimator_factory=lambda: _verifier_lgbm_estimator(config.seed + 21),
+        ).probabilities
+        verifier_lgbm_oof_seconds = time.perf_counter() - stage_started
+        if not np.isfinite(lgbm_oof).all():
+            raise RuntimeError("LightGBM verifier OOF produced non-finite scores")
+
+        admission_configs = tuple(
+            CandidateAdmissionConfig(nms_iou, threshold, cap)
+            for nms_iou in config.admission_nms_iou_grid
+            for threshold in config.admission_threshold_grid
+            for cap in config.admission_subject_cap_grid
         )
-        if config.subject_cap_grid:
-            candidate_policy = select_event_policy(
-                train_candidate_events,
-                verifier_oof.probabilities,
-                data_source.train_truths,
+        stage_started = time.perf_counter()
+        best_stacked_rank: tuple[object, ...] | None = None
+        for c_rank, regularization_c in enumerate(config.verifier_c_grid):
+            logistic_oof = logistic_oof_by_c[float(regularization_c)]
+            if (
+                logistic_oof.shape != lgbm_oof.shape
+                or not np.isfinite(logistic_oof).all()
+            ):
+                raise RuntimeError("verifier OOF scores are not finite and aligned")
+            for blend_rank, blend_weight in enumerate(config.verifier_blend_weight_grid):
+                blended_scores = (
+                    blend_weight * logistic_oof
+                    + (1.0 - blend_weight) * lgbm_oof
+                )
+                for admission_rank, admission in enumerate(admission_configs):
+                    admitted = admit_candidates(
+                        train_candidates,
+                        blended_scores,
+                        train_candidate_groups,
+                        admission,
+                    )
+                    admitted_rows = np.asarray(admitted, dtype=np.int64)
+                    admitted_events = [
+                        train_candidate_events[index] for index in admitted
+                    ]
+                    admitted_scores = blended_scores[admitted_rows]
+                    admitted_groups = train_candidate_groups[admitted_rows]
+                    admission_metrics = compute_event_metrics(
+                        admitted_events, data_source.train_truths
+                    )
+                    if admission_metrics.sensitivity < config.admission_minimum_recall:
+                        continue
+                    if config.subject_cap_grid:
+                        candidate_policy = select_event_policy(
+                            admitted_events,
+                            admitted_scores,
+                            data_source.train_truths,
+                            admitted_groups,
+                            max_events_options=config.subject_cap_grid,
+                        )
+                    else:
+                        threshold_selection = select_event_threshold(
+                            admitted_events,
+                            admitted_scores,
+                            data_source.train_truths,
+                        )
+                        candidate_policy = EventSelectionPolicy(
+                            threshold_selection.threshold,
+                            None,
+                            threshold_selection.metrics,
+                        )
+                    rank = (
+                        candidate_policy.metrics.f1,
+                        candidate_policy.metrics.ppv,
+                        -len(admitted),
+                        -c_rank,
+                        -blend_rank,
+                        -admission_rank,
+                        -candidate_policy.threshold,
+                        -float(candidate_policy.max_events_per_group or math.inf),
+                    )
+                    if best_stacked_rank is None or rank > best_stacked_rank:
+                        best_stacked_rank = rank
+                        selected_c = float(regularization_c)
+                        selected_blend_weight = float(blend_weight)
+                        selected_admission = admission
+                        policy = candidate_policy
+        admission_selection_seconds = time.perf_counter() - stage_started
+        if best_stacked_rank is None:
+            raise ValueError(
+                "no candidate admission configuration satisfies admission_minimum_recall"
+            )
+    else:
+        for regularization_c in config.verifier_c_grid:
+            verifier_oof = crossfit_predict_proba(
+                train_candidate_features,
+                train_candidate_labels,
                 train_candidate_groups,
-                max_events_options=config.subject_cap_grid,
+                train_candidate_features,
+                train_candidate_groups,
+                config.inner_splits,
+                estimator_factory=lambda c=regularization_c: _verifier_estimator(
+                    config.seed + 1, c
+                ),
             )
-        else:
-            threshold_selection = select_event_threshold(
-                train_candidate_events,
-                verifier_oof.probabilities,
-                data_source.train_truths,
+            if config.subject_cap_grid:
+                candidate_policy = select_event_policy(
+                    train_candidate_events,
+                    verifier_oof.probabilities,
+                    data_source.train_truths,
+                    train_candidate_groups,
+                    max_events_options=config.subject_cap_grid,
+                )
+            else:
+                threshold_selection = select_event_threshold(
+                    train_candidate_events,
+                    verifier_oof.probabilities,
+                    data_source.train_truths,
+                )
+                candidate_policy = EventSelectionPolicy(
+                    threshold_selection.threshold,
+                    None,
+                    threshold_selection.metrics,
+                )
+            rank = (
+                candidate_policy.metrics.f1,
+                candidate_policy.metrics.ppv,
+                -float(regularization_c),
             )
-            candidate_policy = EventSelectionPolicy(
-                threshold_selection.threshold,
-                None,
-                threshold_selection.metrics,
-            )
-        rank = (
-            candidate_policy.metrics.f1,
-            candidate_policy.metrics.ppv,
-            -float(regularization_c),
-        )
-        if best_verifier_rank is None or rank > best_verifier_rank:
-            best_verifier_rank = rank
-            selected_c = float(regularization_c)
-            policy = candidate_policy
+            if best_verifier_rank is None or rank > best_verifier_rank:
+                best_verifier_rank = rank
+                selected_c = float(regularization_c)
+                policy = candidate_policy
     assert selected_c is not None and policy is not None
-    verifier_oof_seconds = time.perf_counter() - stage_started
+    verifier_oof_seconds = (
+        verifier_logistic_oof_seconds
+        + verifier_lgbm_oof_seconds
+        + admission_selection_seconds
+        if config.candidate_control_enabled
+        else time.perf_counter() - stage_started
+    )
 
     stage_started = time.perf_counter()
     window_model = _window_estimator(config.seed + 2)
@@ -733,6 +859,10 @@ def _run_outer_dataset(
         micro_model.fit(micro_train_features, micro_train_labels)
     verifier_model = _verifier_estimator(config.seed + 3, selected_c)
     verifier_model.fit(train_candidate_features, train_candidate_labels)
+    verifier_lgbm_model = None
+    if config.candidate_control_enabled:
+        verifier_lgbm_model = _verifier_lgbm_estimator(config.seed + 23)
+        verifier_lgbm_model.fit(train_candidate_features, train_candidate_labels)
     fit_seconds = time.perf_counter() - stage_started
 
     stage_started = time.perf_counter()
@@ -771,10 +901,29 @@ def _run_outer_dataset(
             window_batch=data_source.validation,
             feature_mode=config.verifier_feature_mode,
         )
+    raw_union_candidate_count = len(validation_candidates)
+    verifier_logistic_outer_seconds = 0.0
+    verifier_lgbm_outer_seconds = 0.0
     if validation_candidates:
-        validation_scores = _positive_probability(
+        verifier_started = time.perf_counter()
+        logistic_validation_scores = _positive_probability(
             verifier_model, validation_candidate_features
         )
+        logistic_outer_elapsed = time.perf_counter() - verifier_started
+        if config.candidate_control_enabled:
+            verifier_logistic_outer_seconds = logistic_outer_elapsed
+        if config.candidate_control_enabled:
+            verifier_started = time.perf_counter()
+            lgbm_validation_scores = _positive_probability(
+                verifier_lgbm_model, validation_candidate_features
+            )
+            verifier_lgbm_outer_seconds = time.perf_counter() - verifier_started
+            validation_scores = (
+                selected_blend_weight * logistic_validation_scores
+                + (1.0 - selected_blend_weight) * lgbm_validation_scores
+            )
+        else:
+            validation_scores = logistic_validation_scores
     else:
         validation_scores = np.empty(0, dtype=np.float64)
     validation_candidate_events = [
@@ -784,6 +933,23 @@ def _run_outer_dataset(
         validation_candidate_events,
         data_source.subject_by_session,
     )
+    if config.candidate_control_enabled:
+        admitted_indices = admit_candidates(
+            validation_candidates,
+            validation_scores,
+            validation_candidate_groups,
+            selected_admission,
+        )
+        admitted_rows = np.asarray(admitted_indices, dtype=np.int64)
+        validation_candidates = [
+            validation_candidates[index] for index in admitted_indices
+        ]
+        validation_candidate_events = [
+            candidate.event for candidate in validation_candidates
+        ]
+        validation_candidate_features = validation_candidate_features[admitted_rows]
+        validation_scores = validation_scores[admitted_rows]
+        validation_candidate_groups = validation_candidate_groups[admitted_rows]
     selected_predictions = apply_event_policy(
         validation_candidate_events,
         validation_scores,
@@ -836,6 +1002,12 @@ def _run_outer_dataset(
         timings["feature_extraction"] = data_source.micro_cache_extraction_seconds
         timings["macro_window_oof"] = timings.pop("window_oof")
         timings["micro_window_oof"] = micro_oof_seconds
+    if config.candidate_control_enabled:
+        timings.update({
+            "verifier_logistic_oof": verifier_logistic_oof_seconds,
+            "verifier_lgbm_oof": verifier_lgbm_oof_seconds,
+            "admission_selection": admission_selection_seconds,
+        })
     return FoldResult(
         config_hash=config_hash,
         threshold=policy.threshold,
@@ -859,6 +1031,27 @@ def _run_outer_dataset(
         short_meal_candidate_recall=short_candidate_metrics.sensitivity if short_candidate_metrics else 0.0,
         micro_window_feature_count=micro_train_features.shape[1] if config.micro_enabled else 0,
         micro_window_fit_subjects=micro_fit_subjects,
+        selected_blend_weight=selected_blend_weight,
+        selected_admission_nms_iou=(
+            selected_admission.nms_iou if selected_admission is not None else None
+        ),
+        selected_admission_threshold=(
+            selected_admission.threshold if selected_admission is not None else None
+        ),
+        selected_admission_subject_cap=(
+            selected_admission.max_candidates_per_subject
+            if selected_admission is not None else None
+        ),
+        raw_union_candidate_count=(
+            raw_union_candidate_count if config.candidate_control_enabled else 0
+        ),
+        admitted_candidate_count=(
+            len(validation_candidates) if config.candidate_control_enabled else 0
+        ),
+        verifier_logistic_oof_seconds=verifier_logistic_oof_seconds,
+        verifier_lgbm_oof_seconds=verifier_lgbm_oof_seconds,
+        verifier_logistic_outer_seconds=verifier_logistic_outer_seconds,
+        verifier_lgbm_outer_seconds=verifier_lgbm_outer_seconds,
     )
 
 
