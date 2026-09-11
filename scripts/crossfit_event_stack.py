@@ -281,7 +281,8 @@ def main() -> int:
     if args.fold == "all":
         summary = aggregate_fold_results(configs, results)
         summary["run_configs"] = [asdict(config) for config in configs]
-        summary_path = output_directory / f"summary_{experiment_key(configs)}.json"
+        summary["experiment_key"] = experiment_key(configs)
+        summary_path = output_directory / f"summary_{summary['experiment_key']}.json"
         write_json_atomic(summary_path, summary)
         metrics = summary["outer_metrics"]
         print(

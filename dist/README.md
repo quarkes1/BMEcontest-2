@@ -20,8 +20,9 @@ python event_stack/predict_event_stack.py \
 `--device` 仅接受 `auto|cpu|gpu|cuda`，其中 `gpu` 等同 `cuda`。当前 sklearn/LightGBM
 组件均为 CPU：`auto` 会报告 `resolved_device=cpu`，而强制 `gpu/cuda` 会明确失败，绝不将
 CPU 树模型伪报为 GPU 推理。torch 是可选依赖；没有 CUDA 组件的 CPU 包无需安装 torch。
-未来 CUDA 组件必须声明 capability，且同输入 CPU/CUDA 分数绝对误差不得超过 `1e-5`、事件
-几何必须完全相同。
+CUDA 不能由 manifest 中的 boolean 声明；未来组件必须打入经 SHA-256 覆盖的、可加载的
+`cuda_adapter.py`，打包时强制 CPU/CUDA 分数误差 `<=1e-5`、事件几何完全一致。当前没有该
+adapter，因此 `auto` 固定 CPU，强制 CUDA 明确拒绝。
 
 输入不是原始 `collect_data*.txt` 会话，而是已生成的、可审计的候选特征 JSON：
 
@@ -30,6 +31,7 @@ CPU 树模型伪报为 GPU 推理。torch 是可选依赖；没有 CUDA 组件�
   "feature_schema": {"macro": 63, "micro": 47, "verifier": 56},
   "schema_hash": "SHA-256 of canonical feature_schema JSON",
   "sessions": [{
+    "subject_id": "stable-subject-id",
     "sid": "session-id",
     "candidates": [{
       "start_ms": 0, "end_ms": 1000,
@@ -42,8 +44,18 @@ CPU 树模型伪报为 GPU 推理。torch 是可选依赖；没有 CUDA 组件�
 ```
 
 运行时会校验 bundle manifest 的每个模型/metadata SHA-256、完整模型集合和 deployment role，
-并拒绝 schema/hash 不匹配。输出为稳定排序、紧凑 canonical JSON：
+并拒绝 schema/hash 不匹配。`subject_id` 与 `sid` 都是必填；`sid` 仅定义会话几何，冻结的
+candidate NMS/准入阈值/每受试者 cap 以及 event 阈值/每受试者 event cap 均按 `subject_id`
+执行。未知或遗留字段、缺失 subject_id、同 sid 关联多个 subject_id 均会被拒绝。输出为稳定
+排序、紧凑 canonical JSON：
 `{"events":[{"sid":...,"start_ms":...,"end_ms":...,"score":...}],"resolved_device":"cpu"}`。
+
+发布只接受正式 `promote_summary` 路径写出的 deployment bundle：同一 run 根目录必须包含
+canonical aggregate summary 与 `promotion_attestation.json`，后者绑定 run key、严格五个 outer
+fold、门槛/F1 和全部五折及 deployment manifest 的 SHA-256。该 attestation 是结构化可验证
+来源，不是秘密签名；手写 deployment manifest 中的 F1 不能绕过晋级门槛。打包器的默认目标是
+仓库 `dist/event_stack`，并只允许显式可信 `dist` 根下的精确 `event_stack` 子目录；不会触碰
+`dist/` 的旧文件。
 
 这是一个有意的临时限制：Task 4 artifact 未包含从原始会话构造 macro-63、micro-47、
 verifier-56 特征的已验证运行时模块、候选器配置或模型输入适配器；旧 `predict.py` 的

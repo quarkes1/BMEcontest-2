@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import math
 import sys
@@ -152,7 +153,7 @@ def _verify_bundle(bundle_path: Path) -> tuple[dict[str, Any], dict[str, Any], d
 
 
 def _runtime_capabilities(bundle_path: Path) -> bool:
-    """Read optional package capabilities; un-packaged Task-4 bundles are CPU-only."""
+    """Return whether an integrity-bound CUDA adapter is registered."""
 
     runtime_manifest = bundle_path.parent / "runtime_manifest.json"
     if not runtime_manifest.is_file():
@@ -175,7 +176,48 @@ def _runtime_capabilities(bundle_path: Path) -> bool:
     capabilities = payload.get("capabilities")
     if not isinstance(capabilities, dict):
         raise ValueError("runtime manifest capabilities must be an object")
-    return bool(capabilities.get("has_cuda_component", False))
+    # A boolean is only a claim. CUDA can be selected only through a concrete,
+    # checksummed adapter module that the package actually carries.
+    if "has_cuda_component" in capabilities:
+        raise ValueError("runtime manifest must declare a registered CUDA adapter, not a CUDA boolean")
+    adapter = capabilities.get("cuda_adapter")
+    if adapter is None:
+        return False
+    if not isinstance(adapter, dict) or set(adapter) != {"module", "factory"}:
+        raise ValueError("runtime manifest CUDA adapter is not registered")
+    module_name = adapter["module"]
+    factory_name = adapter["factory"]
+    if (
+        not isinstance(module_name, str)
+        or Path(module_name).name != module_name
+        or not module_name.endswith(".py")
+        or not isinstance(factory_name, str)
+        or not factory_name.isidentifier()
+        or not (package_root / module_name).is_file()
+    ):
+        raise ValueError("runtime manifest CUDA adapter is not registered")
+    return True
+
+
+def _load_cuda_adapter(bundle_path: Path):
+    """Load only the adapter declared by the already-checksummed package manifest."""
+
+    runtime_manifest = _read_json(bundle_path.parent / "runtime_manifest.json", "runtime manifest")
+    adapter = runtime_manifest["capabilities"]["cuda_adapter"]
+    assert isinstance(adapter, dict)
+    module_path = bundle_path.parent / str(adapter["module"])
+    spec = importlib.util.spec_from_file_location("event_stack_cuda_adapter", module_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("registered CUDA adapter cannot be loaded")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    factory = getattr(module, str(adapter["factory"]), None)
+    if not callable(factory):
+        raise RuntimeError("registered CUDA adapter factory is unavailable")
+    adapter_callable = factory()
+    if not callable(adapter_callable):
+        raise RuntimeError("registered CUDA adapter factory did not return a callable")
+    return adapter_callable
 
 
 def _probability(model: object, row: list[float], width: int, name: str) -> float:
@@ -209,30 +251,58 @@ def _number(policy: Mapping[str, Any], name: str, default: float) -> float:
     return value
 
 
+def _strict_positive_cap(policy: Mapping[str, Any], name: str) -> int | None:
+    value = policy[name]
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise ValueError(f"policy {name} must be a positive integer or null")
+    return value
+
+
 def _select_events(rows: list[dict[str, Any]], policy: Mapping[str, Any]) -> list[dict[str, Any]]:
+    required = {
+        "admission_threshold", "nms_iou", "max_candidates_per_subject",
+        "threshold", "max_events_per_group",
+    }
+    missing = sorted(required - set(policy))
+    if missing:
+        raise ValueError("policy is missing frozen inference fields: " + ", ".join(missing))
     admission_threshold = _number(policy, "admission_threshold", 0.0)
-    event_threshold = _number(policy, "event_threshold", admission_threshold)
+    event_threshold = _number(policy, "threshold", 0.0)
     nms_iou = _number(policy, "nms_iou", 1.0)
-    cap_value = policy.get("max_candidates_per_subject")
-    cap = None if cap_value is None else int(cap_value)
+    candidate_cap = _strict_positive_cap(policy, "max_candidates_per_subject")
+    event_cap = _strict_positive_cap(policy, "max_events_per_group")
     if not 0.0 <= admission_threshold <= 1.0 or not 0.0 <= event_threshold <= 1.0 or not 0.0 <= nms_iou <= 1.0:
         raise ValueError("policy thresholds must be in [0, 1]")
-    if cap is not None and cap < 1:
-        raise ValueError("policy max_candidates_per_subject must be positive or null")
     ranked = sorted(
-        (row for row in rows if row["score"] >= admission_threshold and row["score"] >= event_threshold),
+        (row for row in rows if row["score"] >= admission_threshold),
         key=lambda row: (-row["score"], row["sid"], row["start_ms"], row["end_ms"]),
     )
-    kept: list[dict[str, Any]] = []
-    counts: dict[str, int] = {}
+    nms_kept: list[dict[str, Any]] = []
     for row in ranked:
-        if cap is not None and counts.get(row["sid"], 0) >= cap:
+        if any(row["sid"] == other["sid"] and _iou(row, other) >= nms_iou for other in nms_kept):
             continue
-        if any(row["sid"] == other["sid"] and _iou(row, other) >= nms_iou for other in kept):
+        nms_kept.append(row)
+    admitted: list[dict[str, Any]] = []
+    counts: dict[str, int] = {}
+    for row in nms_kept:
+        subject_id = row["subject_id"]
+        if candidate_cap is not None and counts.get(subject_id, 0) >= candidate_cap:
             continue
-        kept.append(row)
-        counts[row["sid"]] = counts.get(row["sid"], 0) + 1
-    return sorted(kept, key=lambda row: (row["sid"], row["start_ms"], row["end_ms"], row["score"]))
+        admitted.append(row)
+        counts[subject_id] = counts.get(subject_id, 0) + 1
+    selected: list[dict[str, Any]] = []
+    event_counts: dict[str, int] = {}
+    for row in admitted:
+        subject_id = row["subject_id"]
+        if row["score"] < event_threshold:
+            continue
+        if event_cap is not None and event_counts.get(subject_id, 0) >= event_cap:
+            continue
+        selected.append(row)
+        event_counts[subject_id] = event_counts.get(subject_id, 0) + 1
+    return sorted(selected, key=lambda row: (row["sid"], row["start_ms"], row["end_ms"], row["score"]))
 
 
 def predict_feature_payload(bundle_path: Path, payload: Mapping[str, Any], *, device: str = "auto") -> dict[str, Any]:
@@ -240,9 +310,13 @@ def predict_feature_payload(bundle_path: Path, payload: Mapping[str, Any], *, de
 
     bundle_path = Path(bundle_path)
     _, policy, schema = _verify_bundle(bundle_path)
-    resolved_device = resolve_device(device, has_cuda_component=_runtime_capabilities(bundle_path))
+    has_cuda_adapter = _runtime_capabilities(bundle_path)
+    resolved_device = resolve_device(device, has_cuda_component=has_cuda_adapter)
     if not isinstance(payload, Mapping):
         raise ValueError("input feature payload must be an object")
+    unknown_payload = set(payload) - {"feature_schema", "schema_hash", "sessions"}
+    if unknown_payload:
+        raise ValueError("input feature payload has unknown fields: " + ", ".join(sorted(unknown_payload)))
     input_schema = payload.get("feature_schema")
     if input_schema != schema or payload.get("schema_hash") != _schema_hash(schema):
         raise ValueError("input feature schema hash does not match the deployment bundle")
@@ -254,20 +328,41 @@ def predict_feature_payload(bundle_path: Path, payload: Mapping[str, Any], *, de
     if not 0.0 <= blend_weight <= 1.0:
         raise ValueError("policy blend_weight must be in [0, 1]")
     scored: list[dict[str, Any]] = []
+    subject_by_sid: dict[str, str] = {}
     for session in sessions:
-        if not isinstance(session, Mapping) or not isinstance(session.get("sid"), str) or not session["sid"]:
+        if not isinstance(session, Mapping):
+            raise ValueError("each session must be an object")
+        unknown_session = set(session) - {"subject_id", "sid", "candidates"}
+        if unknown_session:
+            raise ValueError("session has unknown fields: " + ", ".join(sorted(unknown_session)))
+        subject_id = session.get("subject_id")
+        sid = session.get("sid")
+        if not isinstance(subject_id, str) or not subject_id:
+            raise ValueError("each session must have a nonempty string subject_id")
+        if not isinstance(sid, str) or not sid:
             raise ValueError("each session must have a nonempty string sid")
+        if sid in subject_by_sid and subject_by_sid[sid] != subject_id:
+            raise ValueError("each sid must map to exactly one subject_id")
+        subject_by_sid[sid] = subject_id
         candidates = session.get("candidates")
         if not isinstance(candidates, list):
             raise ValueError("each session candidates value must be an array")
         for candidate in candidates:
             if not isinstance(candidate, Mapping):
                 raise ValueError("candidate entries must be objects")
+            unknown_candidate = set(candidate) - {"start_ms", "end_ms", "macro", "micro", "verifier"}
+            if unknown_candidate:
+                raise ValueError("candidate has unknown fields: " + ", ".join(sorted(unknown_candidate)))
             try:
-                start_ms = int(candidate["start_ms"])
-                end_ms = int(candidate["end_ms"])
-            except (KeyError, TypeError, ValueError) as exc:
+                start_ms = candidate["start_ms"]
+                end_ms = candidate["end_ms"]
+            except KeyError as exc:
                 raise ValueError("candidate start_ms/end_ms must be integers") from exc
+            if (
+                isinstance(start_ms, bool) or not isinstance(start_ms, int)
+                or isinstance(end_ms, bool) or not isinstance(end_ms, int)
+            ):
+                raise ValueError("candidate start_ms/end_ms must be integers")
             if end_ms <= start_ms:
                 raise ValueError("candidate end_ms must be greater than start_ms")
             _probability(models["macro"], candidate.get("macro"), schema["macro"], "macro")
@@ -275,10 +370,25 @@ def predict_feature_payload(bundle_path: Path, payload: Mapping[str, Any], *, de
             logistic = _probability(models["verifier_logistic"], candidate.get("verifier"), schema["verifier"], "verifier")
             lgbm = _probability(models["verifier_lgbm"], candidate.get("verifier"), schema["verifier"], "verifier")
             scored.append({
-                "sid": session["sid"], "start_ms": start_ms, "end_ms": end_ms,
+                "subject_id": subject_id, "sid": sid, "start_ms": start_ms, "end_ms": end_ms,
                 "score": float(blend_weight * logistic + (1.0 - blend_weight) * lgbm),
             })
-    return {"events": _select_events(scored, policy), "resolved_device": resolved_device}
+    cpu_output = {
+        "events": [
+            {key: row[key] for key in ("sid", "start_ms", "end_ms", "score")}
+            for row in _select_events(scored, policy)
+        ],
+        "resolved_device": "cpu",
+    }
+    if resolved_device == "cpu":
+        return cpu_output
+    adapter = _load_cuda_adapter(bundle_path)
+    cuda_output = adapter(bundle_path, payload)
+    if not isinstance(cuda_output, Mapping) or not isinstance(cuda_output.get("events"), list):
+        raise RuntimeError("registered CUDA adapter returned an incompatible prediction payload")
+    result = dict(cuda_output)
+    result["resolved_device"] = "cuda"
+    return result
 
 
 def build_smoke_fixture(schema: Mapping[str, int]) -> dict[str, Any]:
@@ -287,7 +397,7 @@ def build_smoke_fixture(schema: Mapping[str, int]) -> dict[str, Any]:
     normalized = {name: int(schema[name]) for name in ("macro", "micro", "verifier")}
     return {
         "feature_schema": normalized,
-        "sessions": [{"sid": "fixture-session", "candidates": [{
+        "sessions": [{"subject_id": "fixture-subject", "sid": "fixture-session", "candidates": [{
             "start_ms": 0, "end_ms": 1000,
             "macro": [0.0] * normalized["macro"],
             "micro": [0.0] * normalized["micro"],

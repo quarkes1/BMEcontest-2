@@ -238,6 +238,10 @@ def test_qualified_promotion_writes_five_evidence_bundles_and_one_deployment(
             {
                 "experiment_key": "registered-key",
                 "outer_metrics": {"f1": PROMOTION_F1_FLOOR + 0.01},
+                "folds": [
+                    {"outer_fold": fold, "config_hash": f"fold-{fold}"}
+                    for fold in range(5)
+                ],
             }
         ),
         encoding="utf-8",
@@ -255,6 +259,38 @@ def test_qualified_promotion_writes_five_evidence_bundles_and_one_deployment(
     assert all(path.parent.name == "registered-key" for path in written)
     deployment = next(path for path in written if path.name == "deployment")
     assert load_event_stack_bundle(deployment, expected_role="deployment").role == "deployment"
+
+
+def test_promotion_attestation_binds_canonical_summary_and_every_bundle_manifest(tmp_path: Path):
+    summary = tmp_path / "summary.json"
+    source = {
+        "experiment_key": "registered-key",
+        "outer_metrics": {"f1": PROMOTION_F1_FLOOR + 0.01},
+        "folds": [
+            {"outer_fold": fold, "config_hash": f"fold-{fold}"}
+            for fold in range(5)
+        ],
+    }
+    summary.write_text(json.dumps(source), encoding="utf-8")
+    promote_summary(summary, output_root=tmp_path / "models", trainer=_six_bundle_trainer)
+    run_root = tmp_path / "models" / "event_stack" / "registered-key"
+    attestation = json.loads((run_root / "promotion_attestation.json").read_text(encoding="utf-8"))
+    canonical_summary = (run_root / "promotion_summary.json").read_bytes()
+
+    assert attestation["run_key"] == "registered-key"
+    assert attestation["aggregate_summary"]["sha256"] == hashlib.sha256(canonical_summary).hexdigest()
+    assert attestation["gate"] == {
+        "version": 1,
+        "floor": PROMOTION_F1_FLOOR,
+        "f1": PROMOTION_F1_FLOOR + 0.01,
+    }
+    assert set(attestation["bundles"]) == {
+        "deployment", "outer-fold-0", "outer-fold-1", "outer-fold-2", "outer-fold-3", "outer-fold-4"
+    }
+    for key, entry in attestation["bundles"].items():
+        assert entry["manifest_sha256"] == hashlib.sha256(
+            (run_root / key / "manifest.json").read_bytes()
+        ).hexdigest()
 
 
 def test_bundle_write_rejects_same_named_directory_outside_trusted_root(tmp_path: Path):
@@ -329,6 +365,10 @@ def _qualified_summary(tmp_path: Path) -> Path:
             {
                 "experiment_key": "registered-key",
                 "outer_metrics": {"f1": PROMOTION_F1_FLOOR + 0.01},
+                "folds": [
+                    {"outer_fold": fold, "config_hash": f"fold-{fold}"}
+                    for fold in range(5)
+                ],
             }
         ),
         encoding="utf-8",

@@ -31,6 +31,9 @@ _ROLES = frozenset(("outer-fold-evidence", "deployment"))
 _METADATA_FILENAMES = frozenset(
     ("policy.json", "run_config.json", "feature_schema.json")
 )
+_PROMOTION_ATTESTATION_VERSION = 1
+_PROMOTION_SUMMARY_FILENAME = "promotion_summary.json"
+_PROMOTION_ATTESTATION_FILENAME = "promotion_attestation.json"
 
 
 class PromotionContractError(RuntimeError):
@@ -130,6 +133,18 @@ def _dependency_versions() -> dict[str, str | None]:
     }
 
 
+def _is_link_or_reparse_point(path: Path) -> bool:
+    """Identify link-like paths without resolving a caller-controlled path."""
+
+    if path.is_symlink():
+        return True
+    try:
+        attributes = path.stat(follow_symlinks=False).st_file_attributes
+    except (AttributeError, OSError):
+        return False
+    return bool(attributes & 0x400)  # Windows FILE_ATTRIBUTE_REPARSE_POINT
+
+
 def _trusted_event_stack_root(event_stack_root: Path) -> Path:
     """Normalize an explicit caller-authorized root without accepting symlinks."""
 
@@ -138,8 +153,8 @@ def _trusted_event_stack_root(event_stack_root: Path) -> Path:
         raise ValueError("trusted event_stack_root must be named event_stack")
     current = root
     while True:
-        if current.exists() and current.is_symlink():
-            raise ValueError("trusted event_stack_root must not contain symlink components")
+        if current.exists() and _is_link_or_reparse_point(current):
+            raise ValueError("trusted event_stack_root must not contain symlink/reparse components")
         if current.parent == current:
             break
         current = current.parent
@@ -162,17 +177,17 @@ def _event_stack_parent(destination: Path, *, event_stack_root: Path) -> Path:
     current = root
     for part in relative.parts[:-1]:
         current = current / part
-        if current.exists() and current.is_symlink():
-            raise ValueError("bundle destination must not traverse symlink components")
-    if destination.exists() and destination.is_symlink():
-        raise ValueError("bundle destination must not be a symlink")
+        if current.exists() and _is_link_or_reparse_point(current):
+            raise ValueError("bundle destination must not traverse symlink/reparse components")
+    if destination.exists() and _is_link_or_reparse_point(destination):
+        raise ValueError("bundle destination must not be a symlink/reparse point")
     return destination.parent
 
 
 def _safe_remove(path: Path) -> None:
     """Remove exactly one known temporary/backup entry without traversing links."""
 
-    if path.is_symlink() or path.is_file():
+    if _is_link_or_reparse_point(path) or path.is_file():
         path.unlink()
     elif path.exists():
         shutil.rmtree(path)
@@ -332,8 +347,8 @@ def write_event_stack_bundle(
     root = _trusted_event_stack_root(event_stack_root)
     parent = _event_stack_parent(destination, event_stack_root=root)
     parent.mkdir(parents=True, exist_ok=True)
-    if parent.is_symlink() or root.is_symlink():
-        raise ValueError("trusted event_stack_root must not contain symlink components")
+    if _is_link_or_reparse_point(parent) or _is_link_or_reparse_point(root):
+        raise ValueError("trusted event_stack_root must not contain symlink/reparse components")
     temporary = parent / f".{destination.name}.tmp-{uuid.uuid4().hex}"
     backup = parent / f".{destination.name}.backup-{uuid.uuid4().hex}"
     moved_existing = False
@@ -407,12 +422,136 @@ def _verify_run_bundles(
 
     for key in sorted(bundles):
         bundle_path = run_root / key
-        problems = verify_bundle_manifest(bundle_path)
+        problems = verify_bundle_manifest(bundle_path, expected_run_key=key)
         if problems:
             raise ValueError(
                 f"staged bundle {key!r} failed verification: " + "; ".join(problems)
             )
         load_event_stack_bundle(bundle_path, expected_role=bundles[key].role)
+
+
+def _promotion_summary_contract(summary: Mapping[str, object]) -> tuple[str, float]:
+    """Validate the immutable aggregate evidence required for a promotion."""
+
+    try:
+        run_key = str(summary["experiment_key"])
+        f1 = float(summary["outer_metrics"]["f1"])  # type: ignore[index]
+    except (KeyError, TypeError, ValueError) as exc:
+        raise PromotionContractError(
+            "summary must contain experiment_key and aggregate outer_metrics.f1"
+        ) from exc
+    if not run_key or Path(run_key).name != run_key:
+        raise PromotionContractError("summary experiment key is not a safe directory name")
+    if not math.isfinite(f1) or not 0.0 <= f1 <= 1.0:
+        raise PromotionContractError("aggregate F1 must be finite and in [0, 1]")
+    folds = summary.get("folds")
+    if not isinstance(folds, list) or len(folds) != 5:
+        raise PromotionContractError("summary must contain the complete five outer-fold records")
+    seen: set[int] = set()
+    for fold in folds:
+        if not isinstance(fold, Mapping):
+            raise PromotionContractError("summary outer-fold records must be objects")
+        value = fold.get("outer_fold")
+        config_hash = fold.get("config_hash")
+        if isinstance(value, bool) or not isinstance(value, int) or value in seen:
+            raise PromotionContractError("summary outer-fold records must have unique integer outer_fold values")
+        if not isinstance(config_hash, str) or not config_hash:
+            raise PromotionContractError("summary outer-fold records must carry config_hash values")
+        seen.add(value)
+    if seen != {0, 1, 2, 3, 4}:
+        raise PromotionContractError("summary outer-fold records must be exactly folds 0 through 4")
+    return run_key, f1
+
+
+def _write_promotion_attestation(
+    run_root: Path,
+    summary: Mapping[str, object],
+    bundles: Mapping[str, EventStackBundle],
+    *,
+    expected_run_key: str | None = None,
+) -> None:
+    """Bind canonical aggregate evidence and every staged bundle to one run key."""
+
+    run_key, f1 = _promotion_summary_contract(summary)
+    if expected_run_key is not None and expected_run_key != run_key:
+        raise PromotionContractError("promotion run root does not match summary experiment key")
+    summary_path = run_root / _PROMOTION_SUMMARY_FILENAME
+    summary_path.write_bytes(_stable_json_bytes(dict(summary)))
+    attest_bundles = {
+        key: {
+            "role": bundles[key].role,
+            "manifest_sha256": _sha256(run_root / key / "manifest.json"),
+        }
+        for key in sorted(bundles)
+    }
+    payload = {
+        "attestation_version": _PROMOTION_ATTESTATION_VERSION,
+        "run_key": run_key,
+        "aggregate_summary": {
+            "filename": _PROMOTION_SUMMARY_FILENAME,
+            "sha256": _sha256(summary_path),
+        },
+        "gate": {"version": 1, "floor": PROMOTION_F1_FLOOR, "f1": f1},
+        "bundles": attest_bundles,
+    }
+    (run_root / _PROMOTION_ATTESTATION_FILENAME).write_bytes(_stable_json_bytes(payload))
+
+
+def verify_promotion_attestation(
+    run_root: Path, *, expected_run_key: str | None = None
+) -> tuple[str, ...]:
+    """Verify structural promotion provenance; this is not a cryptographic signature."""
+
+    root = Path(run_root)
+    if not root.is_dir() or _is_link_or_reparse_point(root):
+        return ("promotion run root is missing or unsafe",)
+    try:
+        attestation = json.loads((root / _PROMOTION_ATTESTATION_FILENAME).read_text(encoding="utf-8"))
+        summary_bytes = (root / _PROMOTION_SUMMARY_FILENAME).read_bytes()
+        summary = json.loads(summary_bytes.decode("utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        return (f"promotion attestation cannot be read: {exc}",)
+    if not isinstance(attestation, dict) or not isinstance(summary, dict):
+        return ("promotion attestation and summary must be objects",)
+    problems: list[str] = []
+    try:
+        run_key, f1 = _promotion_summary_contract(summary)
+    except PromotionContractError as exc:
+        return (str(exc),)
+    if _stable_json_bytes(summary) != summary_bytes:
+        problems.append("promotion summary is not canonical JSON")
+    if attestation.get("attestation_version") != _PROMOTION_ATTESTATION_VERSION:
+        problems.append("promotion attestation version is unsupported")
+    if attestation.get("run_key") != run_key or (
+        expected_run_key is not None and expected_run_key != run_key
+    ) or (expected_run_key is None and root.name != run_key):
+        problems.append("promotion attestation run key does not match run root")
+    aggregate = attestation.get("aggregate_summary")
+    if not isinstance(aggregate, dict) or aggregate.get("filename") != _PROMOTION_SUMMARY_FILENAME or aggregate.get("sha256") != _sha256(root / _PROMOTION_SUMMARY_FILENAME):
+        problems.append("promotion attestation aggregate summary hash does not match")
+    gate = attestation.get("gate")
+    if not isinstance(gate, dict) or gate.get("version") != 1 or gate.get("floor") != PROMOTION_F1_FLOOR or gate.get("f1") != f1 or not f1 > PROMOTION_F1_FLOOR:
+        problems.append("promotion attestation gate does not match the qualifying aggregate result")
+    expected_roles = {**{f"outer-fold-{fold}": "outer-fold-evidence" for fold in range(5)}, "deployment": "deployment"}
+    entries = attestation.get("bundles")
+    if not isinstance(entries, dict) or set(entries) != set(expected_roles):
+        problems.append("promotion attestation does not bind the complete run structure")
+        return tuple(problems)
+    for key, role in expected_roles.items():
+        entry = entries[key]
+        manifest_path = root / key / "manifest.json"
+        hash_matches = (
+            manifest_path.is_file()
+            and isinstance(entry, dict)
+            and entry.get("manifest_sha256") == _sha256(manifest_path)
+        )
+        if not isinstance(entry, dict) or entry.get("role") != role or not hash_matches:
+            problems.append(f"promotion attestation manifest hash does not match {key}")
+            continue
+        manifest_problems = verify_bundle_manifest(root / key, expected_run_key=key)
+        if manifest_problems:
+            problems.append(f"promotion attestation bundle is invalid for {key}")
+    return tuple(problems)
 
 
 def _install_run_root(
@@ -429,26 +568,29 @@ def _install_run_root(
     installed = False
     try:
         if destination.exists():
-            if destination.is_symlink():
-                raise ValueError("promotion destination must not be a symlink")
+            if _is_link_or_reparse_point(destination):
+                raise ValueError("promotion destination must not be a symlink/reparse point")
             os.replace(destination, backup)
             moved_existing = True
         os.replace(staging, destination)
         promoted_new = True
         _verify_run_bundles(destination, bundles)
+        attestation_problems = verify_promotion_attestation(destination)
+        if attestation_problems:
+            raise ValueError("installed promotion attestation failed verification: " + "; ".join(attestation_problems))
         installed = True
-        if backup.exists() or backup.is_symlink():
+        if backup.exists() or _is_link_or_reparse_point(backup):
             _safe_remove(backup)
     except Exception:
-        if promoted_new and (destination.exists() or destination.is_symlink()):
+        if promoted_new and (destination.exists() or _is_link_or_reparse_point(destination)):
             _safe_remove(destination)
-        if moved_existing and (backup.exists() or backup.is_symlink()):
+        if moved_existing and (backup.exists() or _is_link_or_reparse_point(backup)):
             os.replace(backup, destination)
         raise
     finally:
-        if staging.exists() or staging.is_symlink():
+        if staging.exists() or _is_link_or_reparse_point(staging):
             _safe_remove(staging)
-        if installed and (backup.exists() or backup.is_symlink()):
+        if installed and (backup.exists() or _is_link_or_reparse_point(backup)):
             _safe_remove(backup)
 
 
@@ -466,8 +608,11 @@ def promote_summary(
     """
 
     summary = json.loads(Path(summary_path).read_text(encoding="utf-8"))
+    if not isinstance(summary, Mapping):
+        raise PromotionContractError("summary must be a JSON object")
+    # Keep the gate first: malformed/non-improving inputs still cause no writes.
     try:
-        f1 = float(summary["outer_metrics"]["f1"])
+        f1 = float(summary["outer_metrics"]["f1"])  # type: ignore[index]
     except (KeyError, TypeError, ValueError) as exc:
         raise PromotionContractError("summary lacks aggregate outer_metrics.f1") from exc
     if not math.isfinite(f1) or not 0.0 <= f1 <= 1.0:
@@ -481,6 +626,7 @@ def promote_summary(
             "no legal full-target trainer is registered; inject a trainer that "
             "constructs subject-safe full-target data before promotion"
         )
+    run_key, _ = _promotion_summary_contract(summary)
     bundles = trainer(summary)
     if not isinstance(bundles, Mapping) or not bundles:
         raise PromotionContractError("trainer must return a nonempty mapping of bundles")
@@ -492,9 +638,6 @@ def promote_summary(
         raise PromotionContractError(
             "trainer must return exactly five outer-fold-evidence bundles and one deployment bundle"
         )
-    run_key = str(summary.get("experiment_key") or Path(summary_path).stem)
-    if Path(run_key).name != run_key:
-        raise PromotionContractError("summary experiment key is not a safe directory name")
     for key in sorted(bundles):
         if not isinstance(key, str) or not key or Path(key).name != key:
             raise PromotionContractError("trainer bundle keys must be safe directory names")
@@ -511,8 +654,17 @@ def promote_summary(
             bundle_destination = staging / key
             _write_bundle_contents(bundle_destination, bundle_destination, bundles[key])
         _verify_run_bundles(staging, bundles)
+        _write_promotion_attestation(staging, summary, bundles)
+        attestation_problems = verify_promotion_attestation(
+            staging, expected_run_key=run_key
+        )
+        if attestation_problems:
+            raise ValueError(
+                "staged promotion attestation failed verification: "
+                + "; ".join(attestation_problems)
+            )
         _install_run_root(destination, staging, bundles)
     finally:
-        if staging.exists() or staging.is_symlink():
+        if staging.exists() or _is_link_or_reparse_point(staging):
             _safe_remove(staging)
     return tuple(destination / key for key in sorted(bundles))

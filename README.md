@@ -243,6 +243,18 @@ untouched 泛化分数；最终报告仍需新的未触碰测试。
 outer 结果调阈值。FD-I/FD-II 外部数据在竞赛规则下可用，但迁移实验仍推迟到单独的
 门控计划；使用其 CC BY-NC-ND 4.0 数据前仍须遵守许可条款。
 
+### 5.9 Event-stack artifact 与发布契约（2026-09-11）
+
+候选控制/stacking 的 deployment bundle 不信任自报指标。合法晋级必须在一个原子 run 内保留
+canonical aggregate summary、五个 outer-fold evidence bundle、一个 deployment bundle 及
+`promotion_attestation.json`；attestation 绑定实验 key、严格五折、门槛/F1 和每个 manifest 的
+SHA-256。打包器只接受这一完整结构，且只原子替换仓库 `dist/event_stack`。
+
+部署特征输入必须同时携带稳定 `subject_id` 与会话 `sid`：前者用于冻结的 candidate admission
+预算和 event budget，后者只用于同会话 NMS 与输出事件几何。CPU 是当前唯一可发布后端；
+`auto` 因此解析为 CPU，强制 CUDA 失败。未来 CUDA 适配器必须作为可加载、校验和覆盖的运行时
+组件打包，并在打包期通过 `<=1e-5` 分数误差及完全一致的事件几何对照。
+
 ## 6. 结果分析与评价
 
 ### 6.1 两方案瓶颈分解对比

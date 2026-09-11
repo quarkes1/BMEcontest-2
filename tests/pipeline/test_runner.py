@@ -642,6 +642,7 @@ def test_cli_all_writes_multiscale_configs_fold_outputs_and_summary(tmp_path, mo
     assert summary["outer_metrics"]["n_true"] == 20
     assert [config["outer_fold"] for config in summary["run_configs"]] == list(range(5))
     assert summaries[0].stem == f"summary_{cli.experiment_key(recorded_configs)}"
+    assert summary["experiment_key"] == cli.experiment_key(recorded_configs)
     assert not list(output.glob("*.tmp"))
 
 
