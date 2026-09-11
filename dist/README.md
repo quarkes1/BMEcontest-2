@@ -1,5 +1,55 @@
 # 进食事件检测推理包（滑窗管线版）
 
+> 状态（2026-09-11）：本目录尚未包含 `event_stack/` 正式发布包。当前可运行的仍是下文
+> 的旧滑窗管线。候选控制/stacking 的 `dist/event_stack` 只可由
+> `scripts/package_event_stack.py` 从通过严格晋级门槛的 `role=deployment` bundle 原子生成；
+> Task 6 在尚未产生合法 deployment bundle 前不得覆盖或创建该目录。
+
+## 未来 event-stack 包（受限输入契约）
+
+正式 bundle 就绪后，运行：
+
+```bash
+python event_stack/predict_event_stack.py \
+  --bundle event_stack/bundle \
+  --input-features candidates.json \
+  --output predictions.json \
+  --device auto
+```
+
+`--device` 仅接受 `auto|cpu|gpu|cuda`，其中 `gpu` 等同 `cuda`。当前 sklearn/LightGBM
+组件均为 CPU：`auto` 会报告 `resolved_device=cpu`，而强制 `gpu/cuda` 会明确失败，绝不将
+CPU 树模型伪报为 GPU 推理。torch 是可选依赖；没有 CUDA 组件的 CPU 包无需安装 torch。
+未来 CUDA 组件必须声明 capability，且同输入 CPU/CUDA 分数绝对误差不得超过 `1e-5`、事件
+几何必须完全相同。
+
+输入不是原始 `collect_data*.txt` 会话，而是已生成的、可审计的候选特征 JSON：
+
+```json
+{
+  "feature_schema": {"macro": 63, "micro": 47, "verifier": 56},
+  "schema_hash": "SHA-256 of canonical feature_schema JSON",
+  "sessions": [{
+    "sid": "session-id",
+    "candidates": [{
+      "start_ms": 0, "end_ms": 1000,
+      "macro": ["63 finite values"],
+      "micro": ["47 finite values"],
+      "verifier": ["56 finite values"]
+    }]
+  }]
+}
+```
+
+运行时会校验 bundle manifest 的每个模型/metadata SHA-256、完整模型集合和 deployment role，
+并拒绝 schema/hash 不匹配。输出为稳定排序、紧凑 canonical JSON：
+`{"events":[{"sid":...,"start_ms":...,"end_ms":...,"score":...}],"resolved_device":"cpu"}`。
+
+这是一个有意的临时限制：Task 4 artifact 未包含从原始会话构造 macro-63、micro-47、
+verifier-56 特征的已验证运行时模块、候选器配置或模型输入适配器；旧 `predict.py` 的
+MM-Ranker 深度管线不兼容，不能作为替代。Task 6 前必须补齐并验证该 raw-session adapter，
+才能宣称 event-stack 支持原始会话输入。
+
 对智能手表传感器会话（HUAWEI Research 格式目录，含 collect_data*.txt）
 输出检测到的进食事件（Episode 起止时间，毫秒时间戳）。
 
