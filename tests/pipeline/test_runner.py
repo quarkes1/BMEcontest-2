@@ -661,7 +661,9 @@ def test_cli_rejects_unsupported_modes_before_training(monkeypatch, arguments, m
 def test_schema_five_cache_key_changes_for_stacked_candidate_control_settings():
     from src.pipeline import runner
 
-    base = RunConfig(outer_fold=0, candidate_control_enabled=True)
+    base = RunConfig(
+        outer_fold=0, micro_enabled=True, candidate_control_enabled=True
+    )
     assert runner.RUNNER_SCHEMA_VERSION == 5
     assert cache_key(base) != cache_key(
         replace(base, verifier_blend_weight_grid=(0.0, 1.0))
@@ -773,11 +775,47 @@ def test_admission_subject_cap_parser_rejects_bool_and_canonicalizes_order():
     {"admission_threshold_grid": (0.5, float("nan"))},
     {"verifier_blend_weight_grid": (0.0, 0.0)},
     {"admission_subject_cap_grid": (True,)},
+    {"admission_subject_cap_grid": (np.bool_(True),)},
 ])
 def test_stacked_run_config_rejects_invalid_or_noncanonical_registered_grids(kwargs):
     # Construction itself must reject invalid settings before they reach a cache key.
     with pytest.raises(ValueError):
         RunConfig(outer_fold=0, **kwargs)
+
+
+def test_candidate_control_run_config_requires_micro_enabled_at_construction():
+    with pytest.raises(ValueError, match="requires micro_enabled"):
+        RunConfig(outer_fold=0, candidate_control_enabled=True)
+
+
+@pytest.mark.parametrize("kwargs", [
+    {"admission_nms_iou_grid": (True,)},
+    {"admission_nms_iou_grid": (np.bool_(True),)},
+    {"admission_threshold_grid": (True,)},
+    {"admission_threshold_grid": (np.bool_(True),)},
+    {"verifier_blend_weight_grid": (True,)},
+    {"verifier_blend_weight_grid": (np.bool_(True),)},
+    {"admission_minimum_recall": True},
+    {"admission_minimum_recall": np.bool_(True)},
+])
+def test_stacked_float_config_rejects_python_and_numpy_booleans(kwargs):
+    with pytest.raises(ValueError):
+        RunConfig(outer_fold=0, **kwargs)
+
+
+def test_stacked_float_config_normalizes_numpy_real_values_to_python_floats():
+    config = RunConfig(
+        outer_fold=0,
+        admission_nms_iou_grid=(np.float64(0.3), np.float32(0.5)),
+        admission_threshold_grid=(np.float64(0.2), np.float32(0.5)),
+        verifier_blend_weight_grid=(np.float64(0.0), np.float32(1.0)),
+        admission_minimum_recall=np.float32(0.88),
+    )
+
+    assert all(type(value) is float for value in config.admission_nms_iou_grid)
+    assert all(type(value) is float for value in config.admission_threshold_grid)
+    assert all(type(value) is float for value in config.verifier_blend_weight_grid)
+    assert type(config.admission_minimum_recall) is float
 
 
 def test_cli_candidate_control_requires_micro_and_propagates_registered_grids(tmp_path, monkeypatch):

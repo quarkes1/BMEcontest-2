@@ -110,27 +110,39 @@ RUNNER_SCHEMA_VERSION = 5
 
 def _validate_registered_probability_grid(
     values: tuple[float, ...], name: str, *, lower_exclusive: bool = False
-) -> None:
+) -> tuple[float, ...]:
     """Reject noncanonical stacked-control probability grids at the boundary."""
     if not values:
         raise ValueError(f"{name} must be a nonempty grid")
     if any(
-        not isinstance(value, Real)
-        or not math.isfinite(float(value))
-        or float(value) > 1.0
-        or (float(value) <= 0.0 if lower_exclusive else float(value) < 0.0)
+        isinstance(value, (bool, np.bool_))
+        or not isinstance(value, Real)
         for value in values
+    ):
+        raise ValueError(f"{name} must contain real non-boolean values")
+    normalized = tuple(float(value) for value in values)
+    if any(
+        not math.isfinite(value)
+        or value > 1.0
+        or (value <= 0.0 if lower_exclusive else value < 0.0)
+        for value in normalized
     ):
         interval = "(0, 1]" if lower_exclusive else "[0, 1]"
         raise ValueError(f"{name} must contain finite values in {interval}")
-    if len(set(values)) != len(values) or tuple(sorted(values)) != values:
+    if len(set(normalized)) != len(normalized) or tuple(sorted(normalized)) != normalized:
         raise ValueError(f"{name} must be unique and sorted")
+    return normalized
 
 
 def _validate_registered_subject_cap_grid(values: tuple[int, ...]) -> None:
     if not values:
         raise ValueError("admission_subject_cap_grid must be a nonempty grid")
-    if any(isinstance(value, bool) or not isinstance(value, Integral) or value < 1 for value in values):
+    if any(
+        isinstance(value, (bool, np.bool_))
+        or not isinstance(value, Integral)
+        or value < 1
+        for value in values
+    ):
         raise ValueError("admission_subject_cap_grid must contain positive integers")
     if len(set(values)) != len(values) or tuple(sorted(values)) != values:
         raise ValueError("admission_subject_cap_grid must be unique and sorted")
@@ -164,24 +176,42 @@ class RunConfig:
     def __post_init__(self) -> None:
         if not isinstance(self.candidate_control_enabled, bool):
             raise ValueError("candidate_control_enabled must be boolean")
-        _validate_registered_probability_grid(
-            self.admission_nms_iou_grid,
+        if self.candidate_control_enabled and not self.micro_enabled:
+            raise ValueError("candidate_control_enabled requires micro_enabled")
+        object.__setattr__(
+            self,
             "admission_nms_iou_grid",
-            lower_exclusive=True,
+            _validate_registered_probability_grid(
+                self.admission_nms_iou_grid,
+                "admission_nms_iou_grid",
+                lower_exclusive=True,
+            ),
         )
-        _validate_registered_probability_grid(
-            self.admission_threshold_grid, "admission_threshold_grid"
+        object.__setattr__(
+            self,
+            "admission_threshold_grid",
+            _validate_registered_probability_grid(
+                self.admission_threshold_grid, "admission_threshold_grid"
+            ),
         )
         _validate_registered_subject_cap_grid(self.admission_subject_cap_grid)
-        _validate_registered_probability_grid(
-            self.verifier_blend_weight_grid, "verifier_blend_weight_grid"
+        object.__setattr__(
+            self,
+            "verifier_blend_weight_grid",
+            _validate_registered_probability_grid(
+                self.verifier_blend_weight_grid, "verifier_blend_weight_grid"
+            ),
         )
         if (
-            not isinstance(self.admission_minimum_recall, Real)
+            isinstance(self.admission_minimum_recall, (bool, np.bool_))
+            or not isinstance(self.admission_minimum_recall, Real)
             or not math.isfinite(float(self.admission_minimum_recall))
             or not 0.0 <= float(self.admission_minimum_recall) <= 1.0
         ):
             raise ValueError("admission_minimum_recall must be finite in [0, 1]")
+        object.__setattr__(
+            self, "admission_minimum_recall", float(self.admission_minimum_recall)
+        )
 
 
 @dataclass(frozen=True)
