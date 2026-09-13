@@ -289,6 +289,116 @@ class FoldDataset:
     micro_cache_extraction_seconds: float = 0.0
 
 
+def _concatenate_window_batches(batches: Sequence[WindowBatch]) -> WindowBatch:
+    """Join batches only after callers have established their partition invariants."""
+
+    if not batches:
+        raise ValueError("at least one window batch is required")
+    widths = {batch.features.shape[1] for batch in batches}
+    if len(widths) != 1:
+        raise ValueError("full-target window batches must share one feature width")
+    return WindowBatch(
+        features=np.concatenate([batch.features for batch in batches]),
+        labels=np.concatenate([batch.labels for batch in batches]),
+        windows=tuple(window for batch in batches for window in batch.windows),
+    )
+
+
+def build_full_target_dataset(
+    configs: Sequence[RunConfig],
+    source: object,
+    *,
+    expected_truth_count: int = 153,
+) -> FoldDataset:
+    """Build the deployment universe from the five disjoint held-out partitions.
+
+    The source is intentionally used only for ``validation``/``micro_validation``
+    fields.  It may load an outer fold internally, but no outer-train batch is
+    copied into the returned all-target data set.  This is the boundary that
+    prevents accidental five-fold train-set concatenation during promotion.
+    """
+
+    ordered = tuple(sorted(configs, key=lambda item: item.outer_fold))
+    if not ordered or len({item.outer_fold for item in ordered}) != len(ordered):
+        raise ValueError("full-target construction requires unique outer folds")
+    loader = getattr(source, "load_outer_fold", None)
+    if not callable(loader):
+        raise TypeError("full-target source must expose load_outer_fold")
+    partitions = tuple(loader(config) for config in ordered)
+    if not all(isinstance(item, FoldDataset) for item in partitions):
+        raise TypeError("full-target source must return FoldDataset partitions")
+
+    seen_subjects: set[str] = set()
+    seen_sessions: set[str] = set()
+    seen_truths: set[tuple[str, int, int]] = set()
+    subject_by_session: dict[str, str] = {}
+    for partition in partitions:
+        validation_sids = {window.sid for window in partition.validation.windows}
+        validation_subjects = {
+            partition.subject_by_session[sid]
+            for sid in validation_sids
+        }
+        if validation_subjects != set(partition.outer_subjects):
+            raise ValueError("held-out subject mapping does not match validation windows")
+        overlap = seen_subjects & validation_subjects
+        if overlap:
+            raise ValueError("held-out subject overlap: " + ", ".join(sorted(overlap)))
+        session_overlap = seen_sessions & validation_sids
+        if session_overlap:
+            raise ValueError("held-out session overlap: " + ", ".join(sorted(session_overlap)))
+        for sid in validation_sids:
+            subject = partition.subject_by_session[sid]
+            existing = subject_by_session.setdefault(sid, subject)
+            if existing != subject:
+                raise ValueError("session-to-subject mapping changed across held-out partitions")
+        for truth in partition.validation_truths:
+            key = (truth.sid, truth.start_ms, truth.end_ms)
+            if truth.sid not in validation_sids:
+                raise ValueError("held-out truth is not in its validation session universe")
+            if key in seen_truths:
+                raise ValueError("held-out truth overlap")
+            seen_truths.add(key)
+        seen_subjects.update(validation_subjects)
+        seen_sessions.update(validation_sids)
+
+    if len(seen_truths) != expected_truth_count:
+        raise ValueError(
+            f"held-out truth count must be exactly {expected_truth_count}; got {len(seen_truths)}"
+        )
+    validation = _concatenate_window_batches([item.validation for item in partitions])
+    micro_batches = [item.micro_validation for item in partitions]
+    if any(batch is None for batch in micro_batches):
+        micro_validation = None
+    elif all(batch is not None for batch in micro_batches):
+        micro_validation = _concatenate_window_batches(
+            [batch for batch in micro_batches if batch is not None]
+        )
+        if {window.sid for window in micro_validation.windows} != seen_sessions:
+            raise ValueError("full-target micro validation session universe does not match macro")
+    else:
+        raise ValueError("full-target partitions mix micro-enabled and macro-only data")
+    truths = tuple(
+        truth for partition in partitions for truth in partition.validation_truths
+    )
+    slices: defaultdict[str, list[EventRef]] = defaultdict(list)
+    for partition in partitions:
+        for name, values in partition.validation_truth_slices.items():
+            slices[name].extend(values)
+    return FoldDataset(
+        window_train=validation,
+        candidate_train=validation,
+        validation=validation,
+        train_truths=truths,
+        validation_truths=truths,
+        subject_by_session=subject_by_session,
+        outer_subjects=frozenset(seen_subjects),
+        validation_truth_slices={name: tuple(values) for name, values in sorted(slices.items())},
+        micro_window_train=micro_validation,
+        micro_candidate_train=micro_validation,
+        micro_validation=micro_validation,
+    )
+
+
 @dataclass(frozen=True)
 class _FinalModelFit:
     """Private fitted state retained during one outer-fold evaluation.
@@ -306,6 +416,14 @@ class _FinalModelFit:
     policy: EventSelectionPolicy
     admission: CandidateAdmissionConfig | None
     blend_weight: float | None
+
+
+@dataclass(frozen=True)
+class _OuterRun:
+    """One evaluated fold plus the fitted train-only state used for evidence."""
+
+    result: FoldResult
+    fit: _FinalModelFit
 
 
 def _file_signature(path: Path) -> dict[str, int | str]:
@@ -585,7 +703,7 @@ def _micro_training_keep(
     return keep
 
 
-def _run_outer_dataset(
+def _execute_outer_dataset(
     config: RunConfig,
     data_source: FoldDataset,
 ) -> FoldResult:
@@ -1100,7 +1218,7 @@ def _run_outer_dataset(
             "verifier_lgbm_oof": verifier_lgbm_oof_seconds,
             "admission_selection": admission_selection_seconds,
         })
-    return FoldResult(
+    result = FoldResult(
         config_hash=config_hash,
         threshold=policy.threshold,
         max_events_per_subject=policy.max_events_per_group,
@@ -1145,6 +1263,131 @@ def _run_outer_dataset(
         verifier_logistic_outer_seconds=verifier_logistic_outer_seconds,
         verifier_lgbm_outer_seconds=verifier_lgbm_outer_seconds,
     )
+    return _OuterRun(result=result, fit=final_fit)
+
+
+def _run_outer_dataset(
+    config: RunConfig,
+    data_source: FoldDataset,
+) -> FoldResult:
+    """Public evaluation compatibility wrapper around the artifact-capable run."""
+
+    return _execute_outer_dataset(config, data_source).result
+
+
+def fit_outer_fold_for_promotion(
+    config: RunConfig,
+    source: object,
+) -> tuple[FoldResult, _FinalModelFit, FoldDataset]:
+    """Retrain one outer fold and retain only its train-selected fitted state.
+
+    Promotion calls this instead of loading a cached result so each evidence
+    bundle is a fresh fit.  The returned outer metrics are evidence metadata,
+    never policy-selection input for deployment.
+    """
+
+    loader = getattr(source, "load_outer_fold", None)
+    if not callable(loader):
+        raise TypeError("promotion source must expose load_outer_fold")
+    dataset = loader(config)
+    if not isinstance(dataset, FoldDataset):
+        raise TypeError("promotion source must return FoldDataset")
+    execution = _execute_outer_dataset(config, dataset)
+    return execution.result, execution.fit, dataset
+
+
+def fit_full_target_deployment(
+    config: RunConfig,
+    data: FoldDataset,
+    frozen_policy: Mapping[str, object],
+) -> tuple[_FinalModelFit, int]:
+    """Fit deployment models on one validated held-out-partition union.
+
+    ``frozen_policy`` has already been aggregated from five train-only outer
+    policies.  This routine uses target labels to train models, but never
+    searches an event threshold, blend, admission setting, or budget.
+    """
+
+    required = {
+        "micro_threshold", "blend_weight", "nms_iou", "admission_threshold",
+        "max_candidates_per_subject", "threshold", "max_events_per_group", "verifier_c",
+    }
+    missing = sorted(required - set(frozen_policy))
+    if missing:
+        raise ValueError("deployment policy is missing: " + ", ".join(missing))
+    if not config.micro_enabled or not config.candidate_control_enabled:
+        raise ValueError("deployment fitting requires the registered multiscale candidate-control configuration")
+    if data.micro_window_train is None or data.micro_candidate_train is None:
+        raise ValueError("deployment fitting requires full-target micro windows")
+    policy_values = {name: frozen_policy[name] for name in required}
+    micro_threshold = float(policy_values["micro_threshold"])
+    blend_weight = float(policy_values["blend_weight"])
+    admission = CandidateAdmissionConfig(
+        float(policy_values["nms_iou"]),
+        float(policy_values["admission_threshold"]),
+        policy_values["max_candidates_per_subject"],  # type: ignore[arg-type]
+    )
+    event_policy = EventSelectionPolicy(
+        float(policy_values["threshold"]),
+        policy_values["max_events_per_group"],  # type: ignore[arg-type]
+        EventMetrics(0, 0, 0, 0.0, 0.0, 0.0),
+    )
+    verifier_c = float(policy_values["verifier_c"])
+    if not all(math.isfinite(value) for value in (micro_threshold, blend_weight, verifier_c)):
+        raise ValueError("deployment policy numeric values must be finite")
+
+    macro_keep = np.asarray(data.window_train.labels) >= 0
+    macro_labels = np.asarray(data.window_train.labels[macro_keep], dtype=np.int8)
+    _validate_binary(macro_labels, "deployment macro window training")
+    macro_features = _with_time_prior(data.window_train.features, data.window_train.windows)[macro_keep]
+    micro_keep = _micro_training_keep(
+        data.micro_window_train, data.train_truths, config.micro_positive_middle_fraction
+    )
+    micro_labels = np.asarray(data.micro_window_train.labels[micro_keep], dtype=np.int8)
+    _validate_binary(micro_labels, "deployment micro window training")
+    micro_features = data.micro_window_train.features[micro_keep]
+
+    # Candidate feature construction needs window probabilities.  The final fit
+    # below repeats these deterministic registered fits after labels/features
+    # are frozen, so the serialized macro/micro models exactly match them.
+    macro_probe = _window_estimator(config.seed + 2).fit(macro_features, macro_labels)
+    micro_probe = _micro_window_estimator(config.seed + 12).fit(micro_features, micro_labels)
+    candidate_macro_features = _with_time_prior(
+        data.candidate_train.features, data.candidate_train.windows
+    )
+    macro_windows = _windows_by_session(
+        data.candidate_train.windows,
+        _positive_probability(macro_probe, candidate_macro_features),
+    )
+    micro_windows = _windows_by_session(
+        data.micro_candidate_train.windows,
+        _positive_probability(micro_probe, data.micro_candidate_train.features),
+    )
+    candidates = union_candidates(
+        density_candidates(macro_windows, config.density),
+        micro_candidates(micro_windows, micro_threshold, config.micro_candidate),
+    )
+    if not candidates:
+        raise ValueError("full-target deployment fit produced no candidates")
+    candidate_features = multiscale_verifier_features(candidates, macro_windows, micro_windows)
+    if candidate_features.shape[1] != 56:
+        raise ValueError("full-target deployment verifier features must have 56 columns")
+    candidate_labels = _candidate_labels(candidates, data.train_truths)
+    _validate_binary(candidate_labels, "deployment verifier training")
+    final_fit = _fit_final_models(
+        config,
+        train_features=macro_features,
+        train_labels=macro_labels,
+        micro_train_features=micro_features,
+        micro_train_labels=micro_labels,
+        train_candidate_features=candidate_features,
+        train_candidate_labels=candidate_labels,
+        verifier_c=verifier_c,
+        policy=event_policy,
+        admission=admission,
+        blend_weight=blend_weight,
+    )
+    return final_fit, len(candidates)
 
 
 class FilesystemDataSource:
@@ -1195,6 +1438,31 @@ class FilesystemDataSource:
         missing = [str(path) for path in paths if not path.exists()]
         if missing:
             raise FileNotFoundError("missing runner inputs: " + ", ".join(missing))
+        return tuple(sorted(set(paths), key=lambda path: str(path)))
+
+    def deployment_input_files(self, configs: Sequence[RunConfig]) -> tuple[Path, ...]:
+        """Fingerprint only the files permitted in the full-target union.
+
+        Unlike :meth:`input_files`, this deliberately excludes every
+        ``train``/``meal_train``/``no_meal_train`` cache.  The returned inputs
+        document the held-out partition union used by the deployment models.
+        """
+
+        from src.data import manifests
+
+        paths: list[Path] = [manifests.INDEX_CSV, manifests.MEALS_CSV]
+        for config in configs:
+            paths.append(self._split_path(config.outer_fold, "val"))
+            if config.micro_enabled:
+                paths.append(self._micro_split_path(config.outer_fold, "val"))
+            split_manifest = self.root / "cache" / "splits" / f"fold{config.outer_fold}.json"
+            paths.append(split_manifest)
+            payload = json.loads(split_manifest.read_text(encoding="utf-8"))
+            for sid in payload.get("val_sessions", ()):
+                paths.append(self.session_dir / f"{sid}.npz")
+        missing = [str(path) for path in paths if not path.exists()]
+        if missing:
+            raise FileNotFoundError("missing deployment inputs: " + ", ".join(missing))
         return tuple(sorted(set(paths), key=lambda path: str(path)))
 
     @staticmethod

@@ -23,6 +23,63 @@ from src.pipeline.artifacts import (
 )
 
 
+def _promotion_policy_record(**overrides):
+    """A frozen outer-train policy record; outer metrics are deliberately noise."""
+
+    record = {
+        "micro_threshold": 0.1,
+        "selected_blend_weight": 0.75,
+        "selected_admission_nms_iou": 0.3,
+        "selected_admission_threshold": 0.2,
+        "selected_admission_subject_cap": 8,
+        "threshold": 0.6,
+        "max_events_per_subject": None,
+        "verifier_c": 0.1,
+        "outer_metrics": {"f1": 0.01, "n_tp": 0, "n_pred": 99, "n_true": 1},
+    }
+    record.update(overrides)
+    return record
+
+
+def test_canonical_deployment_policy_is_independent_of_outer_metrics():
+    from scripts.promote_event_stack import canonical_deployment_policy
+
+    records = [
+        _promotion_policy_record(threshold=value)
+        for value in (0.9, 0.6, 0.7, 0.5, 0.8)
+    ]
+    expected = canonical_deployment_policy(records)
+    mutated = [
+        {**record, "outer_metrics": {"f1": 1.0 - index / 10, "n_tp": 99, "n_pred": 1, "n_true": 1}}
+        for index, record in enumerate(records)
+    ]
+
+    assert canonical_deployment_policy(mutated) == expected
+    assert expected == {
+        "micro_threshold": 0.1,
+        "blend_weight": 0.75,
+        "nms_iou": 0.3,
+        "admission_threshold": 0.2,
+        "max_candidates_per_subject": 8,
+        "threshold": 0.7,
+        "max_events_per_group": None,
+        "verifier_c": 0.1,
+        "aggregation": "equal-fold canonical median/mode; ties use the smallest canonical value",
+    }
+
+
+def test_registered_filesystem_trainer_refuses_any_summary_other_than_the_locked_experiment():
+    from scripts.promote_event_stack import registered_filesystem_trainer
+
+    with pytest.raises(PromotionContractError, match="registered promotion summary"):
+        registered_filesystem_trainer({
+            "experiment_key": "not-a7396a9aa7c38f42",
+            "outer_metrics": {"f1": 0.9},
+            "folds": [{"outer_fold": fold, "config_hash": str(fold)} for fold in range(5)],
+            "run_configs": [],
+        })
+
+
 def fitted_tiny_bundle(role: str = "outer-fold-evidence") -> EventStackBundle:
     model = DummyClassifier(strategy="prior").fit(
         np.array([[0.0], [1.0]]), np.array([0, 1])

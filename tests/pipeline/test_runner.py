@@ -91,6 +91,63 @@ def synthetic_runner_dataset(
     )
 
 
+def test_full_target_dataset_uses_each_outer_validation_subject_once():
+    from src.pipeline.runner import build_full_target_dataset
+
+    first = synthetic_runner_dataset(subjects=6, windows_per_subject=20)
+    second_base = synthetic_runner_dataset(subjects=6, windows_per_subject=20)
+    # Give the second held-out partition distinct sessions, subjects and truths.
+    subject_by_session = {
+        f"all-{index}": f"all-subject-{index}"
+        for index in range(6)
+    }
+    def renamed(batch):
+        return WindowBatch(
+            batch.features,
+            batch.labels,
+            tuple(EventRef(f"all-{item.sid.rsplit('-', 1)[-1]}", item.start_ms, item.end_ms) for item in batch.windows),
+        )
+    second = FoldDataset(
+        window_train=renamed(second_base.window_train),
+        candidate_train=renamed(second_base.candidate_train),
+        validation=renamed(second_base.validation),
+        train_truths=tuple(EventRef(f"all-{item.sid.rsplit('-', 1)[-1]}", item.start_ms, item.end_ms) for item in second_base.train_truths),
+        validation_truths=tuple(EventRef(f"all-{item.sid.rsplit('-', 1)[-1]}", item.start_ms, item.end_ms) for item in second_base.validation_truths),
+        subject_by_session=subject_by_session,
+        outer_subjects=frozenset({"all-subject-4", "all-subject-5"}),
+    )
+
+    class Source:
+        def load_outer_fold(self, config):
+            return {0: first, 1: second}[config.outer_fold]
+
+    full = build_full_target_dataset(
+        (RunConfig(outer_fold=0), RunConfig(outer_fold=1)),
+        Source(),
+        expected_truth_count=2,
+    )
+    assert full.outer_subjects == frozenset({"subject-4", "subject-5", "all-subject-4", "all-subject-5"})
+    assert len(full.validation_truths) == 2
+    assert len({item.sid for item in full.validation.windows}) == 4
+    assert set(full.validation.labels) <= {0, 1}
+
+
+def test_full_target_dataset_rejects_reused_held_out_subject_or_truth_count():
+    from src.pipeline.runner import build_full_target_dataset
+
+    dataset = synthetic_runner_dataset(subjects=6, windows_per_subject=20)
+    class ReusedSource:
+        def load_outer_fold(self, _config):
+            return dataset
+
+    with pytest.raises(ValueError, match="overlap"):
+        build_full_target_dataset(
+            (RunConfig(outer_fold=0), RunConfig(outer_fold=1)),
+            ReusedSource(),
+            expected_truth_count=2,
+        )
+
+
 def test_outer_subjects_never_enter_fit_sets():
     dataset = synthetic_runner_dataset(subjects=8, windows_per_subject=40)
     result = run_outer_fold(
