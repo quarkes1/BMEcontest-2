@@ -20,11 +20,20 @@ from typing import Mapping, Sequence
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src import config as project_config
-from src.pipeline.artifacts import EventStackBundle, PromotionContractError, promote_summary
+from src.pipeline.artifacts import (
+    PROMOTION_F1_FLOOR,
+    EventStackBundle,
+    PromotionContractError,
+    promote_summary,
+)
 from src.pipeline.runner import (
     FilesystemDataSource,
     RunConfig,
+    _fold_result_from_dict,
+    aggregate_fold_results,
     build_full_target_dataset,
+    cache_key,
+    experiment_key,
     fit_full_target_deployment,
     fit_outer_fold_for_promotion,
 )
@@ -120,6 +129,36 @@ def _model_mapping(fit: object) -> dict[str, object]:
     return models
 
 
+def _terminal_estimator(model: object) -> object:
+    """Return the fitted estimator behind a sklearn-style pipeline."""
+
+    steps = getattr(model, "steps", None)
+    if steps:
+        return _terminal_estimator(steps[-1][1])
+    estimator = getattr(model, "estimator", None)
+    return _terminal_estimator(estimator) if estimator is not None else model
+
+
+def _fitted_input_width(model: object, name: str) -> int:
+    width = getattr(_terminal_estimator(model), "n_features_in_", None)
+    if isinstance(width, bool) or not isinstance(width, int) or width < 1:
+        raise PromotionContractError(f"fitted {name} model does not expose a valid n_features_in_")
+    return width
+
+
+def _validated_feature_schema(fit: object) -> dict[str, int]:
+    models = _model_mapping(fit)
+    schema = {
+        "macro": _fitted_input_width(models["macro"], "macro"),
+        "micro": _fitted_input_width(models["micro"], "micro"),
+        "verifier": _fitted_input_width(models["verifier_logistic"], "verifier_logistic"),
+    }
+    lgbm_width = _fitted_input_width(models["verifier_lgbm"], "verifier_lgbm")
+    if schema != {"macro": 63, "micro": 47, "verifier": 56} or lgbm_width != schema["verifier"]:
+        raise PromotionContractError("fitted promotion models do not match the registered 63/47/56 feature schema")
+    return schema
+
+
 def _runtime_policy_from_result(result: object) -> dict[str, object]:
     policy = {
         "blend_weight": getattr(result, "selected_blend_weight"),
@@ -151,6 +190,60 @@ def _same_selected_policy(result: object, record: Mapping[str, object]) -> bool:
     return all(getattr(result, field) == record[field] for field in fields)
 
 
+def _assert_evidence_equal(expected: object, observed: object, name: str) -> None:
+    """Compare JSON evidence exactly, permitting only arithmetic roundoff."""
+
+    if isinstance(expected, Mapping) and isinstance(observed, Mapping):
+        if set(expected) != set(observed):
+            raise PromotionContractError(f"registered summary {name} keys differ from fold evidence")
+        for key in expected:
+            _assert_evidence_equal(expected[key], observed[key], f"{name}.{key}")
+        return
+    if isinstance(expected, list) and isinstance(observed, list):
+        if len(expected) != len(observed):
+            raise PromotionContractError(f"registered summary {name} differs from fold evidence")
+        for index, (left, right) in enumerate(zip(expected, observed)):
+            _assert_evidence_equal(left, right, f"{name}[{index}]")
+        return
+    if isinstance(expected, float) or isinstance(observed, float):
+        try:
+            left, right = float(expected), float(observed)
+        except (TypeError, ValueError) as exc:
+            raise PromotionContractError(f"registered summary {name} differs from fold evidence") from exc
+        if not math.isfinite(left) or not math.isfinite(right) or not math.isclose(left, right, rel_tol=1e-12, abs_tol=1e-12):
+            raise PromotionContractError(f"registered summary {name} differs from fold evidence")
+        return
+    if expected != observed:
+        raise PromotionContractError(f"registered summary {name} differs from fold evidence")
+
+
+def _validate_summary_aggregate(
+    summary: Mapping[str, object], configs: Sequence[RunConfig], records: Sequence[Mapping[str, object]],
+) -> None:
+    try:
+        results = tuple(_fold_result_from_dict(record) for record in records)
+        recomputed = aggregate_fold_results(configs, results)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise PromotionContractError("registered fold evidence cannot be aggregated") from exc
+    for name, value in recomputed.items():
+        _assert_evidence_equal(value, summary.get(name), name)
+
+
+def _validate_current_cache_bindings(
+    configs: Sequence[RunConfig], records: Sequence[Mapping[str, object]], source: object,
+) -> None:
+    input_files = getattr(source, "input_files", None)
+    if not callable(input_files):
+        raise PromotionContractError("registered promotion source cannot enumerate input files")
+    for config, record in zip(configs, records):
+        try:
+            current_hash = cache_key(config, (63, 56, 47), input_files(config))
+        except (OSError, TypeError, ValueError) as exc:
+            raise PromotionContractError("registered promotion inputs cannot be fingerprinted") from exc
+        if record.get("config_hash") != current_hash:
+            raise PromotionContractError("registered fold evidence does not bind the current files and 63/56/47 schema")
+
+
 def _registered_fold_records(summary: Mapping[str, object]) -> tuple[tuple[RunConfig, ...], tuple[Mapping[str, object], ...]]:
     if summary.get("experiment_key") != _REGISTERED_EXPERIMENT_KEY:
         raise PromotionContractError("summary is not the registered promotion summary a7396a9aa7c38f42")
@@ -161,6 +254,8 @@ def _registered_fold_records(summary: Mapping[str, object]) -> tuple[tuple[RunCo
     configs = tuple(sorted((_config_from_summary(item) for item in raw_configs if isinstance(item, Mapping)), key=lambda item: item.outer_fold))
     if len(configs) != 5 or tuple(item.outer_fold for item in configs) != (0, 1, 2, 3, 4):
         raise PromotionContractError("registered summary must provide exactly outer folds 0 through 4")
+    if experiment_key(configs) != _REGISTERED_EXPERIMENT_KEY:
+        raise PromotionContractError("registered summary configurations do not reproduce experiment key a7396a9aa7c38f42")
     if any(not config.micro_enabled or not config.candidate_control_enabled or config.no_tcn is not True for config in configs):
         raise PromotionContractError("registered summary is not the frozen CPU multiscale candidate-control configuration")
     by_fold = {item.outer_fold: item for item in configs}
@@ -183,7 +278,9 @@ def _registered_fold_records(summary: Mapping[str, object]) -> tuple[tuple[RunCo
         if json.dumps(record.get("run_config"), sort_keys=True) != json.dumps(asdict(config), sort_keys=True):
             raise PromotionContractError("registered fold evidence run configuration differs from canonical summary")
         records.append(record)
-    return configs, tuple(records)
+    frozen_records = tuple(records)
+    _validate_summary_aggregate(summary, configs, frozen_records)
+    return configs, frozen_records
 
 
 def registered_filesystem_trainer(summary: Mapping[str, object]) -> Mapping[str, EventStackBundle]:
@@ -191,6 +288,7 @@ def registered_filesystem_trainer(summary: Mapping[str, object]) -> Mapping[str,
 
     configs, records = _registered_fold_records(summary)
     source = FilesystemDataSource(project_config.ROOT_DIR)
+    _validate_current_cache_bindings(configs, records, source)
     bundles: dict[str, EventStackBundle] = {}
     for config, record in zip(configs, records):
         result, fit, _ = fit_outer_fold_for_promotion(config, source)
@@ -200,7 +298,7 @@ def registered_filesystem_trainer(summary: Mapping[str, object]) -> Mapping[str,
             models=_model_mapping(fit),
             policy=_runtime_policy_from_result(result),
             run_config=asdict(config),
-            feature_schema={"macro": 63, "micro": 47, "verifier": 56},
+            feature_schema=_validated_feature_schema(fit),
             metrics=asdict(result.outer_metrics),
             source_fingerprints=_fingerprints(source.input_files(config)),
             role="outer-fold-evidence",
@@ -211,7 +309,7 @@ def registered_filesystem_trainer(summary: Mapping[str, object]) -> Mapping[str,
     fit, full_candidate_count = fit_full_target_deployment(configs[0], full_target, deployment_policy)
     # Deployment uses the canonical held-out aggregate as promotion evidence;
     # full-target fit metrics are intentionally not reported as a new test score.
-    aggregate_metrics = dict(summary["outer_metrics"])  # validated by promote_summary
+    aggregate_metrics = dict(summary["outer_metrics"])
     aggregate_metrics["full_target_candidate_count"] = full_candidate_count
     bundles["deployment"] = EventStackBundle(
         models=_model_mapping(fit),
@@ -226,7 +324,7 @@ def registered_filesystem_trainer(summary: Mapping[str, object]) -> Mapping[str,
             "verifier_c": deployment_policy["verifier_c"],
             "fold_configs": [asdict(config) for config in configs],
         },
-        feature_schema={"macro": 63, "micro": 47, "verifier": 56},
+        feature_schema=_validated_feature_schema(fit),
         metrics=aggregate_metrics,
         source_fingerprints=_fingerprints(source.deployment_input_files(configs)),
         role="deployment",
@@ -251,6 +349,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
+        payload = json.loads(args.summary.read_text(encoding="utf-8"))
+        if not isinstance(payload, Mapping):
+            raise PromotionContractError("registered summary must be a JSON object")
+        claimed_f1 = float(payload.get("outer_metrics", {}).get("f1")) if isinstance(payload.get("outer_metrics"), Mapping) else None
+        if claimed_f1 is not None and math.isfinite(claimed_f1) and claimed_f1 <= PROMOTION_F1_FLOOR:
+            raise PromotionContractError(
+                f"aggregate F1 must be strictly greater than {PROMOTION_F1_FLOOR:.10f}; got {claimed_f1:.10f}"
+            )
+        # Validate before ``promote_summary`` evaluates its F1 gate: the gate
+        # must be fed re-derived fold evidence, never a self-reported summary.
+        _registered_fold_records(payload)
         promote_summary(
             args.summary,
             output_root=args.output_root,

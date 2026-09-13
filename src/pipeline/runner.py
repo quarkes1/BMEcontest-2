@@ -304,6 +304,85 @@ def _concatenate_window_batches(batches: Sequence[WindowBatch]) -> WindowBatch:
     )
 
 
+def _event_key(event: EventRef) -> tuple[str, int, int]:
+    return event.sid, event.start_ms, event.end_ms
+
+
+def _validate_finite_array(values: np.ndarray, name: str) -> None:
+    try:
+        finite = np.isfinite(np.asarray(values, dtype=np.float64)).all()
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{name} must contain finite numeric values") from exc
+    if not finite:
+        raise ValueError(f"{name} must contain only finite values")
+
+
+def _validate_full_target_batch(batch: WindowBatch, name: str, width: int) -> set[str]:
+    _validate_batch(batch, name)
+    if batch.features.shape[1] != width:
+        raise ValueError(f"{name}.features must have {width} columns")
+    _validate_finite_array(batch.features, f"{name}.features")
+    _validate_finite_array(batch.labels, f"{name}.labels")
+    if any(not isinstance(window, EventRef) or window.end_ms <= window.start_ms for window in batch.windows):
+        raise ValueError(f"{name}.windows must contain valid EventRef intervals")
+    return {window.sid for window in batch.windows}
+
+
+def _validate_full_target_partition(partition: FoldDataset) -> tuple[set[str], set[str]]:
+    """Validate one raw held-out partition before it joins the deployment union."""
+
+    macro_sessions = _validate_full_target_batch(partition.validation, "validation", 62)
+    missing_sessions = macro_sessions - set(partition.subject_by_session)
+    if missing_sessions:
+        raise ValueError("validation sessions absent from subject mapping: " + ", ".join(sorted(missing_sessions)))
+    macro_subjects = {partition.subject_by_session[sid] for sid in macro_sessions}
+    if macro_subjects != set(partition.outer_subjects):
+        raise ValueError("held-out subject mapping does not match validation windows")
+
+    truths = tuple(partition.validation_truths)
+    truth_keys = [_event_key(truth) for truth in truths]
+    if len(set(truth_keys)) != len(truth_keys):
+        raise ValueError("duplicate validation truth")
+    if any(truth.sid not in macro_sessions for truth in truths):
+        raise ValueError("held-out truth is not in its validation session universe")
+    truth_set = set(truth_keys)
+    for name, slice_truths in partition.validation_truth_slices.items():
+        keys = [_event_key(truth) for truth in slice_truths]
+        if len(set(keys)) != len(keys):
+            raise ValueError(f"duplicate truth in slice {name}")
+        if not set(keys).issubset(truth_set):
+            raise ValueError(f"slice truth is not a member of validation truths: {name}")
+
+    micro = partition.micro_validation
+    if micro is not None:
+        micro_sessions = _validate_full_target_batch(micro, "micro_validation", 47)
+        if micro_sessions != macro_sessions:
+            raise ValueError("micro validation session universe does not match macro")
+        if {partition.subject_by_session[sid] for sid in micro_sessions} != macro_subjects:
+            raise ValueError("micro validation subject mapping does not match macro")
+    return macro_sessions, macro_subjects
+
+
+def _validate_full_target_dataset(data: FoldDataset) -> None:
+    """Revalidate the deployment union before its models are fit."""
+
+    for name in ("window_train", "candidate_train", "validation"):
+        sessions = _validate_full_target_batch(getattr(data, name), name, 62)
+        if sessions != {window.sid for window in data.validation.windows}:
+            raise ValueError(f"{name} session universe does not match full-target validation")
+    micro_names = ("micro_window_train", "micro_candidate_train", "micro_validation")
+    micro_batches = [getattr(data, name) for name in micro_names]
+    if any(batch is None for batch in micro_batches) and not all(batch is None for batch in micro_batches):
+        raise ValueError("full-target data must be either entirely micro-enabled or entirely macro-only")
+    for name, batch in zip(micro_names, micro_batches):
+        if batch is None:
+            continue
+        sessions = _validate_full_target_batch(batch, name, 47)
+        if sessions != {window.sid for window in data.validation.windows}:
+            raise ValueError(f"{name} session universe does not match full-target validation")
+    _validate_full_target_partition(data)
+
+
 def build_full_target_dataset(
     configs: Sequence[RunConfig],
     source: object,
@@ -333,13 +412,7 @@ def build_full_target_dataset(
     seen_truths: set[tuple[str, int, int]] = set()
     subject_by_session: dict[str, str] = {}
     for partition in partitions:
-        validation_sids = {window.sid for window in partition.validation.windows}
-        validation_subjects = {
-            partition.subject_by_session[sid]
-            for sid in validation_sids
-        }
-        if validation_subjects != set(partition.outer_subjects):
-            raise ValueError("held-out subject mapping does not match validation windows")
+        validation_sids, validation_subjects = _validate_full_target_partition(partition)
         overlap = seen_subjects & validation_subjects
         if overlap:
             raise ValueError("held-out subject overlap: " + ", ".join(sorted(overlap)))
@@ -353,8 +426,6 @@ def build_full_target_dataset(
                 raise ValueError("session-to-subject mapping changed across held-out partitions")
         for truth in partition.validation_truths:
             key = (truth.sid, truth.start_ms, truth.end_ms)
-            if truth.sid not in validation_sids:
-                raise ValueError("held-out truth is not in its validation session universe")
             if key in seen_truths:
                 raise ValueError("held-out truth overlap")
             seen_truths.add(key)
@@ -384,7 +455,7 @@ def build_full_target_dataset(
     for partition in partitions:
         for name, values in partition.validation_truth_slices.items():
             slices[name].extend(values)
-    return FoldDataset(
+    full_target = FoldDataset(
         window_train=validation,
         candidate_train=validation,
         validation=validation,
@@ -397,6 +468,8 @@ def build_full_target_dataset(
         micro_candidate_train=micro_validation,
         micro_validation=micro_validation,
     )
+    _validate_full_target_dataset(full_target)
+    return full_target
 
 
 @dataclass(frozen=True)
@@ -1319,6 +1392,7 @@ def fit_full_target_deployment(
         raise ValueError("deployment fitting requires the registered multiscale candidate-control configuration")
     if data.micro_window_train is None or data.micro_candidate_train is None:
         raise ValueError("deployment fitting requires full-target micro windows")
+    _validate_full_target_dataset(data)
     policy_values = {name: frozen_policy[name] for name in required}
     micro_threshold = float(policy_values["micro_threshold"])
     blend_weight = float(policy_values["blend_weight"])

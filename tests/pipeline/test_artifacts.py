@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import replace
+from dataclasses import asdict, replace
 from pathlib import Path
 
 import numpy as np
@@ -21,6 +21,8 @@ from src.pipeline.artifacts import (
     verify_bundle_manifest,
     write_event_stack_bundle,
 )
+from src.pipeline.event_stack import DensityConfig, EventMetrics
+from src.pipeline.runner import FoldResult, RunConfig, aggregate_fold_results, cache_key, experiment_key, fold_result_to_dict
 
 
 def _promotion_policy_record(**overrides):
@@ -78,6 +80,99 @@ def test_registered_filesystem_trainer_refuses_any_summary_other_than_the_locked
             "folds": [{"outer_fold": fold, "config_hash": str(fold)} for fold in range(5)],
             "run_configs": [],
         })
+
+
+def _registered_promotion_fixture(tmp_path: Path, monkeypatch):
+    """Create five attested records without touching repository results."""
+    import scripts.promote_event_stack as promotion
+
+    configs = tuple(
+        RunConfig(
+            outer_fold=fold,
+            inner_splits=4,
+            workers=0,
+            micro_enabled=True,
+            candidate_control_enabled=True,
+            density=DensityConfig(window_threshold=0.28838),
+        )
+        for fold in range(5)
+    )
+    assert experiment_key(configs) == "a7396a9aa7c38f42"
+    input_file = tmp_path / "registered-input.npz"
+    input_file.write_bytes(b"registered-input")
+    results = []
+    records = []
+    for config in configs:
+        metrics = EventMetrics(2, 3, 3, 2 / 3, 2 / 3, 2 / 3)
+        result = FoldResult(
+            config_hash=cache_key(config, (63, 56, 47), (input_file,)),
+            threshold=0.6,
+            max_events_per_subject=None,
+            verifier_c=0.1,
+            verifier_feature_count=56,
+            inner_metrics=metrics,
+            outer_metrics=metrics,
+            candidate_count=4,
+            candidate_match_recall=2 / 3,
+            slices={"duration_lt10": metrics},
+            timings_seconds={"total": 1.0},
+            cache_hits={"fold_result": False},
+            outer_subjects=frozenset({f"outer-{config.outer_fold}"}),
+            window_fit_subjects=frozenset({"fit"}),
+            verifier_fit_subjects=frozenset({"fit"}),
+            micro_threshold=0.1,
+            micro_candidate_count=5,
+            micro_candidate_match_recall=2 / 3,
+            short_meal_candidate_recall=2 / 3,
+            macro_window_feature_count=63,
+            micro_window_feature_count=47,
+            micro_window_fit_subjects=frozenset({"fit"}),
+            selected_blend_weight=0.75,
+            selected_admission_nms_iou=0.3,
+            selected_admission_threshold=0.2,
+            selected_admission_subject_cap=8,
+        )
+        results.append(result)
+        record = fold_result_to_dict(result)
+        record["run_config"] = asdict(config)
+        records.append(record)
+    summary = aggregate_fold_results(configs, results)
+    summary["experiment_key"] = experiment_key(configs)
+    summary["run_configs"] = [asdict(config) for config in configs]
+    output_dir = tmp_path / "outputs"
+    crossfit = output_dir / "crossfit"
+    crossfit.mkdir(parents=True)
+    for record in records:
+        (crossfit / f"fold{record['run_config']['outer_fold']}_{record['config_hash']}.json").write_text(
+            json.dumps(record), encoding="utf-8"
+        )
+    monkeypatch.setattr(promotion.project_config, "OUTPUT_DIR", output_dir)
+
+    class Source:
+        def input_files(self, _config):
+            return (input_file,)
+
+    monkeypatch.setattr(promotion, "FilesystemDataSource", lambda _root: Source())
+    return promotion, summary, records
+
+
+@pytest.mark.parametrize("mutate", ("f1", "workers"))
+def test_registered_trainer_rejects_summary_or_evidence_tampering_before_any_write(
+    tmp_path: Path, monkeypatch, mutate: str,
+):
+    promotion, summary, records = _registered_promotion_fixture(tmp_path, monkeypatch)
+    if mutate == "f1":
+        summary["outer_metrics"] = {**summary["outer_metrics"], "f1": 0.99}
+    else:
+        evidence = tmp_path / "outputs" / "crossfit" / f"fold0_{records[0]['config_hash']}.json"
+        payload = json.loads(evidence.read_text(encoding="utf-8"))
+        payload["run_config"]["workers"] = 1
+        evidence.write_text(json.dumps(payload), encoding="utf-8")
+
+    output_root = tmp_path / "models"
+    with pytest.raises(PromotionContractError):
+        promotion.registered_filesystem_trainer(summary)
+    assert not output_root.exists()
 
 
 def fitted_tiny_bundle(role: str = "outer-fold-evidence") -> EventStackBundle:

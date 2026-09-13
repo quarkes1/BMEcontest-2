@@ -250,6 +250,15 @@ canonical aggregate summary、五个 outer-fold evidence bundle、一个 deploym
 `promotion_attestation.json`；attestation 绑定实验 key、严格五折、门槛/F1 和每个 manifest 的
 SHA-256。打包器只接受这一完整结构，且只原子替换仓库 `dist/event_stack`。
 
+晋级脚本还会在写入前重新验证证据，而不是信任 summary 的自报字段：五份 `run_config`
+必须重现锁定的 experiment key；每折以当前 `FilesystemDataSource` 输入指纹和
+`(macro, verifier, micro)=(63,56,47)` 重算 cache key；outer/inner 指标、候选/短餐
+召回、切片、计时和 fold 清单均从五份 evidence 依 runner 的同一聚合公式复算。full-target
+训练只拼接经过校验的 outer-validation 分区：macro 原始特征为 62 列并在 time prior 后为
+63 列，micro 为 47 列，所有数组有限且行、sid/subject、truth 与 slice 映射一致；最终写入
+bundle 的 63/47/56 schema 来自实际拟合 estimator 的 `n_features_in_`。任一不一致都会在
+创建 `models/` 或 `dist/` 前拒绝晋级。
+
 部署特征输入必须同时携带稳定 `subject_id` 与会话 `sid`：前者用于冻结的 candidate admission
 预算和 event budget，后者只用于同会话 NMS 与输出事件几何；同一 payload 中的 `sid` 必须全局唯一，
 即使它们属于同一受试者也会被拒绝。CPU 是当前唯一可发布后端；`auto` 因此解析为 CPU，强制 CUDA

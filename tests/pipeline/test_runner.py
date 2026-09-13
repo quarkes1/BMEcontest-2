@@ -94,7 +94,15 @@ def synthetic_runner_dataset(
 def test_full_target_dataset_uses_each_outer_validation_subject_once():
     from src.pipeline.runner import build_full_target_dataset
 
-    first = synthetic_runner_dataset(subjects=6, windows_per_subject=20)
+    first_base = synthetic_runner_dataset(subjects=6, windows_per_subject=20)
+    first = replace(
+        first_base,
+        validation=WindowBatch(
+            np.pad(first_base.validation.features, ((0, 0), (0, 60))),
+            first_base.validation.labels,
+            first_base.validation.windows,
+        ),
+    )
     second_base = synthetic_runner_dataset(subjects=6, windows_per_subject=20)
     # Give the second held-out partition distinct sessions, subjects and truths.
     subject_by_session = {
@@ -110,7 +118,11 @@ def test_full_target_dataset_uses_each_outer_validation_subject_once():
     second = FoldDataset(
         window_train=renamed(second_base.window_train),
         candidate_train=renamed(second_base.candidate_train),
-        validation=renamed(second_base.validation),
+        validation=WindowBatch(
+            np.pad(renamed(second_base.validation).features, ((0, 0), (0, 60))),
+            renamed(second_base.validation).labels,
+            renamed(second_base.validation).windows,
+        ),
         train_truths=tuple(EventRef(f"all-{item.sid.rsplit('-', 1)[-1]}", item.start_ms, item.end_ms) for item in second_base.train_truths),
         validation_truths=tuple(EventRef(f"all-{item.sid.rsplit('-', 1)[-1]}", item.start_ms, item.end_ms) for item in second_base.validation_truths),
         subject_by_session=subject_by_session,
@@ -135,7 +147,15 @@ def test_full_target_dataset_uses_each_outer_validation_subject_once():
 def test_full_target_dataset_rejects_reused_held_out_subject_or_truth_count():
     from src.pipeline.runner import build_full_target_dataset
 
-    dataset = synthetic_runner_dataset(subjects=6, windows_per_subject=20)
+    base = synthetic_runner_dataset(subjects=6, windows_per_subject=20)
+    dataset = replace(
+        base,
+        validation=WindowBatch(
+            np.pad(base.validation.features, ((0, 0), (0, 60))),
+            base.validation.labels,
+            base.validation.windows,
+        ),
+    )
     class ReusedSource:
         def load_outer_fold(self, _config):
             return dataset
@@ -145,6 +165,95 @@ def test_full_target_dataset_rejects_reused_held_out_subject_or_truth_count():
             (RunConfig(outer_fold=0), RunConfig(outer_fold=1)),
             ReusedSource(),
             expected_truth_count=2,
+        )
+
+
+def test_full_target_dataset_rejects_wrong_width_nonfinite_and_misaligned_micro_rows():
+    """Promotion may concatenate only validated 62/47-column held-out data."""
+    from src.pipeline.runner import build_full_target_dataset
+
+    base = synthetic_runner_dataset(subjects=6, windows_per_subject=20)
+    macro = WindowBatch(
+        np.pad(base.validation.features, ((0, 0), (0, 60))),
+        base.validation.labels,
+        base.validation.windows,
+    )
+    micro = WindowBatch(
+        np.zeros((len(macro.labels), 47), dtype=np.float32),
+        macro.labels,
+        macro.windows,
+    )
+    valid = replace(
+        base,
+        validation=macro,
+        micro_validation=micro,
+        validation_truth_slices={"synthetic_meals": base.validation_truths},
+    )
+
+    class Source:
+        def __init__(self, dataset):
+            self.dataset = dataset
+
+        def load_outer_fold(self, _config):
+            return self.dataset
+
+    with pytest.raises(ValueError, match="62"):
+        build_full_target_dataset(
+            (RunConfig(outer_fold=0),),
+            Source(replace(valid, validation=replace(macro, features=macro.features[:, :-1]))),
+            expected_truth_count=1,
+        )
+    bad_features = macro.features.copy()
+    bad_features[0, 0] = np.nan
+    with pytest.raises(ValueError, match="finite"):
+        build_full_target_dataset(
+            (RunConfig(outer_fold=0),),
+            Source(replace(valid, validation=replace(macro, features=bad_features))),
+            expected_truth_count=1,
+        )
+    with pytest.raises(ValueError, match="micro_validation arrays must have equal row counts"):
+        build_full_target_dataset(
+            (RunConfig(outer_fold=0),),
+            Source(replace(valid, micro_validation=replace(micro, labels=micro.labels[:-1]))),
+            expected_truth_count=1,
+        )
+
+
+def test_full_target_dataset_rejects_duplicate_or_nonmember_slice_truths():
+    from src.pipeline.runner import build_full_target_dataset
+
+    base = synthetic_runner_dataset(subjects=6, windows_per_subject=20)
+    macro = WindowBatch(
+        np.pad(base.validation.features, ((0, 0), (0, 60))),
+        base.validation.labels,
+        base.validation.windows,
+    )
+    truth = base.validation_truths[0]
+    dataset = replace(
+        base,
+        validation=macro,
+        validation_truth_slices={"duplicate": (truth, truth)},
+    )
+
+    class Source:
+        def load_outer_fold(self, _config):
+            return dataset
+
+    with pytest.raises(ValueError, match="duplicate.*slice"):
+        build_full_target_dataset(
+            (RunConfig(outer_fold=0),),
+            Source(),
+            expected_truth_count=1,
+        )
+    dataset = replace(
+        dataset,
+        validation_truth_slices={"bad": (EventRef("not-a-session", 0, 1),)},
+    )
+    with pytest.raises(ValueError, match="slice truth.*validation truths"):
+        build_full_target_dataset(
+            (RunConfig(outer_fold=0),),
+            Source(),
+            expected_truth_count=1,
         )
 
 
