@@ -31,6 +31,13 @@ try {
   if (!badge.includes('DEMO DATA')) throw new Error('demo badge missing');
   const canvasCount = await page.locator('canvas').count();
   if (canvasCount < 2) throw new Error(`expected timeline + motion canvases, found ${canvasCount}`);
+  if (await page.locator('.motion-approximate').count()) throw new Error('fully calibrated demo should not show Approximate');
+  const before = await Promise.all(['.monitor-workspace', '.status-header', '.monitor-grid', '.detail-grid'].map(selector => page.locator(selector).boundingBox()));
+  await page.locator('input[accept=".json,.bin"]').setInputFiles({ name: 'broken.json', mimeType: 'application/json', buffer: Buffer.from('{') });
+  await page.waitForSelector('.error-banner');
+  const after = await Promise.all(['.monitor-workspace', '.status-header', '.monitor-grid', '.detail-grid'].map(selector => page.locator(selector).boundingBox()));
+  if (JSON.stringify(before) !== JSON.stringify(after)) throw new Error('Monitor geometry changed when an error was shown');
+  await page.click('.error-banner button');
   await page.click('nav button:has-text("Events")');
   await page.waitForSelector('.event-record');
   const events = await page.locator('.event-record').count();

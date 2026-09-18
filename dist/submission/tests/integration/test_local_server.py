@@ -59,6 +59,12 @@ def _tiny_session(rows: int = 120) -> bytes:
     return (header + "\n".join(body) + "\n").encode("utf-8")
 
 
+def _regressed_session() -> bytes:
+    lines = _tiny_session(120).decode("utf-8").splitlines()
+    lines[61] = lines[11]
+    return ("\n".join(lines) + "\n").encode("utf-8")
+
+
 def _upload(base: str, name: str, data: bytes, relative: str | None = None) -> str:
     headers = {"Content-Type": "application/octet-stream", "X-Session-Name": name}
     if relative:
@@ -69,12 +75,36 @@ def _upload(base: str, name: str, data: bytes, relative: str | None = None) -> s
 
 
 def test_health_and_capabilities(bridge):
-    _, base = bridge
+    service, base = bridge
+    from src.pipeline.inference.local_server import build_server
+    server = build_server(service, "127.0.0.1", 0)
+    assert server.request_queue_size == 32
+    assert server.RequestHandlerClass.protocol_version == "HTTP/1.1"
+    server.server_close()
     status, health = _request(f"{base}/api/health")
     assert status == 200 and health["status"] == "ok" and health["run_key"] == "160afaf81debf1ee"
     status, capabilities = _request(f"{base}/api/capabilities")
     assert status == 200 and capabilities["inference"] is True
     assert capabilities["prediction_schema_version"] == "1.0"
+
+
+def test_oversized_upload_returns_json_error(bridge):
+    import http.client
+    from src.pipeline.inference.local_server import MAX_UPLOAD_BYTES
+
+    _, base = bridge
+    port = int(base.rsplit(":", 1)[1])
+    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=15)
+    try:
+        connection.putrequest("POST", "/api/upload")
+        connection.putheader("Content-Length", str(MAX_UPLOAD_BYTES + 1))
+        connection.putheader("X-Session-Name", "collect_data1_2_3.txt")
+        connection.endheaders()
+        response = connection.getresponse()
+        assert response.status == 400
+        assert "size limit" in json.loads(response.read())["error"]
+    finally:
+        connection.close()
 
 
 def test_analyze_tiny_session_returns_contract_and_telemetry(bridge):
@@ -95,6 +125,27 @@ def test_analyze_tiny_session_returns_contract_and_telemetry(bridge):
     assert len(data) == manifest["sample_count"] * 32
     timestamp = np.frombuffer(data[:8], dtype="<f8")[0]
     assert timestamp == manifest["start_ms"]
+
+
+def test_regressed_session_is_skipped_without_losing_healthy_peer(bridge):
+    from src.pipeline.inference.schema import validate_prediction
+
+    _, base = bridge
+    good = _upload(base, "collect_data1_2_3.txt", _tiny_session())
+    bad = _upload(base, "collect_data4_5_6.txt", _regressed_session())
+    status, body = _request(f"{base}/api/analyze", "POST", json.dumps({"tokens": [good, bad]}).encode(),
+                            {"Content-Type": "application/json"})
+    assert status == 200, body
+    validate_prediction(body["prediction"])
+    assert len(body["sessions"]) == 1
+    assert "已跳过" in " ".join(body["warnings"])
+
+    status, body = _request(f"{base}/api/analyze", "POST", json.dumps({"tokens": [bad]}).encode(),
+                            {"Content-Type": "application/json"})
+    assert status == 200, body
+    validate_prediction(body["prediction"])
+    assert body["sessions"] == [] and body["prediction"]["events"] == []
+    assert "已跳过" in " ".join(body["warnings"])
 
 
 def test_bridge_matches_canonical_predictor_on_the_release_fixture(bridge):

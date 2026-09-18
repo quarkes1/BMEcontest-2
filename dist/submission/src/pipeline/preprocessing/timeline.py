@@ -14,20 +14,28 @@ class TimelineSpan:
     row_indices: np.ndarray | None = None
 
 
+def timeline_regressions(session) -> int:
+    """Count timestamp regressions among valid IMU rows without changing the session."""
+    indices = np.flatnonzero(np.asarray(session.imu_valid, dtype=bool))
+    timestamps = np.asarray(session.t_acc, dtype=np.int64)[indices]
+    return int(np.count_nonzero(np.diff(timestamps) < 0))
+
+
 def valid_imu_spans(session) -> tuple[TimelineSpan, ...]:
-    """Split valid, ordered IMU rows at acquisition discontinuities."""
+    """Split valid IMU rows at acquisition discontinuities and timestamp regressions."""
     indices = np.flatnonzero(np.asarray(session.imu_valid, dtype=bool))
     if not len(indices):
         return ()
     timestamps = np.asarray(session.t_acc, dtype=np.int64)[indices]
-    if (timestamps < 0).any() or np.any(np.diff(timestamps) < 0):
-        raise ValueError("valid IMU timestamps must be ordered and non-negative")
+    if (timestamps < 0).any():
+        raise ValueError("valid IMU timestamps must be non-negative")
     positive = np.diff(timestamps)
     positive = positive[positive > 0]
     if not len(positive):
         raise ValueError("valid IMU timestamps require a positive interval")
     period = float(np.median(positive))
-    groups = np.split(np.arange(len(indices)), np.flatnonzero(np.diff(timestamps) > period * 2.0) + 1)
+    deltas = np.diff(timestamps)
+    groups = np.split(np.arange(len(indices)), np.flatnonzero((deltas > period * 2.0) | (deltas < 0)) + 1)
     return tuple(TimelineSpan(int(timestamps[group[0]]), int(timestamps[group[-1]]), timestamps[group].copy(), indices[group].copy()) for group in groups if len(group))
 
 

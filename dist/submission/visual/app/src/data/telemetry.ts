@@ -1,6 +1,6 @@
 import type { Imu, MotionData, MotionManifest } from './types';
 
-/** Motion telemetry record: little-endian float64 timestamp (ms) + six float32 raw channels. */
+/** Motion telemetry record. Segment boundaries may contain timestamp regressions. */
 export function parseMotion(manifestValue: unknown, buffer: ArrayBuffer): MotionData {
   const m = manifestValue as MotionManifest;
   if (!m || m.telemetry_version !== '1.0' || m.record_format !== 'f64_ms_6xf32_le' || !Number.isSafeInteger(m.sample_count) || m.sample_count < 0 || buffer.byteLength !== m.sample_count * 32) throw new Error('Invalid motion telemetry manifest or binary size.');
@@ -8,7 +8,7 @@ export function parseMotion(manifestValue: unknown, buffer: ArrayBuffer): Motion
   const view = new DataView(buffer);
   for (let i = 0; i < m.sample_count; i++) {
     t[i] = view.getFloat64(i * 32, true);
-    if (!Number.isFinite(t[i]) || (i > 0 && t[i] < t[i - 1])) throw new Error('IMU timestamps must be ordered and finite.');
+    if (!Number.isFinite(t[i])) throw new Error('IMU timestamps must be finite.');
     for (let c = 0; c < 6; c++) {
       channels[c][i] = view.getFloat32(i * 32 + 8 + c * 4, true);
       if (!Number.isFinite(channels[c][i])) throw new Error('IMU values must be finite.');

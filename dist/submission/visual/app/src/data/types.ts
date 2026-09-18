@@ -29,7 +29,7 @@ export type MotionManifest = {
   end_ms: number;
   binary_file: string;
   units: { acceleration: 'raw_adc' | 'g'; gyroscope: 'raw_adc' | 'rad/s' | 'deg/s' };
-  calibration?: { acceleration_counts_per_g: number; gyroscope_counts_per_rad_s: number; viewer_from_sensor: number[] };
+  calibration?: { acceleration_counts_per_g: number; gyroscope_counts_per_rad_s?: number; viewer_from_sensor: number[] };
   provenance?: Record<string, unknown>;
 };
 export type Imu = { t: Float64Array; ax: Float32Array; ay: Float32Array; az: Float32Array; gx: Float32Array; gy: Float32Array; gz: Float32Array };

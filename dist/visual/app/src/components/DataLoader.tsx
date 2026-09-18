@@ -37,11 +37,17 @@ export default function DataLoader({ capabilities, prediction, onDataset, onErro
       onError(folder ? 'No collect_data*.txt session files found in this folder.' : 'Select collect_data*.txt session files.');
       return;
     }
+    const started = Date.now();
+    let progress = '';
+    const timer = window.setInterval(() => {
+      if (progress) onStatus(`${progress} · 已用 ${Math.floor((Date.now() - started) / 1000)} 秒`);
+    }, 1000);
     try {
       const outcome = await analyzeRawSelection(sessions, folder, (phase, done, total) => {
-        if (phase === 'preparing') onStatus(total > 1 ? `Preparing files… ${done}/${total}` : 'Preparing files…');
-        else if (phase === 'running') onStatus('Running inference…');
-        else onStatus('Loading timeline…');
+        if (phase === 'preparing') progress = `正在上传 ${done + 1}/${total} 个会话`;
+        else if (phase === 'running') progress = `正在分析 ${done + 1}/${total} 个会话`;
+        else progress = `${total}/${total} 完成 · 正在加载时间轴`;
+        onStatus(progress);
       });
       const warnings = [...outcome.warnings];
       if (ignored > 0) warnings.push(`${ignored} unrelated file(s) were ignored.`);
@@ -52,12 +58,13 @@ export default function DataLoader({ capabilities, prediction, onDataset, onErro
         label: folder ? (folderName || 'Selected folder') : `${sessions.length} session file(s)`,
         demo: false,
       };
-      onStatus(warnings.length ? `Ready · ${warnings.join(' ')}` : 'Ready');
+      onStatus(warnings.length ? `Ready · ${sessions.length}/${sessions.length} 完成 · ${warnings.join(' ')}` : `Ready · ${sessions.length}/${sessions.length} 完成`);
       onDataset(dataset);
     } catch (error) {
       onStatus('');
       onError(error instanceof Error ? error.message : String(error));
     } finally {
+      window.clearInterval(timer);
       if (txtInput.current) txtInput.current.value = '';
       if (folderInput.current) folderInput.current.value = '';
     }

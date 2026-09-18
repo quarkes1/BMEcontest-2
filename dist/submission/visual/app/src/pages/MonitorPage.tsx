@@ -47,7 +47,7 @@ export default function MonitorPage({ demo, sessionId, prediction, motion, orien
       <StatusHeader demo={demo} sessionId={sessionId} prediction={prediction} motion={motion} selectedEvent={selectedEvent} />
       <div className="monitor-grid">
         <Timeline prediction={prediction} sessionId={sessionId} imu={motion?.imu} selection={selection} onSelect={onSelect} playhead={playhead} />
-        <MotionReplay orientation={orientation} selection={selection} playhead={playhead} playing={playing} speed={speed} onPlay={onTogglePlay} onSeek={onSeek} onSpeed={onSpeed} />
+        <MotionReplay orientation={orientation} manifest={motion?.manifest} selection={selection} playhead={playhead} playing={playing} speed={speed} onPlay={onTogglePlay} onSeek={onSeek} onSpeed={onSpeed} />
       </div>
       <div className="detail-grid">
         <SelectedInterval selection={selection} motion={motion} selectedImu={selectedImu} selectedCandidate={selectedCandidate} selectedEvent={selectedEvent} />

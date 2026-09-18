@@ -38,7 +38,7 @@ dist/visual/
 │       ├── runtime/                        # inferenceClient / capabilities
 │       │                                   # + release-data.generated.ts（构建时生成，勿手改）
 │       ├── styles/app.css
-│       └── tests/                          # contract / timeline / orientation / loader
+│       └── tests/                          # contract / timeline / orientation / loader / realDataRobustness
 └── tools/
     ├── prepare-release.mjs                 # 生成 runtime/ JSON 与应用内联 TS（唯一来源）
     ├── make-standalone.mjs                 # 构建后内联为自包含单文件 index.html
@@ -138,9 +138,12 @@ npm run e2e:bridge # 真实 TXT 全链路（需 Python 环境，自动拉起本�
 
 ## 传感器标定限制
 
-真实数据的姿态回放需要：时间单位、ACC/GYRO 单位、轴序与符号约定、传感器→查看器
-坐标映射。任一缺失时界面显示 "Orientation unavailable · raw sensor calibration
-required"，原始 ACC/GYRO 仍可按声明单位查看。
+本地桥接服务仅在找到至少 3 段连续 10 秒、加速度模长变异系数低于 5% 的静止数据时，
+用模长中位数估计 `acceleration_counts_per_g`。真实数据的 Motion Replay 此时标记为
+“Approximate”：仅按重力估计倾斜，不积分未标定的陀螺仪。轴向矩阵
+`[1,0,0, 0,0,1, 0,-1,0]` 是与 demo 一致的查看器约定值，**不是设备规格**；
+重力也无法确定航向。静止数据不足时不提供标定，显示 Orientation unavailable。
+原始 ACC/GYRO 仍按声明单位查看。
 
 ## 浏览器兼容性
 
@@ -152,7 +155,7 @@ Chrome/Edge 等 Chromium 浏览器支持目录选择与完整交互；Firefox/Sa
 ```bash
 cd dist/visual/app
 npm ci
-npm test              # contract / timeline / orientation / loader 四组（16 项）
+npm test              # contract / timeline / orientation / loader / realDataRobustness 五组（20 项）
 npm run e2e           # file:// 演示模式冒烟（系统 Edge/Chrome）
 npm run e2e:bridge    # 完整分析模式：真实 TXT → canonical 推理 → UI（需 Python 环境）
 ```

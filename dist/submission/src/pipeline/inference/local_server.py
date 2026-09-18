@@ -33,7 +33,9 @@ import webbrowser
 import numpy as np
 
 from ..io.raw_session import RawSessionSource, discover_raw_sessions, load_raw_session
+from ..preprocessing.timeline import timeline_regressions, valid_imu_spans
 from .predictor import PredictionOptions, Predictor
+from .schema import make_prediction_result
 
 SESSION_FILENAME = re.compile(r"^collect_data\d+_\d+_\d+\.txt$")
 SEGMENT_UNSAFE = re.compile(r"[^A-Za-z0-9._-]+")
@@ -79,6 +81,29 @@ def motion_records(session: object) -> tuple[bytes, int]:
     channels = np.vstack([acc[:, rows], gyro[:, rows]]).T
     records[:, 8:] = np.ascontiguousarray(channels, dtype="<f4").view(np.uint8).reshape(n, 24)
     return records.tobytes(), skipped
+
+
+def estimate_gravity_calibration(session: object) -> dict[str, object] | None:
+    """Estimate raw ACC counts/g from at least three nonoverlapping quiet 10 s spans."""
+    acc = np.asarray(session.acc, dtype=np.float64)
+    estimates: list[float] = []
+    for span in valid_imu_spans(session):
+        timestamps = span.timestamps_ms
+        rows = span.row_indices
+        start = 0
+        while start < len(rows):
+            stop = int(np.searchsorted(timestamps, timestamps[start] + 10_000, side="left"))
+            if stop >= len(rows):
+                break
+            magnitudes = np.linalg.norm(acc[:, rows[start:stop + 1]], axis=0)
+            mean = float(np.mean(magnitudes))
+            if mean > 0 and np.isfinite(magnitudes).all() and float(np.std(magnitudes)) / mean < .05:
+                estimates.append(float(np.median(magnitudes)))
+            start = stop + 1
+    if len(estimates) < 3:
+        return None
+    return {"acceleration_counts_per_g": float(np.median(estimates)),
+            "viewer_from_sensor": [1, 0, 0, 0, 0, 1, 0, -1, 0]}
 
 
 class LocalInferenceService:
@@ -158,6 +183,29 @@ class LocalInferenceService:
             sources.extend(discover_raw_sessions(folder_path))
         if not sources:
             raise ValueError("No collect_data*.txt session files were uploaded.")
+        healthy_sources: list[RawSessionSource] = []
+        for source in sources:
+            try:
+                session = load_raw_session(source)
+                regressions = timeline_regressions(session)
+                if not regressions:
+                    valid_imu_spans(session)
+            except (ValueError, AssertionError) as exc:
+                warnings.append(f"{source.session_id}：会话数据无效（{exc}），已跳过")
+                continue
+            if regressions:
+                warnings.append(f"{source.session_id}：采集时间轴损坏（{regressions} 处时间戳回退），已跳过")
+            else:
+                healthy_sources.append(source)
+        sources = healthy_sources
+        if not sources:
+            result = make_prediction_result(run_key=self.run_key, source="uploaded sessions", duration_seconds=0, events=[])
+            result["diagnostics"]["warnings"] = warnings.copy()
+            if include_candidates:
+                result["candidates"] = []
+            if include_timeline:
+                result["timeline"] = {"session_ids": [], "macro_windows": 0, "micro_windows": 0, "series": []}
+            return {"analysis_id": analysis_id, "run_key": self.run_key, "prediction": result, "sessions": [], "warnings": warnings}
         options = PredictionOptions(include_timeline=include_timeline, include_candidates=include_candidates, device="cpu")
         with self._lock:
             predictor = self.predictor()
@@ -186,6 +234,9 @@ class LocalInferenceService:
                     "units": {"acceleration": "raw_adc", "gyroscope": "raw_adc"},
                     "provenance": {"source_file": Path(source.path).name, "skipped_rows": skipped, "timestamps": "ACC_TIME"},
                 }
+                calibration = estimate_gravity_calibration(session)
+                if calibration is not None:
+                    manifest["calibration"] = calibration
                 telemetry[str(source.session_id)] = manifest
                 sessions.append({
                     "session_id": source.session_id,
@@ -214,6 +265,7 @@ class LocalInferenceService:
 
 class _Handler(BaseHTTPRequestHandler):
     server_version = "EatingSenseLocal/1.0"
+    protocol_version = "HTTP/1.1"
     service: LocalInferenceService
 
     def log_message(self, format: str, *args: object) -> None:  # quiet, instrument-style
@@ -225,6 +277,8 @@ class _Handler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
+        if self.close_connection:
+            self.send_header("Connection", "close")
         self.end_headers()
         self.wfile.write(body)
 
@@ -236,6 +290,17 @@ class _Handler(BaseHTTPRequestHandler):
         if length <= 0:
             return b""
         if length > MAX_UPLOAD_BYTES:
+            self.connection.settimeout(5)
+            try:
+                remaining = length
+                while remaining:
+                    chunk = self.rfile.read(min(1024 * 1024, remaining))
+                    if not chunk:
+                        break
+                    remaining -= len(chunk)
+            except (OSError, TimeoutError):
+                pass
+            self.close_connection = True
             raise ValueError("Upload exceeds the size limit.")
         return self.rfile.read(length)
 
@@ -328,7 +393,8 @@ class _Handler(BaseHTTPRequestHandler):
 
 def build_server(service: LocalInferenceService, host: str, port: int) -> ThreadingHTTPServer:
     handler = type("BoundHandler", (_Handler,), {"service": service})
-    server = ThreadingHTTPServer((host, port), handler)
+    server_class = type("LocalThreadingHTTPServer", (ThreadingHTTPServer,), {"request_queue_size": 32})
+    server = server_class((host, port), handler)
     server.daemon_threads = True
     return server
 

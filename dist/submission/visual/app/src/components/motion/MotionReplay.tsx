@@ -4,11 +4,11 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createForearmModel } from './ForearmModel';
 import type { QuaternionPoint } from '../../motion/quaternion';
 import { interpolateOrientation } from '../../motion/interpolation';
-import type { Range } from '../../data/types';
+import type { MotionManifest, Range } from '../../data/types';
 import { duration } from '../../data/format';
 
-type Props = { orientation: QuaternionPoint[] | null; selection: Range | null; playhead: number | null; playing: boolean; speed: number; onPlay: () => void; onSeek: (time: number) => void; onSpeed: (speed: number) => void };
-export default function MotionReplay({ orientation, selection, playhead, playing, speed, onPlay, onSeek, onSpeed }: Props) {
+type Props = { orientation: QuaternionPoint[] | null; manifest?: MotionManifest; selection: Range | null; playhead: number | null; playing: boolean; speed: number; onPlay: () => void; onSeek: (time: number) => void; onSpeed: (speed: number) => void };
+export default function MotionReplay({ orientation, manifest, selection, playhead, playing, speed, onPlay, onSeek, onSpeed }: Props) {
   const mount = useRef<HTMLDivElement>(null), motion = useRef<THREE.Group | null>(null), camera = useRef<THREE.PerspectiveCamera | null>(null), controls = useRef<OrbitControls | null>(null);
   const [view, setView] = useState<'3D' | 'Side' | 'Top'>('3D'), [debug, setDebug] = useState(false);
   useEffect(() => {
@@ -38,7 +38,9 @@ export default function MotionReplay({ orientation, selection, playhead, playing
     const axis = motion.current.userData.axis as THREE.Group; if (axis) axis.visible = !!orientation || debug;
   }, [orientation,playhead,debug]);
   const progress = selection && playhead !== null ? Math.max(0,Math.min(1,(playhead-selection.start_ms)/Math.max(1,selection.end_ms-selection.start_ms))) : 0;
+  const approximate = !!orientation && manifest?.units.acceleration === 'raw_adc' && !(manifest.calibration?.gyroscope_counts_per_rad_s && manifest.calibration.gyroscope_counts_per_rad_s > 0);
   return <section className="panel motion-panel"><div className="panel-title"><h2>Motion replay</h2><div className="segmented small">{(['3D','Side','Top'] as const).map(label => <button key={label} className={view===label?'active':''} onClick={()=>setView(label)}>{label}</button>)}</div></div>
+    {approximate && <div className="motion-approximate" role="note">Approximate：自动重力标定；陀螺仪未标定；轴向为约定值</div>}
     <div ref={mount} className="motion-viewport" aria-label="3D forearm, wrist, hand and smartwatch model" />
     {!orientation && <div className="motion-unavailable">{selection ? 'Orientation unavailable · raw sensor calibration required' : 'Select an interval to replay motion'}</div>}
     <div className="motion-controls"><button className="play-button" onClick={onPlay} disabled={!selection || !orientation} aria-label={playing?'Pause':'Play'}>{playing?'Ⅱ':'▶'}</button><span className="mono">{selection && playhead !== null ? duration(playhead-selection.start_ms) : '0.0 s'} / {selection ? duration(selection.end_ms-selection.start_ms) : '0.0 s'}</span><input type="range" min="0" max="1000" value={Math.round(progress*1000)} disabled={!selection || !orientation} onChange={e=>selection&&onSeek(selection.start_ms+Number(e.target.value)/1000*(selection.end_ms-selection.start_ms))} aria-label="Replay position"/><select value={speed} onChange={e=>onSpeed(Number(e.target.value))} aria-label="Playback speed">{[.25,.5,1,2].map(s=><option key={s} value={s}>{s}×</option>)}</select></div>
@@ -46,5 +48,4 @@ export default function MotionReplay({ orientation, selection, playhead, playing
     {debug && <div className="debug-readout mono">Viewer axes: X arm → hand · Y up · Z depth<br/>q {orientation&&playhead!==null ? JSON.stringify(interpolateOrientation(orientation,playhead)) : 'unavailable'}<br/>t {playhead??'—'}</div>}
   </section>;
 }
-
 

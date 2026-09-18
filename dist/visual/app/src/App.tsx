@@ -100,13 +100,13 @@ export default function App() {
   return (
     <div className="app">
       <TopNav page={page} onPage={setPage} demo={dataset.demo} />
-      <main className={page === 'Monitor' ? `monitor-workspace${error ? ' has-error' : ''}` : undefined}>
-        {error && <div role="alert" className="error-banner">{error}<button onClick={() => setError('')}>Dismiss</button></div>}
+      {error && <div role="alert" className="error-banner">{error}<button onClick={() => setError('')}>Dismiss</button></div>}
+      {status && <div className="status-line" title={status}>{status}</div>}
+      <main className={page === 'Monitor' ? 'monitor-workspace' : undefined}>
         <div className="data-bar">
           <SessionBrowser label={dataset.label} demo={dataset.demo} sessions={sessions} sessionId={sessionId} onSession={switchSession} bounds={bounds} />
           <DataLoader capabilities={capabilities} prediction={dataset.prediction} onDataset={applyDataset} onError={setError} onStatus={setStatus} onResetDemo={resetDemo} />
         </div>
-        {status && <div className="status-line">{status}</div>}
         {page === 'Monitor' && (
           <MonitorPage
             demo={dataset.demo}

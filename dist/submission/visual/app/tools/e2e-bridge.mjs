@@ -63,6 +63,8 @@ try {
   await page.setInputFiles('.data-loader input[accept=".txt,text/plain"]', sessionPath);
   await page.waitForSelector('.status-line', { timeout: 30000 });
   await page.waitForFunction(() => document.querySelector('.status-line')?.textContent?.includes('Ready'), null, { timeout: 180000 });
+  const approximate = await page.locator('.motion-approximate').count();
+  if (approximate !== 1) throw new Error('real raw telemetry should show the Approximate calibration badge');
   const sessionValue = await page.inputValue('.session-picker select');
   if (!sessionValue.includes(sessionFile.replace(/\.txt$/, ''))) throw new Error(`unexpected session id: ${sessionValue}`);
   await page.click('nav button:has-text("Events")');

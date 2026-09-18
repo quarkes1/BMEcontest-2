@@ -16,15 +16,13 @@ export function validMapping(matrix: number[]): boolean {
 }
 
 /**
- * Real orientation reconstruction requires an explicit calibration: acceleration and
- * gyroscope units plus a proper signed sensor→viewer mapping. Without them the UI must
- * report "orientation unavailable" instead of fabricating motion.
+ * Gravity-only replay requires calibrated acceleration and a proper signed mapping.
+ * Unknown gyro scale is allowed, but gyro integration must then be disabled.
  */
 export function canOrient(m: MotionManifest): boolean {
   const c = m.calibration;
   return !!c && validMapping(c.viewer_from_sensor)
-    && (m.units.acceleration === 'g' || c.acceleration_counts_per_g > 0)
-    && (m.units.gyroscope === 'rad/s' || m.units.gyroscope === 'deg/s' || c.gyroscope_counts_per_rad_s > 0);
+    && (m.units.acceleration === 'g' || c.acceleration_counts_per_g > 0);
 }
 
 export function mapVector(v: [number, number, number], m: number[]): [number, number, number] {
