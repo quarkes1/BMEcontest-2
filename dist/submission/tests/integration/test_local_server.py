@@ -207,3 +207,31 @@ def test_static_serving_stays_inside_the_visual_directory(tmp_path):
     finally:
         server.shutdown()
         server.server_close()
+
+
+def test_unconsumed_error_body_closes_the_connection(bridge):
+    """HTTP/1.1 keep-alive must never leave an unread request body in the socket.
+
+    A 404 for an unknown POST route used to answer while the body stayed queued; the
+    next request on that connection was then parsed from the leftover bytes (observed
+    as ``501 Unsupported method '{"tokens":["x"]}GET'``).  Error responses that never
+    read the body must end the connection instead.
+    """
+    import http.client
+
+    _, base = bridge
+    port = int(base.rsplit(":", 1)[1])
+    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=15)
+    try:
+        body = b'{"tokens":["x"]}'
+        connection.putrequest("POST", "/api/unknown-route")
+        connection.putheader("Content-Type", "application/json")
+        connection.putheader("Content-Length", str(len(body)))
+        connection.endheaders()
+        connection.send(body)
+        response = connection.getresponse()
+        assert response.status == 404
+        assert response.getheader("Connection") == "close"
+        response.read()
+    finally:
+        connection.close()

@@ -384,10 +384,16 @@ class _Handler(BaseHTTPRequestHandler):
                 result = self.service.analyze([str(token) for token in tokens])
                 self._json(HTTPStatus.OK, result)
             else:
+                # The request body of an unknown route was never read; under HTTP/1.1
+                # keep-alive those bytes would be parsed as the next request line, so
+                # end the connection instead (the response carries Connection: close).
+                self.close_connection = True
                 self._error(HTTPStatus.NOT_FOUND, f"Unknown API route: {path}")
         except ValueError as exc:
+            self.close_connection = True          # may fire before the body is consumed
             self._error(HTTPStatus.BAD_REQUEST, str(exc))
         except Exception as exc:  # keep the service alive; report restrained detail
+            self.close_connection = True
             self._error(HTTPStatus.INTERNAL_SERVER_ERROR, f"Inference failed: {exc}")
 
 

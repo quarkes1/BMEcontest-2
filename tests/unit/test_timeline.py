@@ -31,8 +31,31 @@ def test_regression_starts_new_span_without_changing_ordered_case():
     regressed = _session_with_timestamps([0, 50, 100, 25, 75, 125])
     assert timeline_regressions(regressed) == 1
     spans = valid_imu_spans(regressed)
-    assert [(s.start_ms, s.end_ms) for s in spans] == [(0, 100), (25, 125)]
-    assert [s.row_indices.tolist() for s in spans] == [[0, 1, 2], [3, 4, 5]]
+    # the rewound prefix (25, 75) duplicates rows already covered by the first span
+    # and is trimmed; the surviving sample (125) starts beyond the covered interval.
+    assert [(s.start_ms, s.end_ms) for s in spans] == [(0, 100), (125, 125)]
+    assert [s.row_indices.tolist() for s in spans] == [[0, 1, 2], [5]]
+
+
+def test_rewound_stream_spans_are_ordered_and_disjoint():
+    """Spans must never overlap: predictor gaps/coverage assume ordered, disjoint spans."""
+    from src.pipeline.preprocessing.timeline import valid_imu_spans
+
+    session = _session_with_timestamps([0, 50, 100, 25, 75, 125, 150])
+    spans = valid_imu_spans(session)
+    assert [(s.start_ms, s.end_ms) for s in spans] == [(0, 100), (125, 150)]
+    assert [s.row_indices.tolist() for s in spans] == [[0, 1, 2], [5, 6]]
+    for left, right in zip(spans, spans[1:]):
+        assert left.end_ms < right.start_ms, "gaps between spans must stay strictly positive"
+
+
+def test_fully_covered_rewound_span_is_dropped():
+    from src.pipeline.preprocessing.timeline import valid_imu_spans
+
+    session = _session_with_timestamps([0, 50, 100, 150, 200, 30, 80])
+    spans = valid_imu_spans(session)
+    assert [(s.start_ms, s.end_ms) for s in spans] == [(0, 200)]
+    assert [s.row_indices.tolist() for s in spans] == [[0, 1, 2, 3, 4]]
 
 
 def test_window_starts_stay_within_span_and_coverage():
