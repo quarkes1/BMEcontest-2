@@ -10,6 +10,7 @@ type Props = {
   onDataset: (dataset: Dataset, sessionId?: string) => void;
   onError: (message: string) => void;
   onStatus: (message: string) => void;
+  onAnalyzing?: (busy: boolean) => void;
   onResetDemo: () => void;
 };
 
@@ -18,7 +19,7 @@ type Props = {
  * the local canonical-inference bridge. Loading already-produced artifacts stays
  * available for debugging, replay, and development.
  */
-export default function DataLoader({ capabilities, prediction, onDataset, onError, onStatus, onResetDemo }: Props) {
+export default function DataLoader({ capabilities, prediction, onDataset, onError, onStatus, onAnalyzing, onResetDemo }: Props) {
   const txtInput = useRef<HTMLInputElement>(null);
   const folderInput = useRef<HTMLInputElement>(null);
   const existingInput = useRef<HTMLInputElement>(null);
@@ -37,6 +38,7 @@ export default function DataLoader({ capabilities, prediction, onDataset, onErro
       onError(folder ? 'No collect_data*.txt session files found in this folder.' : 'Select collect_data*.txt session files.');
       return;
     }
+    onAnalyzing?.(true);
     const started = Date.now();
     let progress = '';
     const timer = window.setInterval(() => {
@@ -64,6 +66,7 @@ export default function DataLoader({ capabilities, prediction, onDataset, onErro
       onStatus('');
       onError(error instanceof Error ? error.message : String(error));
     } finally {
+      onAnalyzing?.(false);
       window.clearInterval(timer);
       if (txtInput.current) txtInput.current.value = '';
       if (folderInput.current) folderInput.current.value = '';

@@ -30,6 +30,7 @@ export default function App() {
   const [speed, setSpeed] = useState(1);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
+  const [analyzing, setAnalyzing] = useState(false);
   const [capabilities, setCapabilities] = useState<Capabilities | null>(null);
 
   useEffect(() => { probeCapabilities().then(setCapabilities); }, []);
@@ -101,11 +102,11 @@ export default function App() {
     <div className="app">
       <TopNav page={page} onPage={setPage} demo={dataset.demo} />
       {error && <div role="alert" className="error-banner">{error}<button onClick={() => setError('')}>Dismiss</button></div>}
-      {status && <div className="status-line" title={status}>{status}</div>}
+      {status && <div className={analyzing ? 'status-line busy' : 'status-line'} title={status} role="status" aria-live="polite">{analyzing && <span className="analyzing-spinner" aria-hidden="true" />}<span className="status-text">{status}</span></div>}
       <main className={page === 'Monitor' ? 'monitor-workspace' : undefined}>
         <div className="data-bar">
           <SessionBrowser label={dataset.label} demo={dataset.demo} sessions={sessions} sessionId={sessionId} onSession={switchSession} bounds={bounds} />
-          <DataLoader capabilities={capabilities} prediction={dataset.prediction} onDataset={applyDataset} onError={setError} onStatus={setStatus} onResetDemo={resetDemo} />
+          <DataLoader capabilities={capabilities} prediction={dataset.prediction} onDataset={applyDataset} onError={setError} onStatus={setStatus} onAnalyzing={setAnalyzing} onResetDemo={resetDemo} />
         </div>
         {page === 'Monitor' && (
           <MonitorPage
@@ -114,6 +115,7 @@ export default function App() {
             prediction={dataset.prediction}
             motion={motion}
             orientation={orientation}
+            analyzing={analyzing}
             selection={selection}
             playhead={playhead}
             playing={playing}

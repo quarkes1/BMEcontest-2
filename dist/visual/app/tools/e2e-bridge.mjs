@@ -61,8 +61,14 @@ try {
   const txtButton = page.locator('button:has-text("Select TXT files")');
   if (await txtButton.isDisabled()) throw new Error('TXT selection should be enabled while the bridge is online');
   await page.setInputFiles('.data-loader input[accept=".txt,text/plain"]', sessionPath);
+  // the timeline area must switch to an explicit analyzing state (old curves hidden)
+  await page.waitForSelector('.timeline-analyzing', { timeout: 30000 });
+  const analyzingText = (await page.locator('.timeline-analyzing strong').innerText()).trim();
+  if (analyzingText !== 'Analyzing…') throw new Error(`unexpected analyzing overlay text: ${analyzingText}`);
+  if ((await page.locator('.status-line.busy').count()) !== 1) throw new Error('status toast should show the busy state while analyzing');
   await page.waitForSelector('.status-line', { timeout: 30000 });
   await page.waitForFunction(() => document.querySelector('.status-line')?.textContent?.includes('Ready'), null, { timeout: 180000 });
+  if (await page.locator('.timeline-analyzing').count()) throw new Error('analyzing overlay must disappear once the timeline is ready');
   const approximate = await page.locator('.motion-approximate').count();
   if (approximate !== 1) throw new Error('real raw telemetry should show the Approximate calibration badge');
   const sessionValue = await page.inputValue('.session-picker select');

@@ -4,10 +4,10 @@ import { boundsFor } from '../../data/prediction';
 import { duration, fmtTime } from '../../data/format';
 import { clampRange, panView, timeAtX, xAtTime, zoomView } from './timelineMath';
 
-type Props = { prediction: Prediction; sessionId: string; imu?: Imu; selection: Range | null; onSelect: (range: Range | null) => void; playhead: number | null };
+type Props = { prediction: Prediction; sessionId: string; imu?: Imu; analyzing?: boolean; selection: Range | null; onSelect: (range: Range | null) => void; playhead: number | null };
 const labels = [{ title: 'Motion', sub: 'ACC magnitude' }, { title: 'Macro', sub: 'Model score' }, { title: 'Micro', sub: 'Model score' }, { title: 'Events', sub: 'Eating / candidate' }];
 const colors = ['#22775f', '#597edf', '#9476cb'];
-export default function Timeline({ prediction, sessionId, imu, selection, onSelect, playhead }: Props) {
+export default function Timeline({ prediction, sessionId, imu, analyzing, selection, onSelect, playhead }: Props) {
   const bounds = useMemo(() => boundsFor(prediction, sessionId) || (imu?.t.length ? { start_ms: imu.t[0], end_ms: imu.t[imu.t.length - 1] } : null), [prediction, sessionId, imu]);
   const [view, setView] = useState<Range | null>(bounds);
   const [zoom, setZoom] = useState('Full');
@@ -57,7 +57,7 @@ export default function Timeline({ prediction, sessionId, imu, selection, onSele
     };
     const observer = new ResizeObserver(render); observer.observe(el); render(); return () => observer.disconnect();
   }, [view, session, imu, prediction, sessionId]);
-  if (!bounds || !view) return <div className="no-telemetry">No timestamped timeline is available in this prediction.</div>;
+  if (!bounds || !view) return <div className="no-telemetry">{analyzing ? 'Analyzing…' : 'No timestamped timeline is available in this prediction.'}</div>;
   const span = view.end_ms - view.start_ms;
   const xPercent = (t: number) => `${Math.max(0, Math.min(100, (t - view.start_ms) / Math.max(span, 1) * 100))}%`;
   const point = (event: React.PointerEvent<HTMLDivElement>) => { const r = overlay.current!.getBoundingClientRect(); return { x: event.clientX - r.left, y: event.clientY - r.top, width: r.width, height: r.height }; };
@@ -85,7 +85,9 @@ export default function Timeline({ prediction, sessionId, imu, selection, onSele
     <div className="timeline-toolbar" title="Drag to select · Shift + drag or wheel to pan"><h2>Evidence timeline</h2><div className="segmented">{[['5 min', 300_000], ['30 min', 1_800_000], ['1 hour', 3_600_000], ['Full', Infinity]].map(([label, ms]) => <button key={label} className={zoom === label ? 'active' : ''} onClick={() => { setZoom(String(label)); setView(zoomView(bounds, selection ? (selection.start_ms + selection.end_ms) / 2 : (view.start_ms + view.end_ms) / 2, Number(ms))); }}>{label}</button>)}</div></div>
     <div className="timeline-body"><div className="track-labels">{labels.map((l, i) => <div key={l.title}><strong>{l.title}</strong><small>{i === 0 && !imu ? 'No IMU telemetry' : i > 0 && i < 3 && !session?.[i === 1 ? 'macro' : 'micro']?.timestamp_ms.length ? 'No series in prediction' : l.sub}</small>{i === 3 && <div className="track-legend"><span className="accepted-dot"/>Eating <span className="candidate-dot"/>Candidate</div>}</div>)}</div><div className="plot-wrap"><canvas ref={canvas} className="timeline-canvas"/><div ref={overlay} className="timeline-overlay" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onWheel={e => { e.preventDefault(); setView(panView(bounds, view, e.deltaY * span / 1500)); }}>
       {selection && selection.end_ms > selection.start_ms && <><div className="selection" style={{ left: xPercent(selection.start_ms), width: `${(selection.end_ms - selection.start_ms) / span * 100}%` }}/><div className="selection-edge left" style={{ left: xPercent(selection.start_ms) }}/><div className="selection-edge right" style={{ left: xPercent(selection.end_ms) }}/><div className="selection-label" style={{ left: xPercent((selection.start_ms + selection.end_ms) / 2) }}>{duration(selection.end_ms - selection.start_ms)}<br/>{fmtTime(selection.start_ms, true)} – {fmtTime(selection.end_ms, true)}</div></>}
-      {playhead !== null && playhead >= view.start_ms && playhead <= view.end_ms && <div className="playhead" style={{ left: xPercent(playhead) }}/>}</div><div className="time-ticks">{Array.from({ length: 7 }, (_, i) => <span key={i}>{fmtTime(view.start_ms + i / 6 * span)}</span>)}</div></div></div>
+      {playhead !== null && playhead >= view.start_ms && playhead <= view.end_ms && <div className="playhead" style={{ left: xPercent(playhead) }}/>}</div>
+      {analyzing && <div className="timeline-analyzing" role="status" aria-live="polite"><span className="analyzing-spinner" aria-hidden="true"/><strong>Analyzing…</strong><small>canonical inference is running locally · about 30 s per session</small></div>}
+      <div className="time-ticks">{Array.from({ length: 7 }, (_, i) => <span key={i}>{fmtTime(view.start_ms + i / 6 * span)}</span>)}</div></div></div>
   </section>;
 }
 

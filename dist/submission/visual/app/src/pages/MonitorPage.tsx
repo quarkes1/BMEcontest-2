@@ -14,6 +14,7 @@ type Props = {
   prediction: Prediction;
   motion: MotionData | null;
   orientation: QuaternionPoint[] | null;
+  analyzing?: boolean;
   selection: Range | null;
   playhead: number | null;
   playing: boolean;
@@ -26,7 +27,7 @@ type Props = {
 
 const mean = (values: number[]) => values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
 
-export default function MonitorPage({ demo, sessionId, prediction, motion, orientation, selection, playhead, playing, speed, onSelect, onTogglePlay, onSeek, onSpeed }: Props) {
+export default function MonitorPage({ demo, sessionId, prediction, motion, orientation, analyzing, selection, playhead, playing, speed, onSelect, onTogglePlay, onSeek, onSpeed }: Props) {
   const events = prediction.events.filter(e => e.session_id === sessionId);
   const candidates = (prediction.candidates || []).filter(c => c.session_id === sessionId);
   const selectedEvent = selection ? events.find(e => e.start_ms < selection.end_ms && e.end_ms > selection.start_ms) : undefined;
@@ -46,7 +47,7 @@ export default function MonitorPage({ demo, sessionId, prediction, motion, orien
     <>
       <StatusHeader demo={demo} sessionId={sessionId} prediction={prediction} motion={motion} selectedEvent={selectedEvent} />
       <div className="monitor-grid">
-        <Timeline prediction={prediction} sessionId={sessionId} imu={motion?.imu} selection={selection} onSelect={onSelect} playhead={playhead} />
+        <Timeline prediction={prediction} sessionId={sessionId} imu={motion?.imu} analyzing={analyzing} selection={selection} onSelect={onSelect} playhead={playhead} />
         <MotionReplay orientation={orientation} manifest={motion?.manifest} selection={selection} playhead={playhead} playing={playing} speed={speed} onPlay={onTogglePlay} onSeek={onSeek} onSpeed={onSpeed} />
       </div>
       <div className="detail-grid">
