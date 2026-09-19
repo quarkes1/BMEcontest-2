@@ -7,6 +7,7 @@ registered adapter exists.  It may never guess the official wire format.
 
 from __future__ import annotations
 
+import csv
 import json
 from pathlib import Path
 import shutil
@@ -50,10 +51,13 @@ def test_submission_packages_the_full_delivery(tmp_path: Path):
     from scripts.build_submission import build_submission
 
     package = build_submission(repository_root=ROOT, destination=tmp_path / "built" / "submission")
-    for component in ("start.bat", "serve.py", "main.py", "event_stack", "models", "src", "scripts",
-                      "tests", "visual", "schema", "examples", "manifest.json", "requirements.txt", "README.md"):
+    for component in ("start.bat", "main.py", "app/serve.py", "app/event_stack", "meta/manifest.json",
+                      "meta/feature_schema.json", "models", "src", "scripts", "tests", "visual",
+                      "schema", "examples", "release", "outputs/crossfit", "requirements.txt", "README.md"):
         assert (package / component).exists(), f"submission is missing {component}"
     assert not (package / "docs").exists(), "documentation must not ship inside the submission"
+    assert not (package / "serve.py").exists(), "serve.py must live in app/"
+    assert not (package / "manifest.json").exists(), "manifest.json must live in meta/"
     model_root = package / "models" / "event_stack" / "160afaf81debf1ee"
     assert (model_root / "deployment" / "manifest.json").is_file()
     for fold in range(5):
@@ -64,10 +68,12 @@ def test_submission_packages_the_full_delivery(tmp_path: Path):
     assert (package / "examples" / "example_prediction.json").is_file()
     assert (package / "src" / "pipeline" / "inference" / "predictor.py").is_file()
     assert (package / "scripts" / "reproduce_release.py").is_file()
-    manifest = json.loads((package / "manifest.json").read_text(encoding="utf-8"))
+    manifest = json.loads((package / "meta" / "manifest.json").read_text(encoding="utf-8"))
     assert any(path.endswith("promotion_attestation.json") for path in manifest["model_files"])
     assert "visual/README.md" in manifest["source_files"]
     assert "src/pipeline/inference/predictor.py" in manifest["source_files"]
+    assert "release/event_stack_incumbent.json" in manifest["source_files"]
+    assert "outputs/crossfit/context_v1_summary.json" in manifest["source_files"]
 
 
 def test_distribution_text_bytes_are_lf_normalized(tmp_path: Path):
@@ -125,7 +131,7 @@ def test_submission_serves_standalone_from_its_own_tree(tmp_path: Path):
 
     package = build_submission(repository_root=ROOT, destination=tmp_path / "built" / "submission")
     process = subprocess.Popen(
-        [sys.executable, "-I", "serve.py", "--port", "0"], cwd=package,
+        [sys.executable, "-I", str(Path("app") / "serve.py"), "--port", "0"], cwd=package,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
     )
     try:
@@ -151,14 +157,41 @@ def test_submission_serves_standalone_from_its_own_tree(tmp_path: Path):
         process.wait(timeout=30)
 
 
-def test_submission_official_mode_refuses_without_registered_adapter(tmp_path: Path):
-    """The unregistered official mode must fail loudly, never invent a format."""
+def test_submission_official_mode_writes_default_csv(tmp_path: Path):
+    """Official mode ships the documented default: one CSV row per eating event."""
+    from scripts.build_submission import build_submission
+
+    raw = _fixture_raw()
+    package = build_submission(repository_root=ROOT, destination=tmp_path / "submission")
+    done = _run_clean_room(package, tmp_path, ["--official-input", str(raw)])
+    assert done.returncode == 0, done.stderr
+    clean = tmp_path / "former-parent" / "clean-room"
+    target = clean / "predict" / f"predict_{raw.stem}.csv"
+    assert target.is_file(), f"missing default output {target} (stdout: {done.stdout})"
+    with target.open(encoding="utf-8-sig") as handle:
+        rows = list(csv.reader(handle))
+    assert rows[0] == ["start_time", "end_time", "start_ms", "end_ms"]
+    expected = Predictor.from_bundle(BUNDLE).predict_file(raw)
+    assert len(rows) == 1 + len(expected["events"])
+    for row, event in zip(rows[1:], expected["events"]):
+        assert row[2:] == [str(event["start_ms"]), str(event["end_ms"])]
+
+    # --cls empties ./predict before writing the current result
+    stale = clean / "predict" / "stale.csv"
+    stale.write_text("x", encoding="utf-8")
+    shutil.rmtree(clean)                          # _run_clean_room re-copies into this path
+    done = _run_clean_room(package, tmp_path, ["--official-input", str(raw), "--cls"])
+    assert done.returncode == 0, done.stderr
+    assert not stale.exists() and target.is_file()
+
+
+def test_submission_refuses_unregistered_adapter_name(tmp_path: Path):
+    """An explicitly named unregistered adapter must still fail loudly."""
     from scripts.build_submission import build_submission
 
     package = build_submission(repository_root=ROOT, destination=tmp_path / "submission")
     done = _run_clean_room(
-        package, tmp_path,
-        ["--official-input", str(tmp_path / "official-input"), "--output", str(tmp_path / "out.json")],
+        package, tmp_path, ["--official-input", str(_fixture_raw()), "--adapter", "official"],
     )
     assert done.returncode == 2
     assert "not registered" in done.stderr
@@ -177,9 +210,10 @@ def test_submission_manifest_rejects_runtime_file_drift(tmp_path: Path):
     from scripts.build_inference_distribution import verify_distribution_manifest
 
     package = build_submission(repository_root=ROOT, destination=tmp_path / "submission")
-    (package / "event_stack" / "unexpected.py").write_text("x = 1\n", encoding="utf-8")
+    (package / "app" / "event_stack" / "unexpected.py").write_text("x = 1\n", encoding="utf-8")
     try:
-        verify_distribution_manifest(package, entrypoint="main.py")
+        verify_distribution_manifest(package, entrypoint="main.py", meta_dir="meta",
+                                     required_roots=("app", "meta", "models"))
     except ValueError as exc:
         assert "checksums" in str(exc)
     else:

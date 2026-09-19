@@ -19,9 +19,10 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-rem Locate the local inference bridge entry (dist layout: inference\serve.py; submission layout: serve.py).
+rem Locate the local inference bridge entry (dist: inference\serve.py; submission: app\serve.py or serve.py).
 set "SERVE="
 if exist "%~dp0inference\serve.py" set "SERVE=%~dp0inference\serve.py"
+if not defined SERVE if exist "%~dp0app\serve.py" set "SERVE=%~dp0app\serve.py"
 if not defined SERVE if exist "%~dp0serve.py" set "SERVE=%~dp0serve.py"
 if not defined SERVE (
   echo [EatingSense] serve.py was not found next to this launcher.

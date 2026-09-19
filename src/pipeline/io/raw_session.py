@@ -10,6 +10,7 @@ import numpy as np
 import src.config as config
 
 N_PPG = 44
+_SESSION_NAME = re.compile(r"collect_data\d+_\d+_\d+\.txt")
 
 
 @dataclass
@@ -35,23 +36,36 @@ class RawSessionSource:
 
 
 def discover_raw_sessions(path: Path) -> tuple[RawSessionSource, ...]:
-    """Discover sorted raw files; a multi-file directory shares one subject, not one session."""
+    """Discover sorted raw files; a multi-file directory shares one subject, not one session.
+
+    A directory may also hold one level of ``sensorData-*``-style subdirectories (the
+    competition dataset layout, e.g. the batch root passed as ``--official-input``);
+    each subdirectory is then expanded with the same rules as a direct hit.
+    """
     path = Path(path)
     if path.is_file():
-        if not re.fullmatch(r"collect_data\d+_\d+_\d+\.txt", path.name):
+        if not _SESSION_NAME.fullmatch(path.name):
             raise ValueError(f"supported raw session input is collect_data*.txt: {path}")
         return (RawSessionSource(path, path.parent.name, None),)
     if not path.is_dir():
         raise FileNotFoundError(path)
-    files = sorted(child for child in path.iterdir() if child.is_file() and re.fullmatch(r"collect_data\d+_\d+_\d+\.txt", child.name))
-    if not files:
+    sessions = _discover_in_directory(path)
+    if not sessions:
+        for child in sorted(child for child in path.iterdir() if child.is_dir()):
+            sessions.extend(_discover_in_directory(child))
+    if not sessions:
         raise FileNotFoundError(f"no collect_data txt in {path}")
-    # A one-file directory historically represents one session named after the
-    # directory.  More files are independent acquisition sessions under one
-    # subject, so their deterministic file stem becomes part of the ID.
+    return tuple(sessions)
+
+
+def _discover_in_directory(path: Path) -> list[RawSessionSource]:
+    """One directory's direct sessions; a one-file directory names the session after it."""
+    files = sorted(child for child in path.iterdir() if child.is_file() and _SESSION_NAME.fullmatch(child.name))
+    if not files:
+        return []
     if len(files) == 1:
-        return (RawSessionSource(files[0], path.name, None),)
-    return tuple(RawSessionSource(file, f"{path.name}:{file.stem}", None) for file in files)
+        return [RawSessionSource(files[0], path.name, None)]
+    return [RawSessionSource(file, f"{path.name}:{file.stem}", None) for file in files]
 
 
 def _parse_collect_data_tsv(path: Path) -> SessionData:
@@ -98,6 +112,6 @@ def load_raw_session(source: RawSessionSource) -> SessionData:
     if source.path.is_dir():
         sources = discover_raw_sessions(source.path)
         source = sources[0]
-    if source.path.suffix.lower() != ".txt" or not re.fullmatch(r"collect_data\d+_\d+_\d+\.txt", source.path.name):
+    if source.path.suffix.lower() != ".txt" or not _SESSION_NAME.fullmatch(source.path.name):
         raise ValueError("supported raw session input is collect_data*.txt")
     return _parse_collect_data_tsv(source.path)

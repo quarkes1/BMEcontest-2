@@ -11,6 +11,10 @@
 
 ---
 
+![可视化展示](/intro_pngs/visual.png)
+
+---
+
 ## 1. 竞赛任务与背景
 
 - **场景**：智能手表全天候采集 IMU（加速度计+陀螺仪 ~105Hz，raw ADC）与 PPG（44 通道，
@@ -216,22 +220,27 @@ BMEcontest-2/
 ├── FDdatasets/                           # KU Leuven FD-I/FD-II 外部数据
 ├── ReferenceDocs/                        # 文献综述（报告引用素材）
 ├── Archieves/                            # 历史归档（.gitignore）
-└── Data/                                 # 原始传感器数据（.gitignore）
+├── Data/                                 # 原始传感器数据（.gitignore）
+└── intro_pngs/                           # 可视化效果展示
 ```
 
 ## 8. 竞赛提交
 
 `dist/submission/` 是竞赛最终交付物，由 `scripts/build_submission.py` 确定性地从
-仓库唯一真源生成，包含：
+仓库唯一真源生成。包根只保留 `README.md`、`requirements.txt`、`start.bat`、`main.py`，
+其余按职责成组：
 
-- **推理接口**：`main.py`（raw 模式 + 官方 adapter 边界）与 vendored `event_stack/` 运行时；
-- **完整模型资产**：`models/event_stack/<run_key>/`（deployment bundle + 五个
-  outer-fold evidence bundle + promotion summary 与 attestation）；
-- **复现代码**：`src/`（canonical 算法源码）、`scripts/`（训练/评估/发布/构建全链）
-  与 `tests/`（文档不进入提交包，随仓库维护）；
-- **可视化**：`visual/`（dist/visual 工作区原样打包）+ `schema/`、`examples/`
-  （预测契约与安全示例）；
-- `manifest.json` 逐文件 SHA-256 与 source/model 闭包、精确依赖 `requirements.txt`。
+- **`app/`**：推理运行时与本地桥（`serve.py` + vendored `event_stack/`）；
+- **`models/`**：`event_stack/<run_key>/`（deployment bundle + 五个 outer-fold
+  evidence bundle + promotion summary 与 attestation）；
+- **`src/`、`scripts/`、`tests/`**：canonical 源码与训练/评估/发布/构建全链；
+- **`release/`、`outputs/crossfit/`**：发布指针与五折证据（让包内 repro 可直接运行）；
+- **`visual/`、`schema/`、`examples/`**：可视化与预测契约/安全示例；
+- **`meta/`**：`manifest.json`（逐文件 SHA-256 与 source/model 闭包）与
+  `feature_schema.json`；精确依赖见 `requirements.txt`。
+
+README 内容由 `scripts/submission_readme.md` 维护（直接编辑该文件，重建生效）。
+官方竞赛模式默认输出 CSV（每行一次进食事件）；自定义 adapter 的注册教程见包内 README。
 
 验证：
 

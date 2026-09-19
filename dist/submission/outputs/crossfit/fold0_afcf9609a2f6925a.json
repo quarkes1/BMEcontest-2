@@ -1,0 +1,375 @@
+{
+  "admitted_candidate_count": 42,
+  "cache_hits": {
+    "fold_result": false
+  },
+  "candidate_count": 42,
+  "candidate_match_recall": 0.6956521739130435,
+  "config_hash": "afcf9609a2f6925a",
+  "external_weight": 0.0,
+  "inner_metrics": {
+    "f1": 0.7764705882352941,
+    "n_pred": 125,
+    "n_tp": 99,
+    "n_true": 130,
+    "ppv": 0.792,
+    "sensitivity": 0.7615384615384615
+  },
+  "macro_window_feature_count": 63,
+  "max_events_per_subject": null,
+  "micro_candidate_count": 573,
+  "micro_candidate_match_recall": 0.782608695652174,
+  "micro_threshold": 0.1,
+  "micro_window_feature_count": 47,
+  "micro_window_fit_subjects": [
+    "HNU 21013",
+    "HNU21002",
+    "HNU21003",
+    "HNU21004",
+    "HNU21005",
+    "HNU21006",
+    "HNU21008",
+    "HNU21011",
+    "HNU21012",
+    "HNU21014",
+    "HNU21015",
+    "HNU21016",
+    "HNU21017",
+    "HNU21019",
+    "HNU21021",
+    "HNU21022",
+    "HNU21023",
+    "HNU21024",
+    "HNU21025",
+    "HNU21026",
+    "HNU21029",
+    "HNU21031",
+    "HNU21032",
+    "HNU21034",
+    "HNU21036",
+    "HNU21037",
+    "HNU21038",
+    "HNU21040",
+    "HNU21041",
+    "HNU212020",
+    "hnu21033"
+  ],
+  "outer_metrics": {
+    "f1": 0.5517241379310345,
+    "n_pred": 35,
+    "n_tp": 16,
+    "n_true": 23,
+    "ppv": 0.45714285714285713,
+    "sensitivity": 0.6956521739130435
+  },
+  "outer_subjects": [
+    "6C7",
+    "HNU21001",
+    "HNU21009",
+    "HNU21010",
+    "HNU21027",
+    "HNU21028",
+    "HNU21035",
+    "HNU21039"
+  ],
+  "raw_union_candidate_count": 713,
+  "run_config": {
+    "admission_minimum_recall": 0.8,
+    "admission_nms_iou_grid": [
+      0.3,
+      0.5,
+      0.7
+    ],
+    "admission_subject_cap_grid": [
+      3,
+      4,
+      5,
+      6,
+      8
+    ],
+    "admission_threshold_grid": [
+      0.2,
+      0.35,
+      0.5,
+      0.65
+    ],
+    "candidate_control_enabled": true,
+    "context_features_version": "v1",
+    "density": {
+      "bridge_ms": 60000,
+      "context_ms": 1200000,
+      "coverage_fix": false,
+      "coverage_min": 0.8,
+      "density_ms": 600000,
+      "merge_ms": 120000,
+      "min_positive": 10,
+      "stride_ms": 15000,
+      "window_ms": 240000,
+      "window_threshold": 0.28838
+    },
+    "device": "auto",
+    "external_fd_weight_grid": [
+      0.0
+    ],
+    "inner_splits": 4,
+    "micro_candidate": {
+      "context_ms": 1200000,
+      "merge_ms": 180000,
+      "min_duration_ms": 60000,
+      "smooth_radius_ms": 60000,
+      "smooth_sigma_ms": 30000,
+      "stride_ms": 7500,
+      "window_ms": 15000
+    },
+    "micro_enabled": true,
+    "micro_gravity_align": true,
+    "micro_positive_middle_fraction": null,
+    "micro_threshold_grid": [
+      0.1,
+      0.2,
+      0.3,
+      0.4,
+      0.5
+    ],
+    "no_tcn": true,
+    "outer_fold": 0,
+    "seed": 20260908,
+    "subject_cap_grid": [],
+    "verifier_blend_weight_grid": [
+      0.0,
+      0.25,
+      0.5,
+      0.75,
+      1.0
+    ],
+    "verifier_c_grid": [
+      0.1
+    ],
+    "verifier_feature_mode": "probability",
+    "workers": 5
+  },
+  "runtime_diagnostics": {
+    "cuda_peak_bytes": null,
+    "peak_working_set_bytes": 740642816,
+    "ssl_runtime": null,
+    "unavailable_reason": null
+  },
+  "selected_admission_nms_iou": 0.3,
+  "selected_admission_subject_cap": 8,
+  "selected_admission_threshold": 0.5,
+  "selected_blend_weight": 0.5,
+  "short_meal_candidate_recall": 0.2857142857142857,
+  "slices": {
+    "dominant": {
+      "f1": 0.923076923076923,
+      "n_pred": 6,
+      "n_tp": 6,
+      "n_true": 7,
+      "ppv": 1.0,
+      "sensitivity": 0.8571428571428571
+    },
+    "duration_10_20": {
+      "f1": 0.9166666666666666,
+      "n_pred": 11,
+      "n_tp": 11,
+      "n_true": 13,
+      "ppv": 1.0,
+      "sensitivity": 0.8461538461538461
+    },
+    "duration_ge20": {
+      "f1": 1.0,
+      "n_pred": 3,
+      "n_tp": 3,
+      "n_true": 3,
+      "ppv": 1.0,
+      "sensitivity": 1.0
+    },
+    "duration_lt10": {
+      "f1": 0.36363636363636365,
+      "n_pred": 4,
+      "n_tp": 2,
+      "n_true": 7,
+      "ppv": 0.5,
+      "sensitivity": 0.2857142857142857
+    },
+    "nondominant": {
+      "f1": 0.7142857142857143,
+      "n_pred": 12,
+      "n_tp": 10,
+      "n_true": 16,
+      "ppv": 0.8333333333333334,
+      "sensitivity": 0.625
+    }
+  },
+  "subject_diagnostics": {
+    "distribution": {
+      "excluded_empty": 0,
+      "f1_percentiles": {
+        "p0": 0.0,
+        "p100": 0.7272727272727272,
+        "p25": 0.3214285714285714,
+        "p50": 0.5555555555555556,
+        "p75": 0.6818181818181818
+      },
+      "included": 8
+    },
+    "runtime": {
+      "cuda_peak_bytes": null,
+      "peak_working_set_bytes": 740642816,
+      "ssl_runtime": null,
+      "unavailable_reason": null
+    },
+    "schema_version": 1,
+    "subjects": {
+      "6C7": {
+        "f1": 0.0,
+        "n_pred": 1,
+        "n_tp": 0,
+        "n_true": 0,
+        "ppv": 0.0,
+        "sensitivity": 0.0
+      },
+      "HNU21001": {
+        "f1": 0.7272727272727272,
+        "n_pred": 6,
+        "n_tp": 4,
+        "n_true": 5,
+        "ppv": 0.6666666666666666,
+        "sensitivity": 0.8
+      },
+      "HNU21009": {
+        "f1": 0.7272727272727272,
+        "n_pred": 6,
+        "n_tp": 4,
+        "n_true": 5,
+        "ppv": 0.6666666666666666,
+        "sensitivity": 0.8
+      },
+      "HNU21010": {
+        "f1": 0.6666666666666666,
+        "n_pred": 1,
+        "n_tp": 1,
+        "n_true": 2,
+        "ppv": 1.0,
+        "sensitivity": 0.5
+      },
+      "HNU21027": {
+        "f1": 0.0,
+        "n_pred": 2,
+        "n_tp": 0,
+        "n_true": 1,
+        "ppv": 0.0,
+        "sensitivity": 0.0
+      },
+      "HNU21028": {
+        "f1": 0.6666666666666666,
+        "n_pred": 4,
+        "n_tp": 2,
+        "n_true": 2,
+        "ppv": 0.5,
+        "sensitivity": 1.0
+      },
+      "HNU21035": {
+        "f1": 0.4444444444444445,
+        "n_pred": 7,
+        "n_tp": 2,
+        "n_true": 2,
+        "ppv": 0.2857142857142857,
+        "sensitivity": 1.0
+      },
+      "HNU21039": {
+        "f1": 0.42857142857142855,
+        "n_pred": 8,
+        "n_tp": 3,
+        "n_true": 6,
+        "ppv": 0.375,
+        "sensitivity": 0.5
+      }
+    }
+  },
+  "threshold": 0.6595272837359293,
+  "timings_seconds": {
+    "admission_selection": 39.76617019999958,
+    "feature_extraction": 488.905999999959,
+    "final_fit": 4.255319899999449,
+    "macro_window_oof": 5.896326600000066,
+    "micro_window_oof": 19.636807699999736,
+    "outer_inference": 4.675599700000021,
+    "total": 75.61873190000006,
+    "verifier_lgbm_oof": 0.8319227000001774,
+    "verifier_logistic_oof": 0.054708199999367935,
+    "verifier_oof": 40.652801099999124
+  },
+  "verifier_c": 0.1,
+  "verifier_feature_count": 116,
+  "verifier_fit_subjects": [
+    "HNU 21013",
+    "HNU21002",
+    "HNU21003",
+    "HNU21004",
+    "HNU21005",
+    "HNU21006",
+    "HNU21008",
+    "HNU21011",
+    "HNU21012",
+    "HNU21014",
+    "HNU21015",
+    "HNU21016",
+    "HNU21017",
+    "HNU21019",
+    "HNU21021",
+    "HNU21022",
+    "HNU21023",
+    "HNU21024",
+    "HNU21025",
+    "HNU21026",
+    "HNU21029",
+    "HNU21031",
+    "HNU21032",
+    "HNU21034",
+    "HNU21036",
+    "HNU21037",
+    "HNU21038",
+    "HNU21040",
+    "HNU21041",
+    "HNU212020",
+    "hnu21033"
+  ],
+  "verifier_lgbm_oof_seconds": 0.8319227000001774,
+  "verifier_lgbm_outer_seconds": 0.005498000000443426,
+  "verifier_logistic_oof_seconds": 0.054708199999367935,
+  "verifier_logistic_outer_seconds": 0.0013980000003357418,
+  "window_fit_subjects": [
+    "HNU 21013",
+    "HNU21002",
+    "HNU21003",
+    "HNU21004",
+    "HNU21005",
+    "HNU21006",
+    "HNU21008",
+    "HNU21011",
+    "HNU21012",
+    "HNU21014",
+    "HNU21015",
+    "HNU21016",
+    "HNU21017",
+    "HNU21019",
+    "HNU21021",
+    "HNU21022",
+    "HNU21023",
+    "HNU21024",
+    "HNU21025",
+    "HNU21026",
+    "HNU21029",
+    "HNU21031",
+    "HNU21032",
+    "HNU21034",
+    "HNU21036",
+    "HNU21037",
+    "HNU21038",
+    "HNU21040",
+    "HNU21041",
+    "HNU212020",
+    "hnu21033"
+  ]
+}

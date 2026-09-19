@@ -61,3 +61,16 @@ def test_canonical_reader_preserves_legacy_parser_arrays(tmp_path: Path):
     for name in ("acc", "gyro", "ppg", "t_acc", "t_ppg", "imu_valid", "ppg_valid"):
         np.testing.assert_array_equal(getattr(legacy, name), getattr(canonical, name))
     assert legacy.meta["row_rate"] == canonical.meta["row_rate"]
+
+
+def test_batch_directory_with_sensordata_subdirectories_is_discovered(tmp_path):
+    """The competition dataset layout (batch/sensorData-*/txt) must be accepted as input."""
+    from src.pipeline.io.raw_session import discover_raw_sessions
+
+    batch = tmp_path / "t_x_sensororiginaldata_system"
+    for name in ("sensorData-aaa", "sensorData-bbb"):
+        (batch / name).mkdir(parents=True)
+        (batch / name / "collect_data1_2_3.txt").write_text("ACC_TIME\n", encoding="utf-8")
+    assert [source.session_id for source in discover_raw_sessions(batch)] == ["sensorData-aaa", "sensorData-bbb"]
+    # direct-hit behaviour is unchanged
+    assert [source.session_id for source in discover_raw_sessions(batch / "sensorData-aaa")] == ["sensorData-aaa"]

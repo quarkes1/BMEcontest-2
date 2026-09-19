@@ -56,8 +56,11 @@ def verify_distributions(root: Path) -> list[str]:
         package = Path(root) / "dist" / name
         if not package.is_dir():
             continue
+        # The submission ships its runtime in app/ (metadata in meta/); the inference
+        # distribution keeps both at the package root.
+        required = ("app", "meta", "models") if (package / "app" / "event_stack").is_dir() else ("event_stack", "models")
         try:
-            verify_distribution_manifest(package, entrypoint=entrypoint)
+            verify_distribution_manifest(package, entrypoint=entrypoint, required_roots=required)
         except (OSError, ValueError) as exc:
             problems.append(f"dist/{name}: {exc}")
     return problems

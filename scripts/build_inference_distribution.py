@@ -256,14 +256,26 @@ if str(_ROOT) not in sys.path:
 from event_stack.inference import local_server
 
 
+def _package_root() -> Path:
+    """serve.py sits at the package root (dist/inference) or in app/ (submission)."""
+    for base in (_ROOT, _ROOT.parent):
+        if (base / "manifest.json").is_file() or (base / "meta" / "manifest.json").is_file():
+            return base
+    return _ROOT
+
+
 def _manifest() -> dict:
-    return json.loads((_ROOT / "manifest.json").read_text(encoding="utf-8"))
+    root = _package_root()
+    for candidate in (root / "meta" / "manifest.json", root / "manifest.json"):
+        if candidate.is_file():
+            return json.loads(candidate.read_text(encoding="utf-8"))
+    raise FileNotFoundError("manifest.json not found next to serve.py")
 
 
 def _default_bundle() -> Path | None:
-    """Bundle layout differs per package: dist/inference has models/ at the root;
+    """Bundle layout differs per package: dist/inference has models/ flat at the root;
     dist/submission nests models/event_stack/<run_key>/deployment."""
-    flat = _ROOT / "models"
+    flat = _package_root() / "models"
     if (flat / "manifest.json").is_file():
         return flat
     try:
@@ -275,7 +287,7 @@ def _default_bundle() -> Path | None:
 
 
 def _default_visual() -> Path | None:
-    for candidate in (_ROOT.parent / "visual", _ROOT / "visual"):
+    for candidate in (_package_root() / "visual", _ROOT / "visual", _ROOT.parent / "visual"):
         if (candidate / "index.html").is_file():
             return candidate
     return None
@@ -356,6 +368,17 @@ python predict.py path/to/subject-folder --output prediction.json --include-time
 """
 
 
+def _generated_paths(meta_dir: str, entrypoint: str, extra_entries: Sequence[str]) -> set[str]:
+    """Package-relative paths of the generated (and entry) files that must exist.
+
+    README and requirements.txt always sit at the package root; the manifest and
+    feature schema live under ``meta_dir`` when one is configured.
+    """
+    prefix = f"{meta_dir}/" if meta_dir else ""
+    return {"requirements.txt", "README.md", f"{prefix}feature_schema.json",
+            f"{prefix}manifest.json", entrypoint, *extra_entries}
+
+
 def _distribution_files(root: Path) -> dict[str, str]:
     """Every shipped file except the manifest itself; local bytecode never counts."""
     return {
@@ -366,20 +389,31 @@ def _distribution_files(root: Path) -> dict[str, str]:
     }
 
 
+def _resolve_meta_dir(package: Path, meta_dir: str) -> str:
+    """Accept the meta/ layout automatically so callers need not know the flavour."""
+    if meta_dir:
+        return meta_dir
+    return "meta" if (package / "meta" / "manifest.json").is_file() else ""
+
+
 def verify_distribution_manifest(package: Path, *, entrypoint: str = "predict.py",
                                  extra_entries: Sequence[str] = (),
-                                 required_roots: Sequence[str] = ("event_stack", "models")) -> None:
+                                 required_roots: Sequence[str] = ("event_stack", "models"),
+                                 meta_dir: str = "") -> None:
     """Reject hash drift, symlinks and undeclared runtime files.
 
     ``source_files`` covers every declared file outside ``models/`` (vendored
     runtime, reproduction source, docs, visualization assets); ``model_files``
-    covers everything under ``models/``.
+    covers everything under ``models/``.  ``meta_dir`` is where the generated
+    ``manifest.json``/``feature_schema.json`` live ("meta" for the submission,
+    "" for the inference distribution).
     """
     package = Path(package)
     if package.is_symlink() or not package.is_dir():
         raise ValueError("distribution package must be a real directory")
-    generated = _GENERATED_BASE_FILES | {entrypoint} | set(extra_entries)
-    manifest = json.loads((package / "manifest.json").read_text(encoding="utf-8"))
+    meta_dir = _resolve_meta_dir(package, meta_dir)
+    generated = _generated_paths(meta_dir, entrypoint, extra_entries)
+    manifest = json.loads((package / meta_dir / "manifest.json").read_text(encoding="utf-8"))
     required = {"release_run_key", "model_version", "prediction_schema_version", "feature_schema", "python_version", "dependencies", "model_files", "source_files", "hashes"}
     if not isinstance(manifest, dict) or set(manifest) != required:
         raise ValueError("distribution manifest schema is invalid")
@@ -473,7 +507,8 @@ def build_distribution(*, repository_root: Path, bundle_path: Path, destination:
                        closure_roots: Sequence[str] = _RUNTIME_ROOT_MODULES,
                        models_source: Path | None = None, models_destination: str = "models",
                        extra_trees: Sequence[tuple[Path, str]] = (),
-                       required_roots: Sequence[str] = ("event_stack", "models")) -> Path:
+                       required_roots: Sequence[str] = ("event_stack", "models"),
+                       meta_dir: str = "", runtime_dir: str = "") -> Path:
     """Atomically construct a verified distribution package for the active release.
 
     Shared by the inference distribution (``predict.py``) and the competition
@@ -496,15 +531,21 @@ def build_distribution(*, repository_root: Path, bundle_path: Path, destination:
     staging = destination.parent / f".{destination.name}.staging-{uuid.uuid4().hex}"
     try:
         staging.mkdir()
-        copy_canonical_runtime_source(root, staging / "event_stack", roots=closure_roots)
+        runtime_root = staging / runtime_dir if runtime_dir else staging
+        runtime_root.mkdir(parents=True, exist_ok=True)
+        copy_canonical_runtime_source(root, runtime_root / "event_stack", roots=closure_roots)
         _copy_tree(models_source if models_source is not None else bundle, staging / models_destination)
         for source, relative, *ignore in extra_trees:
             _copy_tree(source, staging / relative, extra_ignore=ignore[0] if ignore else ())
         (staging / entrypoint).write_text(entrypoint_text, encoding="utf-8", newline="\n")
         for extra_name, extra_text in extra_entrypoints:
-            (staging / extra_name).write_text(extra_text, encoding="utf-8", newline="\n")
+            extra_target = staging / extra_name
+            extra_target.parent.mkdir(parents=True, exist_ok=True)
+            extra_target.write_text(extra_text, encoding="utf-8", newline="\n")
         (staging / "requirements.txt").write_text(_requirements(bundle), encoding="utf-8", newline="\n")
-        shutil.copy2(bundle / "feature_schema.json", staging / "feature_schema.json")
+        meta = staging / meta_dir if meta_dir else staging
+        meta.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(bundle / "feature_schema.json", meta / "feature_schema.json")
         (staging / "README.md").write_text(readme_text, encoding="utf-8", newline="\n")
         model_manifest = json.loads((bundle / "manifest.json").read_text(encoding="utf-8"))
         manifest = {
@@ -519,9 +560,10 @@ def build_distribution(*, repository_root: Path, bundle_path: Path, destination:
         manifest["hashes"] = _distribution_files(staging)
         manifest["model_files"] = sorted(path for path in manifest["hashes"] if path.startswith("models/"))
         manifest["source_files"] = sorted(path for path in manifest["hashes"] if not path.startswith("models/"))
-        (staging / "manifest.json").write_bytes(_json_bytes(manifest))
+        (meta / "manifest.json").write_bytes(_json_bytes(manifest))
         extra_names = tuple(name for name, _ in extra_entrypoints)
-        verify_distribution_manifest(staging, entrypoint=entrypoint, extra_entries=extra_names, required_roots=required_roots)
+        verify_distribution_manifest(staging, entrypoint=entrypoint, extra_entries=extra_names,
+                                     required_roots=required_roots, meta_dir=meta_dir)
         probe_environment = dict(os.environ)
         probe_environment["PYTHONDONTWRITEBYTECODE"] = "1"
         for probe_entry in (entrypoint, *extra_names):
@@ -535,7 +577,8 @@ def build_distribution(*, repository_root: Path, bundle_path: Path, destination:
         # not make bytecode a generated runtime dependency.
         for cache in staging.rglob("__pycache__"):
             shutil.rmtree(cache)
-        verify_distribution_manifest(staging, entrypoint=entrypoint, extra_entries=extra_names, required_roots=required_roots)
+        verify_distribution_manifest(staging, entrypoint=entrypoint, extra_entries=extra_names,
+                                     required_roots=required_roots, meta_dir=meta_dir)
         return _atomic_replace(staging, destination)
     except Exception:
         if staging.exists():

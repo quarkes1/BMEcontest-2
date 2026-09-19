@@ -18,14 +18,26 @@ if str(_ROOT) not in sys.path:
 from event_stack.inference import local_server
 
 
+def _package_root() -> Path:
+    """serve.py sits at the package root (dist/inference) or in app/ (submission)."""
+    for base in (_ROOT, _ROOT.parent):
+        if (base / "manifest.json").is_file() or (base / "meta" / "manifest.json").is_file():
+            return base
+    return _ROOT
+
+
 def _manifest() -> dict:
-    return json.loads((_ROOT / "manifest.json").read_text(encoding="utf-8"))
+    root = _package_root()
+    for candidate in (root / "meta" / "manifest.json", root / "manifest.json"):
+        if candidate.is_file():
+            return json.loads(candidate.read_text(encoding="utf-8"))
+    raise FileNotFoundError("manifest.json not found next to serve.py")
 
 
 def _default_bundle() -> Path | None:
-    """Bundle layout differs per package: dist/inference has models/ at the root;
+    """Bundle layout differs per package: dist/inference has models/ flat at the root;
     dist/submission nests models/event_stack/<run_key>/deployment."""
-    flat = _ROOT / "models"
+    flat = _package_root() / "models"
     if (flat / "manifest.json").is_file():
         return flat
     try:
@@ -37,7 +49,7 @@ def _default_bundle() -> Path | None:
 
 
 def _default_visual() -> Path | None:
-    for candidate in (_ROOT.parent / "visual", _ROOT / "visual"):
+    for candidate in (_package_root() / "visual", _ROOT / "visual", _ROOT.parent / "visual"):
         if (candidate / "index.html").is_file():
             return candidate
     return None
