@@ -242,6 +242,28 @@ def test_context_v2_computes_hand_checked_source_competition_and_session_baselin
     assert row[_v2_idx("candidate_support_coverage_percentile")] == pytest.approx(.25)
 
 
+def test_context_v2_accepts_real_stride_aligned_micro_candidate_at_quantized_session_start():
+    """The sensor index is whole-second while cached raw windows retain milliseconds.
+
+    This is the exact E02-003 failure geometry: a micro candidate begins 383 ms
+    before the index start solely because the source window is stride-aligned.
+    It is still in the same acquisition session and has no generated extension.
+    """
+    sid = "sensorData-1784557893629-3d00f9218b844046963251ff74dd3f00"
+    start, end = 1784550873617, 1784551653617
+    candidate = _multi(sid, start, end, micro=_source(sid, start, end, (.8,)))
+
+    result = context_v2_features(
+        [candidate],
+        {},
+        {sid: [(start, start + 15_000, .8)]},
+        {sid: (1784550874000, 1784555245000)},
+    )
+
+    assert result.shape == (1, len(CONTEXT_V2_COLUMNS))
+    assert result[0, _v2_idx("session_candidate_count")] == 1
+
+
 def test_context_v2_is_session_isolated_order_invariant_and_preserves_caller_rows():
     first = _multi("a", 1_000, 2_000, macro=_source("a", 1_000, 2_000, (.3,), .7))
     second = _multi("a", 4_000, 5_000, micro=_source("a", 4_000, 5_000, (.6,), .8))
@@ -265,7 +287,7 @@ def test_context_v2_is_session_isolated_order_invariant_and_preserves_caller_row
         (_multi("s", 1, 2, macro=_source("s", 1, 2, (np.nan,))), {}, {"s": (0, 3)}, "finite probability"),
         (_multi("s", 1, 2, macro=_source("s", 1, 2, (.4,))), {"s": [(2, 1, .2)]}, {"s": (0, 3)}, "ordered"),
         (_multi("s", 1, 2, macro=_source("s", 1, 2, (.4,))), {"s": [(1, 2, np.nan)]}, {"s": (0, 3)}, "finite"),
-        (_multi("s", 1, 2, macro=_source("s", 1, 2, (.4,))), {}, {"s": (2, 3)}, "inside"),
+        (_multi("s", 1, 2, macro=_source("s", 1, 2, (.4,))), {}, {"s": (15_002, 16_000)}, "inside"),
     ],
 )
 def test_context_v2_fails_closed_for_invalid_raw_union_or_session_data(candidate, windows, bounds, message):

@@ -49,6 +49,12 @@ CONTEXT_V2_SCHEMA_HASH = hashlib.sha256(
 
 _MAD_FLOOR = 0.05
 _TWENTY_MINUTES_S = 1_200.0
+# The sensor index records whole-second bounds, while cached candidate windows
+# retain stride-aligned millisecond timestamps.  A macro candidate can therefore
+# start up to one 15 s grid step outside the nominal index endpoint without
+# leaving its acquisition session.  This is a data-format tolerance, not a
+# learned or tuneable Context-v2 parameter.
+_SESSION_BOUNDARY_QUANTIZATION_MS = 15_000
 
 
 def context_schema_descriptor(version: str) -> dict[str, object]:
@@ -142,7 +148,10 @@ def _validate_candidate(candidate: object, index: int, bounds_by_sid: Mapping[st
     if sid not in bounds_by_sid:
         raise ValueError("raw-union candidate session bounds are required")
     session_start, session_end = _validated_bounds(bounds_by_sid[sid])
-    if start < session_start or end > session_end:
+    if (
+        start < session_start - _SESSION_BOUNDARY_QUANTIZATION_MS
+        or end > session_end + _SESSION_BOUNDARY_QUANTIZATION_MS
+    ):
         raise ValueError("raw-union candidate must lie inside its session bounds")
 
     source_values: dict[str, float] = {}
