@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import py_compile
 import subprocess
 
 import pytest
@@ -102,6 +103,19 @@ def test_preregistered_code_identity_rejects_ignored_source_file(tmp_path: Path)
 
     with pytest.raises(RuntimeError, match="dirty non-evidence"):
         verify_e02_code_identity(root, output, code_sha)
+
+
+def test_preregistered_code_identity_allows_only_normal_runtime_detritus(tmp_path: Path):
+    from src.pipeline.challenger.context_v2 import verify_e02_code_identity
+
+    root, output, code_sha = _identity_repo(tmp_path)
+    _commit(root, "data: preregister E02-005")
+    py_compile.compile(str(root / "src" / "implementation.py"), doraise=True)
+    pytest_cache = root / "tests" / ".pytest_cache" / "v" / "cache"
+    pytest_cache.mkdir(parents=True)
+    (pytest_cache / "nodeids").write_text("[]\n", encoding="utf-8")
+
+    assert verify_e02_code_identity(root, output, code_sha) == code_sha
 
 
 def test_preregistered_code_identity_rejects_source_rename_into_evidence(tmp_path: Path):

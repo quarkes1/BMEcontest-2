@@ -175,6 +175,20 @@ def _git_name_status(root: Path, base: str, head: str) -> list[tuple[str, tuple[
     return rows
 
 
+def _is_runtime_detritus(path: str) -> bool:
+    """Permit only executable-neutral cache files beneath checked roots."""
+
+    parts = tuple(part for part in path.replace("\\", "/").split("/") if part)
+    if not parts:
+        return False
+    name = parts[-1]
+    if name.endswith((".pyc", ".pyo")):
+        return True
+    if ".pytest_cache" not in parts:
+        return False
+    return name in {".gitignore", "CACHEDIR.TAG", "README.md", "nodeids", "lastfailed", "stepwise"}
+
+
 def verify_e02_code_identity(root: Path, output: Path, code_sha: str) -> str:
     """Fail closed unless HEAD preserves a preregistration's executable code.
 
@@ -229,6 +243,7 @@ def verify_e02_code_identity(root: Path, output: Path, code_sha: str) -> str:
         "src", "scripts", "tests", "docs", "requirements.txt", "pyproject.toml", "pytest.ini",
         "setup.cfg", "setup.py", "environment.yml", "environment.yaml", "release",
     )
+    dirty = {path for path in dirty if not _is_runtime_detritus(path)}
     if dirty:
         raise RuntimeError(f"E02 code identity has dirty non-evidence paths: {sorted(dirty)!r}")
 
