@@ -141,9 +141,11 @@ def test_report_has_required_error_atlas_sections(synthetic_trace: ReplayTrace):
     for heading in (
         "Incumbent metrics", "FN stage decomposition", "FP taxonomy",
         "per-fold error profile", "Context-v1 residual separation",
-        "Short FN breakdown", "Subject concentration", "Recommended next experiments",
+        "Short FN breakdown", "Short FN stage split", "Subject TP/FP/pred/eligible profile",
+        "Subject concentration", "Recommended next experiments",
     ):
         assert heading in report
+    assert "FN-C0: 5" in report or "FN-C0: 1" in report
 
 
 def test_summary_keeps_support_counts_and_per_fold_context_separation(synthetic_trace: ReplayTrace):
