@@ -200,6 +200,10 @@ def _validated_feature_schema(
         raise PromotionContractError(
             "feature-schema context version differs from the run configuration"
         )
+    if config.context_features_version == "v2":
+        raise PromotionContractError(
+            "context-v2 challenger requires human promotion/runtime implementation"
+        )
     models = _model_mapping(fit)
     widths = {
         "macro": _fitted_input_width(models["macro"], "macro"),
@@ -322,13 +326,20 @@ def _validate_current_cache_bindings(
 
 
 def _registered_fold_records(summary: Mapping[str, object]) -> tuple[tuple[RunConfig, ...], tuple[Mapping[str, object], ...]]:
+    raw_configs = summary.get("run_configs")
+    if isinstance(raw_configs, list) and any(
+        isinstance(item, Mapping) and item.get("context_features_version") == "v2"
+        for item in raw_configs
+    ):
+        raise PromotionContractError(
+            "context-v2 challenger requires human promotion/runtime implementation"
+        )
     summary_key = summary.get("experiment_key")
     registered_configs = _REGISTERED_EXPERIMENTS.get(summary_key)
     if registered_configs is None:
         raise PromotionContractError(
             "summary is not a registered promotion summary"
         )
-    raw_configs = summary.get("run_configs")
     folds = summary.get("folds")
     if not isinstance(raw_configs, list) or not isinstance(folds, list) or len(raw_configs) != 5 or len(folds) != 5:
         raise PromotionContractError("registered summary must contain five run configurations and five fold records")

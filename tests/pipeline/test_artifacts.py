@@ -335,6 +335,23 @@ def test_context_v1_registered_summary_identity_accepts_attested_folds_and_rejec
         promotion._registered_fold_records(summary)
 
 
+def test_promotion_schema_rejects_context_v2_before_runtime_packaging():
+    """E02 models have no approved runtime ABI and must fail closed."""
+
+    from scripts.promote_event_stack import _validated_feature_schema
+    from src.pipeline.runner import RunConfig
+
+    config = RunConfig(
+        outer_fold=0,
+        micro_enabled=True,
+        candidate_control_enabled=True,
+        context_features_version="v2",
+        admission_minimum_recall=0.80,
+    )
+    with pytest.raises(PromotionContractError, match="challenger requires human promotion/runtime implementation"):
+        _validated_feature_schema(object(), config)
+
+
 def _fixture_fingerprint() -> dict[str, object]:
     return {
         "path": str((Path.cwd() / "fixture.npz").resolve()),

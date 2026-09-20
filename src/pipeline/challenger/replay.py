@@ -3,6 +3,8 @@
 This module deliberately invokes only fitted estimators and the same pure
 candidate/policy primitives used by the runner.  It neither imports nor calls
 ``run_outer_fold``: replay must remain incapable of retraining or caching.
+It is intentionally frozen to the incumbent Context-v1 ABI; challenger
+Context-v2 has no replay/runtime implementation until human promotion review.
 """
 
 from __future__ import annotations
@@ -133,7 +135,12 @@ def _config(payload: Mapping[str, object]) -> RunConfig:
             "verifier_blend_weight_grid",
         ):
             values[name] = tuple(values[name])
-        return RunConfig(**values)
+        config = RunConfig(**values)
+        if config.context_features_version == "v2":
+            raise RuntimeError(
+                "Context-v2 challenger requires human promotion/runtime implementation"
+            )
+        return config
     except (KeyError, TypeError, ValueError) as exc:
         raise RuntimeError("outer bundle run_config is invalid") from exc
 

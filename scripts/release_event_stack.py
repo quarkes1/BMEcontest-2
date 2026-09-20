@@ -253,6 +253,13 @@ def release_summary(summary_path: Path, *, root: Path = _ROOT) -> Path:
         candidate_f1 = float(summary["outer_metrics"]["f1"])
     except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
         raise PromotionContractError("release summary cannot provide aggregate F1") from exc
+    if isinstance(summary.get("run_configs"), list) and any(
+        isinstance(item, Mapping) and item.get("context_features_version") == "v2"
+        for item in summary["run_configs"]
+    ):
+        raise PromotionContractError(
+            "context-v2 challenger requires human promotion/runtime implementation"
+        )
     validate_candidate_against_incumbent(candidate_f1, float(incumbent["f1"]))
 
     # The trainer re-validates fold evidence before producing the candidate run.

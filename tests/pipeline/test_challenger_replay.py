@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from dataclasses import asdict
 
 import pytest
 
@@ -54,6 +55,20 @@ def test_summary_run_configs_rejects_duplicate_or_disagreeing_fold_payloads():
     disagreement["run_configs"][3]["seed"] = 8
     with pytest.raises(RuntimeError, match="disagrees"):
         validate_summary_run_configs(disagreement, configs)
+
+
+def test_replay_config_rejects_research_only_context_v2():
+    """Sealed incumbent replay never becomes a v2 runtime by accident."""
+
+    from src.pipeline.challenger.replay import _config
+    from src.pipeline.runner import RunConfig
+
+    config = RunConfig(
+        outer_fold=0, micro_enabled=True, candidate_control_enabled=True,
+        context_features_version="v2", admission_minimum_recall=0.80,
+    )
+    with pytest.raises(RuntimeError, match="requires human promotion/runtime implementation"):
+        _config(asdict(config))
 
 
 @pytest.mark.integration

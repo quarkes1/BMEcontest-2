@@ -805,6 +805,18 @@ def test_outer_train_only_loader_never_opens_outer_validation(filesystem_runner_
     assert not hasattr(data, "validation")
 
 
+def test_outer_train_only_loader_crops_metadata_to_train_sessions(filesystem_runner_source):
+    """Inner selection cannot inspect even held-out session/subject metadata."""
+
+    data = filesystem_runner_source.load_outer_train_only(
+        RunConfig(outer_fold=0, micro_enabled=True)
+    )
+
+    assert set(data.subject_by_session) == {"s1", "s2"}
+    assert set(data.session_bounds_by_sid or ()) == {"s1", "s2"}
+    assert "s3" not in data.subject_by_session
+
+
 def test_filesystem_context_coverage_uses_authoritative_session_bounds(filesystem_runner_source):
     """Sparse sampled windows must not shrink Context-v1's session universe."""
 

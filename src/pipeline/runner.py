@@ -426,6 +426,15 @@ class InnerOOFResult:
     micro_window_fit_subjects: frozenset[str]
 
 
+def reject_challenger_runtime(config: RunConfig) -> None:
+    """Keep E02 research-only features out of the approved runtime ABI."""
+
+    if config.context_features_version == "v2":
+        raise ValueError(
+            "context-v2 challenger requires human promotion/runtime implementation"
+        )
+
+
 def _concatenate_window_batches(batches: Sequence[WindowBatch]) -> WindowBatch:
     """Join batches only after callers have established their partition invariants."""
 
@@ -1765,6 +1774,7 @@ def fit_outer_fold_for_promotion(
     never policy-selection input for deployment.
     """
 
+    reject_challenger_runtime(config)
     loader = getattr(source, "load_outer_fold", None)
     if not callable(loader):
         raise TypeError("promotion source must expose load_outer_fold")
@@ -1787,6 +1797,7 @@ def fit_full_target_deployment(
     searches an event threshold, blend, admission setting, or budget.
     """
 
+    reject_challenger_runtime(config)
     required = {
         "micro_threshold", "blend_weight", "nms_iou", "admission_threshold",
         "max_candidates_per_subject", "threshold", "max_events_per_group", "verifier_c",
@@ -2268,17 +2279,24 @@ class FilesystemDataSource:
                     micro_candidate_train = filtered
 
         index = manifests.load_sensor_index()
-        subject_by_session = {
+        all_subject_by_session = {
             str(row["session_id"]): str(row["externalid"])
             for _, row in index.iterrows()
         }
-        session_bounds_by_sid = {
+        all_session_bounds_by_sid = {
             str(row["session_id"]): (int(row["timeStamp.startTime"]), int(row["timeStamp.endTime"]))
             for _, row in index.iterrows()
         }
-        if any(end < start for start, end in session_bounds_by_sid.values()):
+        if any(end < start for start, end in all_session_bounds_by_sid.values()):
             raise ValueError("sensor index contains unordered session bounds")
         train_sids = {window.sid for window in candidate_train.windows}
+        missing_subjects = train_sids - set(all_subject_by_session)
+        missing_bounds = train_sids - set(all_session_bounds_by_sid)
+        if missing_subjects or missing_bounds:
+            missing = sorted(missing_subjects | missing_bounds)
+            raise ValueError("outer-train sessions absent from sensor index: " + ", ".join(missing))
+        subject_by_session = {sid: all_subject_by_session[sid] for sid in train_sids}
+        session_bounds_by_sid = {sid: all_session_bounds_by_sid[sid] for sid in train_sids}
         train_truths, _ = self._eligible_truths(train_sids, candidate_train, subject_by_session)
         return OuterTrainOnlyData(
             window_train=window_train,

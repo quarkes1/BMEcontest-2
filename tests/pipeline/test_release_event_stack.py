@@ -94,6 +94,28 @@ def test_active_dist_candidate_match_reads_runtime_manifest(tmp_path: Path):
     assert _active_dist_matches_candidate(root, registry) is True
 
 
+def test_release_refuses_context_v2_before_promotion_or_dist_write(tmp_path: Path, monkeypatch):
+    """Research-only E02 summaries cannot enter the active release transaction."""
+
+    from scripts import release_event_stack as release
+    from src.pipeline.artifacts import PromotionContractError
+
+    root, registry = _release_fixture(tmp_path)
+    summary = root / "context-v2.json"
+    summary.write_text(json.dumps({
+        "outer_metrics": {"f1": 0.9},
+        "run_configs": [{"context_features_version": "v2"}],
+    }), encoding="utf-8")
+    monkeypatch.setattr(
+        release, "promote_summary",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("promotion called")),
+    )
+
+    with pytest.raises(PromotionContractError, match="challenger requires human promotion/runtime implementation"):
+        release.release_summary(summary, root=root)
+    assert json.loads((root / "release/event_stack_incumbent.json").read_text(encoding="utf-8")) == registry
+
+
 def test_new_process_recovers_package_swap_before_tree_hash_with_distinct_pair(tmp_path: Path):
     """The post-swap/pre-hash interruption must finish the new, not mixed, pair."""
 
