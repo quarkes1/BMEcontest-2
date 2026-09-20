@@ -8,7 +8,7 @@ candidate/policy primitives used by the runner.  It neither imports nor calls
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Mapping, Sequence
 
@@ -79,6 +79,8 @@ class ReplayTrace:
     predictions: tuple[EventRef, ...]
     metrics: EventMetrics
     match_pairs: tuple[MatchPair, ...]
+    # Required by the E01 atlas even for C0 truths that have no candidate row.
+    subject_by_session: Mapping[str, str] = field(default_factory=dict)
 
 
 def official_match_indices(
@@ -366,4 +368,4 @@ def replay_outer_fold(root: Path, fold: int) -> ReplayTrace:
     if tuple(int(expected_metrics[name]) for name in ("n_tp", "n_true", "n_pred")) != (metrics.n_tp, metrics.n_true, metrics.n_pred):
         raise RuntimeError("replay metrics disagree with frozen outer bundle")
     rows = _ledger(raw_union, raw_macro, raw_micro, features, logistic, lgbm, scores, groups, admission, admitted, threshold, event_cap, final_raw)
-    return ReplayTrace(fold, tuple(data.validation_truths), data.validation_truth_slices, raw_macro, raw_micro, raw_union, rows, tuple(admitted), final_raw, predictions, metrics, official_match_indices(predictions, data.validation_truths))
+    return ReplayTrace(fold, tuple(data.validation_truths), data.validation_truth_slices, raw_macro, raw_micro, raw_union, rows, tuple(admitted), final_raw, predictions, metrics, official_match_indices(predictions, data.validation_truths), dict(data.subject_by_session))
