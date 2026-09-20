@@ -247,7 +247,7 @@ def _ledger(
     candidates: Sequence[MultiScaleCandidate], raw_macro: Sequence[CandidateEvent], raw_micro: Sequence[CandidateEvent],
     features: np.ndarray, logistic: np.ndarray, lgbm: np.ndarray, scores: np.ndarray,
     groups: Sequence[str], admission: CandidateAdmissionConfig, admitted: Sequence[int],
-    threshold: float, event_cap: int | None, final_raw: Sequence[int],
+    threshold: float, event_cap: int | None, final_raw: Sequence[int], subject_by_session: Mapping[str, str],
 ) -> tuple[Mapping[str, object], ...]:
     admitted_set, final_set = set(admitted), set(final_raw)
     # Recreate canonical NMS/cap orders for annotations.  The actual selected
@@ -280,6 +280,9 @@ def _ledger(
             event_rank.update({index: position for position, index in enumerate(rows)})
     result: list[Mapping[str, object]] = []
     for index, candidate in enumerate(candidates):
+        subject_id = subject_by_session.get(candidate.event.sid)
+        if not isinstance(subject_id, str) or not subject_id:
+            raise RuntimeError("replay candidate has no nonempty subject provenance")
         context_values = features[index, 56:]
         if index in suppressor:
             reason = "nms_suppressed"
@@ -296,7 +299,7 @@ def _ledger(
         else:
             reason = "selected"
         row: dict[str, object] = {
-            "raw_index": index, "session_id": candidate.event.sid,
+            "raw_index": index, "subject_id": subject_id, "session_id": candidate.event.sid,
             "start_ms": candidate.event.start_ms, "end_ms": candidate.event.end_ms,
             "macro_raw_index": candidate_features.get(id(candidate.macro)) if candidate.macro else None,
             "micro_raw_index": micro_features.get(id(candidate.micro)) if candidate.micro else None,
@@ -367,5 +370,5 @@ def replay_outer_fold(root: Path, fold: int) -> ReplayTrace:
     expected_metrics = bundle.metrics
     if tuple(int(expected_metrics[name]) for name in ("n_tp", "n_true", "n_pred")) != (metrics.n_tp, metrics.n_true, metrics.n_pred):
         raise RuntimeError("replay metrics disagree with frozen outer bundle")
-    rows = _ledger(raw_union, raw_macro, raw_micro, features, logistic, lgbm, scores, groups, admission, admitted, threshold, event_cap, final_raw)
+    rows = _ledger(raw_union, raw_macro, raw_micro, features, logistic, lgbm, scores, groups, admission, admitted, threshold, event_cap, final_raw, data.subject_by_session)
     return ReplayTrace(fold, tuple(data.validation_truths), data.validation_truth_slices, raw_macro, raw_micro, raw_union, rows, tuple(admitted), final_raw, predictions, metrics, official_match_indices(predictions, data.validation_truths), dict(data.subject_by_session))

@@ -63,6 +63,7 @@ def synthetic_trace() -> ReplayTrace:
         candidate_rows=rows, admitted_indices=(1, 2, 3, 4), final_indices=(3, 4, 2),
         predictions=predictions, metrics=EventMetrics(1, 3, 6, 1 / 6, 1 / 3, 2 / 9),
         match_pairs=(MatchPair(0, 4, 1.0),),
+        subject_by_session={sid: f"subject-{sid}" for sid in ("c0", "c1", "c2", "c3", "c4", "fp")},
     )
 
 
@@ -117,6 +118,20 @@ def test_fp_rows_are_exactly_unmatched_final_predictions(synthetic_trace: Replay
     assert [row["final_index"] for row in false_positive_rows(synthetic_trace)] == [1, 2]
 
 
+def test_fp_rows_expose_session_relative_evidence_and_subject(synthetic_trace: ReplayTrace):
+    """Omitting a session diagnostic or subject hides the FP mechanism/concentration."""
+    from src.pipeline.challenger.atlas import false_positive_rows
+
+    row = false_positive_rows(synthetic_trace)[0]
+
+    assert row["subject_id"] == "subject-fp"
+    assert row["macro_score_percentile"] is not None
+    assert row["micro_score_percentile"] is None
+    assert row["candidate_score_percentile"] == 1.0
+    assert row["duration_percentile"] == 1.0
+    assert row["candidate_count_session"] == 1
+
+
 def test_report_has_required_error_atlas_sections(synthetic_trace: ReplayTrace):
     """A report missing a required heading would make E01 evidence incomplete."""
     from src.pipeline.challenger.atlas import atlas_summaries, render_report
@@ -126,8 +141,20 @@ def test_report_has_required_error_atlas_sections(synthetic_trace: ReplayTrace):
     for heading in (
         "Incumbent metrics", "FN stage decomposition", "FP taxonomy",
         "per-fold error profile", "Context-v1 residual separation",
+        "Short FN breakdown", "Subject concentration", "Recommended next experiments",
     ):
         assert heading in report
+
+
+def test_summary_keeps_support_counts_and_per_fold_context_separation(synthetic_trace: ReplayTrace):
+    """Global-only means would conceal fold instability and scale-specific error modes."""
+    from src.pipeline.challenger.atlas import atlas_summaries
+
+    summary = atlas_summaries([synthetic_trace])
+
+    assert summary["fp_support"] == {"macro_only": 2, "micro_only": 0, "macro_micro": 0}
+    assert "0" in summary["context_v1_residual_separation"]["per_fold"]
+    assert "fold_sign_consistency" in summary["context_v1_residual_separation"]
 
 
 def test_five_fold_incumbent_validation_rejects_wrong_frozen_totals(synthetic_trace: ReplayTrace):
@@ -153,4 +180,6 @@ def test_frozen_five_fold_trace_has_complete_official_error_accounting():
     assert len({row["truth_key"] for row in fn_rows}) == len(fn_rows) == 39
     assert sum(row["duration_slice"] == "short" for row in fn_rows) == 19
     assert len(fp_rows) == 83
+    assert all(isinstance(row["subject_id"], str) and row["subject_id"] for row in fp_rows)
+    assert sum(summary["fp_by_subject"].values()) == 83
     assert summary["incumbent_metrics"] == {"tp": 114, "eligible": 153, "pred": 197, "fp": 83, "fn": 39}

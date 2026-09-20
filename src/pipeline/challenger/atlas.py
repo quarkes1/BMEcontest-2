@@ -83,7 +83,12 @@ def _subject_for(trace: ReplayTrace, sid: str, candidates: Sequence[MultiScaleCa
 
 
 def classify_false_negatives(trace: ReplayTrace) -> list[dict[str, object]]:
-    """Classify official-unmatched truths with fixed C1→C2→C3→C0→C4 precedence."""
+    """Classify unmatched GT by earliest observable pipeline failure.
+
+    The fixed C1→C2→C3→C0→C4 order records candidate-control removal,
+    then event-policy removal, then final geometry, then absence of any raw
+    union candidate; C4 is the remaining greedy-matcher ambiguity.
+    """
     rows = _row_by_raw(trace)
     matched_truths = {pair.truth_index for pair in trace.match_pairs}
     result: list[dict[str, object]] = []
@@ -200,12 +205,16 @@ def false_positive_rows(trace: ReplayTrace) -> list[dict[str, object]]:
         duration = prediction.end_ms - prediction.start_ms
         session_scores = [float(rows[index]["blend_score"]) for index in session_indices]
         session_durations = [float(trace.raw_union[index].event.end_ms - trace.raw_union[index].event.start_ms) for index in session_indices]
+        macro_values = [max(item.macro.probabilities) for item in (trace.raw_union[index] for index in session_indices) if item.macro is not None]
+        micro_values = [max(item.micro.probabilities) for item in (trace.raw_union[index] for index in session_indices) if item.micro is not None]
+        macro_score = max(candidate.macro.probabilities) if candidate.macro is not None else None
+        micro_score = max(candidate.micro.probabilities) if candidate.micro is not None else None
         nearby = sum(_interval_gap(prediction, trace.raw_union[index].event) <= _NEIGHBOUR_MS for index in neighbours)
         macro, micro = candidate.macro is not None, candidate.micro is not None
         duplicate = any(_overlap(prediction, truth) >= _IOU for truth in trace.truths)
         entry: dict[str, object] = {
             "outer_fold": trace.fold, "final_index": final_index, "raw_index": raw_index,
-            "subject_id": row.get("subject_id"), "session_id": prediction.sid,
+            "subject_id": trace.subject_by_session.get(prediction.sid, row.get("subject_id")), "session_id": prediction.sid,
             "start_ms": prediction.start_ms, "end_ms": prediction.end_ms, "duration_ms": duration,
             "macro_support": macro, "micro_support": micro, "macro_micro_support": macro and micro,
             "logistic_score": row["logistic_score"], "lgbm_score": row["lgbm_score"], "blend_score": score,
@@ -217,6 +226,11 @@ def false_positive_rows(trace: ReplayTrace) -> list[dict[str, object]]:
             "next_evidence_score": rows[following]["blend_score"] if following is not None else None,
             "session_blend_percentile": _percentile(session_scores, score),
             "session_duration_percentile": _percentile(session_durations, float(duration)),
+            "macro_score_percentile": _percentile(macro_values, macro_score) if macro_score is not None else None,
+            "micro_score_percentile": _percentile(micro_values, micro_score) if micro_score is not None else None,
+            "candidate_score_percentile": _percentile(session_scores, score),
+            "duration_percentile": _percentile(session_durations, float(duration)),
+            "candidate_count_session": len(session_indices),
             "short_spike": duration < _SHORT_MS,
             "long_continuous_activity": duration >= _MEDIUM_MS,
             "macro_high_micro_low": macro and not micro,
@@ -254,10 +268,28 @@ def atlas_summaries(traces: Sequence[ReplayTrace]) -> dict[str, object]:
         for pair in trace.match_pairs:
             raw = next(index for index in trace.final_indices if ledger[index]["final_event_index"] == pair.prediction_index)
             tp_rows.append(ledger[raw])
-    context = {
-        name: {"fp_mean": _numeric_mean(fp_rows, name), "tp_mean": _numeric_mean(tp_rows, name)}
-        for name in CONTEXT_V1_COLUMNS
-    }
+    def separation(fps: Sequence[Mapping[str, object]], tps: Sequence[Mapping[str, object]]) -> dict[str, dict[str, float | None]]:
+        return {
+            name: {
+                "fp_mean": _numeric_mean(fps, name), "tp_mean": _numeric_mean(tps, name),
+                "fp_minus_tp": (None if _numeric_mean(fps, name) is None or _numeric_mean(tps, name) is None else _numeric_mean(fps, name) - _numeric_mean(tps, name)),
+            }
+            for name in CONTEXT_V1_COLUMNS
+        }
+    per_fold_context: dict[str, object] = {}
+    for trace in traces:
+        ledger = _row_by_raw(trace)
+        fold_tps = [ledger[next(index for index in trace.final_indices if ledger[index]["final_event_index"] == pair.prediction_index)] for pair in trace.match_pairs]
+        per_fold_context[str(trace.fold)] = separation(false_positive_rows(trace), fold_tps)
+    sign_consistency: dict[str, dict[str, int]] = {}
+    for name in CONTEXT_V1_COLUMNS:
+        deltas = [value[name]["fp_minus_tp"] for value in per_fold_context.values()]
+        sign_consistency[name] = {
+            "positive": sum(value is not None and value > 0 for value in deltas),
+            "negative": sum(value is not None and value < 0 for value in deltas),
+            "zero": sum(value == 0 for value in deltas if value is not None),
+            "noncomparable": sum(value is None for value in deltas),
+        }
     summary: dict[str, object] = {
         "incumbent_metrics": {
             "tp": sum(trace.metrics.n_tp for trace in traces),
@@ -270,10 +302,18 @@ def atlas_summaries(traces: Sequence[ReplayTrace]) -> dict[str, object]:
         "fn_by_fold": dict(sorted(Counter(str(row["outer_fold"]) for row in fn_rows).items())),
         "fn_by_subject": dict(sorted(Counter(str(row["subject_id"]) for row in fn_rows).items())),
         "fp_taxonomy": {name: sum(bool(row[name]) for row in fp_rows) for name in ("short_spike", "long_continuous_activity", "macro_high_micro_low", "micro_high_macro_low", "dense_cluster", "isolated", "same_truth_duplicate")},
+        "fp_support": {
+            "macro_only": sum(bool(row["macro_support"]) and not bool(row["micro_support"]) for row in fp_rows),
+            "micro_only": sum(not bool(row["macro_support"]) and bool(row["micro_support"]) for row in fp_rows),
+            "macro_micro": sum(bool(row["macro_micro_support"]) for row in fp_rows),
+        },
         "fp_by_fold": dict(sorted(Counter(str(row["outer_fold"]) for row in fp_rows).items())),
         "fp_by_subject": dict(sorted(Counter(str(row["subject_id"]) for row in fp_rows).items())),
         "per_fold_error_profile": per_fold,
-        "context_v1_residual_separation": context,
+        "context_v1_residual_separation": {
+            "global": separation(fp_rows, tp_rows), "per_fold": per_fold_context,
+            "fold_sign_consistency": sign_consistency,
+        },
         "fold_consistency": {
             "fp_counts": [len(false_positive_rows(trace)) for trace in traces],
             "fn_counts": [len(classify_false_negatives(trace)) for trace in traces],
@@ -297,9 +337,17 @@ def render_report(summary: Mapping[str, object]) -> str:
         f"- FP / FN: {metric['fp']} / {metric['fn']}", "", "## FN stage decomposition", "",
     ]
     lines.extend(f"- {key}: {value}" for key, value in summary["fn_stage_decomposition"].items())
+    lines.extend(["", "## Short FN breakdown", ""])
+    lines.extend(f"- {key}: {value}" for key, value in summary["fn_duration_slice"].items())
     lines.extend(["", "## FP taxonomy", ""])
     lines.extend(f"- {key}: {value}" for key, value in summary["fp_taxonomy"].items())
+    lines.extend(["", "## Support and geometry", ""])
+    lines.extend(f"- {key}: {value}" for key, value in summary["fp_support"].items())
+    lines.extend(["", "## Subject concentration", ""])
+    lines.extend(f"- FP subject {key}: {value}" for key, value in summary["fp_by_subject"].items())
+    lines.extend(f"- FN subject {key}: {value}" for key, value in summary["fn_by_subject"].items())
     lines.extend(["", "## per-fold error profile", ""])
     lines.extend(f"- fold {key}: {value}" for key, value in summary["per_fold_error_profile"].items())
     lines.extend(["", "## Context-v1 residual separation", "", "Descriptive FP-versus-TP means only; no classifier or learned transform was used."])
+    lines.extend(["", "## Recommended next experiments", "", "- Use the FN stage and support decomposition to decide whether candidate recovery is warranted.", "- Use only stable, session-local FP diagnostics as hypotheses for a separately preregistered Context-v2 experiment.", "- Do not use these outer-fold diagnostics for threshold selection or model fitting."])
     return "\n".join(lines) + "\n"
