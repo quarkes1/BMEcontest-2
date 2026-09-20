@@ -48,7 +48,7 @@ from src.pipeline.candidate_control import (
     CandidateAdmissionConfig,
     admit_candidates,
 )
-from src.pipeline.crossfit import crossfit_predict_proba
+from src.pipeline.crossfit import crossfit_predict_proba, validate_fit_sample_weight
 from src.pipeline.event_stack import (
     CandidateEvent,
     MultiScaleCandidate,
@@ -845,6 +845,7 @@ def _fit_final_models(
     policy: EventSelectionPolicy,
     admission: CandidateAdmissionConfig | None,
     blend_weight: float | None,
+    verifier_sample_weight: np.ndarray | None = None,
 ) -> _FinalModelFit:
     """Fit the frozen outer-train models after all OOF choices are final."""
 
@@ -856,12 +857,26 @@ def _fit_final_models(
             raise ValueError("micro model inputs are required when micro_enabled=True")
         micro = _micro_window_estimator(config.seed + 12)
         micro.fit(micro_train_features, micro_train_labels)
+    sample_weight = (
+        None
+        if verifier_sample_weight is None
+        else validate_fit_sample_weight(
+            verifier_sample_weight, len(train_candidate_features)
+        )
+    )
+    verifier_fit_kwargs = (
+        {} if sample_weight is None else {"model__sample_weight": sample_weight}
+    )
     verifier_logistic = _verifier_estimator(config.seed + 3, verifier_c)
-    verifier_logistic.fit(train_candidate_features, train_candidate_labels)
+    verifier_logistic.fit(
+        train_candidate_features, train_candidate_labels, **verifier_fit_kwargs
+    )
     verifier_lgbm = None
     if config.candidate_control_enabled:
         verifier_lgbm = _verifier_lgbm_estimator(config.seed + 23)
-        verifier_lgbm.fit(train_candidate_features, train_candidate_labels)
+        verifier_lgbm.fit(
+            train_candidate_features, train_candidate_labels, **verifier_fit_kwargs
+        )
     return _FinalModelFit(
         macro=macro,
         micro=micro,

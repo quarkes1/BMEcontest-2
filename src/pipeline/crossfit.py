@@ -86,6 +86,22 @@ def _positive_probabilities(estimator: Any, features: np.ndarray) -> np.ndarray:
     return probabilities[:, int(positive_columns[0])]
 
 
+def validate_fit_sample_weight(
+    fit_sample_weight: np.ndarray,
+    row_count: int,
+) -> np.ndarray:
+    """Validate the frozen E03 verifier-weight contract before any fit starts."""
+
+    sample_weight = np.asarray(fit_sample_weight)
+    if sample_weight.dtype != np.float64:
+        raise ValueError("sample weight must use float64 dtype")
+    if sample_weight.ndim != 1 or len(sample_weight) != row_count:
+        raise ValueError("sample weight must be one-dimensional and align with training rows")
+    if not np.isfinite(sample_weight).all() or np.any(sample_weight <= 0.0):
+        raise ValueError("sample weight must be finite and strictly positive")
+    return sample_weight
+
+
 def crossfit_predict_proba(
     train_features: np.ndarray,
     train_labels: np.ndarray,
@@ -94,6 +110,8 @@ def crossfit_predict_proba(
     score_groups: np.ndarray,
     n_splits: int,
     estimator_factory: Callable[[], Any],
+    *,
+    fit_sample_weight: np.ndarray | None = None,
 ) -> OOFProbabilities:
     """Score each requested row with a model that excluded its subject."""
 
@@ -113,6 +131,12 @@ def crossfit_predict_proba(
     if len(score_x) != len(score_group_values):
         raise ValueError("scoring arrays must have equal row counts")
 
+    sample_weight = (
+        None
+        if fit_sample_weight is None
+        else validate_fit_sample_weight(fit_sample_weight, len(train_x))
+    )
+
     unknown_groups = sorted(set(score_group_values) - set(train_group_values))
     if unknown_groups:
         raise ValueError(
@@ -128,7 +152,11 @@ def crossfit_predict_proba(
         if not len(score_rows):
             continue
         estimator = estimator_factory()
-        estimator.fit(train_x[fold.train_rows], labels[fold.train_rows])
+        fit_kwargs = (
+            {} if sample_weight is None
+            else {"model__sample_weight": sample_weight[fold.train_rows]}
+        )
+        estimator.fit(train_x[fold.train_rows], labels[fold.train_rows], **fit_kwargs)
         fold_probabilities = _positive_probabilities(estimator, score_x[score_rows])
         if not np.isfinite(fold_probabilities).all():
             raise ValueError(f"fold {fold.index} produced non-finite probabilities")
