@@ -36,6 +36,26 @@ def test_official_match_indices_accepts_iou_boundary_and_rejects_other_sessions(
     ]
 
 
+def test_summary_run_configs_rejects_duplicate_or_disagreeing_fold_payloads():
+    """A replay cannot borrow a threshold/config hash from a different fold."""
+
+    from src.pipeline.challenger.replay import validate_summary_run_configs
+
+    configs = {fold: {"outer_fold": fold, "seed": 7} for fold in range(5)}
+    summary = {"run_configs": [dict(configs[fold]) for fold in range(5)]}
+
+    assert validate_summary_run_configs(summary, configs) == configs
+
+    duplicate = {"run_configs": [dict(configs[0]) for _ in range(5)]}
+    with pytest.raises(RuntimeError, match="unique.*0 through 4"):
+        validate_summary_run_configs(duplicate, configs)
+
+    disagreement = {"run_configs": [dict(configs[fold]) for fold in range(5)]}
+    disagreement["run_configs"][3]["seed"] = 8
+    with pytest.raises(RuntimeError, match="disagrees"):
+        validate_summary_run_configs(disagreement, configs)
+
+
 @pytest.mark.integration
 def test_fold_zero_replays_frozen_metric():
     """Deleting scoring or substituting a trained path cannot reproduce fold-zero evidence."""

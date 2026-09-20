@@ -20,7 +20,12 @@ from src.pipeline.artifacts import (
     load_event_stack_bundle,
     verify_promotion_attestation,
 )
-from src.pipeline.candidate_control import CandidateAdmissionConfig, admit_candidates
+from src.pipeline.candidate_control import (
+    CandidateAdmissionConfig,
+    _multiscale_key,
+    admit_candidates,
+    suppress_overlapping_candidates,
+)
 from src.pipeline.challenger.protection import validate_fingerprints
 from src.pipeline.context_features import CONTEXT_V1_COLUMNS, CONTEXT_V1_SCHEMA_HASH
 from src.pipeline.event_stack import (
@@ -144,6 +149,36 @@ def _summary_fold(summary: Mapping[str, object], fold: int) -> Mapping[str, obje
     return rows[0]
 
 
+def validate_summary_run_configs(
+    summary: Mapping[str, object], bundle_configs: Mapping[int, Mapping[str, object]],
+) -> dict[int, Mapping[str, object]]:
+    """Bind every attested summary configuration to its matching outer bundle.
+
+    ``promotion_summary.json`` is the only attested source of selected micro
+    thresholds, so it must not be allowed to carry an unbound parallel config
+    list.  The mapping is deliberately complete and exact rather than relying
+    on list position.
+    """
+
+    rows = summary.get("run_configs")
+    if not isinstance(rows, list):
+        raise RuntimeError("attested summary has no run_configs")
+    parsed: dict[int, Mapping[str, object]] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            raise RuntimeError("attested summary run_configs must be objects")
+        fold = row.get("outer_fold")
+        if isinstance(fold, bool) or not isinstance(fold, int) or fold in parsed:
+            raise RuntimeError("attested summary run_configs must be unique folds 0 through 4")
+        parsed[fold] = row
+    if set(parsed) != set(range(5)) or set(bundle_configs) != set(range(5)):
+        raise RuntimeError("attested summary run_configs must be unique folds 0 through 4")
+    for fold in range(5):
+        if dict(parsed[fold]) != dict(bundle_configs[fold]):
+            raise RuntimeError(f"attested summary run_config disagrees with outer bundle fold {fold}")
+    return parsed
+
+
 def _verify_evidence(root: Path, fold: int) -> tuple[EventStackBundle, RunConfig, float]:
     run_root = root / "models" / "event_stack" / _RUN_KEY
     problems = verify_promotion_attestation(run_root, expected_run_key=_RUN_KEY)
@@ -161,6 +196,12 @@ def _verify_evidence(root: Path, fold: int) -> tuple[EventStackBundle, RunConfig
     if dict(bundle.run_config) != dict(config_payload):
         raise RuntimeError("outer bundle run_config disagreement")
     config = _config(config_payload)
+    # Bind all five summary configs before trusting even this fold's threshold.
+    all_bundle_configs = {
+        index: _load_json(run_root / f"outer-fold-{index}" / "run_config.json", "outer bundle run_config")
+        for index in range(5)
+    }
+    validate_summary_run_configs(summary, all_bundle_configs)
     if config.outer_fold != fold or not config.micro_enabled or config.context_features_version != "v1":
         raise RuntimeError("outer bundle does not describe the frozen Context-v1 micro replay")
     schema = bundle.feature_schema
@@ -207,20 +248,28 @@ def _ledger(
     threshold: float, event_cap: int | None, final_raw: Sequence[int],
 ) -> tuple[Mapping[str, object], ...]:
     admitted_set, final_set = set(admitted), set(final_raw)
-    # Recreate NMS ordering to annotate, while admit_candidates stays the authority.
-    rank = sorted(range(len(candidates)), key=lambda i: (-scores[i], candidates[i].event.sid, candidates[i].event.start_ms, candidates[i].event.end_ms, i))
-    winners: list[int] = []
+    # Recreate canonical NMS/cap orders for annotations.  The actual selected
+    # result still comes from admit_candidates.
+    rank = sorted(range(len(candidates)), key=lambda i: (-scores[i], _multiscale_key(candidates[i])))
+    nms_indices = set(suppress_overlapping_candidates(candidates, scores, admission.nms_iou))
     suppressor: dict[int, int] = {}
+    winners: list[int] = []
     for index in rank:
-        hit = next((other for other in winners if candidates[index].event.sid == candidates[other].event.sid and event_iou(candidates[index].event.interval, candidates[other].event.interval) >= admission.nms_iou), None)
-        if hit is None:
+        if index in nms_indices:
             winners.append(index)
-        else:
-            suppressor[index] = hit
+            continue
+        hit = next(other for other in winners if candidates[index].event.sid == candidates[other].event.sid and event_iou(candidates[index].event.interval, candidates[other].event.interval) >= admission.nms_iou)
+        suppressor[index] = hit
     nms_rank = {index: position for position, index in enumerate(rank)}
     candidate_features = {id(candidate): index for index, candidate in enumerate(raw_macro)}
     micro_features = {id(candidate): index for index, candidate in enumerate(raw_micro)}
     admitted_order = {index: position for position, index in enumerate(admitted)}
+    subject_cap_rank: dict[int, int] = {}
+    cap_candidates = [index for index in nms_indices if scores[index] >= admission.threshold]
+    for group in sorted({str(groups[index]) for index in cap_candidates}):
+        members = [index for index in cap_candidates if str(groups[index]) == group]
+        members.sort(key=lambda index: (-scores[index], _multiscale_key(candidates[index])))
+        subject_cap_rank.update({index: position for position, index in enumerate(members)})
     event_rank: dict[int, int] = {}
     if event_cap is not None:
         for group in sorted(set(str(groups[index]) for index in admitted)):
@@ -252,7 +301,7 @@ def _ledger(
             "nms_rank": nms_rank[index], "nms_suppressed_by_raw_index": suppressor.get(index),
             "logistic_score": float(logistic[index]), "lgbm_score": float(lgbm[index]), "blend_score": float(scores[index]),
             "admission_threshold_pass": None if index in suppressor else bool(scores[index] >= admission.threshold),
-            "subject_cap_rank": admitted_order.get(index) if index in winners and scores[index] >= admission.threshold else None,
+            "subject_cap_rank": subject_cap_rank.get(index),
             "admitted_index": admitted_order.get(index),
             "event_threshold_pass": bool(scores[index] >= threshold) if index in admitted_set else None,
             "event_cap_rank": event_rank.get(index) if index in admitted_set and scores[index] >= threshold else None,
