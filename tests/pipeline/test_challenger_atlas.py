@@ -157,6 +157,19 @@ def test_summary_keeps_support_counts_and_per_fold_context_separation(synthetic_
     assert "fold_sign_consistency" in summary["context_v1_residual_separation"]
 
 
+def test_summary_exposes_cross_tabulations_and_q3_q6_evidence(synthetic_trace: ReplayTrace):
+    from src.pipeline.challenger.atlas import atlas_summaries
+
+    summary = atlas_summaries([synthetic_trace])
+
+    assert "fn_cross_stats" in summary
+    assert summary["fn_short_stage_decomposition"]
+    assert "fp_subject_profile" in summary
+    assert "fp_q3_distributions" in summary
+    assert len(summary["context_v1_feature_report"]) == 60
+    assert "mechanism_recommendations" in summary
+
+
 def test_five_fold_incumbent_validation_rejects_wrong_frozen_totals(synthetic_trace: ReplayTrace):
     """Changing the frozen five-fold error accounting must fail closed."""
     from src.pipeline.challenger.atlas import atlas_summaries

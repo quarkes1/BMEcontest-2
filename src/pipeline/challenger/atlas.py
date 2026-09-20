@@ -249,6 +249,31 @@ def _numeric_mean(rows: Sequence[Mapping[str, object]], name: str) -> float | No
     return mean(values) if values else None
 
 
+def _distribution(rows: Sequence[Mapping[str, object]], name: str) -> dict[str, float | int | None]:
+    values = sorted(
+        float(row[name]) for row in rows
+        if isinstance(row.get(name), (int, float)) and not isinstance(row.get(name), bool)
+        and float(row[name]) == float(row[name])
+    )
+    if not values:
+        return {"count": 0, "min": None, "p25": None, "median": None, "p75": None, "max": None}
+    def at(fraction: float) -> float:
+        return values[min(len(values) - 1, int(fraction * (len(values) - 1)))]
+    return {"count": len(values), "min": values[0], "p25": at(.25), "median": at(.5), "p75": at(.75), "max": values[-1]}
+
+
+def _fn_support(row: Mapping[str, object]) -> str:
+    macro = bool(row.get("macro_raw_reachable"))
+    micro = bool(row.get("micro_raw_reachable"))
+    if macro and micro:
+        return "macro+micro"
+    if macro:
+        return "macro-only"
+    if micro:
+        return "micro-only"
+    return "neither"
+
+
 def atlas_summaries(traces: Sequence[ReplayTrace]) -> dict[str, object]:
     """Aggregate atlas facts without deriving a learned decision rule."""
     fn_rows = [row for trace in traces for row in classify_false_negatives(trace)]
@@ -290,6 +315,38 @@ def atlas_summaries(traces: Sequence[ReplayTrace]) -> dict[str, object]:
             "zero": sum(value == 0 for value in deltas if value is not None),
             "noncomparable": sum(value is None for value in deltas),
         }
+    fn_cross_stats: dict[str, dict[str, dict[str, dict[str, int]]]] = defaultdict(lambda: defaultdict(lambda: defaultdict(Counter)))
+    for row in fn_rows:
+        fn_cross_stats[str(row["duration_slice"])][str(row["outer_fold"])][str(row["subject_id"])][_fn_support(row)] += 1
+    short_rows = [row for row in fn_rows if row["duration_slice"] == "short"]
+    fp_subject_profile: dict[str, dict[str, int]] = defaultdict(lambda: {"tp": 0, "fp": 0, "pred": 0, "eligible": 0})
+    for trace in traces:
+        matched_predictions = {pair.prediction_index for pair in trace.match_pairs}
+        for truth in trace.truths:
+            fp_subject_profile[str(trace.subject_by_session.get(truth.sid, truth.sid))]["eligible"] += 1
+        for index, prediction in enumerate(trace.predictions):
+            subject = str(trace.subject_by_session.get(prediction.sid, prediction.sid))
+            fp_subject_profile[subject]["pred"] += 1
+            if index in matched_predictions:
+                fp_subject_profile[subject]["tp"] += 1
+            else:
+                fp_subject_profile[subject]["fp"] += 1
+    q3_fields = ("session_blend_percentile", "candidate_score_percentile", "duration_percentile", "candidate_count_session", "nearest_candidate_distance_ms")
+    feature_report = []
+    global_separation = separation(fp_rows, tp_rows)
+    for name in CONTEXT_V1_COLUMNS:
+        feature_report.append({
+            "feature": name,
+            "global": global_separation[name],
+            "per_fold": {fold: values[name] for fold, values in per_fold_context.items()},
+            "sign_consistency": sign_consistency[name],
+        })
+    stage_counts = dict(sorted(Counter(str(row["fn_stage"]) for row in short_rows).items()))
+    recommendations = [
+        {"mechanism": "candidate_recall", "observed": f"{sum(row['fn_stage'] == 'FN-C1' for row in fn_rows)} FN-C1 of {len(fn_rows)} FN; short-stage split={stage_counts}", "recommendation": "Prioritize candidate-control reachability diagnostics before changing verifier complexity."},
+        {"mechanism": "scale_support", "observed": dict(sorted(Counter(_fn_support(row) for row in fn_rows).items())), "recommendation": "Compare macro-only, micro-only and joint support in a preregistered candidate experiment; this atlas does not select features."},
+        {"mechanism": "false_positive_concentration", "observed": f"{len(fp_rows)} unmatched final predictions across {len(fp_subject_profile)} subjects", "recommendation": "Use subject/session-local diagnostics to formulate, but not fit, a later hard-negative hypothesis."},
+    ]
     summary: dict[str, object] = {
         "incumbent_metrics": {
             "tp": sum(trace.metrics.n_tp for trace in traces),
@@ -301,6 +358,8 @@ def atlas_summaries(traces: Sequence[ReplayTrace]) -> dict[str, object]:
         "fn_duration_slice": dict(sorted(Counter(str(row["duration_slice"]) for row in fn_rows).items())),
         "fn_by_fold": dict(sorted(Counter(str(row["outer_fold"]) for row in fn_rows).items())),
         "fn_by_subject": dict(sorted(Counter(str(row["subject_id"]) for row in fn_rows).items())),
+        "fn_cross_stats": {duration: {fold: {subject: dict(supports) for subject, supports in subjects.items()} for fold, subjects in folds.items()} for duration, folds in fn_cross_stats.items()},
+        "fn_short_stage_decomposition": stage_counts,
         "fp_taxonomy": {name: sum(bool(row[name]) for row in fp_rows) for name in ("short_spike", "long_continuous_activity", "macro_high_micro_low", "micro_high_macro_low", "dense_cluster", "isolated", "same_truth_duplicate")},
         "fp_support": {
             "macro_only": sum(bool(row["macro_support"]) and not bool(row["micro_support"]) for row in fp_rows),
@@ -309,11 +368,15 @@ def atlas_summaries(traces: Sequence[ReplayTrace]) -> dict[str, object]:
         },
         "fp_by_fold": dict(sorted(Counter(str(row["outer_fold"]) for row in fp_rows).items())),
         "fp_by_subject": dict(sorted(Counter(str(row["subject_id"]) for row in fp_rows).items())),
+        "fp_subject_profile": dict(sorted(fp_subject_profile.items())),
+        "fp_q3_distributions": {name: _distribution(fp_rows, name) for name in q3_fields},
         "per_fold_error_profile": per_fold,
         "context_v1_residual_separation": {
             "global": separation(fp_rows, tp_rows), "per_fold": per_fold_context,
             "fold_sign_consistency": sign_consistency,
         },
+        "context_v1_feature_report": feature_report,
+        "mechanism_recommendations": recommendations,
         "fold_consistency": {
             "fp_counts": [len(false_positive_rows(trace)) for trace in traces],
             "fn_counts": [len(classify_false_negatives(trace)) for trace in traces],
@@ -343,11 +406,18 @@ def render_report(summary: Mapping[str, object]) -> str:
     lines.extend(f"- {key}: {value}" for key, value in summary["fp_taxonomy"].items())
     lines.extend(["", "## Support and geometry", ""])
     lines.extend(f"- {key}: {value}" for key, value in summary["fp_support"].items())
+    lines.extend(["", "## FP Q3 distributions", ""])
+    lines.extend(f"- {key}: {value}" for key, value in summary["fp_q3_distributions"].items())
+    lines.extend(["", "## FN cross statistics", ""])
+    lines.extend(f"- {key}: {value}" for key, value in summary["fn_cross_stats"].items())
     lines.extend(["", "## Subject concentration", ""])
     lines.extend(f"- FP subject {key}: {value}" for key, value in summary["fp_by_subject"].items())
     lines.extend(f"- FN subject {key}: {value}" for key, value in summary["fn_by_subject"].items())
     lines.extend(["", "## per-fold error profile", ""])
     lines.extend(f"- fold {key}: {value}" for key, value in summary["per_fold_error_profile"].items())
     lines.extend(["", "## Context-v1 residual separation", "", "Descriptive FP-versus-TP means only; no classifier or learned transform was used."])
-    lines.extend(["", "## Recommended next experiments", "", "- Use the FN stage and support decomposition to decide whether candidate recovery is warranted.", "- Use only stable, session-local FP diagnostics as hypotheses for a separately preregistered Context-v2 experiment.", "- Do not use these outer-fold diagnostics for threshold selection or model fitting."])
+    lines.extend(["", "## Q6 feature separation and sign consistency", ""])
+    lines.extend(f"- {row['feature']}: global={row['global']}; sign={row['sign_consistency']}" for row in summary["context_v1_feature_report"])
+    lines.extend(["", "## Recommended next experiments", "", "Evidence-based mechanisms only; no outer-derived feature selection was performed."])
+    lines.extend(f"- {row['mechanism']}: observed={row['observed']}; recommendation={row['recommendation']}" for row in summary["mechanism_recommendations"])
     return "\n".join(lines) + "\n"

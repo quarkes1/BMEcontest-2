@@ -38,6 +38,7 @@ from src.pipeline.challenger.replay import replay_outer_fold
 
 RUN_KEY = "160afaf81debf1ee"
 EXPECTED = {"tp": 114, "eligible": 153, "pred": 197, "fp": 83, "fn": 39}
+_REPARSE_POINT = 0x400
 
 
 def _read_json(path: Path) -> Mapping[str, object]:
@@ -65,6 +66,51 @@ def _git_sha(root: Path) -> str:
         ).strip()
     except (OSError, subprocess.CalledProcessError) as exc:
         raise RuntimeError("cannot determine current git SHA") from exc
+
+
+def _link_or_reparse(path: Path) -> bool:
+    if path.is_symlink():
+        return True
+    try:
+        return bool(path.stat(follow_symlinks=False).st_file_attributes & _REPARSE_POINT)
+    except (AttributeError, OSError):
+        return False
+
+
+def _validate_output_path(root: Path, output: Path) -> Path:
+    """Validate the lexical output boundary before any output-side write."""
+
+    root_abs = Path(os.path.abspath(os.fspath(root)))
+    output_abs = Path(os.path.abspath(os.fspath(output)))
+    expected = root_abs / "outputs" / "challenger_70"
+    if os.path.normcase(str(output_abs)) != os.path.normcase(str(expected)):
+        raise ValueError("challenger output must be exactly outputs/challenger_70")
+    try:
+        relative_parts = output_abs.relative_to(root_abs).parts
+    except ValueError as exc:
+        raise ValueError("challenger output is outside project root") from exc
+    current = root_abs
+    for part in relative_parts:
+        current = current / part
+        if current.exists() and _link_or_reparse(current):
+            raise ValueError(f"challenger output path contains symlink/reparse component: {current}")
+    protected = (
+        root_abs / "release" / "event_stack_incumbent.json",
+        root_abs / "models" / "event_stack" / RUN_KEY,
+        root_abs / "dist" / "inference",
+        root_abs / "dist" / "submission",
+        root_abs / "dist" / "visual",
+        root_abs / "dist" / "event_stack",
+    )
+    for path in protected:
+        try:
+            common = os.path.normcase(os.path.commonpath((str(output_abs), str(path))))
+            if common in {os.path.normcase(str(output_abs)), os.path.normcase(str(path))}:
+                raise ValueError("challenger output overlaps protected release input")
+        except ValueError as exc:
+            if "overlaps protected" in str(exc):
+                raise
+    return output_abs
 
 
 def validate_registry(root: Path, expected_run_key: str = RUN_KEY) -> Mapping[str, object]:
@@ -229,11 +275,8 @@ def _atomic_install_tree(target: Path, payload: Mapping[str, bytes]) -> None:
 
 
 def run_challenger(root: Path, output: Path) -> Path:
-    root = Path(root).resolve()
-    expected_output = (root / "outputs" / "challenger_70").resolve()
-    output = Path(output).resolve()
-    if output != expected_output:
-        raise ValueError("challenger output must be exactly outputs/challenger_70")
+    root = Path(os.path.abspath(os.fspath(root)))
+    output = _validate_output_path(root, Path(output))
     summary = validate_registry(root)
     before = protected_snapshot(root)
     traces = tuple(replay_outer_fold(root, fold) for fold in range(5))

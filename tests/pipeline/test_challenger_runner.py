@@ -45,3 +45,29 @@ def test_runner_rejects_output_outside_challenger_root(tmp_path: Path):
 
     with pytest.raises(ValueError, match="exactly outputs/challenger_70"):
         run_challenger(tmp_path, tmp_path / "outputs" / "crossfit")
+
+
+def test_runner_rejects_output_symlink_before_reading_evidence(tmp_path: Path):
+    from scripts.run_challenger_e00_e01 import run_challenger
+
+    expected = tmp_path / "outputs" / "challenger_70"
+    expected.parent.mkdir(parents=True)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    try:
+        expected.symlink_to(outside, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("directory symlinks are unavailable on this Windows host")
+    with pytest.raises(ValueError, match="symlink|reparse|output"):
+        run_challenger(tmp_path, expected)
+
+
+def test_atomic_tree_rejects_existing_parent_reparse(monkeypatch, tmp_path: Path):
+    from scripts.run_challenger_e00_e01 import _validate_output_path
+
+    root = tmp_path
+    expected = root / "outputs" / "challenger_70"
+    expected.parent.mkdir(parents=True)
+    monkeypatch.setattr(Path, "is_symlink", lambda self: self == expected.parent)
+    with pytest.raises(ValueError, match="symlink|reparse"):
+        _validate_output_path(root, expected)
