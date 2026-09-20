@@ -128,15 +128,39 @@ def test_context_version_changes_experiment_and_fold_cache_keys(tmp_path: Path):
     input_file.write_bytes(b"fixture")
     base = RunConfig(outer_fold=0, micro_enabled=True, candidate_control_enabled=True)
     context = replace(base, context_features_version="v1")
+    context_v2 = replace(base, context_features_version="v2", admission_minimum_recall=0.80)
 
     assert experiment_key([replace(base, outer_fold=index) for index in range(5)]) != experiment_key(
         [replace(context, outer_fold=index) for index in range(5)]
     )
     assert expected_feature_dimensions(base) == (63, 56, 47)
     assert expected_feature_dimensions(context) == (63, 116, 47)
+    assert expected_feature_dimensions(context_v2) == (63, 141, 47)
     assert cache_key(base, expected_feature_dimensions(base), (input_file,)) != cache_key(
         context, expected_feature_dimensions(context), (input_file,)
     )
+
+
+def test_outer_train_only_data_has_no_validation_surface():
+    """The E02 inner-selection payload cannot carry outer-validation arrays."""
+
+    from src.pipeline.runner import OuterTrainOnlyData
+
+    assert "validation" not in OuterTrainOnlyData.__dataclass_fields__
+    assert "validation_truths" not in OuterTrainOnlyData.__dataclass_fields__
+
+
+def test_e02_run_config_locks_registered_admission_recall():
+    """The registered v2 path cannot silently relax its admission guard."""
+
+    with pytest.raises(ValueError, match="v2.*0.80"):
+        RunConfig(
+            outer_fold=0,
+            micro_enabled=True,
+            candidate_control_enabled=True,
+            context_features_version="v2",
+            admission_minimum_recall=0.81,
+        )
 
 
 def test_promoted_context_schema_records_columns_and_hash():
@@ -230,6 +254,31 @@ def synthetic_runner_dataset(
         outer_subjects=frozenset(outer_subjects),
         validation_truth_slices={"synthetic_meals": validation_truths},
     )
+
+
+def test_inner_oof_seam_accepts_train_only_payload_and_reports_no_outer_metric():
+    """Train-only selection has no route to an outer metric or validation batch."""
+
+    from src.pipeline.runner import OuterTrainOnlyData, run_outer_train_inner_oof
+
+    dataset = synthetic_runner_dataset()
+    payload = OuterTrainOnlyData(
+        window_train=dataset.window_train,
+        candidate_train=dataset.candidate_train,
+        train_truths=dataset.train_truths,
+        subject_by_session=dataset.subject_by_session,
+    )
+    result = run_outer_train_inner_oof(
+        payload,
+        RunConfig(
+            outer_fold=0,
+            inner_splits=3,
+            density=DensityConfig(min_positive=1, window_threshold=0.0),
+        ),
+    )
+
+    assert result.verifier_feature_count == 37
+    assert not hasattr(result, "outer_metrics")
 
 
 def test_full_target_dataset_uses_each_outer_validation_subject_once():
@@ -734,6 +783,26 @@ def test_filesystem_source_loads_optional_micro_splits_and_extraction_time(files
         source.root / "cache" / "micro15" / f"fold0_{split}.npz"
         for split in ("train", "meal_train", "no_meal_train", "val")
     }
+
+
+def test_outer_train_only_loader_never_opens_outer_validation(filesystem_runner_source, monkeypatch):
+    """The E02 loader is a real train-role loader, not a FoldDataset slice."""
+
+    source = filesystem_runner_source
+    forbidden = source._split_path(0, "val")
+    original = source._load_batch
+
+    def guarded(path):
+        if path == forbidden:
+            raise AssertionError("outer validation was opened")
+        return original(path)
+
+    monkeypatch.setattr(source, "_load_batch", guarded)
+    monkeypatch.setattr(source, "load_outer_fold", lambda _config: (_ for _ in ()).throw(AssertionError("outer loader called")))
+    data = source.load_outer_train_only(RunConfig(outer_fold=0, micro_enabled=True))
+
+    assert {window.sid for window in data.candidate_train.windows} == {"s1", "s2"}
+    assert not hasattr(data, "validation")
 
 
 def test_filesystem_context_coverage_uses_authoritative_session_bounds(filesystem_runner_source):

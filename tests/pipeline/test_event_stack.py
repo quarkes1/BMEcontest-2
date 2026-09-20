@@ -474,6 +474,26 @@ def test_multiscale_context_v1_appends_ordered_block_and_preserves_nan():
     assert not np.isinf(actual).any()
 
 
+def test_multiscale_context_v2_keeps_v1_prefix_and_appends_25_columns():
+    """E02 is a strict 56+60+25 extension, never a replacement for v1."""
+
+    candidate = MultiScaleCandidate(
+        EventRef("s1", 0, 60_000), None, _candidate("s1", 0, 60_000)
+    )
+    kwargs = {
+        "session_bounds_by_sid": {"s1": (0, 120_000)},
+    }
+    v1 = multiscale_verifier_features(
+        [candidate], {}, {"s1": [(0, 15_000, 0.8)]}, context_features_version="v1", **kwargs
+    )
+    v2 = multiscale_verifier_features(
+        [candidate], {}, {"s1": [(0, 15_000, 0.8)]}, context_features_version="v2", **kwargs
+    )
+
+    assert v2.shape == (1, 141)
+    np.testing.assert_equal(v2[:, :116], v1)
+
+
 def test_apply_event_policy_caps_each_subject_after_thresholding():
     candidates = [
         EventRef("session-a", index * 100, index * 100 + 50)

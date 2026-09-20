@@ -172,9 +172,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--micro-enabled", action="store_true")
     parser.add_argument(
         "--context-features",
-        choices=("v1",),
+        choices=("v1", "v2"),
         default=None,
-        help="append the registered Context-v1 verifier feature block",
+        help="append a registered versioned Context verifier feature block",
     )
     parser.add_argument(
         "--summary-alias",

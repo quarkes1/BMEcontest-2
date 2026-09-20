@@ -70,6 +70,7 @@ from src.pipeline.event_stack import (
     union_candidates,
 )
 from src.pipeline.context_features import CONTEXT_V1_COLUMNS
+from src.pipeline.context_features_v2 import CONTEXT_V2_COLUMNS
 from src.pipeline.diagnostics import aggregate_subject_diagnostics, subject_diagnostics
 
 
@@ -181,8 +182,13 @@ class RunConfig:
     admission_minimum_recall: float = 0.88
 
     def __post_init__(self) -> None:
-        if self.context_features_version not in (None, "v1"):
-            raise ValueError("context_features_version must be None or 'v1'")
+        if self.context_features_version not in (None, "v1", "v2"):
+            raise ValueError("context_features_version must be None, 'v1', or 'v2'")
+        if self.context_features_version == "v2":
+            if not self.micro_enabled or not self.candidate_control_enabled:
+                raise ValueError("context_features_version='v2' requires micro and candidate control")
+            if self.admission_minimum_recall != 0.80:
+                raise ValueError("v2 admission_minimum_recall must be exactly 0.80")
         if not isinstance(self.candidate_control_enabled, bool):
             raise ValueError("candidate_control_enabled must be boolean")
         if self.candidate_control_enabled and not self.micro_enabled:
@@ -238,9 +244,8 @@ def expected_feature_dimensions(
 
     if config.micro_enabled:
         verifier = 56 + (
-            len(CONTEXT_V1_COLUMNS)
-            if config.context_features_version == "v1"
-            else 0
+            (len(CONTEXT_V1_COLUMNS) if config.context_features_version in ("v1", "v2") else 0)
+            + (len(CONTEXT_V2_COLUMNS) if config.context_features_version == "v2" else 0)
         )
         return macro_width, verifier, 47
     verifier = 42 if config.density.coverage_fix else 37
@@ -391,6 +396,34 @@ class FoldDataset:
     micro_candidate_train: WindowBatch | None = None
     micro_validation: WindowBatch | None = None
     micro_cache_extraction_seconds: float = 0.0
+
+
+@dataclass(frozen=True)
+class OuterTrainOnlyData:
+    """The strictly outer-train-only payload used for E02 inner selection.
+
+    Deliberately has no validation windows, labels, truth, or subject fields.
+    """
+
+    window_train: WindowBatch
+    candidate_train: WindowBatch
+    train_truths: tuple[EventRef, ...]
+    subject_by_session: Mapping[str, str]
+    session_bounds_by_sid: Mapping[str, tuple[int, int]] | None = None
+    micro_window_train: WindowBatch | None = None
+    micro_candidate_train: WindowBatch | None = None
+    micro_cache_extraction_seconds: float = 0.0
+
+
+@dataclass(frozen=True)
+class InnerOOFResult:
+    """Train-only policy-selection evidence; no outer score is representable."""
+
+    inner_metrics: EventMetrics
+    verifier_feature_count: int
+    window_fit_subjects: frozenset[str]
+    verifier_fit_subjects: frozenset[str]
+    micro_window_fit_subjects: frozenset[str]
 
 
 def _concatenate_window_batches(batches: Sequence[WindowBatch]) -> WindowBatch:
@@ -864,7 +897,7 @@ def _test_only_session_bounds_by_sid(
 
 
 def _context_session_bounds(
-    data_source: FoldDataset,
+    data_source: FoldDataset | OuterTrainOnlyData,
     candidates: Sequence[MultiScaleCandidate],
     *window_groups: Sequence[EventRef],
 ) -> Mapping[str, tuple[int, int]]:
@@ -968,6 +1001,140 @@ def _micro_training_keep(
             for truth in truths_by_sid[window.sid]
         )
     return keep
+
+
+def run_outer_train_inner_oof(
+    data: OuterTrainOnlyData,
+    config: RunConfig,
+) -> InnerOOFResult:
+    """Select E02 policy from outer-train data without an outer-data handle.
+
+    The function deliberately accepts the narrow immutable payload instead of
+    ``FoldDataset``.  This makes a validation array, label, or truth
+    inaccessible to all inner OOF fitting and policy selection code.
+    """
+
+    if not isinstance(data, OuterTrainOnlyData):
+        raise TypeError("inner OOF requires OuterTrainOnlyData")
+    if config.external_fd_weight_grid != (0.0,):
+        raise ValueError("external_fd_weight_grid must be (0.0,) in the target-domain runner")
+    _validate_batch(data.window_train, "window_train")
+    _validate_batch(data.candidate_train, "candidate_train")
+    _validate_imputable_features(data.window_train.features, "window_train.features")
+    _validate_imputable_features(data.candidate_train.features, "candidate_train.features")
+    _validate_tristate_labels(data.window_train.labels, "window_train.labels")
+    _validate_tristate_labels(data.candidate_train.labels, "candidate_train.labels")
+    window_groups = _groups_for(data.window_train.windows, data.subject_by_session)
+    candidate_groups = _groups_for(data.candidate_train.windows, data.subject_by_session)
+    keep = np.asarray(data.window_train.labels) >= 0
+    train_labels = np.asarray(data.window_train.labels[keep], dtype=np.int8)
+    _validate_binary(train_labels, "window training")
+    train_features = _with_time_prior(data.window_train.features, data.window_train.windows)[keep]
+    train_groups = window_groups[keep]
+    candidate_features = _with_time_prior(data.candidate_train.features, data.candidate_train.windows)
+    window_oof = crossfit_predict_proba(
+        train_features, train_labels, train_groups, candidate_features, candidate_groups,
+        config.inner_splits, estimator_factory=lambda: _window_estimator(config.seed),
+    )
+    macro_windows = _windows_by_session(data.candidate_train.windows, window_oof.probabilities)
+    raw_macro = density_candidates(macro_windows, config.density)
+    micro_fit_subjects: frozenset[str] = frozenset()
+    if config.micro_enabled:
+        if data.micro_window_train is None or data.micro_candidate_train is None:
+            raise ValueError("outer-train micro batches are required when micro_enabled=True")
+        _validate_batch(data.micro_window_train, "micro_window_train")
+        _validate_batch(data.micro_candidate_train, "micro_candidate_train")
+        micro_groups = _groups_for(data.micro_window_train.windows, data.subject_by_session)
+        micro_candidate_groups = _groups_for(data.micro_candidate_train.windows, data.subject_by_session)
+        micro_keep = _micro_training_keep(data.micro_window_train, data.train_truths, config.micro_positive_middle_fraction)
+        micro_labels = np.asarray(data.micro_window_train.labels[micro_keep], dtype=np.int8)
+        _validate_binary(micro_labels, "micro window training")
+        micro_train_features = data.micro_window_train.features[micro_keep]
+        micro_train_groups = micro_groups[micro_keep]
+        micro_fit_subjects = frozenset(micro_train_groups)
+        micro_oof = crossfit_predict_proba(
+            micro_train_features, micro_labels, micro_train_groups,
+            data.micro_candidate_train.features, micro_candidate_groups,
+            config.inner_splits, estimator_factory=lambda: _micro_window_estimator(config.seed + 10),
+        )
+        micro_windows = _windows_by_session(data.micro_candidate_train.windows, micro_oof.probabilities)
+        micro_selection = select_micro_candidate_threshold(
+            micro_windows, data.train_truths, config.micro_threshold_grid, config.micro_candidate,
+        )
+        candidates = union_candidates(raw_macro, micro_candidates(micro_windows, micro_selection.threshold, config.micro_candidate))
+        features = multiscale_verifier_features(
+            candidates, macro_windows, micro_windows,
+            context_features_version=config.context_features_version,
+            session_bounds_by_sid=_context_session_bounds(
+                data, candidates, data.candidate_train.windows, data.micro_candidate_train.windows,
+            ),
+        )
+    else:
+        candidates, features = _candidate_matrix(raw_macro, macro_windows, include_coverage=config.density.coverage_fix,
+                                                  window_batch=data.candidate_train, feature_mode=config.verifier_feature_mode)
+    if not candidates:
+        raise ValueError("inner window OOF produced no verifier candidates")
+    _validate_imputable_features(features, "verifier training features", allow_all_missing_columns=not config.candidate_control_enabled)
+    labels = _candidate_labels(candidates, data.train_truths)
+    _validate_binary(labels, "verifier training")
+    groups = _groups_for([candidate.event for candidate in candidates], data.subject_by_session)
+    candidate_events = [candidate.event for candidate in candidates]
+    best: tuple[tuple[object, ...], EventSelectionPolicy] | None = None
+    if config.candidate_control_enabled:
+        logistic_by_c = {
+            float(c): crossfit_predict_proba(features, labels, groups, features, groups, config.inner_splits,
+                estimator_factory=lambda c=c: _verifier_estimator(config.seed + 20, c)).probabilities
+            for c in config.verifier_c_grid
+        }
+        lgbm = crossfit_predict_proba(features, labels, groups, features, groups, config.inner_splits,
+            estimator_factory=lambda: _verifier_lgbm_estimator(config.seed + 21)).probabilities
+        choices: list[tuple[float, tuple[object, ...], EventSelectionPolicy]] = []
+        for c_rank, c in enumerate(config.verifier_c_grid):
+            for blend_rank, weight in enumerate(config.verifier_blend_weight_grid):
+                scores = weight * logistic_by_c[float(c)] + (1.0 - weight) * lgbm
+                for admission_rank, admission in enumerate(
+                    CandidateAdmissionConfig(nms, threshold, cap)
+                    for nms in config.admission_nms_iou_grid
+                    for threshold in config.admission_threshold_grid
+                    for cap in config.admission_subject_cap_grid
+                ):
+                    rows = np.asarray(admit_candidates(candidates, scores, groups, admission), dtype=np.int64)
+                    events, admitted_scores, admitted_groups = ([candidate_events[i] for i in rows], scores[rows], groups[rows])
+                    admission_metrics = compute_event_metrics(events, data.train_truths)
+                    if config.subject_cap_grid:
+                        policy = select_event_policy(events, admitted_scores, data.train_truths, admitted_groups,
+                                                     max_events_options=config.subject_cap_grid)
+                    else:
+                        selected = select_event_threshold(events, admitted_scores, data.train_truths)
+                        policy = EventSelectionPolicy(selected.threshold, None, selected.metrics)
+                    rank = (policy.metrics.f1, policy.metrics.ppv, -len(rows), -c_rank, -blend_rank,
+                            -admission_rank, -policy.threshold, -float(policy.max_events_per_group or math.inf))
+                    choices.append((admission_metrics.sensitivity, rank, policy))
+        feasible = [choice for choice in choices if choice[0] >= config.admission_minimum_recall]
+        choice = max(feasible or choices, key=lambda value: value[1] if feasible else (value[0], *value[1]))
+        policy = choice[2]
+    else:
+        for c in config.verifier_c_grid:
+            scores = crossfit_predict_proba(features, labels, groups, features, groups, config.inner_splits,
+                estimator_factory=lambda c=c: _verifier_estimator(config.seed + 1, c)).probabilities
+            selected = select_event_threshold(candidate_events, scores, data.train_truths)
+            policy = EventSelectionPolicy(selected.threshold, None, selected.metrics)
+            rank = (policy.metrics.f1, policy.metrics.ppv, -float(c))
+            if best is None or rank > best[0]:
+                best = (rank, policy)
+        assert best is not None
+        policy = best[1]
+    expected = expected_feature_dimensions(config, macro_width=train_features.shape[1])
+    observed = (train_features.shape[1], features.shape[1]) + ((micro_train_features.shape[1],) if config.micro_enabled else ())
+    if observed != expected:
+        raise ValueError("fitted feature dimensions do not match the run configuration")
+    return InnerOOFResult(
+        inner_metrics=policy.metrics,
+        verifier_feature_count=features.shape[1],
+        window_fit_subjects=frozenset(window_groups),
+        verifier_fit_subjects=frozenset(groups),
+        micro_window_fit_subjects=micro_fit_subjects,
+    )
 
 
 def _execute_outer_dataset(
@@ -2049,6 +2216,78 @@ class FilesystemDataSource:
             micro_window_train=micro_batches.get("train"),
             micro_candidate_train=micro_batches.get("candidate_train"),
             micro_validation=micro_batches.get("val"),
+            micro_cache_extraction_seconds=extraction_seconds,
+        )
+
+    def load_outer_train_only(self, config: RunConfig) -> OuterTrainOnlyData:
+        """Read only canonical outer-train roles for inner OOF selection.
+
+        This intentionally does not delegate to ``load_outer_fold``: that
+        loader opens held-out NPZs and is therefore not legal for the E02
+        inner gate, even when callers promise to ignore the result.
+        """
+
+        from src.data import manifests
+
+        fold = config.outer_fold
+        window_train = self._load_batch(self._split_path(fold, "train"))
+        meal_train = self._load_batch(self._split_path(fold, "meal_train"))
+        no_meal_train = self._load_batch(self._split_path(fold, "no_meal_train"))
+        candidate_train = self._combine_batches(meal_train, no_meal_train)
+
+        micro_window_train: WindowBatch | None = None
+        micro_candidate_train: WindowBatch | None = None
+        extraction_seconds = 0.0
+        if config.micro_enabled:
+            micro_window_train, seconds = self._load_micro_batch(
+                self._micro_split_path(fold, "train"),
+                self._micro_expected_metadata(config, "train"),
+            )
+            extraction_seconds += seconds
+            micro_meal, seconds = self._load_micro_batch(
+                self._micro_split_path(fold, "meal_train"),
+                self._micro_expected_metadata(config, "meal_train"),
+            )
+            extraction_seconds += seconds
+            micro_no_meal, seconds = self._load_micro_batch(
+                self._micro_split_path(fold, "no_meal_train"),
+                self._micro_expected_metadata(config, "no_meal_train"),
+            )
+            extraction_seconds += seconds
+            micro_candidate_train = self._combine_batches(micro_meal, micro_no_meal)
+            for name, macro_batch in (("micro_window_train", window_train), ("micro_candidate_train", candidate_train)):
+                batch = micro_window_train if name == "micro_window_train" else micro_candidate_train
+                allowed_sids = {window.sid for window in macro_batch.windows}
+                keep = np.asarray([window.sid in allowed_sids for window in batch.windows], dtype=bool)
+                filtered = WindowBatch(batch.features[keep], batch.labels[keep], tuple(
+                    window for window, retained in zip(batch.windows, keep) if retained
+                ))
+                if name == "micro_window_train":
+                    micro_window_train = filtered
+                else:
+                    micro_candidate_train = filtered
+
+        index = manifests.load_sensor_index()
+        subject_by_session = {
+            str(row["session_id"]): str(row["externalid"])
+            for _, row in index.iterrows()
+        }
+        session_bounds_by_sid = {
+            str(row["session_id"]): (int(row["timeStamp.startTime"]), int(row["timeStamp.endTime"]))
+            for _, row in index.iterrows()
+        }
+        if any(end < start for start, end in session_bounds_by_sid.values()):
+            raise ValueError("sensor index contains unordered session bounds")
+        train_sids = {window.sid for window in candidate_train.windows}
+        train_truths, _ = self._eligible_truths(train_sids, candidate_train, subject_by_session)
+        return OuterTrainOnlyData(
+            window_train=window_train,
+            candidate_train=candidate_train,
+            train_truths=train_truths,
+            subject_by_session=subject_by_session,
+            session_bounds_by_sid=session_bounds_by_sid,
+            micro_window_train=micro_window_train,
+            micro_candidate_train=micro_candidate_train,
             micro_cache_extraction_seconds=extraction_seconds,
         )
 
