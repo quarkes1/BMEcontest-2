@@ -12,19 +12,19 @@
 
 ## Global Constraints
 
-- E03 is v1-only: 63 macro, 47 micro and 116 verifier columns; v2 is forbidden.
+- E03-001 (`e03-v1-hard-negative`) is derived from failed E02-005: it is v1-only (63 macro, 47 micro and 116 verifier columns); v2 is forbidden and the plan/registry must record that E02's TP-loss gate failed.
 - `release/event_stack_incumbent.json`, `models/event_stack/160afaf81debf1ee/**`, incumbent attestation and `dist/**` are read-only.
-- Fixed mining: OOF logistic C=.1; high `>=.50`; near `[.40,.60]`; disagreement `>=.35`; dense `>=2` neighbours within inclusive 600000 ms; negative hard weight 2.0; all others 1.0.
+- Fixed mining: OOF logistic C=.1; high `>=.50`; near `[.40,.60]`; disagreement uses `nan_to_num(v1[:,0], nan=0.0)` versus `nan_to_num(v1[:,41], nan=0.0)` at `>=.35`; dense is `>=2` other raw-union candidates in the same session within inclusive 600000 ms; negative hard weight 2.0; all others 1.0.
 - Existing balanced class weights, LogisticRegression, restricted LGBM and all incumbent policy grids remain unchanged.
-- Inner mining takes `OuterTrainOnlyData` only.  No outer validation signal, label, score, subject or truth can enter a miner or selector.
-- Write only atomically under `cache/challenger_70/e03-hard-negative/`, `outputs/challenger_70/experiments/E03/`, and one appended E03 registry row.  No force/resume/overwrite/promotion option exists.
+- Only the E03 orchestrator takes `OuterTrainOnlyData`; the pure miner takes exactly candidates, 116D v1 features, labels, groups and OOF logistic scores.  No outer validation signal, label, score, subject map, truth, dataset object or final model can enter that miner.
+- Write only atomically under `cache/challenger_70/e03-v1-hard-negative/`, `outputs/challenger_70/experiments/E03-001/`, and one appended E03-001 registry row.  No force/resume/overwrite/promotion option exists.
 - Formal E03 runs only after immutable plan/schema/code identity checks and passed inner gate.  It runs paired full v1 threshold-only and v1 hard-negative arms once.
 
 ---
 
 ## File structure
 
-- `src/pipeline/challenger/hard_negative.py`: pure hardness predicates, OOF provenance types, sample weights, registered E03 configuration and immutable identities.
+- `src/pipeline/challenger/hard_negative.py`: pure hardness predicates and sample weights; it has no dataset loading, truth matching, model fitting or source-map dependency.
 - `src/pipeline/runner.py`: narrowly accepts optional aligned verifier sample weights for cross-fit/final fitting while preserving the incumbent call paths bit-for-bit.
 - `src/pipeline/challenger/e03.py`: restricted E03 inner gate, full paired evaluator, cache/output/registry guards and accounting.
 - `scripts/run_challenger_e03.py`: one command-line entrypoint limited to `--phase inner-gate|full`.
@@ -42,14 +42,11 @@
 ```python
 @dataclass(frozen=True)
 class HardNegativeEvidence:
+    candidates: Sequence[MultiScaleCandidate]
+    v1_features: np.ndarray
     labels: np.ndarray
     oof_logistic_scores: np.ndarray
-    macro_candidate_mean: np.ndarray
-    micro_candidate_mean: np.ndarray
-    session_ids: tuple[str, ...]
-    start_ms: np.ndarray
-    end_ms: np.ndarray
-    subject_ids: tuple[str, ...]
+    groups: np.ndarray
 
 @dataclass(frozen=True)
 class HardNegativeResult:
@@ -67,8 +64,8 @@ def hard_negative_spec_descriptor() -> dict[str, object]: ...
 ```python
 def test_negative_union_of_fixed_categories_is_weighted_once():
     evidence = _evidence(scores=[.5, .4, .9, .1, .1], labels=[0, 0, 0, 1, 0],
-                         macro=[.8, .1, .1, .8, .1], micro=[.1, .1, .1, .1, .1],
-                         starts=[0, 600_000, 1_200_000, 1_210_000, 1_215_000])
+                         v1_columns={0: [.8, .1, .1, .8, .1], 41: [.1, .1, .1, .1, .1]},
+                         centers=[0, 600_000, 1_200_000, 1_210_000, 1_215_000])
     result = mine_hard_negatives(evidence)
     assert result.sample_weight.tolist() == [2., 2., 2., 1., 2.]
     assert result.hard_mask.tolist() == [True, True, True, False, True]
@@ -76,6 +73,11 @@ def test_negative_union_of_fixed_categories_is_weighted_once():
 def test_dense_uses_same_session_inclusive_center_distance_and_two_others():
     result = mine_hard_negatives(_three_neighbours_at_centers([0, 600_000, 1_200_000]))
     assert result.category_mask["dense"].tolist() == [False, True, False]
+
+def test_disagreement_uses_exact_v1_indices_and_missing_zero_semantics():
+    evidence = _evidence(scores=[.1, .1], labels=[0, 0],
+                         v1_columns={0: [np.nan, .35], 41: [.35, np.nan]})
+    assert mine_hard_negatives(evidence).category_mask["disagreement"].tolist() == [True, True]
 
 def test_outer_subject_intersection_is_rejected():
     with pytest.raises(ValueError, match="outer-validation"):
@@ -96,12 +98,14 @@ Expected: import failure because the module does not yet exist.
 negative = evidence.labels == 0
 high = negative & (evidence.oof_logistic_scores >= .50)
 near = negative & (evidence.oof_logistic_scores >= .40) & (evidence.oof_logistic_scores <= .60)
-disagreement = negative & (np.abs(evidence.macro_candidate_mean - evidence.micro_candidate_mean) >= .35)
+macro_mean = np.nan_to_num(evidence.v1_features[:, 0], nan=0.0)
+micro_mean = np.nan_to_num(evidence.v1_features[:, 41], nan=0.0)
+disagreement = negative & (np.abs(macro_mean - micro_mean) >= .35)
 hard = high | near | disagreement | dense
 weights = np.where(hard, 2.0, 1.0).astype(np.float64)
 ```
 
-Validate equal non-empty lengths, binary labels, finite scores/evidence, valid intervals and category names.  Calculate centers as float64, never compare candidates from different sessions, and count other rows only.
+Validate equal non-empty candidate/feature/label/group/score lengths, exact 116 feature width, binary labels, finite scores and valid intervals.  Permit NaN only at the two registered feature reads and replace exactly those missing entries with zero.  Calculate centers as float64 from candidates, never compare candidates from different sessions, and count other rows only.
 
 - [ ] **Step 4: Run GREEN.**
 
@@ -132,7 +136,7 @@ def _fit_final_models(..., verifier_sample_weight: np.ndarray | None = None) -> 
 def crossfit_predict_proba(..., fit_sample_weight: np.ndarray | None = None) -> CrossfitResult: ...
 ```
 
-`None` must retain every existing fit call exactly.  A provided vector must be float64, finite, strictly positive and row-aligned; each grouped inner fit receives the indexed training slice through `model__sample_weight`.
+`None` must retain every existing fit call exactly.  A provided vector must be float64, finite, strictly positive and row-aligned; each grouped inner fit receives the indexed training slice through `model__sample_weight`.  Both LogisticRegression and LGBM pipelines retain `class_weight="balanced"`, their current fixed seeds and every registered estimator parameter.
 
 - [ ] **Step 1: Write failing alignment, slice and parity tests.**
 
@@ -144,11 +148,20 @@ def test_weighted_crossfit_never_passes_validation_weights_to_fit(monkeypatch):
     assert all(len(weight) == 2 for weight in seen)
 
 def test_unweighted_estimator_fit_arguments_are_unchanged(monkeypatch):
-    # assert no model__sample_weight key is sent when argument is None
-    ...
+    observed = _capture_pipeline_fit_kwargs(monkeypatch)
+    crossfit_predict_proba(x, y, groups, x, groups, 2, factory, fit_sample_weight=None)
+    assert all("model__sample_weight" not in kwargs for kwargs in observed)
 
 def test_bad_weight_length_zero_or_nan_rejects_before_model_fit():
-    ...
+    for bad in (np.array([]), np.array([1., np.nan, 1., 1.])):
+        with pytest.raises(ValueError):
+            crossfit_predict_proba(x, y, groups, x, groups, 2, factory, fit_sample_weight=bad)
+
+@pytest.mark.parametrize("factory", [_verifier_estimator, _verifier_lgbm_estimator])
+def test_weighted_verifier_pipeline_fit_smoke_preserves_balanced_class_weight(factory):
+    pipeline = factory(20260911) if factory is _verifier_estimator else factory()
+    pipeline.fit(x, y, model__sample_weight=np.array([1., 2., 1., 2.]))
+    assert pipeline.named_steps["model"].get_params()["class_weight"] == "balanced"
 ```
 
 - [ ] **Step 2: Run RED.**
@@ -228,13 +241,20 @@ Expected: import/API failures.
 - [ ] **Step 3: Implement gate only.**
 
 For every outer fold, load only `FilesystemDataSource.load_outer_train_only`.
-Generate normal v1 candidates/features, cross-fit unweighted logistic mining
-scores by groups, derive weights, assert groups are outer-subject-disjoint,
+The orchestrator generates normal v1 candidates/features/labels/groups, then
+cross-fits unweighted logistic mining scores by groups and passes only those
+five aligned inputs to the pure miner.  It derives weights, asserts groups are outer-subject-disjoint,
 and independently produce threshold-only and weighted inner scores with the
 same fixed selection grid.  Write only `plan.json` and then atomic
 `inner_gate.json`; a failure appends `stopped_inner_gate` to the registry and
 does not create an outer artifact.  Require NumPy 2.4.6, protected snapshots,
-clean working tree except allowed untracked bytecode, and a fresh output root.
+clean working tree except allowed untracked bytecode, a fresh output root, and
+a cache identity containing source input fingerprints, exact estimator
+parameter dictionaries/seeds, imputer contract, raw-union order contract and
+policy tie-order contract.  The gate aggregates five outer-train runs, each
+with exactly four inner splits: pooled counts are integer sums and use
+`2*TP/(eligible+pred)`; strict improvement is `>` and non-worse is `>=`, both
+with no tolerance.
 
 - [ ] **Step 4: Run GREEN.**
 
@@ -322,7 +342,7 @@ git commit -m "feat(challenger): record paired E03 outer evidence"
 
 ### Task 5: Verification and one registered experiment
 
-**Files:** Generate only `outputs/challenger_70/experiments/E03/**` and append `outputs/challenger_70/experiment_registry.jsonl`.
+**Files:** Generate only `outputs/challenger_70/experiments/E03-001/**` and append `outputs/challenger_70/experiment_registry.jsonl`.
 
 - [ ] **Step 1: Run complete relevant verification.**
 
@@ -335,7 +355,7 @@ Expected: all selected tests pass and incumbent parity remains 0.6514285714.
 - [ ] **Step 2: Register and run the inner gate once.**
 
 ```text
-D:/Anaconda3/envs/bme/python.exe scripts/run_challenger_e03.py --root . --output outputs/challenger_70/experiments/E03 --phase inner-gate --workers 5
+D:/Anaconda3/envs/bme/python.exe scripts/run_challenger_e03.py --root . --output outputs/challenger_70/experiments/E03-001 --phase inner-gate --workers 5
 ```
 
 Expected: immutable plan and a terminal gate report.  If gate fails, commit
@@ -344,7 +364,7 @@ only that evidence and stop; remove only the validated disposable E03 cache.
 - [ ] **Step 3: If and only if the recorded gate passes, run full paired evidence once.**
 
 ```text
-D:/Anaconda3/envs/bme/python.exe scripts/run_challenger_e03.py --root . --output outputs/challenger_70/experiments/E03 --phase full --workers 5
+D:/Anaconda3/envs/bme/python.exe scripts/run_challenger_e03.py --root . --output outputs/challenger_70/experiments/E03-001 --phase full --workers 5
 ```
 
 Expected: complete paired five-fold evidence, with no release or dist change.
@@ -352,7 +372,7 @@ Expected: complete paired five-fold evidence, with no release or dist change.
 - [ ] **Step 4: Commit immutable evidence.**
 
 ```text
-git add outputs/challenger_70/experiments/E03 outputs/challenger_70/experiment_registry.jsonl
+git add outputs/challenger_70/experiments/E03-001 outputs/challenger_70/experiment_registry.jsonl
 git commit -m "data(challenger): record E03 hard-negative result"
 ```
 
