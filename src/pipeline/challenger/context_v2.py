@@ -178,7 +178,10 @@ def _plan_payload(code_sha: str, *, experiment_id: str = E02_ID, derived_from: s
 
 def _identical_json(path: Path, payload: Mapping[str, object]) -> bool:
     try:
-        return json.loads(path.read_text(encoding="utf-8")) == payload
+        # JSON has no tuple type.  Compare canonical JSON values so immutable
+        # preregistration can be reopened by the exact same code/config.
+        normalized = json.loads(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+        return json.loads(path.read_text(encoding="utf-8")) == normalized
     except (OSError, json.JSONDecodeError):
         return False
 

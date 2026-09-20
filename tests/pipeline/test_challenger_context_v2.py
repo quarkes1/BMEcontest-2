@@ -51,6 +51,7 @@ def test_preregistration_is_immutable_and_has_fixed_schema(monkeypatch, tmp_path
     assert plan["allowed_hyperparameter_grid"]["admission_minimum_recall"] == 0.80
     assert schema["width"] == 25
     assert len(schema["columns"]) == 25
+    assert context_v2.write_e02_preregistration(tmp_path, output, code_sha="a" * 40) == plan_path
     with pytest.raises(RuntimeError, match="immutable"):
         context_v2.write_e02_preregistration(tmp_path, output, code_sha="b" * 40)
 
