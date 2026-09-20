@@ -1,0 +1,2 @@
+{"experiment_id": "E00", "fp": 83, "git_sha": "1c16a360c025a0a752caa32dba2cf602cee63a90", "hypothesis": "Frozen incumbent evidence reproduces exactly.", "outer_f1": 0.6514285714285715, "status": "complete", "timestamp": "2026-09-20T10:31:04.790699+00:00", "tp": 114}
+{"experiment_id": "E01", "fp": 83, "git_sha": "1c16a360c025a0a752caa32dba2cf602cee63a90", "hypothesis": "The deterministic atlas identifies FN/FP failure modes without fitting.", "outer_f1": 0.6514285714285715, "status": "complete", "timestamp": "2026-09-20T10:31:04.790699+00:00", "tp": 114}

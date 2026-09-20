@@ -1,0 +1,63 @@
+{
+  "by_fold": {
+    "0": 19,
+    "1": 16,
+    "2": 18,
+    "3": 17,
+    "4": 13
+  },
+  "by_subject": {
+    "6C7": 1,
+    "HNU 21013": 1,
+    "HNU21001": 2,
+    "HNU21002": 1,
+    "HNU21003": 2,
+    "HNU21004": 1,
+    "HNU21005": 3,
+    "HNU21006": 3,
+    "HNU21008": 2,
+    "HNU21009": 2,
+    "HNU21011": 1,
+    "HNU21012": 4,
+    "HNU21014": 3,
+    "HNU21015": 2,
+    "HNU21016": 4,
+    "HNU21017": 1,
+    "HNU21019": 3,
+    "HNU21021": 1,
+    "HNU21022": 4,
+    "HNU21023": 2,
+    "HNU21024": 3,
+    "HNU21025": 1,
+    "HNU21026": 1,
+    "HNU21027": 2,
+    "HNU21028": 2,
+    "HNU21029": 1,
+    "HNU21031": 2,
+    "HNU21032": 3,
+    "HNU21034": 3,
+    "HNU21035": 5,
+    "HNU21036": 2,
+    "HNU21037": 1,
+    "HNU21038": 3,
+    "HNU21039": 5,
+    "HNU21040": 2,
+    "HNU21041": 3,
+    "HNU212020": 1
+  },
+  "rows": 83,
+  "support": {
+    "macro_micro": 61,
+    "macro_only": 4,
+    "micro_only": 18
+  },
+  "taxonomy": {
+    "dense_cluster": 38,
+    "isolated": 8,
+    "long_continuous_activity": 28,
+    "macro_high_micro_low": 4,
+    "micro_high_macro_low": 18,
+    "same_truth_duplicate": 1,
+    "short_spike": 32
+  }
+}

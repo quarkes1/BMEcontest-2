@@ -1,0 +1,15 @@
+{
+  "code_sha": "1c16a360c025a0a752caa32dba2cf602cee63a90",
+  "iou_threshold": 0.25,
+  "outer_folds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "protected_snapshot_sha256": "51d4cf62e9291177e0bad08e47295ded49a9f68e325225f81decb33de9059c24",
+  "replay_only": true,
+  "run_key": "160afaf81debf1ee",
+  "training_called": false
+}

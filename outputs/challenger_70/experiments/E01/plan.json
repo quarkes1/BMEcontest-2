@@ -1,0 +1,15 @@
+{
+  "allowed_hyperparameter_grid": {},
+  "base_run": "160afaf81debf1ee",
+  "code_sha": "1c16a360c025a0a752caa32dba2cf602cee63a90",
+  "experiment_id": "E01",
+  "feature_version": "macro-v1+micro-v1+context-v1",
+  "hypothesis": "The deterministic atlas identifies actionable FN/FP strata without selection.",
+  "primary_metric": "descriptive_error_atlas",
+  "secondary_metrics": [
+    "fn_stage",
+    "fp_taxonomy",
+    "context_v1_residual_separation"
+  ],
+  "selection_protocol": "frozen outer evidence replay; no fitting"
+}
