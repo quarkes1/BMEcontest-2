@@ -182,7 +182,9 @@ def _is_runtime_detritus(path: str) -> bool:
     if not parts:
         return False
     name = parts[-1]
-    if name.endswith((".pyc", ".pyo")):
+    if "__pycache__" in parts and re.fullmatch(
+        r"[A-Za-z_][A-Za-z0-9_]*\.(?:cpython|pypy)-\d+(?:\.opt-\d+)?\.py[co]", name,
+    ):
         return True
     if ".pytest_cache" not in parts:
         return False

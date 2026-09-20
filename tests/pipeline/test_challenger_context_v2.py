@@ -30,7 +30,7 @@ def _identity_repo(tmp_path: Path) -> tuple[Path, Path, str]:
     _git(root, "config", "user.email", "test@example.invalid")
     _git(root, "config", "user.name", "Test")
     (root / "src").mkdir()
-    (root / ".gitignore").write_text("src/generated.py\n", encoding="utf-8")
+    (root / ".gitignore").write_text("src/generated.py\n*.pyc\n*.pyo\n", encoding="utf-8")
     (root / "src" / "implementation.py").write_text("VALUE = 1\n", encoding="utf-8")
     code_sha = _commit(root, "code")
     output = root / "outputs" / "challenger_70" / "experiments" / "E02-005"
@@ -116,6 +116,17 @@ def test_preregistered_code_identity_allows_only_normal_runtime_detritus(tmp_pat
     (pytest_cache / "nodeids").write_text("[]\n", encoding="utf-8")
 
     assert verify_e02_code_identity(root, output, code_sha) == code_sha
+
+
+def test_preregistered_code_identity_rejects_sourceless_package_bytecode(tmp_path: Path):
+    from src.pipeline.challenger.context_v2 import verify_e02_code_identity
+
+    root, output, code_sha = _identity_repo(tmp_path)
+    _commit(root, "data: preregister E02-005")
+    (root / "src" / "injected.pyc").write_bytes(b"not a trusted cache")
+
+    with pytest.raises(RuntimeError, match="dirty non-evidence"):
+        verify_e02_code_identity(root, output, code_sha)
 
 
 def test_preregistered_code_identity_rejects_source_rename_into_evidence(tmp_path: Path):
