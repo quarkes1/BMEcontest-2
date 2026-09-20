@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 
@@ -19,3 +21,12 @@ def test_full_phase_is_intentionally_unavailable():
 
     with pytest.raises(RuntimeError, match="not implemented"):
         run_e02(Path("."), Path("outputs/challenger_70/experiments/E02"), phase="full", workers=1)
+
+
+def test_script_bootstraps_project_import_from_scripts_directory():
+    completed = subprocess.run(
+        [sys.executable, "scripts/run_challenger_e02.py", "--help"],
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stderr
