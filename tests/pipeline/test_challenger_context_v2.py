@@ -3,9 +3,106 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
+import subprocess
 
 import pytest
+
+
+def _git(root: Path, *args: str) -> str:
+    return subprocess.run(
+        ["git", "-C", str(root), *args], check=True, capture_output=True, text=True,
+    ).stdout.strip()
+
+
+def _commit(root: Path, message: str) -> str:
+    _git(root, "add", ".")
+    _git(root, "commit", "-m", message)
+    return _git(root, "rev-parse", "HEAD")
+
+
+def _identity_repo(tmp_path: Path) -> tuple[Path, Path, str]:
+    root = tmp_path / "repo"
+    root.mkdir()
+    _git(root, "init")
+    _git(root, "config", "user.email", "test@example.invalid")
+    _git(root, "config", "user.name", "Test")
+    (root / "src").mkdir()
+    (root / "src" / "implementation.py").write_text("VALUE = 1\n", encoding="utf-8")
+    code_sha = _commit(root, "code")
+    output = root / "outputs" / "challenger_70" / "experiments" / "E02-005"
+    output.mkdir(parents=True)
+    (output / "plan.json").write_text(json.dumps({"code_sha": code_sha}), encoding="utf-8")
+    (output / "context_v2_schema.json").write_text("{}", encoding="utf-8")
+    return root, output, code_sha
+
+
+def test_preregistered_code_identity_allows_only_its_immutable_evidence_descendant(tmp_path: Path):
+    from src.pipeline.challenger.context_v2 import verify_e02_code_identity
+
+    root, output, code_sha = _identity_repo(tmp_path)
+    _commit(root, "data: preregister E02-005")
+
+    assert verify_e02_code_identity(root, output, code_sha) == code_sha
+
+
+@pytest.mark.parametrize("path", [
+    "src/implementation.py",
+    "outputs/challenger_70/error_atlas/report.md",
+])
+def test_preregistered_code_identity_rejects_non_evidence_descendant_changes(tmp_path: Path, path: str):
+    from src.pipeline.challenger.context_v2 import verify_e02_code_identity
+
+    root, output, code_sha = _identity_repo(tmp_path)
+    _commit(root, "data: preregister E02-005")
+    target = root / path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("changed\n", encoding="utf-8")
+    _commit(root, "unexpected change")
+
+    with pytest.raises(RuntimeError, match="non-evidence"):
+        verify_e02_code_identity(root, output, code_sha)
+
+
+def test_preregistered_code_identity_rejects_nonancestor_and_dirty_code(tmp_path: Path):
+    from src.pipeline.challenger.context_v2 import verify_e02_code_identity
+
+    root, output, code_sha = _identity_repo(tmp_path)
+    _commit(root, "data: preregister E02-005")
+    with pytest.raises(RuntimeError, match="not an ancestor"):
+        verify_e02_code_identity(root, output, "a" * 40)
+
+    (root / "src" / "implementation.py").write_text("VALUE = 2\n", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="dirty non-evidence"):
+        verify_e02_code_identity(root, output, code_sha)
+
+    _git(root, "checkout", "--", "src/implementation.py")
+    (root / "new_module.py").write_text("VALUE = 3\n", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="dirty non-evidence"):
+        verify_e02_code_identity(root, output, code_sha)
+
+
+def test_preregistered_code_identity_rejects_symlink_and_unapproved_evidence_path(tmp_path: Path):
+    from src.pipeline.challenger.context_v2 import verify_e02_code_identity
+
+    root, output, code_sha = _identity_repo(tmp_path)
+    _commit(root, "data: preregister E02-005")
+    (output / "unexpected.json").write_text("{}", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="dirty non-evidence"):
+        verify_e02_code_identity(root, output, code_sha)
+    (output / "unexpected.json").unlink()
+
+    target = output / "plan.json"
+    replacement = output / "replacement.json"
+    replacement.write_text(target.read_text(encoding="utf-8"), encoding="utf-8")
+    target.unlink()
+    try:
+        os.symlink(replacement.name, target)
+    except OSError as exc:
+        pytest.skip(f"symlink creation unavailable: {exc}")
+    with pytest.raises(RuntimeError, match="symlink"):
+        verify_e02_code_identity(root, output, code_sha)
 
 
 def test_registered_config_is_the_fixed_incumbent_surface():
@@ -41,6 +138,7 @@ def test_preregistration_is_immutable_and_has_fixed_schema(monkeypatch, tmp_path
 
     output = tmp_path / "outputs" / "challenger_70" / "experiments" / "E02"
     monkeypatch.setattr(context_v2, "_require_e02_environment", lambda *_args, **kwargs: kwargs.get("code_sha") or "a" * 40)
+    monkeypatch.setattr(context_v2, "verify_e02_code_identity", lambda _root, _output, code_sha: code_sha)
     plan_path = context_v2.write_e02_preregistration(tmp_path, output, code_sha="a" * 40)
     plan = json.loads(plan_path.read_text(encoding="utf-8"))
     schema = json.loads((output / "context_v2_schema.json").read_text(encoding="utf-8"))
@@ -54,6 +152,22 @@ def test_preregistration_is_immutable_and_has_fixed_schema(monkeypatch, tmp_path
     assert context_v2.write_e02_preregistration(tmp_path, output, code_sha="a" * 40) == plan_path
     with pytest.raises(RuntimeError, match="immutable"):
         context_v2.write_e02_preregistration(tmp_path, output, code_sha="b" * 40)
+
+
+def test_reopened_preregistration_reuses_verified_plan_code_sha(monkeypatch, tmp_path: Path):
+    from src.pipeline.challenger import context_v2
+
+    output = tmp_path / "outputs" / "challenger_70" / "experiments" / "E02"
+    monkeypatch.setattr(context_v2, "_require_e02_environment", lambda *_args, **kwargs: kwargs.get("code_sha") or "b" * 40)
+    context_v2.write_e02_preregistration(tmp_path, output, code_sha="a" * 40)
+    seen: list[str] = []
+    monkeypatch.setattr(
+        context_v2, "verify_e02_code_identity",
+        lambda _root, _output, code_sha: seen.append(code_sha) or code_sha,
+    )
+
+    assert context_v2.write_e02_preregistration(tmp_path, output) == output / "plan.json"
+    assert seen == ["a" * 40]
 
 
 def test_derived_retry_has_new_identity_without_mutating_prior_attempt(monkeypatch, tmp_path: Path):

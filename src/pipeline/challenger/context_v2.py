@@ -124,6 +124,89 @@ def _git_sha(root: Path) -> str:
     return sha
 
 
+def _git_output(root: Path, *args: str) -> bytes:
+    return subprocess.run(
+        ["git", "-C", str(root), *args], check=True, capture_output=True,
+    ).stdout
+
+
+def _e02_evidence_paths(root: Path, output: Path) -> frozenset[str]:
+    """Return the only descendant paths that cannot alter E02 code identity."""
+
+    try:
+        relative_output = Path(output).absolute().relative_to(Path(root).resolve())
+    except ValueError as exc:
+        raise RuntimeError("E02 evidence output escapes repository root") from exc
+    prefix = relative_output.as_posix()
+    return frozenset({
+        f"{prefix}/plan.json",
+        f"{prefix}/context_v2_schema.json",
+        f"{prefix}/inner_gate.json",
+        "outputs/challenger_70/experiment_registry.jsonl",
+    })
+
+
+def _git_changed_paths(root: Path, *args: str) -> set[str]:
+    return {
+        item.decode("utf-8")
+        for item in _git_output(root, *args).split(b"\0")
+        if item
+    }
+
+
+def verify_e02_code_identity(root: Path, output: Path, code_sha: str) -> str:
+    """Fail closed unless HEAD preserves a preregistration's executable code.
+
+    A preregistration necessarily creates evidence in a later commit.  Such a
+    descendant is legal only when every tracked change is one of the immutable
+    files belonging to this exact experiment.  This deliberately rejects an
+    otherwise harmless-looking source, documentation, configuration, output,
+    rename, symlink, or untracked change: any of those could make the plan's
+    code SHA an inaccurate description of the executable being run.
+    """
+
+    root = Path(root).resolve()
+    output = Path(output).absolute()
+    if not re.fullmatch(r"[0-9a-f]{40}", code_sha):
+        raise RuntimeError("E02 plan has an invalid code SHA")
+    if output.is_symlink():
+        raise RuntimeError("E02 evidence output may not be a symlink")
+    allowed = _e02_evidence_paths(root, output)
+    for name in ("plan.json", "context_v2_schema.json", "inner_gate.json"):
+        path = output / name
+        if path.is_symlink():
+            raise RuntimeError("E02 immutable evidence may not be a symlink")
+
+    head = _git_sha(root)
+    ancestor = subprocess.run(
+        ["git", "-C", str(root), "merge-base", "--is-ancestor", code_sha, head],
+        capture_output=True,
+    )
+    if ancestor.returncode != 0:
+        raise RuntimeError("E02 plan code SHA is not an ancestor of current HEAD")
+
+    changed = _git_changed_paths(root, "diff", "--name-only", "-z", code_sha, head)
+    unexpected = changed - allowed
+    if unexpected:
+        raise RuntimeError(f"E02 code identity has non-evidence descendant changes: {sorted(unexpected)!r}")
+
+    # A clean index/worktree is needed after preregistration.  We accept no
+    # pending edits, including evidence edits, because evidence is immutable.
+    dirty = _git_changed_paths(root, "diff", "--name-only", "-z")
+    dirty |= _git_changed_paths(root, "diff", "--cached", "--name-only", "-z")
+    dirty |= _git_changed_paths(root, "ls-files", "--others", "--exclude-standard", "-z")
+    if dirty:
+        raise RuntimeError(f"E02 code identity has dirty non-evidence paths: {sorted(dirty)!r}")
+
+    # Git-mode validation blocks committed symlink substitution even if the
+    # local platform does not materialize it as Path.is_symlink().
+    for path in sorted(changed & allowed):
+        entry = _git_output(root, "ls-tree", head, "--", path).decode("utf-8").strip()
+        if not entry or not entry.startswith("100644 blob "):
+            raise RuntimeError("E02 immutable evidence must be a regular tracked blob")
+    return code_sha
+
+
 def _validate_incumbent(root: Path) -> None:
     path = root / "release" / "event_stack_incumbent.json"
     try:
@@ -192,17 +275,30 @@ def write_e02_preregistration(
 ) -> Path:
     """Atomically install immutable E02 plan and schema after preflight only."""
 
-    bound_sha = _require_e02_environment(root, code_sha=code_sha)
+    root = Path(root).resolve()
     experiment_id = _validate_experiment_id(experiment_id)
     output = _validate_e02_output(root, output, experiment_id=experiment_id)
-    plan = _plan_payload(bound_sha, experiment_id=experiment_id, derived_from=derived_from)
     descriptor = context_schema_descriptor("v2")
     paths = (output / "plan.json", output / "context_v2_schema.json")
     existing = [path for path in paths if path.exists()]
     if existing:
+        # The evidence commit is necessarily newer than the plan's code SHA.
+        # Reopen only when that exact source identity still describes HEAD.
+        _require_e02_environment(root)
+        try:
+            existing_plan = json.loads(paths[0].read_text(encoding="utf-8"))
+            plan_sha = existing_plan["code_sha"]
+        except (OSError, json.JSONDecodeError, KeyError, TypeError) as exc:
+            raise RuntimeError("E02 preregistration is immutable") from exc
+        if code_sha is not None and code_sha != plan_sha:
+            raise RuntimeError("E02 preregistration is immutable")
+        bound_sha = verify_e02_code_identity(root, output, str(plan_sha))
+        plan = _plan_payload(bound_sha, experiment_id=experiment_id, derived_from=derived_from)
         if len(existing) != len(paths) or not _identical_json(paths[0], plan) or not _identical_json(paths[1], descriptor):
             raise RuntimeError("E02 preregistration is immutable")
         return paths[0]
+    bound_sha = _require_e02_environment(root, code_sha=code_sha)
+    plan = _plan_payload(bound_sha, experiment_id=experiment_id, derived_from=derived_from)
     if output.exists() and any(output.iterdir()):
         raise RuntimeError("E02 preregistration output must be empty")
     _atomic_json(paths[0], plan)
@@ -303,10 +399,19 @@ def run_e02_inner_gate(
 ) -> dict[str, object]:
     """Run paired v1/v2 outer-train-only selection evidence for all five folds."""
 
-    code_sha = _require_e02_environment(root)
     root = Path(root).resolve()
     experiment_id = _validate_experiment_id(experiment_id)
     output = _validate_e02_output(root, output, experiment_id=experiment_id)
+    existing_plan = output / "plan.json"
+    if existing_plan.exists():
+        _require_e02_environment(root)
+        try:
+            plan_sha = json.loads(existing_plan.read_text(encoding="utf-8"))["code_sha"]
+        except (OSError, json.JSONDecodeError, KeyError, TypeError) as exc:
+            raise RuntimeError("E02 preregistration is immutable") from exc
+        code_sha = verify_e02_code_identity(root, output, str(plan_sha))
+    else:
+        code_sha = _require_e02_environment(root)
     write_e02_preregistration(root, output, code_sha=code_sha, experiment_id=experiment_id, derived_from=derived_from)
     before = protected_snapshot(root)
     source = source_factory(root)

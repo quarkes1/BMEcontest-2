@@ -18,6 +18,7 @@
 - Fits, imputers, policies and cache use only outer-train/inner-OOF data. `OuterTrainOnlyData` and `FilesystemDataSource.load_outer_train_only` are mandatory; this loader must not call/wrap load_outer_fold and inner-gate APIs cannot receive outer validation data.
 - Write E02 only below cache/challenger_70/e02-context-v2 and outputs/challenger_70/experiments/E02 atomically. Cache identity is SHA-256 over literal `e02-context-v2`, full config, code SHA, NumPy version 2.4.6 and the 25-column schema hash.
 - E02 uses NumPy 2.4.6 and `np.percentile(..., method="linear")`; formal run rejects a different version. The full command is exactly-once and has no force/resume/overwrite mode.
+- Preregistration binds the source commit, not its later evidence commit. A descendant HEAD is legal only if it changes this experiment's immutable plan/schema/gate evidence or terminal registry record; every other committed, staged, unstaged, untracked, rename, or symlink change fails closed. Retain the plan SHA in cache keys and reports.
 - Use TDD, a focused test cycle and git add/commit after every successful code task. Do not execute five-fold outer evaluation until plan/schema and Gate-0 tests exist.
 - No release/promotion/package/dist command is authorized. A terminal result is reported, never promoted.
 
