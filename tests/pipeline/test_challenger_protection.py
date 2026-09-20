@@ -62,6 +62,33 @@ def test_confined_output_rejects_output_root_itself(tmp_path: Path):
         confined_output(tmp_path / "outputs/challenger_70", ".")
 
 
+@pytest.mark.parametrize(
+    "relative",
+    (
+        r"C:\\crossfit\\x.json",
+        r"C:crossfit\\x.json",
+        r"\\crossfit\\x.json",
+        r"\\\\server\\share\\x.json",
+        "/crossfit/x.json",
+    ),
+)
+def test_confined_output_rejects_windows_rooted_and_drive_paths(
+    tmp_path: Path, relative: str
+):
+    """Windows rooted, drive-relative, and UNC paths cannot bypass the root."""
+
+    with pytest.raises(ValueError, match="outside challenger output root"):
+        confined_output(tmp_path / "outputs/challenger_70", relative)
+
+
+def test_confined_output_allows_nested_relative_file(tmp_path: Path):
+    """Normal challenger artifact names still resolve below the output root."""
+
+    root = tmp_path / "outputs/challenger_70"
+
+    assert confined_output(root, "error_atlas/fn.csv") == root / "error_atlas/fn.csv"
+
+
 def test_snapshot_reports_modified_release(tmp_path: Path):
     """An accidental incumbent content edit stops the challenger immediately."""
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import os
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Mapping, Sequence
 
 from src.pipeline.artifacts import _is_source_fingerprint
@@ -157,6 +157,9 @@ def confined_output(root: Path, relative: str) -> Path:
     resolves through ``..`` outside the challenger output directory.
     """
 
+    windows_relative = PureWindowsPath(relative)
+    if Path(relative).is_absolute() or windows_relative.drive or windows_relative.root:
+        raise ValueError("outside challenger output root")
     output_root = Path(root).resolve(strict=False)
     candidate = (output_root / relative).resolve(strict=False)
     if candidate == output_root or output_root not in candidate.parents:
