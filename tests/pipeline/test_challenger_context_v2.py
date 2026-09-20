@@ -40,7 +40,7 @@ def test_preregistration_is_immutable_and_has_fixed_schema(monkeypatch, tmp_path
     from src.pipeline.challenger import context_v2
 
     output = tmp_path / "outputs" / "challenger_70" / "experiments" / "E02"
-    monkeypatch.setattr(context_v2, "_require_e02_environment", lambda *_args, **_kwargs: "a" * 40)
+    monkeypatch.setattr(context_v2, "_require_e02_environment", lambda *_args, **kwargs: kwargs.get("code_sha") or "a" * 40)
     plan_path = context_v2.write_e02_preregistration(tmp_path, output, code_sha="a" * 40)
     plan = json.loads(plan_path.read_text(encoding="utf-8"))
     schema = json.loads((output / "context_v2_schema.json").read_text(encoding="utf-8"))
