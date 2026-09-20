@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import subprocess
 from dataclasses import asdict, replace
 from pathlib import Path
@@ -39,6 +40,12 @@ _EXPECTED_CONFIG_HASHES = (
     "afcf9609a2f6925a", "8b3e27bd2796d038", "b463226db1e6073a",
     "3f26fcb2172cd882", "0199041f39a09f5d",
 )
+
+
+def _validate_experiment_id(experiment_id: str) -> str:
+    if not re.fullmatch(r"E02(?:-\d{3})?", experiment_id):
+        raise ValueError("E02 experiment id must be E02 or E02-NNN")
+    return experiment_id
 
 
 def registered_e02_config(outer_fold: int, *, workers: int) -> RunConfig:
@@ -138,20 +145,20 @@ def _require_e02_environment(root: Path, *, code_sha: str | None = None) -> str:
     return code_sha or _git_sha(root)
 
 
-def _validate_e02_output(root: Path, output: Path) -> Path:
+def _validate_e02_output(root: Path, output: Path, *, experiment_id: str = E02_ID) -> Path:
     root = Path(root).resolve()
-    expected = root / "outputs" / "challenger_70" / "experiments" / E02_ID
+    expected = root / "outputs" / "challenger_70" / "experiments" / _validate_experiment_id(experiment_id)
     actual = Path(output).resolve(strict=False)
     if actual != expected:
         raise ValueError("E02 output must be exactly outputs/challenger_70/experiments/E02")
     return expected
 
 
-def _plan_payload(code_sha: str) -> dict[str, object]:
+def _plan_payload(code_sha: str, *, experiment_id: str = E02_ID, derived_from: str | None = None) -> dict[str, object]:
     descriptor = context_schema_descriptor("v2")
     config = registered_e02_config(0, workers=5)
     return {
-        "experiment_id": E02_ID,
+        "experiment_id": _validate_experiment_id(experiment_id),
         "hypothesis": "Session-local raw-evidence competition removes false-positive episodes while retaining true positives.",
         "base_run": E02_BASE_RUN,
         "code_sha": code_sha,
@@ -166,7 +173,7 @@ def _plan_payload(code_sha: str) -> dict[str, object]:
         "secondary_metrics": ["tp", "fp", "short_recall", "fold_f1"],
         "selection_protocol": "outer-train inner-OOF only",
         "development_evidence_warning": "Inner gate is development/selection evidence only, not independent validation.",
-    }
+    } | ({"derived_from": derived_from} if derived_from is not None else {})
 
 
 def _identical_json(path: Path, payload: Mapping[str, object]) -> bool:
@@ -176,12 +183,16 @@ def _identical_json(path: Path, payload: Mapping[str, object]) -> bool:
         return False
 
 
-def write_e02_preregistration(root: Path, output: Path, *, code_sha: str | None = None) -> Path:
+def write_e02_preregistration(
+    root: Path, output: Path, *, code_sha: str | None = None,
+    experiment_id: str = E02_ID, derived_from: str | None = None,
+) -> Path:
     """Atomically install immutable E02 plan and schema after preflight only."""
 
     bound_sha = _require_e02_environment(root, code_sha=code_sha)
-    output = _validate_e02_output(root, output)
-    plan = _plan_payload(bound_sha)
+    experiment_id = _validate_experiment_id(experiment_id)
+    output = _validate_e02_output(root, output, experiment_id=experiment_id)
+    plan = _plan_payload(bound_sha, experiment_id=experiment_id, derived_from=derived_from)
     descriptor = context_schema_descriptor("v2")
     paths = (output / "plan.json", output / "context_v2_schema.json")
     existing = [path for path in paths if path.exists()]
@@ -264,7 +275,7 @@ def _write_inner_cache(root: Path, config: RunConfig, result: InnerOOFResult, co
     return path
 
 
-def _append_terminal_registry(root: Path, report: Mapping[str, object], code_sha: str) -> None:
+def _append_terminal_registry(root: Path, report: Mapping[str, object], code_sha: str, *, experiment_id: str) -> None:
     """Append only a stopped gate result; successful full evidence is Task 4."""
 
     if bool(report.get("passed")):
@@ -272,10 +283,10 @@ def _append_terminal_registry(root: Path, report: Mapping[str, object], code_sha
     path = root / "outputs" / "challenger_70" / "experiment_registry.jsonl"
     if path.exists():
         for line in path.read_text(encoding="utf-8").splitlines():
-            if line.strip() and json.loads(line).get("experiment_id") == E02_ID:
+            if line.strip() and json.loads(line).get("experiment_id") == experiment_id:
                 raise RuntimeError("terminal E02 registry row already exists")
-    row = {"experiment_id": E02_ID, "status": "stopped_inner_gate", "code_sha": code_sha,
-           "hypothesis": _plan_payload(code_sha)["hypothesis"], "gate_passed": False,
+    row = {"experiment_id": experiment_id, "status": "stopped_inner_gate", "code_sha": code_sha,
+           "hypothesis": _plan_payload(code_sha, experiment_id=experiment_id)["hypothesis"], "gate_passed": False,
            "inner_v1_f1": report["v1"]["f1"], "inner_v2_f1": report["v2"]["f1"]}
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8", newline="\n") as handle:
@@ -285,13 +296,15 @@ def _append_terminal_registry(root: Path, report: Mapping[str, object], code_sha
 def run_e02_inner_gate(
     root: Path, output: Path, *, workers: int,
     source_factory: Callable[[Path], FilesystemDataSource] = FilesystemDataSource,
+    experiment_id: str = E02_ID, derived_from: str | None = None,
 ) -> dict[str, object]:
     """Run paired v1/v2 outer-train-only selection evidence for all five folds."""
 
     code_sha = _require_e02_environment(root)
     root = Path(root).resolve()
-    output = _validate_e02_output(root, output)
-    write_e02_preregistration(root, output, code_sha=code_sha)
+    experiment_id = _validate_experiment_id(experiment_id)
+    output = _validate_e02_output(root, output, experiment_id=experiment_id)
+    write_e02_preregistration(root, output, code_sha=code_sha, experiment_id=experiment_id, derived_from=derived_from)
     before = protected_snapshot(root)
     source = source_factory(root)
     folds: list[dict[str, object]] = []
@@ -313,7 +326,7 @@ def run_e02_inner_gate(
     frozen = _frozen_v1_inner(root)
     v1_parity = v1 == frozen
     report: dict[str, object] = {
-        "experiment_id": E02_ID, "phase": "inner-gate", "code_sha": code_sha,
+        "experiment_id": experiment_id, "phase": "inner-gate", "code_sha": code_sha,
         "numpy_version": np.__version__, "development_evidence": True,
         "not_independent_validation": True, "v1_parity": v1_parity,
         "frozen_v1": frozen, "v1": v1, "v2": v2, "folds": folds,
@@ -324,5 +337,5 @@ def run_e02_inner_gate(
     if target.exists():
         raise RuntimeError("E02 inner gate is immutable")
     _atomic_json(target, report)
-    _append_terminal_registry(root, report, code_sha)
+    _append_terminal_registry(root, report, code_sha, experiment_id=experiment_id)
     return report

@@ -55,6 +55,20 @@ def test_preregistration_is_immutable_and_has_fixed_schema(monkeypatch, tmp_path
         context_v2.write_e02_preregistration(tmp_path, output, code_sha="b" * 40)
 
 
+def test_derived_retry_has_new_identity_without_mutating_prior_attempt(monkeypatch, tmp_path: Path):
+    from src.pipeline.challenger import context_v2
+
+    monkeypatch.setattr(context_v2, "_require_e02_environment", lambda *_args, **kwargs: kwargs.get("code_sha") or "b" * 40)
+    first = tmp_path / "outputs" / "challenger_70" / "experiments" / "E02"
+    retry = tmp_path / "outputs" / "challenger_70" / "experiments" / "E02-002"
+    context_v2.write_e02_preregistration(tmp_path, first, code_sha="a" * 40)
+    context_v2.write_e02_preregistration(tmp_path, retry, code_sha="b" * 40, experiment_id="E02-002", derived_from="E02-001")
+    assert json.loads((first / "plan.json").read_text(encoding="utf-8"))["code_sha"] == "a" * 40
+    plan = json.loads((retry / "plan.json").read_text(encoding="utf-8"))
+    assert plan["experiment_id"] == "E02-002"
+    assert plan["derived_from"] == "E02-001"
+
+
 def test_wrong_numpy_rejects_before_output_or_cache_write(monkeypatch, tmp_path: Path):
     from src.pipeline.challenger import context_v2
 
