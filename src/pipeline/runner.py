@@ -849,14 +849,6 @@ def _fit_final_models(
 ) -> _FinalModelFit:
     """Fit the frozen outer-train models after all OOF choices are final."""
 
-    macro = _window_estimator(config.seed + 2)
-    macro.fit(train_features, train_labels)
-    micro = None
-    if config.micro_enabled:
-        if micro_train_features is None or micro_train_labels is None:
-            raise ValueError("micro model inputs are required when micro_enabled=True")
-        micro = _micro_window_estimator(config.seed + 12)
-        micro.fit(micro_train_features, micro_train_labels)
     sample_weight = (
         None
         if verifier_sample_weight is None
@@ -867,6 +859,14 @@ def _fit_final_models(
     verifier_fit_kwargs = (
         {} if sample_weight is None else {"model__sample_weight": sample_weight}
     )
+    macro = _window_estimator(config.seed + 2)
+    macro.fit(train_features, train_labels)
+    micro = None
+    if config.micro_enabled:
+        if micro_train_features is None or micro_train_labels is None:
+            raise ValueError("micro model inputs are required when micro_enabled=True")
+        micro = _micro_window_estimator(config.seed + 12)
+        micro.fit(micro_train_features, micro_train_labels)
     verifier_logistic = _verifier_estimator(config.seed + 3, verifier_c)
     verifier_logistic.fit(
         train_candidate_features, train_candidate_labels, **verifier_fit_kwargs

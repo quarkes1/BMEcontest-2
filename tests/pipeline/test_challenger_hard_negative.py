@@ -155,6 +155,45 @@ def test_final_weighted_fit_supplies_the_same_vector_to_both_verifiers(monkeypat
     np.testing.assert_array_equal(seen["lgbm"][0], weights)
 
 
+def test_final_fit_rejects_invalid_weights_before_any_model_is_fitted(monkeypatch):
+    """Validating after macro/micro fitting would leave an invalid E03 call with side effects."""
+    from src.pipeline import runner
+
+    fitted: list[str] = []
+
+    class _Probe:
+        def __init__(self, name):
+            self.name = name
+
+        def fit(self, features, labels, **kwargs):
+            fitted.append(self.name)
+            return self
+
+    monkeypatch.setattr(runner, "_window_estimator", lambda *_: _Probe("macro"))
+    monkeypatch.setattr(runner, "_micro_window_estimator", lambda *_: _Probe("micro"))
+    monkeypatch.setattr(runner, "_verifier_estimator", lambda *_: _Probe("logistic"))
+    monkeypatch.setattr(runner, "_verifier_lgbm_estimator", lambda *_: _Probe("lgbm"))
+    config = runner.RunConfig(outer_fold=0, micro_enabled=True, candidate_control_enabled=True)
+
+    with pytest.raises(ValueError, match="sample weight"):
+        runner._fit_final_models(
+            config,
+            train_features=np.asarray([[0.0], [1.0], [0.1], [0.9]]),
+            train_labels=np.asarray([0, 1, 0, 1]),
+            micro_train_features=np.asarray([[0.0] * 47, [1.0] * 47, [0.1] * 47, [0.9] * 47]),
+            micro_train_labels=np.asarray([0, 1, 0, 1]),
+            train_candidate_features=np.asarray([[0.0] * 116] * 4),
+            train_candidate_labels=np.asarray([0, 1, 0, 1]),
+            verifier_c=0.1,
+            policy=EventSelectionPolicy(0.5, None, EventMetrics(0, 0, 0, 0.0, 0.0, 0.0)),
+            admission=None,
+            blend_weight=0.5,
+            verifier_sample_weight=np.asarray([1.0, np.nan, 1.0, 1.0]),
+        )
+
+    assert fitted == []
+
+
 @pytest.mark.parametrize("factory_args", [(20260911, 0.1), (20260911,)])
 def test_weighted_verifier_factories_keep_balanced_class_weight(factory_args):
     """Sample weights supplement rather than replace the frozen balanced class weighting."""
