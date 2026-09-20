@@ -154,6 +154,27 @@ def _git_changed_paths(root: Path, *args: str) -> set[str]:
     }
 
 
+def _git_name_status(root: Path, base: str, head: str) -> list[tuple[str, tuple[str, ...]]]:
+    """Parse NUL-delimited Git status without losing rename/copy source paths."""
+
+    tokens = [item.decode("utf-8") for item in _git_output(
+        root, "diff", "--name-status", "-z", "--find-renames", "--find-copies", base, head,
+    ).split(b"\0") if item]
+    rows: list[tuple[str, tuple[str, ...]]] = []
+    position = 0
+    while position < len(tokens):
+        status = tokens[position]
+        position += 1
+        if not status:
+            raise RuntimeError("E02 could not parse git change status")
+        paths = 2 if status[0] in {"R", "C"} else 1
+        if position + paths > len(tokens):
+            raise RuntimeError("E02 could not parse git change paths")
+        rows.append((status, tuple(tokens[position:position + paths])))
+        position += paths
+    return rows
+
+
 def verify_e02_code_identity(root: Path, output: Path, code_sha: str) -> str:
     """Fail closed unless HEAD preserves a preregistration's executable code.
 
@@ -185,16 +206,29 @@ def verify_e02_code_identity(root: Path, output: Path, code_sha: str) -> str:
     if ancestor.returncode != 0:
         raise RuntimeError("E02 plan code SHA is not an ancestor of current HEAD")
 
-    changed = _git_changed_paths(root, "diff", "--name-only", "-z", code_sha, head)
-    unexpected = changed - allowed
-    if unexpected:
-        raise RuntimeError(f"E02 code identity has non-evidence descendant changes: {sorted(unexpected)!r}")
+    changes = _git_name_status(root, code_sha, head)
+    for status, paths in changes:
+        # An immutable evidence file is only introduced once.  The registry is
+        # append-only and may therefore be modified after its first addition.
+        if status[0] not in {"A", "M"} or len(paths) != 1 or paths[0] not in allowed:
+            raise RuntimeError(f"E02 code identity has non-evidence descendant changes: {(status, paths)!r}")
+        if status[0] == "M" and paths[0] != "outputs/challenger_70/experiment_registry.jsonl":
+            raise RuntimeError(f"E02 immutable evidence was modified: {paths[0]!r}")
+    changed = {path for _status, paths in changes for path in paths}
 
     # A clean index/worktree is needed after preregistration.  We accept no
     # pending edits, including evidence edits, because evidence is immutable.
     dirty = _git_changed_paths(root, "diff", "--name-only", "-z")
     dirty |= _git_changed_paths(root, "diff", "--cached", "--name-only", "-z")
     dirty |= _git_changed_paths(root, "ls-files", "--others", "--exclude-standard", "-z")
+    # A generated Python/configuration file hidden by .gitignore can still be
+    # imported by the executable.  Inspect only relevant code/config roots so
+    # durable ignored data/cache/model inputs remain legitimate research state.
+    dirty |= _git_changed_paths(
+        root, "ls-files", "--others", "--ignored", "--exclude-standard", "-z", "--",
+        "src", "scripts", "tests", "docs", "requirements.txt", "pyproject.toml", "pytest.ini",
+        "setup.cfg", "setup.py", "environment.yml", "environment.yaml", "release",
+    )
     if dirty:
         raise RuntimeError(f"E02 code identity has dirty non-evidence paths: {sorted(dirty)!r}")
 

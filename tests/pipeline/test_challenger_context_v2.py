@@ -29,6 +29,7 @@ def _identity_repo(tmp_path: Path) -> tuple[Path, Path, str]:
     _git(root, "config", "user.email", "test@example.invalid")
     _git(root, "config", "user.name", "Test")
     (root / "src").mkdir()
+    (root / ".gitignore").write_text("src/generated.py\n", encoding="utf-8")
     (root / "src" / "implementation.py").write_text("VALUE = 1\n", encoding="utf-8")
     code_sha = _commit(root, "code")
     output = root / "outputs" / "challenger_70" / "experiments" / "E02-005"
@@ -42,6 +43,16 @@ def test_preregistered_code_identity_allows_only_its_immutable_evidence_descenda
     from src.pipeline.challenger.context_v2 import verify_e02_code_identity
 
     root, output, code_sha = _identity_repo(tmp_path)
+    _commit(root, "data: preregister E02-005")
+
+    assert verify_e02_code_identity(root, output, code_sha) == code_sha
+
+
+def test_new_plan_binds_current_source_commit_before_its_evidence_descendant(tmp_path: Path):
+    from src.pipeline.challenger.context_v2 import verify_e02_code_identity
+
+    root, output, code_sha = _identity_repo(tmp_path)
+    assert json.loads((output / "plan.json").read_text(encoding="utf-8"))["code_sha"] == code_sha
     _commit(root, "data: preregister E02-005")
 
     assert verify_e02_code_identity(root, output, code_sha) == code_sha
@@ -76,10 +87,32 @@ def test_preregistered_code_identity_rejects_nonancestor_and_dirty_code(tmp_path
     (root / "src" / "implementation.py").write_text("VALUE = 2\n", encoding="utf-8")
     with pytest.raises(RuntimeError, match="dirty non-evidence"):
         verify_e02_code_identity(root, output, code_sha)
-
     _git(root, "checkout", "--", "src/implementation.py")
     (root / "new_module.py").write_text("VALUE = 3\n", encoding="utf-8")
     with pytest.raises(RuntimeError, match="dirty non-evidence"):
+        verify_e02_code_identity(root, output, code_sha)
+
+
+def test_preregistered_code_identity_rejects_ignored_source_file(tmp_path: Path):
+    from src.pipeline.challenger.context_v2 import verify_e02_code_identity
+
+    root, output, code_sha = _identity_repo(tmp_path)
+    _commit(root, "data: preregister E02-005")
+    (root / "src" / "generated.py").write_text("VALUE = 3\n", encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="dirty non-evidence"):
+        verify_e02_code_identity(root, output, code_sha)
+
+
+def test_preregistered_code_identity_rejects_source_rename_into_evidence(tmp_path: Path):
+    from src.pipeline.challenger.context_v2 import verify_e02_code_identity
+
+    root, output, code_sha = _identity_repo(tmp_path)
+    _commit(root, "data: preregister E02-005")
+    _git(root, "mv", "src/implementation.py", "outputs/challenger_70/experiments/E02-005/inner_gate.json")
+    _commit(root, "move source into evidence")
+
+    with pytest.raises(RuntimeError, match="non-evidence"):
         verify_e02_code_identity(root, output, code_sha)
 
 
