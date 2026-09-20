@@ -817,6 +817,27 @@ def test_outer_train_only_loader_crops_metadata_to_train_sessions(filesystem_run
     assert "s3" not in data.subject_by_session
 
 
+def test_outer_train_only_loader_maps_every_train_window_session(filesystem_runner_source):
+    """Window OOF may include a train-role SID absent from candidate-role rows."""
+
+    source = filesystem_runner_source
+    np.savez(
+        source.slide_dir / "fold0_train.npz",
+        feat=np.zeros((3, 62), np.float32),
+        label=np.array([1, 0, 1], np.int8),
+        wid=np.array([
+            json.dumps(("s1", 0, 240000)),
+            json.dumps(("s2", 0, 240000)),
+            json.dumps(("s3", 0, 240000)),
+        ]),
+    )
+
+    data = source.load_outer_train_only(RunConfig(outer_fold=0))
+
+    assert set(data.subject_by_session) == {"s1", "s2", "s3"}
+    assert set(data.session_bounds_by_sid or ()) == {"s1", "s2", "s3"}
+
+
 def test_filesystem_context_coverage_uses_authoritative_session_bounds(filesystem_runner_source):
     """Sparse sampled windows must not shrink Context-v1's session universe."""
 

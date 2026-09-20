@@ -2289,7 +2289,16 @@ class FilesystemDataSource:
         }
         if any(end < start for start, end in all_session_bounds_by_sid.values()):
             raise ValueError("sensor index contains unordered session bounds")
-        train_sids = {window.sid for window in candidate_train.windows}
+        # The outer-train-only seam cross-fits both the broad window stream and
+        # candidate streams.  Their session sets are normally identical but
+        # must not be assumed to be: every train-role batch needs a subject and
+        # authoritative acquisition bound before it can enter inner OOF.
+        candidate_train_sids = {window.sid for window in candidate_train.windows}
+        train_sids = {window.sid for window in window_train.windows} | candidate_train_sids
+        if micro_window_train is not None:
+            train_sids |= {window.sid for window in micro_window_train.windows}
+        if micro_candidate_train is not None:
+            train_sids |= {window.sid for window in micro_candidate_train.windows}
         missing_subjects = train_sids - set(all_subject_by_session)
         missing_bounds = train_sids - set(all_session_bounds_by_sid)
         if missing_subjects or missing_bounds:
@@ -2297,7 +2306,7 @@ class FilesystemDataSource:
             raise ValueError("outer-train sessions absent from sensor index: " + ", ".join(missing))
         subject_by_session = {sid: all_subject_by_session[sid] for sid in train_sids}
         session_bounds_by_sid = {sid: all_session_bounds_by_sid[sid] for sid in train_sids}
-        train_truths, _ = self._eligible_truths(train_sids, candidate_train, subject_by_session)
+        train_truths, _ = self._eligible_truths(candidate_train_sids, candidate_train, subject_by_session)
         return OuterTrainOnlyData(
             window_train=window_train,
             candidate_train=candidate_train,
