@@ -16,7 +16,13 @@ from src.pipeline.context_features import (
     MICRO_WINDOW_MS,
     context_v1_features,
 )
-from src.pipeline.event_stack import EventRef
+from src.pipeline.context_features_v2 import (
+    CONTEXT_V2_COLUMNS,
+    CONTEXT_V2_SCHEMA_HASH,
+    context_schema_descriptor,
+    context_v2_features,
+)
+from src.pipeline.event_stack import CandidateEvent, EventRef, MultiScaleCandidate, union_candidates
 
 
 def _idx(name):
@@ -168,3 +174,167 @@ def test_context_v1_rejects_nonfinite_session_boundary():
     event = EventRef("s", 1_000_000, 1_100_000)
     with pytest.raises(ValueError, match="finite integer-like"):
         context_v1_features([event], {}, {}, {"s": (0, np.inf)})
+
+
+def _source(sid, start, end, probabilities, coverage=1.0):
+    return CandidateEvent(
+        EventRef(sid, start, end), tuple(probabilities), coverage, 0, 0, 0, 0
+    )
+
+
+def _multi(sid, start, end, macro=None, micro=None):
+    return MultiScaleCandidate(EventRef(sid, start, end), macro, micro)
+
+
+def _v2_idx(name):
+    return CONTEXT_V2_COLUMNS.index(name)
+
+
+def test_context_v2_has_fixed_schema_descriptor_and_no_label_dependency():
+    assert CONTEXT_V2_COLUMNS == (
+        "macro_candidate_mean_percentile", "macro_candidate_max_percentile",
+        "macro_candidate_mean_robust_z", "macro_candidate_mean_relative_to_session_median",
+        "macro_candidate_max_relative_to_session_p90", "macro_candidate_mean_to_session_max",
+        "macro_best_mean_margin", "macro_stronger_count_20m",
+        "macro_nearest_stronger_distance_s", "micro_candidate_mean_percentile",
+        "micro_candidate_max_percentile", "micro_candidate_mean_robust_z",
+        "micro_candidate_mean_relative_to_session_median",
+        "micro_candidate_max_relative_to_session_p90", "micro_candidate_mean_to_session_max",
+        "micro_best_mean_margin", "micro_stronger_count_20m",
+        "micro_nearest_stronger_distance_s", "session_candidate_count",
+        "session_candidate_rate_per_hour", "candidate_duration_percentile",
+        "candidate_duration_robust_z", "candidate_support_count",
+        "candidate_support_coverage_percentile", "candidate_support_coverage_robust_z",
+    )
+    assert CONTEXT_V2_SCHEMA_HASH == hashlib.sha256(
+        json.dumps(CONTEXT_V2_COLUMNS, separators=(",", ":")).encode()
+    ).hexdigest()
+    descriptor = context_schema_descriptor("v2")
+    assert descriptor["width"] == 25
+    assert descriptor["ordered_column_sha256"] == CONTEXT_V2_SCHEMA_HASH
+    assert descriptor["label_dependency"] is False
+    assert descriptor["session_local"] is True
+    assert descriptor["learned"] is False
+
+
+def test_context_v2_computes_hand_checked_source_competition_and_session_baselines():
+    low = _source("s", 0, 1000, (.2, .4), .5)
+    high = _source("s", 120_000, 121_000, (.8, 1.0), 1.0)
+    candidates = [_multi("s", 0, 1000, macro=low), _multi("s", 120_000, 121_000, macro=high)]
+    result = context_v2_features(
+        candidates,
+        {"s": [(0, 1, .1), (1, 2, .3), (2, 3, .5), (3, 4, .9)]},
+        {}, {"s": (0, 3_600_000)},
+    )
+    row = result[0]
+    assert row[_v2_idx("macro_candidate_mean_percentile")] == pytest.approx(.25)
+    assert row[_v2_idx("macro_candidate_max_percentile")] == pytest.approx(.25)
+    assert row[_v2_idx("macro_candidate_mean_robust_z")] == pytest.approx(-.3 / (1.4826 * .3 + .05))
+    assert row[_v2_idx("macro_candidate_mean_relative_to_session_median")] == pytest.approx(-.25)
+    assert row[_v2_idx("macro_candidate_max_relative_to_session_p90")] == pytest.approx((.4 - .78) / .78)
+    assert row[_v2_idx("macro_candidate_mean_to_session_max")] == pytest.approx(1 / 3)
+    assert row[_v2_idx("macro_best_mean_margin")] == pytest.approx(.6)
+    assert row[_v2_idx("macro_stronger_count_20m")] == 1
+    assert row[_v2_idx("macro_nearest_stronger_distance_s")] == pytest.approx(119)
+    assert row[_v2_idx("session_candidate_count")] == 2
+    assert row[_v2_idx("session_candidate_rate_per_hour")] == pytest.approx(2)
+    assert row[_v2_idx("candidate_support_count")] == 1
+    assert row[_v2_idx("candidate_support_coverage_percentile")] == pytest.approx(.25)
+
+
+def test_context_v2_is_session_isolated_order_invariant_and_preserves_caller_rows():
+    first = _multi("a", 1_000, 2_000, macro=_source("a", 1_000, 2_000, (.3,), .7))
+    second = _multi("a", 4_000, 5_000, micro=_source("a", 4_000, 5_000, (.6,), .8))
+    other = _multi("b", 1_000, 2_000, macro=_source("b", 1_000, 2_000, (.99,), .1))
+    kwargs = dict(
+        macro_windows_by_sid={"a": [(0, 1, .2), (1, 2, .4)], "b": [(0, 1, .99)]},
+        micro_windows_by_sid={"a": [(0, 1, .5)], "b": []},
+        session_bounds_by_sid={"a": (0, 10_000), "b": (0, 10_000)},
+    )
+    baseline = context_v2_features([first, second], **kwargs)
+    reordered = context_v2_features([second, other, first], **kwargs)
+    np.testing.assert_equal(baseline[0], reordered[2])
+    np.testing.assert_equal(baseline[1], reordered[0])
+
+
+@pytest.mark.parametrize(
+    "candidate, windows, bounds, message",
+    [
+        (_multi("s", 0, 0, macro=_source("s", 0, 0, (.4,))), {}, {"s": (0, 1)}, "positive"),
+        (_multi("s", 1, 2, macro=None), {}, {"s": (0, 3)}, "source"),
+        (_multi("s", 1, 2, macro=_source("s", 1, 2, (np.nan,))), {}, {"s": (0, 3)}, "finite probability"),
+        (_multi("s", 1, 2, macro=_source("s", 1, 2, (.4,))), {"s": [(2, 1, .2)]}, {"s": (0, 3)}, "ordered"),
+        (_multi("s", 1, 2, macro=_source("s", 1, 2, (.4,))), {"s": [(1, 2, np.nan)]}, {"s": (0, 3)}, "finite"),
+        (_multi("s", 1, 2, macro=_source("s", 1, 2, (.4,))), {}, {"s": (2, 3)}, "inside"),
+    ],
+)
+def test_context_v2_fails_closed_for_invalid_raw_union_or_session_data(candidate, windows, bounds, message):
+    with pytest.raises(ValueError, match=message):
+        context_v2_features([candidate], windows, {}, bounds)
+
+
+def test_context_v2_missing_source_is_nan_but_common_support_fields_are_defined():
+    candidate = _multi("s", 1_000, 2_000, macro=_source("s", 1_000, 2_000, (.4,), 0.0))
+    row = context_v2_features([candidate], {"s": []}, {}, {"s": (0, 2_000)})[0]
+    assert np.isnan(row[_v2_idx("micro_candidate_mean_percentile"): _v2_idx("micro_nearest_stronger_distance_s") + 1]).all()
+    assert row[_v2_idx("macro_candidate_mean_percentile")] == pytest.approx(.5)
+    assert row[_v2_idx("macro_candidate_mean_robust_z")] == pytest.approx(0)
+    assert np.isnan(row[_v2_idx("macro_candidate_mean_relative_to_session_median")])
+    assert row[_v2_idx("macro_best_mean_margin")] == 0
+    assert row[_v2_idx("macro_stronger_count_20m")] == 0
+    assert np.isnan(row[_v2_idx("macro_nearest_stronger_distance_s")])
+    assert row[_v2_idx("candidate_duration_percentile")] == pytest.approx(.5)
+    assert row[_v2_idx("candidate_duration_robust_z")] == pytest.approx(0)
+    assert row[_v2_idx("candidate_support_coverage_percentile")] == pytest.approx(.5)
+    assert row[_v2_idx("candidate_support_coverage_robust_z")] == pytest.approx(0)
+    assert not np.isinf(row).any()
+
+
+def test_context_v2_ties_are_not_stronger_and_twenty_minute_boundary_is_inclusive():
+    tied = _multi("s", 0, 1_000, macro=_source("s", 0, 1_000, (.5,)))
+    boundary = _multi("s", 1_201_000, 1_202_000, macro=_source("s", 1_201_000, 1_202_000, (.7,)))
+    farther = _multi("s", 1_202_001, 1_203_001, macro=_source("s", 1_202_001, 1_203_001, (.9,)))
+    rows = context_v2_features([tied, boundary, farther], {}, {}, {"s": (0, 2_000_000)})
+    assert rows[0, _v2_idx("macro_candidate_mean_percentile")] == pytest.approx(1 / 6)
+    assert rows[0, _v2_idx("macro_stronger_count_20m")] == 1
+    assert rows[0, _v2_idx("macro_nearest_stronger_distance_s")] == pytest.approx(1200)
+    assert rows[1, _v2_idx("macro_stronger_count_20m")] == 1
+    assert rows[2, _v2_idx("macro_best_mean_margin")] == 0
+    assert np.isnan(rows[2, _v2_idx("macro_nearest_stronger_distance_s")])
+
+
+def test_context_v2_overlap_distance_is_zero_and_keeps_coincident_source_identities():
+    macro_low = _source("s", 0, 1_000, (.3,), .4)
+    macro_high = _source("s", 0, 1_000, (.8,), .6)
+    candidates = [
+        _multi("s", 0, 1_000, macro=macro_low),
+        _multi("s", 0, 1_000, macro=macro_high),
+    ]
+    rows = context_v2_features(candidates, {}, {}, {"s": (0, 2_000)})
+    assert rows[:, _v2_idx("session_candidate_count")].tolist() == [2.0, 2.0]
+    assert rows[0, _v2_idx("macro_nearest_stronger_distance_s")] == 0
+    assert rows[0, _v2_idx("macro_stronger_count_20m")] == 1
+
+
+def test_context_v2_accepts_exact_union_population_without_second_deduplication():
+    macro = [_source("s", 0, 1_000, (.3,)), _source("s", 0, 1_000, (.8,))]
+    micro = [_source("s", 100, 900, (.7,))]
+    population = union_candidates(macro, micro)
+    rows = context_v2_features(population, {}, {}, {"s": (0, 2_000)})
+    assert len(population) == 2
+    assert rows.shape == (2, 25)
+    assert rows[:, _v2_idx("session_candidate_count")].tolist() == [2.0, 2.0]
+
+
+def test_context_v2_keeps_touching_sessions_separate_and_ignores_acquisition_gaps():
+    left = _multi("left", 900, 1_000, macro=_source("left", 900, 1_000, (.2,)))
+    right = _multi("right", 1_000, 1_100, macro=_source("right", 1_000, 1_100, (.9,)))
+    rows = context_v2_features(
+        [left, right],
+        {"left": [(0, 1, .1), (900, 901, .3)], "right": [(1_000, 1_001, .8), (9_000_000, 9_000_001, .9)]},
+        {},
+        {"left": (0, 1_000), "right": (1_000, 10_000_000)},
+    )
+    assert rows[:, _v2_idx("session_candidate_count")].tolist() == [1.0, 1.0]
+    assert rows[0, _v2_idx("macro_candidate_mean_relative_to_session_median")] == pytest.approx(0.0)
+    assert rows[1, _v2_idx("macro_candidate_mean_relative_to_session_median")] > 0
