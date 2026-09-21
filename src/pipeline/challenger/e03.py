@@ -84,6 +84,21 @@ def _require_terminal_parent_abort(root: Path, *, experiment_id: str) -> None:
     matching = [row for row in rows if row.get("experiment_id") == parent]
     if len(matching) != 1 or any(matching[0].get(key) != value for key, value in required.items()):
         raise RuntimeError("E03-003 parent terminal abort registry is invalid")
+    row = matching[0]
+    # Both records are independently immutable.  A retry may use them only
+    # when they describe the *same* terminal event, not merely two valid
+    # terminal events for the same experiment ID.
+    shared_fields = (*required, "plan_code_sha", "abort_code_sha", "failure")
+    if any(evidence.get(key) != row.get(key) for key in shared_fields):
+        raise RuntimeError("E03-003 parent terminal abort records disagree")
+    plan_sha = evidence.get("plan_code_sha")
+    abort_sha = evidence.get("abort_code_sha")
+    failure = evidence.get("failure")
+    if (not isinstance(plan_sha, str) or not re.fullmatch(r"[0-9a-f]{40}", plan_sha)
+            or row.get("code_sha") != plan_sha
+            or not isinstance(abort_sha, str) or not re.fullmatch(r"[0-9a-f]{40}", abort_sha)
+            or not isinstance(failure, str) or not failure.strip()):
+        raise RuntimeError("E03-003 parent terminal abort records are malformed")
 
 
 def registered_e03_config(outer_fold: int, *, workers: int) -> RunConfig:
@@ -614,6 +629,7 @@ def run_e03_inner_gate(root: Path, output: Path, *, workers: int,
         raise RuntimeError("E03 requires a committed immutable preregistration before the gate")
     plan = json.loads(plan_path.read_text(encoding="utf-8"))
     plan_sha = validate_e03_plan(plan, experiment_id=experiment_id)
+    _require_terminal_parent_abort(root, experiment_id=experiment_id)
     code_sha = verify_e03_code_identity(root, output, plan_sha)
     before = protected_snapshot(root)
     source = assert_e03_outer_validation_inaccessible(source_factory(root))

@@ -164,6 +164,58 @@ def test_e03_003_preregistration_requires_matching_parent_terminal_abort(monkeyp
         e03.write_e03_preregistration(tmp_path, output, code_sha="c" * 40, experiment_id="E03-003", derived_from="E03-002")
 
 
+@pytest.mark.parametrize(
+    ("artifact_update", "registry_update"),
+    [
+        ({"plan_code_sha": "b" * 40}, {}),
+        ({}, {"abort_code_sha": "d" * 40}),
+        ({"failure": "artifact reason"}, {"failure": "registry reason"}),
+        ({"training_started": True}, {"training_started": True}),
+    ],
+)
+def test_e03_003_rejects_parent_artifact_registry_cross_record_mismatch(
+    tmp_path: Path, artifact_update: dict[str, object], registry_update: dict[str, object],
+):
+    """A stitched parent record cannot authorize a retry when its two terminal sources disagree."""
+    from src.pipeline.challenger.e03 import _require_terminal_parent_abort
+
+    terminal = {
+        "experiment_id": "E03-002", "status": "aborted_preflight", "scores_recorded": False,
+        "training_started": False, "cache_written": False, "historical_terminal": True,
+        "replay_permitted": False, "plan_code_sha": "a" * 40, "abort_code_sha": "c" * 40,
+        "failure": "canonical preflight failure",
+    }
+    artifact = dict(terminal)
+    artifact.update(artifact_update)
+    registry = {"code_sha": terminal["plan_code_sha"], **terminal}
+    registry.update(registry_update)
+    evidence_path = tmp_path / "outputs" / "challenger_70" / "experiments" / "E03-002" / "preflight_abort.json"
+    evidence_path.parent.mkdir(parents=True)
+    evidence_path.write_text(json.dumps(artifact), encoding="utf-8")
+    registry_path = tmp_path / "outputs" / "challenger_70" / "experiment_registry.jsonl"
+    registry_path.write_text(json.dumps(registry) + "\n", encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="parent terminal abort"):
+        _require_terminal_parent_abort(tmp_path, experiment_id="E03-003")
+
+
+def test_e03_003_gate_checks_parent_terminal_abort_before_code_identity(monkeypatch, tmp_path: Path):
+    """A hand-authored E03-003 plan must not bypass its aborted-parent provenance guard."""
+    from src.pipeline.challenger import e03
+
+    output = tmp_path / "outputs" / "challenger_70" / "experiments" / "E03-003"
+    output.mkdir(parents=True)
+    output.joinpath("plan.json").write_text(
+        json.dumps(e03._plan_payload("c" * 40, experiment_id="E03-003", derived_from="E03-002")),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(e03, "_require_e03_environment", lambda *_args, **_kwargs: "c" * 40)
+    monkeypatch.setattr(e03, "verify_e03_code_identity", lambda *_args, **_kwargs: pytest.fail("identity must follow parent guard"))
+
+    with pytest.raises(RuntimeError, match="parent terminal abort"):
+        e03.run_e03_inner_gate(tmp_path, output, workers=1, experiment_id="E03-003")
+
+
 def test_cache_identity_binds_namespace_config_code_and_input_fingerprints():
     """Omitting any source input signature could reuse a cache after train data changed."""
     from src.pipeline.challenger.e03 import e03_cache_key, registered_e03_config
