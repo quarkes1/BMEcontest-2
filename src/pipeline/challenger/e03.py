@@ -43,6 +43,7 @@ _E03_LINEAGE = {
     "E03-003": "E03-002",
     "E03-004": "E03-003",
     "E03-005": "E03-004",
+    "E03-006": "E03-005",
 }
 
 
@@ -69,6 +70,8 @@ def _retry_rationale(experiment_id: str) -> str:
     parent = _E03_LINEAGE[experiment_id]
     if parent == "E03-004":
         return "E03-004 failed during inner execution because its miner rejected canonical Context-v1 NaNs; this retry applies only the verifier-compatible missingness validation repair."
+    if parent == "E03-005":
+        return "E03-005 failed during fold-0 inner execution because the control arm sent an empty subject_cap_grid to the capped policy selector; this retry applies only the incumbent no-cap policy branch repair."
     return f"{parent} aborted during preflight before scoring; this retry preserves its exact v1 hard-negative specification."
 
 
@@ -132,6 +135,50 @@ def _e03_004_failure_signature(value: object) -> str | None:
     return None
 
 
+def _normalized_e03_005_failure_diagnostic(evidence: Mapping[str, object]) -> dict[str, object]:
+    """Validate the fixed flat E03-005 implementation-failure schema.
+
+    Unlike E03-004's explanatory nested diagnostic, E03-005 froze its
+    fold-0 facts as top-level fields.  Keep the historical evidence immutable
+    and normalize only the values that must agree with its registry row.
+    """
+    required = {
+        "experiment_id": "E03-005",
+        "status": "failed_inner_implementation",
+        "fold_reached": 0,
+        "training_started": True,
+        "partial_inner_oof_logistic_completed": True,
+        "hard_negative_mining_completed": True,
+        "control_arm_completed": False,
+        "comparison_arms_completed": False,
+        "terminal_metrics_recorded": False,
+        "scores_recorded": False,
+        "cache_written": False,
+        "outer_validation_accessed": False,
+        "replay_permitted": False,
+    }
+    if any(evidence.get(key) != value or type(evidence.get(key)) is not type(value)
+           for key, value in required.items()):
+        raise RuntimeError("E03-006 parent terminal abort artifact is invalid")
+    code_sha = evidence.get("plan_code_sha")
+    failure = evidence.get("failure")
+    if (not isinstance(code_sha, str) or not re.fullmatch(r"[0-9a-f]{40}", code_sha)
+            or not isinstance(failure, str) or not failure.strip()):
+        raise RuntimeError("E03-006 parent terminal abort artifact is malformed")
+    return {"code_sha": code_sha, "failure": failure}
+
+
+def _e03_005_failure_signature(value: object) -> str | None:
+    """Recognize only E03-005's empty-cap control-policy implementation bug."""
+    if not isinstance(value, str):
+        return None
+    rendered = value.casefold()
+    markers = ("control", "empty", "subject_cap_grid", "select_event_policy", "select_event_threshold")
+    if all(marker in rendered for marker in markers):
+        return "empty_subject_cap_grid_control_policy_selection"
+    return None
+
+
 def _require_terminal_parent_abort(root: Path, *, experiment_id: str) -> None:
     """Bind every E03 retry to its own matching no-score terminal parent."""
     experiment_id = _validate_experiment_id(experiment_id)
@@ -139,7 +186,7 @@ def _require_terminal_parent_abort(root: Path, *, experiment_id: str) -> None:
     if not parent.startswith("E03-"):
         return
     root = Path(root).resolve()
-    artifact_name = "failure_diagnostic.json" if parent == "E03-004" else "preflight_abort.json"
+    artifact_name = "failure_diagnostic.json" if parent in {"E03-004", "E03-005"} else "preflight_abort.json"
     artifact = root / "outputs" / "challenger_70" / "experiments" / parent / artifact_name
     registry = root / "outputs" / "challenger_70" / "experiment_registry.jsonl"
     try:
@@ -162,6 +209,35 @@ def _require_terminal_parent_abort(root: Path, *, experiment_id: str) -> None:
         if normalized["code_sha"] != row.get("code_sha"):
             raise RuntimeError(f"{experiment_id} parent terminal abort records disagree")
         if _e03_004_failure_signature(normalized["failure"]) != _e03_004_failure_signature(row.get("failure")):
+            raise RuntimeError(f"{experiment_id} parent terminal abort records disagree")
+        return
+    if parent == "E03-005":
+        if not isinstance(evidence, Mapping):
+            raise RuntimeError(f"{experiment_id} parent terminal abort artifact is invalid")
+        normalized = _normalized_e03_005_failure_diagnostic(evidence)
+        matching = [row for row in rows if isinstance(row, Mapping) and row.get("experiment_id") == parent]
+        required = {
+            "experiment_id": parent,
+            "status": "failed_inner_implementation",
+            "scores_recorded": False,
+            "training_started": True,
+            "cache_written": False,
+            "partial_inner_oof_logistic_completed": True,
+            "terminal_metrics_recorded": False,
+            "replay_permitted": False,
+        }
+        if len(matching) != 1 or any(
+            matching[0].get(key) != value or type(matching[0].get(key)) is not type(value)
+            for key, value in required.items()
+        ):
+            raise RuntimeError(f"{experiment_id} parent terminal abort registry is invalid")
+        row = matching[0]
+        if normalized["code_sha"] != row.get("code_sha"):
+            raise RuntimeError(f"{experiment_id} parent terminal abort records disagree")
+        signature = _e03_005_failure_signature(normalized["failure"])
+        if signature != _e03_005_failure_signature(row.get("failure")):
+            raise RuntimeError(f"{experiment_id} parent terminal abort records disagree")
+        if signature is None:
             raise RuntimeError(f"{experiment_id} parent terminal abort records disagree")
         return
     else:

@@ -156,16 +156,17 @@ def test_e03_plan_validation_accepts_real_json_roundtrip_for_retry():
     assert e03.validate_e03_plan(persisted, experiment_id="E03-002") == "a" * 40
 
 
-def test_e03_experiment_chain_registers_e03_005_only_as_e03_004_child():
-    """The semantic repair gets one new immutable child, never a reused E03-004."""
+def test_e03_experiment_chain_registers_e03_006_only_as_e03_005_child():
+    """The cap-policy repair gets one new immutable child, never a reused E03-005."""
     from src.pipeline.challenger import e03
 
     with pytest.raises(ValueError, match="registered"):
-        e03._plan_payload("a" * 40, experiment_id="E03-006", derived_from="E03-005")
+        e03._plan_payload("a" * 40, experiment_id="E03-007", derived_from="E03-006")
     with pytest.raises(ValueError, match="derived_from"):
         e03._plan_payload("a" * 40, experiment_id="E03-003", derived_from="E03-001")
     assert e03._plan_payload("a" * 40, experiment_id="E03-003", derived_from="E03-002")["derived_from"] == "E03-002"
     assert e03._plan_payload("a" * 40, experiment_id="E03-005", derived_from="E03-004")["derived_from"] == "E03-004"
+    assert e03._plan_payload("a" * 40, experiment_id="E03-006", derived_from="E03-005")["derived_from"] == "E03-005"
 
 
 def test_e03_retry_rationale_names_its_direct_aborted_parent():
@@ -471,6 +472,46 @@ def test_e03_005_requires_matching_e03_004_inner_implementation_failure(tmp_path
     with pytest.raises(RuntimeError, match="records disagree"):
         e03._require_terminal_parent_abort(tmp_path, experiment_id="E03-005")
 
+
+def test_e03_006_requires_the_real_e03_005_terminal_failure_schema(tmp_path: Path):
+    """E03-006 may retry only the recorded empty-cap policy branch failure."""
+    from src.pipeline.challenger import e03
+
+    diagnostic = {
+        "experiment_id": "E03-005", "status": "failed_inner_implementation",
+        "plan_code_sha": "a" * 40,
+        "failure": "Inner control-arm policy selection passed empty subject_cap_grid to select_event_policy; incumbent runner instead uses select_event_threshold when this grid is empty.",
+        "fold_reached": 0, "training_started": True,
+        "partial_inner_oof_logistic_completed": True,
+        "hard_negative_mining_completed": True,
+        "control_arm_completed": False, "comparison_arms_completed": False,
+        "terminal_metrics_recorded": False, "scores_recorded": False,
+        "cache_written": False, "outer_validation_accessed": False,
+        "replay_permitted": False,
+    }
+    artifact = tmp_path / "outputs" / "challenger_70" / "experiments" / "E03-005" / "failure_diagnostic.json"
+    artifact.parent.mkdir(parents=True)
+    artifact.write_text(json.dumps(diagnostic), encoding="utf-8")
+    registry = tmp_path / "outputs" / "challenger_70" / "experiment_registry.jsonl"
+    registry.parent.mkdir(parents=True, exist_ok=True)
+    registry.write_text(json.dumps({"code_sha": "a" * 40, **diagnostic}) + "\n", encoding="utf-8")
+
+    # Persisted evidence is JSON, so this exercises the real artifact boundary.
+    e03._require_terminal_parent_abort(tmp_path, experiment_id="E03-006")
+    diagnostic["hard_negative_mining_completed"] = False
+    artifact.write_text(json.dumps(diagnostic), encoding="utf-8")
+    with pytest.raises(RuntimeError, match="artifact is invalid"):
+        e03._require_terminal_parent_abort(tmp_path, experiment_id="E03-006")
+
+
+def test_e03_006_plan_is_a_fixed_e03_005_retry_for_empty_subject_cap_grid():
+    """Changing the retry parent or rationale would authorize the wrong repair."""
+    from src.pipeline.challenger import e03
+
+    plan = json.loads(json.dumps(e03._plan_payload("a" * 40, experiment_id="E03-006", derived_from="E03-005")))
+    assert plan["derived_from"] == "E03-005"
+    assert "empty subject_cap_grid" in plan["derivation_rationale"]
+    assert e03.validate_e03_plan(plan, experiment_id="E03-006") == "a" * 40
 
 def test_e03_004_preflight_roundtrips_real_plan_without_loading_or_fitting(monkeypatch, tmp_path: Path):
     """Preflight validates the committed E03-004 chain but creates no result/cache or fit side effect."""
