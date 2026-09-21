@@ -115,6 +115,17 @@ def test_terminal_registry_is_atomic_append_only_and_rejects_duplicate_id(tmp_pa
         append_e03_terminal_registry(tmp_path, {"status": "complete", "passed": True}, code_sha="a" * 40)
 
 
+def test_terminal_registry_preserves_prior_rows_byte_for_byte(tmp_path: Path):
+    """Atomic append must never reserialize older experiment evidence."""
+    from src.pipeline.challenger.e03 import append_e03_terminal_registry
+    registry = tmp_path / "outputs" / "challenger_70" / "experiment_registry.jsonl"
+    registry.parent.mkdir(parents=True)
+    prior = '{"code_sha":"old","experiment_id":"E00","status":"complete"}\n'
+    registry.write_text(prior, encoding="utf-8", newline="\n")
+    append_e03_terminal_registry(tmp_path, {"status": "stopped_inner_gate", "passed": False}, code_sha="a" * 40)
+    assert registry.read_text(encoding="utf-8").startswith(prior)
+
+
 def test_terminal_registry_refuses_a_concurrent_e03_lock(tmp_path: Path):
     """A stale/concurrent writer must fail closed instead of racing duplicate checks."""
     from src.pipeline.challenger.e03 import append_e03_terminal_registry

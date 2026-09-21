@@ -374,16 +374,19 @@ def append_e03_terminal_registry(
     try:
         os.write(descriptor, f"pid={os.getpid()}\n".encode("ascii"))
         os.close(descriptor)
+        existing_bytes = b""
         existing: list[dict[str, object]] = []
         if path.exists():
-            existing = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+            existing_bytes = path.read_bytes()
+            existing = [json.loads(line) for line in existing_bytes.decode("utf-8").splitlines() if line.strip()]
         if any(row.get("experiment_id") == experiment_id for row in existing):
             raise RuntimeError("terminal E03 registry row already exists")
         row = {"experiment_id": experiment_id, "code_sha": code_sha, **dict(report)}
-        content = "".join(json.dumps(item, sort_keys=True) + "\n" for item in (*existing, row))
+        separator = b"" if not existing_bytes or existing_bytes.endswith(b"\n") else b"\n"
+        content = existing_bytes + separator + (json.dumps(row, sort_keys=True) + "\n").encode("utf-8")
         temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
         try:
-            temporary.write_text(content, encoding="utf-8", newline="\n")
+            temporary.write_bytes(content)
             temporary.replace(path)
         finally:
             temporary.unlink(missing_ok=True)
