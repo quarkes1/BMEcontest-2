@@ -93,9 +93,34 @@ def test_preflight_abort_freezes_no_score_terminal_evidence(monkeypatch, tmp_pat
     assert evidence["scores_recorded"] is False
     assert evidence["training_started"] is False
     assert evidence["cache_written"] is False
+    assert evidence["historical_terminal"] is True
+    assert evidence["replay_permitted"] is False
     assert "n_tp" not in evidence
     with pytest.raises(RuntimeError, match="immutable"):
         e03.record_e03_preflight_abort(tmp_path, output, failure="different")
+
+
+def test_e03_plan_validation_rejects_copied_id_or_missing_retry_lineage():
+    """An E03-001 plan copied to E03-002 must fail before identity or data access."""
+    from src.pipeline.challenger import e03
+
+    plan = e03._plan_payload("a" * 40, experiment_id="E03-001", derived_from="E02-005")
+    with pytest.raises(RuntimeError, match="experiment_id"):
+        e03.validate_e03_plan(plan, experiment_id="E03-002")
+    retry = e03._plan_payload("a" * 40, experiment_id="E03-002", derived_from="E03-001")
+    retry["derived_from"] = "E02-005"
+    with pytest.raises(RuntimeError, match="lineage"):
+        e03.validate_e03_plan(retry, experiment_id="E03-002")
+
+
+def test_e03_plan_validation_rejects_protocol_drift_before_execution():
+    """Changing v1 width/mining/config contract is not a valid E03 retry."""
+    from src.pipeline.challenger import e03
+
+    plan = e03._plan_payload("a" * 40, experiment_id="E03-002", derived_from="E03-001")
+    plan["feature_version"] = "v2"
+    with pytest.raises(RuntimeError, match="protocol"):
+        e03.validate_e03_plan(plan, experiment_id="E03-002")
 
 
 def test_cache_identity_binds_namespace_config_code_and_input_fingerprints():

@@ -313,6 +313,25 @@ def _plan_payload(code_sha: str, *, root: Path | None = None, experiment_id: str
     }
 
 
+def validate_e03_plan(plan: Mapping[str, object], *, experiment_id: str) -> str:
+    """Fail closed on ID, lineage, or any registered E03 v1 protocol drift."""
+    experiment_id = _validate_experiment_id(experiment_id)
+    if plan.get("experiment_id") != experiment_id:
+        raise RuntimeError("E03 plan experiment_id does not match requested output")
+    try:
+        lineage = _validate_lineage(experiment_id, plan.get("derived_from") if isinstance(plan.get("derived_from"), str) else None)
+    except ValueError as exc:
+        raise RuntimeError("E03 plan lineage is invalid") from exc
+    code_sha = plan.get("code_sha")
+    if not isinstance(code_sha, str) or not re.fullmatch(r"[0-9a-f]{40}", code_sha):
+        raise RuntimeError("E03 plan has an invalid code SHA")
+    expected = _plan_payload(code_sha, experiment_id=experiment_id, derived_from=lineage)
+    normalized = json.loads(json.dumps(plan, ensure_ascii=False, sort_keys=True))
+    if normalized != expected:
+        raise RuntimeError("E03 plan protocol does not match the registered v1 contract")
+    return code_sha
+
+
 def write_e03_preregistration(
     root: Path, output: Path, *, code_sha: str | None = None,
     experiment_id: str = E03_ID, derived_from: str | None = None,
@@ -327,7 +346,7 @@ def write_e03_preregistration(
         _require_e03_environment(root)
         try:
             existing = json.loads(plan.read_text(encoding="utf-8"))
-            plan_sha = str(existing["code_sha"])
+            plan_sha = validate_e03_plan(existing, experiment_id=experiment_id)
         except (OSError, json.JSONDecodeError, KeyError, TypeError) as exc:
             raise RuntimeError("E03 preregistration is immutable") from exc
         if code_sha is not None and code_sha != plan_sha:
@@ -419,7 +438,9 @@ def record_e03_preflight_abort(root: Path, output: Path, *, failure: str,
     evidence = {
         "experiment_id": experiment_id, "status": "aborted_preflight", "plan_code_sha": plan.get("code_sha"),
         "abort_code_sha": _git_sha(root), "failure": failure.strip(), "scores_recorded": False,
-        "training_started": False, "cache_written": False,
+        "training_started": False, "cache_written": False, "historical_terminal": True,
+        "replay_permitted": False,
+        "replay_reason": "source changed after preregistration; this terminal abort is historical evidence only",
     }
     _atomic_json(target, evidence)
     try:
@@ -557,7 +578,8 @@ def run_e03_inner_gate(root: Path, output: Path, *, workers: int,
     if not plan_path.exists():
         raise RuntimeError("E03 requires a committed immutable preregistration before the gate")
     plan = json.loads(plan_path.read_text(encoding="utf-8"))
-    code_sha = verify_e03_code_identity(root, output, str(plan.get("code_sha")))
+    plan_sha = validate_e03_plan(plan, experiment_id=experiment_id)
+    code_sha = verify_e03_code_identity(root, output, plan_sha)
     before = protected_snapshot(root)
     source = assert_e03_outer_validation_inaccessible(source_factory(root))
     folds, control_rows, hard_rows = [], [], []
