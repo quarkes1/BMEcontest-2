@@ -1,0 +1,52 @@
+{
+  "cache_inspection": {
+    "cache_root": "cache/challenger_70/e03",
+    "cache_root_exists_at_failure_freeze": false,
+    "cache_written": false
+  },
+  "code_sha": "cdc2f95cb7193589ae08c860ee46a28092cfbaf0",
+  "diagnostic_scope": "OuterTrainOnlyData only; no outer-validation rows, truths, scores, or artifacts were opened or created by this diagnostic.",
+  "experiment_id": "E03-004",
+  "failure": "hard_negative._validate_features rejected canonical Context-v1 NaNs outside legacy columns 0 and 41 after the fold-0 logistic inner-OOF scores had been computed in memory.",
+  "feature_contract_comparison": {
+    "incumbent": "runner._validate_imputable_features permits NaN and rejects only +/-Inf and, for candidate-control training, all-missing columns. Both incumbent verifier pipelines begin with fold-fitted SimpleImputer(strategy='median'); logistic uses keep_empty_features=True.",
+    "miner_at_failure": "hard_negative._validate_features permitted NaN only at legacy macro_mean (0) and micro_mean (41), contradicting the 116D Context-v1 surface appended to those legacy features."
+  },
+  "nonfinite_classification": "All observed nonfinite values were NaN; no +/-Inf was found. They are canonical label-free Context-v1 missingness, not data corruption or leakage: Context-v1 deliberately emits NaN for empty local regions, undefined comparison differences, absent neighbouring runs, zero-mass candidate shape, and unavailable half-window comparison.",
+  "observed_context_columns": {
+    "56-59": "macro pre summary (empty pre region)",
+    "60-63": "macro candidate summary (no finite macro probabilities in candidate)",
+    "64-67": "macro post summary (empty post region)",
+    "68-71": "macro candidate-minus-pre summaries (undefined when either summary is missing)",
+    "72-75": "macro candidate-minus-post summaries (undefined when either summary is missing)",
+    "81": "macro neighbour maximum duration (no neighbouring run)",
+    "82": "macro preceding-run distance (no preceding run)",
+    "83": "macro following-run distance (no following run)",
+    "84": "macro candidate centre-half mass fraction (zero mass)",
+    "85": "macro candidate first-minus-second mean (one half unavailable)",
+    "86-89": "micro pre summary (empty pre region)",
+    "94-97": "micro post summary (empty post region)",
+    "98-101": "micro candidate-minus-pre summaries (undefined when either summary is missing)",
+    "102-105": "micro candidate-minus-post summaries (undefined when either summary is missing)",
+    "111": "micro neighbour maximum duration (no neighbouring run)",
+    "112": "micro preceding-run distance (no preceding run)",
+    "113": "micro following-run distance (no following run)"
+  },
+  "outer_train_fold_counts": [
+    {"fold": 0, "candidate_rows": 993, "nan_cells": 9064, "infinite_cells": 0, "rows_with_nan": 884, "nan_by_column": {"56-59": 201, "60-63": 87, "64-67": 205, "68-71": 259, "72-75": 257, "81": 328, "82": 575, "83": 587, "84": 87, "85": 111, "86-89": 156, "94-97": 162, "98-101": 156, "102-105": 162, "111": 95, "112": 339, "113": 362}},
+    {"fold": 1, "candidate_rows": 1022, "nan_cells": 7822, "infinite_cells": 0, "rows_with_nan": 918, "nan_by_column": {"56-59": 178, "60-63": 71, "64-67": 162, "68-71": 224, "72-75": 205, "81": 376, "82": 621, "83": 630, "84": 71, "85": 121, "86-89": 123, "94-97": 122, "98-101": 123, "102-105": 122, "111": 77, "112": 304, "113": 302}},
+    {"fold": 2, "candidate_rows": 950, "nan_cells": 8751, "infinite_cells": 0, "rows_with_nan": 859, "nan_by_column": {"56-59": 183, "60-63": 75, "64-67": 199, "68-71": 240, "72-75": 246, "81": 326, "82": 548, "83": 586, "84": 75, "85": 94, "86-89": 146, "94-97": 169, "98-101": 146, "102-105": 169, "111": 123, "112": 346, "113": 361}},
+    {"fold": 3, "candidate_rows": 940, "nan_cells": 9182, "infinite_cells": 0, "rows_with_nan": 848, "nan_by_column": {"56-59": 206, "60-63": 84, "64-67": 202, "68-71": 261, "72-75": 259, "81": 317, "82": 544, "83": 571, "84": 84, "85": 110, "86-89": 165, "94-97": 175, "98-101": 165, "102-105": 175, "111": 97, "112": 335, "113": 356}},
+    {"fold": 4, "candidate_rows": 930, "nan_cells": 9568, "infinite_cells": 0, "rows_with_nan": 846, "nan_by_column": {"56-59": 213, "60-63": 94, "64-67": 214, "68-71": 273, "72-75": 266, "81": 340, "82": 556, "83": 579, "84": 94, "85": 122, "86-89": 173, "94-97": 183, "98-101": 173, "102-105": 183, "111": 109, "112": 331, "113": 349}}
+  ],
+  "partial_execution": {
+    "fold_reached": 0,
+    "logistic_inner_oof_completed_in_memory": true,
+    "hard_negative_mining_completed": false,
+    "comparison_arms_completed": false,
+    "terminal_metrics_recorded": false
+  },
+  "scores_recorded": false,
+  "status": "failed_inner_implementation",
+  "training_started": true
+}
