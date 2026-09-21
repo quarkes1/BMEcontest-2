@@ -211,6 +211,9 @@ def _margin_summary(rows: Sequence[Mapping[str, object]]) -> dict[str, object]:
 
 def summarize_verifier_audits(audits: Sequence[Mapping[str, object]]) -> dict[str, object]:
     """Summarize descriptive fixed diagnostics without fitting or scoring anything."""
+    audit_folds = [audit.get("fold") for audit in audits]
+    if len(audits) != 5 or set(audit_folds) != set(range(5)):
+        raise ValueError("E04 summary requires five distinct folds 0 through 4")
     analysis = [row for audit in audits for row in audit.get("analysis_rows", ()) if isinstance(row, Mapping)]
     groups = ("best_iou_fn", "best_score_fn", "tp_reference", "fp_reference")
     by_group = {group: [row for row in analysis if row.get("group") == group] for group in groups}
@@ -220,44 +223,6 @@ def summarize_verifier_audits(audits: Sequence[Mapping[str, object]]) -> dict[st
         "per_fold": {str(fold): {group: _margin_summary([row for row in rows if int(row["fold"]) == fold])
                                   for group, rows in by_group.items()} for fold in folds},
     }
-    flags: Counter[str] = Counter()
-    contexts: dict[str, list[float]] = defaultdict(list)
-    mechanisms: Counter[str] = Counter()
-    for audit in audits:
-        tp = [row for row in audit.get("tp_reference", ()) if isinstance(row, Mapping)]
-        fp = [row for row in audit.get("fp_reference", ()) if isinstance(row, Mapping)]
-        for row in audit.get("best_iou_witnesses", ()) + audit.get("best_score_witnesses", ()):
-            if isinstance(row, Mapping):
-                mechanisms.update(_mechanisms(row, tp, fp))
-        for row in audit.get("analysis_rows", ()):
-            if isinstance(row, Mapping):
-                for name in ("lr_context", "lgbm_context"):
-                    contexts[name].append(float(row[name]))
-    flags["flagged"] = sum(
-        bool(row.get("disagreement_flag", abs(float(row["logistic_score"]) - float(row["lgbm_score"])) >= .20))
-        for row in analysis
-    )
-    flags["unflagged"] = len(analysis) - flags["flagged"]
-    feature_report: dict[str, object] = {}
-    for feature in _FEATURE_COLUMNS:
-        signs: list[int] = []
-        per_fold: dict[str, object] = {}
-        for audit in audits:
-            fold = str(audit.get("fold"))
-            fn = [row for row in audit.get("best_score_witnesses", ()) if isinstance(row, Mapping)]
-            fp = [row for row in audit.get("fp_reference", ()) if isinstance(row, Mapping)]
-            left, right = _quantile(fn, feature, .5), _quantile(fp, feature, .5)
-            fn_dist, fp_dist = _distribution(fn, feature), _distribution(fp, feature)
-            sign: int | None = None
-            if left is not None and right is not None:
-                sign = 1 if left > right else -1 if left < right else 0
-                signs.append(sign)
-            per_fold[fold] = {"fn": fn_dist, "fp": fp_dist, "fn_minus_fp_median": None if sign is None else left - right,
-                              "sign": sign}
-        positive, negative = signs.count(1), signs.count(-1)
-        direction = "stable_descriptive" if max(positive, negative) >= 4 else "inconsistent_or_unsupported"
-        feature_report[feature] = {"per_fold": per_fold, "nonempty_folds": len(signs), "positive": positive,
-                                   "negative": negative, "zero": signs.count(0), "direction": direction}
     contribution_fields = ("lr_base", "lr_context", "lr_bias", "lgbm_base", "lgbm_context", "lgbm_bias")
     contribution = {
         "pooled": {group: {field: _distribution(rows, field) for field in contribution_fields}
@@ -316,4 +281,4 @@ def summarize_verifier_audits(audits: Sequence[Mapping[str, object]]) -> dict[st
         separability[witness_name] = feature_views
     return {"score_margin_analysis": margin_analysis, "lr_lgbm_disagreement": disagreement,
             "context_contribution": contribution, "mechanisms": mechanism_summary,
-            "separability_by_witness": separability, "feature_separability": feature_report}
+            "separability_by_witness": separability}

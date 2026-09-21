@@ -77,7 +77,7 @@ def test_summary_uses_fixed_bins_flags_and_fold_sign_rule():
     assert summary["score_margin_analysis"]["pooled"]["best_score_fn"]["bins"]["deep_below"] == 1
     assert summary["score_margin_analysis"]["pooled"]["best_score_fn"]["bins"]["below_0_05_to_0"] == 1
     assert summary["lr_lgbm_disagreement"]["pooled"]["best_score_fn"]["flagged"] == 5
-    assert summary["feature_separability"]["base_00"]["direction"] == "inconsistent_or_unsupported"
+    assert summary["separability_by_witness"]["best_score"]["base_00"]["direction"] == "inconsistent_or_unsupported"
 
 
 def test_tp_reference_keeps_official_truth_provenance_and_source_support(monkeypatch):
@@ -99,12 +99,17 @@ def test_summary_separates_witness_denominators_and_has_no_mixed_unit_aliases():
     from src.pipeline.challenger.verifier_audit import summarize_verifier_audits
     witness = {"fold": 0, "margin": -.02, "logistic_score": .1, "lgbm_score": .35,
                "lr_base": 1., "lr_context": -1., "lgbm_base": 1., "lgbm_context": -1., "base_00": 1.}
-    summary = summarize_verifier_audits([{"fold": 0, "analysis_rows": [], "tp_reference": [], "fp_reference": [],
-                                         "best_iou_witnesses": [witness], "best_score_witnesses": [witness]}])
+    audits = []
+    for fold in range(5):
+        row = dict(witness, fold=fold)
+        audits.append({"fold": fold, "analysis_rows": [], "tp_reference": [], "fp_reference": [],
+                       "best_iou_witnesses": [row], "best_score_witnesses": [row]})
+    summary = summarize_verifier_audits(audits)
 
-    assert summary["mechanisms"]["best_iou"]["pooled"]["denominator"] == 1
-    assert summary["mechanisms"]["best_score"]["pooled"]["denominator"] == 1
+    assert summary["mechanisms"]["best_iou"]["pooled"]["denominator"] == 5
+    assert summary["mechanisms"]["best_score"]["pooled"]["denominator"] == 5
     assert "margin_bins" not in summary and "signed_lr_minus_lgbm" not in summary
+    assert "feature_separability" not in summary
 
 
 def test_audit_rejects_nonofficial_pair_or_duplicate_final_ledger_coordinate(monkeypatch):
@@ -120,3 +125,20 @@ def test_audit_rejects_nonofficial_pair_or_duplicate_final_ledger_coordinate(mon
     duplicated[3]["final_event_index"] = 0
     with pytest.raises(RuntimeError, match="duplicate final-event"):
         verifier_audit.audit_verifier_trace(replace(trace, candidate_rows=tuple(duplicated)))
+
+
+def test_summary_requires_exactly_five_distinct_folds_and_four_fold_sign_gate():
+    """A stable descriptive sign is meaningful only across the sealed five-fold population."""
+    from src.pipeline.challenger.verifier_audit import summarize_verifier_audits
+    with pytest.raises(ValueError, match="five distinct"):
+        summarize_verifier_audits([{"fold": 0, "analysis_rows": [], "tp_reference": [], "fp_reference": [],
+                                    "best_iou_witnesses": [], "best_score_witnesses": []}])
+    audits = []
+    for fold in range(5):
+        fn = {"fold": fold, "base_00": 2.0, "margin": -.1, "logistic_score": .1, "lgbm_score": .1,
+              "lr_base": 0., "lr_context": 0., "lgbm_base": 0., "lgbm_context": 0.}
+        fp = {"fold": fold, "base_00": 1.0}
+        audits.append({"fold": fold, "analysis_rows": [], "tp_reference": [fp], "fp_reference": [fp],
+                       "best_iou_witnesses": [fn], "best_score_witnesses": [fn]})
+    result = summarize_verifier_audits(audits)
+    assert result["separability_by_witness"]["best_score"]["base_00"]["direction"] == "stable_descriptive"
