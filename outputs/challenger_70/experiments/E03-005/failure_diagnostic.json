@@ -1,0 +1,17 @@
+{
+  "experiment_id": "E03-005",
+  "status": "failed_inner_implementation",
+  "plan_code_sha": "05d39be706bbf8398d103d26fe91e770ffec07b3",
+  "failure": "Inner control-arm policy selection passed empty subject_cap_grid to select_event_policy; incumbent runner instead uses select_event_threshold when this grid is empty.",
+  "fold_reached": 0,
+  "training_started": true,
+  "partial_inner_oof_logistic_completed": true,
+  "hard_negative_mining_completed": true,
+  "control_arm_completed": false,
+  "comparison_arms_completed": false,
+  "terminal_metrics_recorded": false,
+  "scores_recorded": false,
+  "cache_written": false,
+  "outer_validation_accessed": false,
+  "replay_permitted": false
+}
