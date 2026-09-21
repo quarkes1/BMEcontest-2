@@ -40,8 +40,8 @@ E03_NUMPY_VERSION = "2.4.6"
 
 
 def _validate_experiment_id(experiment_id: str) -> str:
-    if not re.fullmatch(r"E03-\d{3}", experiment_id):
-        raise ValueError("E03 experiment_id must be E03-NNN")
+    if experiment_id not in {"E03-001", "E03-002", "E03-003"}:
+        raise ValueError("E03 experiment_id is not registered")
     return experiment_id
 
 
@@ -50,8 +50,9 @@ def _validate_lineage(experiment_id: str, derived_from: str | None) -> str:
         if derived_from not in (None, "E02-005"):
             raise ValueError("E03-001 lineage is fixed to E02-005")
         return "E02-005"
-    if derived_from != E03_ID:
-        raise ValueError("new E03 experiment requires derived_from='E03-001'")
+    expected = "E03-001" if experiment_id == "E03-002" else "E03-002"
+    if derived_from != expected:
+        raise ValueError(f"{experiment_id} requires derived_from='{expected}'")
     return derived_from
 
 
@@ -325,7 +326,10 @@ def validate_e03_plan(plan: Mapping[str, object], *, experiment_id: str) -> str:
     code_sha = plan.get("code_sha")
     if not isinstance(code_sha, str) or not re.fullmatch(r"[0-9a-f]{40}", code_sha):
         raise RuntimeError("E03 plan has an invalid code SHA")
-    expected = _plan_payload(code_sha, experiment_id=experiment_id, derived_from=lineage)
+    expected = json.loads(json.dumps(
+        _plan_payload(code_sha, experiment_id=experiment_id, derived_from=lineage),
+        ensure_ascii=False, sort_keys=True,
+    ))
     normalized = json.loads(json.dumps(plan, ensure_ascii=False, sort_keys=True))
     if normalized != expected:
         raise RuntimeError("E03 plan protocol does not match the registered v1 contract")

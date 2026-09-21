@@ -123,6 +123,25 @@ def test_e03_plan_validation_rejects_protocol_drift_before_execution():
         e03.validate_e03_plan(plan, experiment_id="E03-002")
 
 
+def test_e03_plan_validation_accepts_real_json_roundtrip_for_retry():
+    """Plans are persisted as JSON, so tuple/list representation must not cause a false abort."""
+    from src.pipeline.challenger import e03
+
+    persisted = json.loads(json.dumps(e03._plan_payload("a" * 40, experiment_id="E03-002", derived_from="E03-001")))
+    assert e03.validate_e03_plan(persisted, experiment_id="E03-002") == "a" * 40
+
+
+def test_e03_experiment_chain_rejects_unregistered_id_or_wrong_e03_003_lineage():
+    """Only the explicitly registered retry chain can create a new plan."""
+    from src.pipeline.challenger import e03
+
+    with pytest.raises(ValueError, match="registered"):
+        e03._plan_payload("a" * 40, experiment_id="E03-004", derived_from="E03-003")
+    with pytest.raises(ValueError, match="derived_from"):
+        e03._plan_payload("a" * 40, experiment_id="E03-003", derived_from="E03-001")
+    assert e03._plan_payload("a" * 40, experiment_id="E03-003", derived_from="E03-002")["derived_from"] == "E03-002"
+
+
 def test_cache_identity_binds_namespace_config_code_and_input_fingerprints():
     """Omitting any source input signature could reuse a cache after train data changed."""
     from src.pipeline.challenger.e03 import e03_cache_key, registered_e03_config
