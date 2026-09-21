@@ -105,7 +105,12 @@ hard = high | near | disagreement | dense
 weights = np.where(hard, 2.0, 1.0).astype(np.float64)
 ```
 
-Validate equal non-empty candidate/feature/label/group/score lengths, exact 116 feature width, binary labels, finite scores and valid intervals.  Permit NaN only at the two registered feature reads and replace exactly those missing entries with zero.  Calculate centers as float64 from candidates, never compare candidates from different sessions, and count other rows only.
+Validate equal non-empty candidate/feature/label/group/score lengths, exact 116 feature width, binary labels, finite scores and valid intervals.  Permit the incumbent's canonical Context-v1 NaNs anywhere in the 116D feature matrix, reject +/-Inf and all-missing columns exactly as the candidate-control verifier fit does, and replace NaN with zero only when reading the two registered disagreement inputs.  Calculate centers as float64 from candidates, never compare candidates from different sessions, and count other rows only.
+
+Implementation correction after frozen `E03-004`: Context-v1 deliberately emits
+NaN for unavailable session-local summaries and the incumbent folds them with a
+fold-fitted median imputer.  The prior wording incorrectly limited missingness
+to columns 0 and 41, which rejected the canonical v1 matrix before mining.
 
 - [ ] **Step 4: Run GREEN.**
 

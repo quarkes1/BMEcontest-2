@@ -277,6 +277,38 @@ def test_disagreement_uses_exact_v1_indices_and_missing_zero_semantics():
     assert result.category_mask["disagreement"].tolist() == [True, True]
 
 
+def test_miner_accepts_canonical_context_v1_missingness_but_not_infinity():
+    """The frozen 116D verifier surface has imputer-owned Context-v1 NaNs.
+
+    Restricting missingness to the two legacy mining reads rejects the same
+    matrix accepted by the incumbent verifier before it can mine a weight.
+    Infinity remains invalid because neither the incumbent imputer nor E03
+    defines a semantic repair for it.
+    """
+    from src.pipeline.challenger.hard_negative import mine_hard_negatives
+
+    evidence = _evidence(scores=[.10, .10], labels=[0, 0])
+    evidence.v1_features[0, 56] = np.nan
+    evidence.v1_features[1, 83] = np.nan
+
+    assert mine_hard_negatives(evidence).sample_weight.tolist() == [1.0, 1.0]
+
+    evidence.v1_features[0, 56] = np.inf
+    with pytest.raises(ValueError, match="finite or NaN"):
+        mine_hard_negatives(evidence)
+
+
+def test_miner_rejects_an_all_missing_feature_column_like_incumbent_training():
+    """A globally empty column is unsafe for the registered candidate-control fit."""
+    from src.pipeline.challenger.hard_negative import mine_hard_negatives
+
+    evidence = _evidence(scores=[.10, .10], labels=[0, 0])
+    evidence.v1_features[:, 56] = np.nan
+
+    with pytest.raises(ValueError, match="all-missing"):
+        mine_hard_negatives(evidence)
+
+
 def test_miner_preserves_canonical_input_order_when_rows_are_permuted():
     """Sorting rows inside the miner would sever weights from canonical raw-union rows."""
     from src.pipeline.challenger.hard_negative import HardNegativeEvidence, mine_hard_negatives

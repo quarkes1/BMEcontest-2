@@ -134,15 +134,16 @@ def test_e03_plan_validation_accepts_real_json_roundtrip_for_retry():
     assert e03.validate_e03_plan(persisted, experiment_id="E03-002") == "a" * 40
 
 
-def test_e03_experiment_chain_rejects_unregistered_id_or_wrong_e03_003_lineage():
-    """Only the explicitly registered retry chain can create a new plan."""
+def test_e03_experiment_chain_registers_e03_005_only_as_e03_004_child():
+    """The semantic repair gets one new immutable child, never a reused E03-004."""
     from src.pipeline.challenger import e03
 
     with pytest.raises(ValueError, match="registered"):
-        e03._plan_payload("a" * 40, experiment_id="E03-005", derived_from="E03-004")
+        e03._plan_payload("a" * 40, experiment_id="E03-006", derived_from="E03-005")
     with pytest.raises(ValueError, match="derived_from"):
         e03._plan_payload("a" * 40, experiment_id="E03-003", derived_from="E03-001")
     assert e03._plan_payload("a" * 40, experiment_id="E03-003", derived_from="E03-002")["derived_from"] == "E03-002"
+    assert e03._plan_payload("a" * 40, experiment_id="E03-005", derived_from="E03-004")["derived_from"] == "E03-004"
 
 
 def test_e03_retry_rationale_names_its_direct_aborted_parent():
@@ -391,6 +392,32 @@ def test_e03_004_is_the_only_next_retry_and_requires_e03_003_terminal_parent(tmp
     registry.parent.mkdir(parents=True, exist_ok=True)
     registry.write_text(json.dumps({"code_sha": "a" * 40, **terminal}) + "\n", encoding="utf-8")
     e03._require_terminal_parent_abort(tmp_path, experiment_id="E03-004")
+
+
+def test_e03_005_requires_matching_e03_004_inner_implementation_failure(tmp_path: Path):
+    """E03-005 may follow only the frozen failed inner run, not a made-up abort."""
+    from src.pipeline.challenger import e03
+
+    terminal = {
+        "experiment_id": "E03-004", "status": "failed_inner_implementation",
+        "code_sha": "a" * 40,
+        "scores_recorded": False, "training_started": True, "cache_written": False,
+        "partial_inner_oof_logistic_completed": True, "terminal_metrics_recorded": False,
+        "replay_permitted": False,
+        "failure": "canonical Context-v1 NaNs were rejected after in-memory logistic OOF",
+    }
+    evidence = tmp_path / "outputs" / "challenger_70" / "experiments" / "E03-004" / "failure_diagnostic.json"
+    evidence.parent.mkdir(parents=True)
+    evidence.write_text(json.dumps(terminal), encoding="utf-8")
+    registry = tmp_path / "outputs" / "challenger_70" / "experiment_registry.jsonl"
+    registry.parent.mkdir(parents=True, exist_ok=True)
+    registry.write_text(json.dumps({"code_sha": "a" * 40, **terminal}) + "\n", encoding="utf-8")
+
+    e03._require_terminal_parent_abort(tmp_path, experiment_id="E03-005")
+    terminal["code_sha"] = "b" * 40
+    evidence.write_text(json.dumps(terminal), encoding="utf-8")
+    with pytest.raises(RuntimeError, match="records disagree"):
+        e03._require_terminal_parent_abort(tmp_path, experiment_id="E03-005")
 
 
 def test_e03_004_preflight_roundtrips_real_plan_without_loading_or_fitting(monkeypatch, tmp_path: Path):

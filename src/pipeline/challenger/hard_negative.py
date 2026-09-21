@@ -116,10 +116,15 @@ def _validate_features(values: object, *, size: int) -> np.ndarray:
         raise ValueError("v1_features must be numeric") from exc
     if features.ndim != 2 or features.shape != (size, _FEATURE_WIDTH):
         raise ValueError(f"v1_features must align with candidates and have width {_FEATURE_WIDTH}")
-    permitted_missing = np.zeros(features.shape, dtype=bool)
-    permitted_missing[:, (_MACRO_MEAN_INDEX, _MICRO_MEAN_INDEX)] = True
-    if np.isinf(features).any() or np.isnan(features[~permitted_missing]).any():
-        raise ValueError("v1_features must be finite except NaN at registered evidence columns")
+    # Context-v1 deliberately represents unavailable session-local summaries,
+    # comparisons and run geometry as NaN.  The frozen incumbent verifier
+    # consumes that exact 116D surface with a fold-fitted median imputer; E03
+    # must validate the same contract rather than narrowing it to its two
+    # legacy mining reads.  Only those two reads use nan_to_num below.
+    if np.isinf(features).any():
+        raise ValueError("v1_features must be finite or NaN; +/-Inf is invalid")
+    if np.isnan(features).all(axis=0).any():
+        raise ValueError("v1_features must not contain all-missing columns")
     return features
 
 
