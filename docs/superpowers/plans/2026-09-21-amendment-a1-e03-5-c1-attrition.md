@@ -24,14 +24,15 @@
 ### Task 1: Pure layered attrition and counterfactual evaluator
 
 **Files:**
+- Modify: `src/pipeline/challenger/replay.py` (`ReplayTrace` gains the attested policy metadata; incumbent replay logic is unchanged)
 - Create: `src/pipeline/challenger/c1_attrition.py`
 - Test: `tests/pipeline/test_challenger_c1_attrition.py`
 
 **Interfaces:**
-- Consumes `ReplayTrace`, `classify_false_negatives`, `CandidateAdmissionConfig`, canonical candidate-control/event-policy primitives.
+- Consumes `ReplayTrace` including its exact attested `bundle.policy`, `classify_false_negatives`, `CandidateAdmissionConfig`, canonical candidate-control/event-policy primitives.
 - Produces `audit_trace(trace: ReplayTrace) -> dict[str, object]` with truth/candidate rows, three ablations, event diffs and oracle rows; no I/O.
 
-- [ ] Write failing synthetic-trace tests for: exactly one raw reachable C1 truth per NMS/threshold/cap branch; mixed reasons; frozen score identity; candidate-stage and official-matcher final FP accounting; oracle reset and downstream threshold/cap rejection. Use tiny `ReplayTrace` fixtures with explicit events/scores and no fitted models.
+- [ ] Write failing synthetic-trace tests for: replay exposes attested policy without altering incumbent predictions; exactly one raw reachable C1 truth per NMS/threshold/cap branch; mixed reasons; frozen score identity; candidate-stage and official-matcher final FP accounting; oracle reset and downstream threshold/cap rejection. Use tiny `ReplayTrace` fixtures with explicit events/scores and no fitted models.
 - [ ] Run `D:/Anaconda3/envs/bme/python.exe -m pytest -q -p no:cacheprovider tests/pipeline/test_challenger_c1_attrition.py` and confirm each new test fails on missing evaluator behavior.
 - [ ] Implement pure helpers `_frozen_policy(trace)`, `_admitted_for_mode(trace, mode)`, `_final_for_indices(trace, indices)`, and `audit_trace(trace)`. Reconstruct the three ablations from frozen raw union and `blend_score`; call canonical NMS/admission and event-policy primitives with the incumbent constants. Validate baseline admitted/final indices against the trace before any ablation. Count newly admitted nonmatching candidates using IoU 0.25 to eligible truths. Use official matcher for newly matched truths and unmatched final-event differences, preserving duplicate coordinates.
 

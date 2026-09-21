@@ -30,6 +30,8 @@ For every replay trace, the raw-union candidate list, macro/micro support,
 candidate geometry, 116D Context-v1 features, Logistic and LGBM scores,
 incumbent blend scores, selected admission tuple, event threshold and event
 cap are immutable. No operation may recompute scores or choose a new policy.
+The replay trace must expose the exact attested `bundle.policy` as read-only
+metadata; it must not infer NMS/threshold/cap values from ledger outcomes.
 
 ## Candidate and truth attrition
 
