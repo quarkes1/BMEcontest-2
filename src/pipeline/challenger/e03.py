@@ -696,7 +696,14 @@ def _select_policy(evidence: _CandidateEvidence, scores: np.ndarray, data: Outer
         events = [candidates[i].event for i in rows]
         admitted_scores, groups = scores[rows], evidence.groups[rows]
         admission_metrics = _runner.compute_event_metrics(events, data.train_truths)
-        policy = _runner.select_event_policy(events, admitted_scores, data.train_truths, groups, max_events_options=config.subject_cap_grid)
+        if config.subject_cap_grid:
+            policy = _runner.select_event_policy(
+                events, admitted_scores, data.train_truths, groups,
+                max_events_options=config.subject_cap_grid,
+            )
+        else:
+            selected = _runner.select_event_threshold(events, admitted_scores, data.train_truths)
+            policy = _runner.EventSelectionPolicy(selected.threshold, None, selected.metrics)
         rank = (policy.metrics.f1, policy.metrics.ppv, -len(rows), 0, 0, -admission_rank, -policy.threshold, -float(policy.max_events_per_group or math.inf))
         choices.append((admission_metrics.sensitivity, rank, policy))
     feasible = [choice for choice in choices if choice[0] >= config.admission_minimum_recall]

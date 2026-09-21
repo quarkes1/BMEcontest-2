@@ -31,6 +31,28 @@ def test_gate_requires_all_four_preregistered_predicates():
     assert e03_gate_passes(control, [_metric(20, 0)] * 5) is True
 
 
+def test_empty_subject_cap_grid_uses_incumbent_threshold_policy(monkeypatch):
+    """E03 must follow the incumbent's no-cap branch, not pass an empty grid."""
+    from types import SimpleNamespace
+    import numpy as np
+    from src.pipeline.challenger import e03
+    from src.pipeline.event_stack import EventSelectionPolicy
+
+    config = e03.registered_e03_config(0, workers=1)
+    assert config.subject_cap_grid == ()
+    candidate = SimpleNamespace(event=SimpleNamespace(sid="s", start_ms=0, end_ms=60_000))
+    evidence = SimpleNamespace(candidates=(candidate,), groups=np.asarray(["subject"]))
+    data = SimpleNamespace(train_truths=())
+    expected = _metric(0, 1, true=0)
+    monkeypatch.setattr(e03._runner, "admit_candidates", lambda *_args: [0])
+    monkeypatch.setattr(e03._runner, "compute_event_metrics", lambda *_args: expected)
+    monkeypatch.setattr(e03._runner, "select_event_threshold", lambda *_args: SimpleNamespace(threshold=0.4, metrics=expected))
+    monkeypatch.setattr(e03._runner, "select_event_policy", lambda *_args, **_kwargs: pytest.fail("empty cap grid must not call capped policy"))
+
+    policy = e03._select_policy(evidence, np.asarray([0.6]), data, config)
+    assert policy == EventSelectionPolicy(0.4, None, expected)
+
+
 def test_inner_weight_builder_rejects_non_outer_train_payload():
     """Accepting an outer FoldDataset would expose E03 mining to validation data."""
     from src.pipeline.challenger.e03 import build_e03_inner_weights, registered_e03_config
