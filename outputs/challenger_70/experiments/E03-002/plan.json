@@ -1,0 +1,142 @@
+{
+  "allowed_hyperparameter_grid": {
+    "admission_minimum_recall": 0.8,
+    "admission_nms_iou_grid": [
+      0.3,
+      0.5,
+      0.7
+    ],
+    "admission_subject_cap_grid": [
+      3,
+      4,
+      5,
+      6,
+      8
+    ],
+    "admission_threshold_grid": [
+      0.2,
+      0.35,
+      0.5,
+      0.65
+    ],
+    "candidate_control_enabled": true,
+    "context_features_version": "v1",
+    "density": {
+      "bridge_ms": 60000,
+      "context_ms": 1200000,
+      "coverage_fix": false,
+      "coverage_min": 0.8,
+      "density_ms": 600000,
+      "merge_ms": 120000,
+      "min_positive": 10,
+      "stride_ms": 15000,
+      "window_ms": 240000,
+      "window_threshold": 0.28838
+    },
+    "device": "auto",
+    "external_fd_weight_grid": [
+      0.0
+    ],
+    "hard_negative_weight": [
+      2.0
+    ],
+    "inner_splits": 4,
+    "micro_candidate": {
+      "context_ms": 1200000,
+      "merge_ms": 180000,
+      "min_duration_ms": 60000,
+      "smooth_radius_ms": 60000,
+      "smooth_sigma_ms": 30000,
+      "stride_ms": 7500,
+      "window_ms": 15000
+    },
+    "micro_enabled": true,
+    "micro_gravity_align": true,
+    "micro_positive_middle_fraction": null,
+    "micro_threshold_grid": [
+      0.1,
+      0.2,
+      0.3,
+      0.4,
+      0.5
+    ],
+    "no_tcn": true,
+    "outer_fold": 0,
+    "seed": 20260908,
+    "subject_cap_grid": [],
+    "verifier_blend_weight_grid": [
+      0.0,
+      0.25,
+      0.5,
+      0.75,
+      1.0
+    ],
+    "verifier_c_grid": [
+      0.1
+    ],
+    "verifier_feature_mode": "probability",
+    "workers": 5
+  },
+  "anchor_semantics": "read-only verified strict outer evidence; not an inner-selected E03 arm",
+  "base_run": "160afaf81debf1ee",
+  "candidate_order_contract": "canonical raw-union order is retained through mining and fitting",
+  "code_sha": "5e7f65658477292e93e202a8641d1218a5043fe8",
+  "comparison_arms": [
+    "threshold_only",
+    "hard_negative_v1"
+  ],
+  "context_v1_schema_hash": "4aca724e3089ad30303cbaf9d08d7d5099672caba427452d365b0d7929244358",
+  "derivation_rationale": "E03-001 aborted during preflight before scoring; this retry preserves its exact v1 hard-negative specification.",
+  "derived_from": "E03-001",
+  "development_evidence_warning": "Inner gate is development evidence only, not independent validation.",
+  "experiment_id": "E03-002",
+  "experiment_slug": "e03-v1-hard-negative",
+  "feature_version": "v1",
+  "hypothesis": "Inner-OOF weighted v1 hard negatives reduce episode false positives beyond a same-grid threshold-only control.",
+  "imputer_contract": "incumbent median imputation; no learned transform outside each fit",
+  "incumbent_outer_anchor": {
+    "eligible": 153,
+    "f1": 0.6514285714285715,
+    "fp": 83,
+    "pred": 197,
+    "run_key": "160afaf81debf1ee",
+    "tp": 114
+  },
+  "mining_spec": {
+    "categories": [
+      "high_score",
+      "near_threshold",
+      "disagreement",
+      "dense"
+    ],
+    "dense_center_radius_ms_inclusive": 600000.0,
+    "dense_other_candidate_count_min": 2,
+    "disagreement_abs_min": 0.35,
+    "disagreement_feature_indices": [
+      0,
+      41
+    ],
+    "feature_width": 116,
+    "high_score_min": 0.5,
+    "missing_feature_value": 0.0,
+    "near_threshold_inclusive": [
+      0.4,
+      0.6
+    ],
+    "negative_hard_weight": 2.0,
+    "ordinary_weight": 1.0,
+    "positive_weight": 1.0,
+    "version": "e03-v1-hard-negative"
+  },
+  "mining_spec_sha256": "db151cf28927e0c520093a300eea7d66cd376898e6ca76e34e5e277d79f5f468",
+  "numpy_version": "2.4.6",
+  "policy_tie_order_contract": "incumbent runner tuple order",
+  "primary_metric": "aggregate_episode_f1",
+  "secondary_metrics": [
+    "tp",
+    "fp",
+    "short_recall",
+    "fold_f1"
+  ],
+  "selection_protocol": "outer-train inner-OOF only"
+}
