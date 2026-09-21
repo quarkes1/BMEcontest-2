@@ -395,27 +395,57 @@ def test_e03_004_is_the_only_next_retry_and_requires_e03_003_terminal_parent(tmp
 
 
 def test_e03_005_requires_matching_e03_004_inner_implementation_failure(tmp_path: Path):
-    """E03-005 may follow only the frozen failed inner run, not a made-up abort."""
+    """The real nested E03-004 diagnostic must match its terminal registry row."""
     from src.pipeline.challenger import e03
 
-    terminal = {
+    diagnostic = {
         "experiment_id": "E03-004", "status": "failed_inner_implementation",
         "code_sha": "a" * 40,
-        "scores_recorded": False, "training_started": True, "cache_written": False,
-        "partial_inner_oof_logistic_completed": True, "terminal_metrics_recorded": False,
-        "replay_permitted": False,
-        "failure": "canonical Context-v1 NaNs were rejected after in-memory logistic OOF",
+        "scores_recorded": False, "training_started": True,
+        "failure": "hard_negative._validate_features rejected canonical Context-v1 NaNs after fold-0 logistic inner-OOF scores completed in memory.",
+        "cache_inspection": {
+            "cache_written": False,
+            "cache_root_exists_at_failure_freeze": False,
+        },
+        "partial_execution": {
+            "fold_reached": 0,
+            "logistic_inner_oof_completed_in_memory": True,
+            "hard_negative_mining_completed": False,
+            "comparison_arms_completed": False,
+            "terminal_metrics_recorded": False,
+        },
+    }
+    terminal = {
+        "experiment_id": "E03-004", "status": "failed_inner_implementation",
+        "code_sha": "a" * 40, "scores_recorded": False, "training_started": True,
+        "cache_written": False, "partial_inner_oof_logistic_completed": True,
+        "terminal_metrics_recorded": False, "replay_permitted": False,
+        "failure": "canonical Context-v1 NaNs were rejected by E03 miner after fold-0 logistic inner-OOF completed in memory; diagnostic frozen in E03-004/failure_diagnostic.json",
     }
     evidence = tmp_path / "outputs" / "challenger_70" / "experiments" / "E03-004" / "failure_diagnostic.json"
     evidence.parent.mkdir(parents=True)
-    evidence.write_text(json.dumps(terminal), encoding="utf-8")
+    evidence.write_text(json.dumps(diagnostic), encoding="utf-8")
     registry = tmp_path / "outputs" / "challenger_70" / "experiment_registry.jsonl"
     registry.parent.mkdir(parents=True, exist_ok=True)
     registry.write_text(json.dumps({"code_sha": "a" * 40, **terminal}) + "\n", encoding="utf-8")
 
     e03._require_terminal_parent_abort(tmp_path, experiment_id="E03-005")
     terminal["code_sha"] = "b" * 40
-    evidence.write_text(json.dumps(terminal), encoding="utf-8")
+    registry.write_text(json.dumps(terminal) + "\n", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="records disagree"):
+        e03._require_terminal_parent_abort(tmp_path, experiment_id="E03-005")
+
+    terminal["code_sha"] = "a" * 40
+    registry.write_text(json.dumps(terminal) + "\n", encoding="utf-8")
+    diagnostic["partial_execution"]["terminal_metrics_recorded"] = True
+    evidence.write_text(json.dumps(diagnostic), encoding="utf-8")
+    with pytest.raises(RuntimeError, match="artifact is invalid"):
+        e03._require_terminal_parent_abort(tmp_path, experiment_id="E03-005")
+
+    diagnostic["partial_execution"]["terminal_metrics_recorded"] = False
+    evidence.write_text(json.dumps(diagnostic), encoding="utf-8")
+    terminal["failure"] = "unrelated failure"
+    registry.write_text(json.dumps(terminal) + "\n", encoding="utf-8")
     with pytest.raises(RuntimeError, match="records disagree"):
         e03._require_terminal_parent_abort(tmp_path, experiment_id="E03-005")
 

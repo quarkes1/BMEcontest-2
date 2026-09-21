@@ -72,6 +72,66 @@ def _retry_rationale(experiment_id: str) -> str:
     return f"{parent} aborted during preflight before scoring; this retry preserves its exact v1 hard-negative specification."
 
 
+def _normalized_e03_004_failure_diagnostic(evidence: Mapping[str, object]) -> dict[str, object]:
+    """Read the immutable E03-004 diagnostic at its canonical nested schema.
+
+    The human-readable diagnostic intentionally keeps cache and partial-run
+    facts under dedicated sections, whereas the append-only registry stores a
+    compact terminal row.  This adapter compares their meaning without
+    rewriting either historical record.
+    """
+    cache = evidence.get("cache_inspection")
+    partial = evidence.get("partial_execution")
+    if not isinstance(cache, Mapping) or not isinstance(partial, Mapping):
+        raise RuntimeError("E03-005 parent terminal abort artifact is invalid")
+    required = {
+        "experiment_id": "E03-004",
+        "status": "failed_inner_implementation",
+        "scores_recorded": False,
+        "training_started": True,
+        "cache_written": False,
+        "cache_root_exists_at_failure_freeze": False,
+        "fold_reached": 0,
+        "partial_inner_oof_logistic_completed": True,
+        "hard_negative_mining_completed": False,
+        "comparison_arms_completed": False,
+        "terminal_metrics_recorded": False,
+    }
+    normalized = {
+        "experiment_id": evidence.get("experiment_id"),
+        "status": evidence.get("status"),
+        "code_sha": evidence.get("code_sha"),
+        "scores_recorded": evidence.get("scores_recorded"),
+        "training_started": evidence.get("training_started"),
+        "failure": evidence.get("failure"),
+        "cache_written": cache.get("cache_written"),
+        "cache_root_exists_at_failure_freeze": cache.get("cache_root_exists_at_failure_freeze"),
+        "fold_reached": partial.get("fold_reached"),
+        "partial_inner_oof_logistic_completed": partial.get("logistic_inner_oof_completed_in_memory"),
+        "hard_negative_mining_completed": partial.get("hard_negative_mining_completed"),
+        "comparison_arms_completed": partial.get("comparison_arms_completed"),
+        "terminal_metrics_recorded": partial.get("terminal_metrics_recorded"),
+    }
+    if any(normalized.get(key) != value for key, value in required.items()):
+        raise RuntimeError("E03-005 parent terminal abort artifact is invalid")
+    if not isinstance(normalized["code_sha"], str) or not re.fullmatch(r"[0-9a-f]{40}", str(normalized["code_sha"])):
+        raise RuntimeError("E03-005 parent terminal abort artifact is malformed")
+    if not isinstance(normalized["failure"], str) or not str(normalized["failure"]).strip():
+        raise RuntimeError("E03-005 parent terminal abort artifact is malformed")
+    return normalized
+
+
+def _e03_004_failure_signature(value: object) -> str | None:
+    """Recognize only the registered E03-004 failure class across two summaries."""
+    if not isinstance(value, str):
+        return None
+    rendered = value.casefold()
+    markers = ("context-v1", "nan", "fold-0", "logistic", "inner-oof")
+    if all(marker in rendered for marker in markers):
+        return "context_v1_nan_miner_rejection_after_inner_oof"
+    return None
+
+
 def _require_terminal_parent_abort(root: Path, *, experiment_id: str) -> None:
     """Bind every E03 retry to its own matching no-score terminal parent."""
     experiment_id = _validate_experiment_id(experiment_id)
@@ -88,10 +148,22 @@ def _require_terminal_parent_abort(root: Path, *, experiment_id: str) -> None:
     except (OSError, json.JSONDecodeError) as exc:
         raise RuntimeError(f"{experiment_id} requires {parent} parent terminal abort evidence") from exc
     if parent == "E03-004":
+        if not isinstance(evidence, Mapping):
+            raise RuntimeError(f"{experiment_id} parent terminal abort artifact is invalid")
+        normalized = _normalized_e03_004_failure_diagnostic(evidence)
+        matching = [row for row in rows if row.get("experiment_id") == parent]
         required = {"experiment_id": parent, "status": "failed_inner_implementation", "scores_recorded": False,
                     "training_started": True, "cache_written": False,
                     "partial_inner_oof_logistic_completed": True, "terminal_metrics_recorded": False,
                     "replay_permitted": False}
+        if len(matching) != 1 or any(matching[0].get(key) != value for key, value in required.items()):
+            raise RuntimeError(f"{experiment_id} parent terminal abort registry is invalid")
+        row = matching[0]
+        if normalized["code_sha"] != row.get("code_sha"):
+            raise RuntimeError(f"{experiment_id} parent terminal abort records disagree")
+        if _e03_004_failure_signature(normalized["failure"]) != _e03_004_failure_signature(row.get("failure")):
+            raise RuntimeError(f"{experiment_id} parent terminal abort records disagree")
+        return
     else:
         required = {"experiment_id": parent, "status": "aborted_preflight", "scores_recorded": False,
                     "training_started": False, "cache_written": False, "historical_terminal": True,
@@ -106,8 +178,6 @@ def _require_terminal_parent_abort(root: Path, *, experiment_id: str) -> None:
     # when they describe the *same* terminal event, not merely two valid
     # terminal events for the same experiment ID.
     shared_fields = (*required, "failure")
-    if parent == "E03-004":
-        shared_fields += ("code_sha",)
     if parent != "E03-004":
         shared_fields += ("plan_code_sha", "abort_code_sha")
     if any(evidence.get(key) != row.get(key) for key in shared_fields):
@@ -115,10 +185,6 @@ def _require_terminal_parent_abort(root: Path, *, experiment_id: str) -> None:
     failure = evidence.get("failure")
     if not isinstance(failure, str) or not failure.strip():
         raise RuntimeError(f"{experiment_id} parent terminal abort records are malformed")
-    if parent == "E03-004":
-        if not isinstance(row.get("code_sha"), str) or not re.fullmatch(r"[0-9a-f]{40}", str(row["code_sha"])):
-            raise RuntimeError(f"{experiment_id} parent terminal abort records are malformed")
-        return
     plan_sha = evidence.get("plan_code_sha")
     abort_sha = evidence.get("abort_code_sha")
     if (not isinstance(plan_sha, str) or not re.fullmatch(r"[0-9a-f]{40}", plan_sha)
