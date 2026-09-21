@@ -38,6 +38,8 @@ def _sha256(path: Path) -> str:
 
 def _value_sha256(value: object) -> str:
     """Hash immutable JSON-compatible provenance without changing it."""
+    if isinstance(value, Mapping):
+        value = {str(key): item for key, item in value.items()}
     if hasattr(value, "tolist"):
         value = value.tolist()
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")).hexdigest()

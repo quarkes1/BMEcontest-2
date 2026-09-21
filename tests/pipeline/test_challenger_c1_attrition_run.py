@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 from pathlib import Path
+from types import MappingProxyType
 
 import pytest
 
@@ -87,3 +88,128 @@ def test_runner_rejects_non_exact_e01_scope_and_existing_or_symlink_output(tmp_p
     output.mkdir(parents=True)
     with pytest.raises(RuntimeError, match="immutable"):
         run_c1_attrition(tmp_path, output, audit=lambda trace: _audit([]), **common)
+
+
+def test_runner_rejects_bad_incumbent_parity_before_it_can_write(tmp_path: Path):
+    """A non-attested replay total is a hard stop, not a diagnostic result."""
+    from src.pipeline.challenger.c1_attrition_run import run_c1_attrition
+
+    keys = [f"{index % 5}:sid-{index}:0:1" for index in range(11)]
+    _fn_csv(tmp_path, keys)
+    output = tmp_path / "outputs/challenger_70/e03_5_c1_attrition"
+    with pytest.raises(RuntimeError, match="114/153/197"):
+        run_c1_attrition(
+            tmp_path, output, replay=lambda _root, fold: {"fold": fold, "metrics": (1, 1, 1)},
+            audit=lambda trace: _audit([key for key in keys if int(key.split(":", 1)[0]) == trace["fold"]]),
+            snapshot=lambda _root: {}, assert_unchanged=lambda _before, _root: None,
+            git_sha=lambda _root: "a" * 40,
+        )
+    assert not output.exists()
+
+
+def test_runner_cleans_staging_when_protected_snapshot_changes(tmp_path: Path):
+    """A snapshot failure is all-or-nothing: neither final nor staging output survives."""
+    from src.pipeline.challenger.c1_attrition_run import run_c1_attrition
+
+    keys = [f"{index % 5}:sid-{index}:0:1" for index in range(11)]
+    _fn_csv(tmp_path, keys)
+    output = tmp_path / "outputs/challenger_70/e03_5_c1_attrition"
+    calls = 0
+
+    def unchanged(_before, _root):
+        nonlocal calls
+        calls += 1
+        raise RuntimeError("protected release input changed")
+
+    with pytest.raises(RuntimeError, match="protected release"):
+        run_c1_attrition(
+            tmp_path, output, replay=lambda _root, fold: {"fold": fold, "metrics": _metrics(fold)},
+            audit=lambda trace: _audit([key for key in keys if int(key.split(":", 1)[0]) == trace["fold"]]),
+            snapshot=lambda _root: {"release": ("file", "frozen")}, assert_unchanged=unchanged,
+            git_sha=lambda _root: "a" * 40,
+        )
+    assert calls == 1
+    assert not output.exists()
+    assert not list(output.parent.glob(".e03_5_c1_attrition.staging-*"))
+
+
+def test_runner_cleans_staging_on_writer_failure_and_never_calls_model_methods(tmp_path: Path, monkeypatch):
+    """A write fault cannot leave partial evidence, and the runner's seam is replay-only."""
+    import src.pipeline.challenger.c1_attrition_run as runner
+
+    keys = [f"{index % 5}:sid-{index}:0:1" for index in range(11)]
+    _fn_csv(tmp_path, keys)
+    output = tmp_path / "outputs/challenger_70/e03_5_c1_attrition"
+    original = runner._write_json
+
+    def fail_summary(path, value):
+        if path.name == "counterfactual_summary.json":
+            raise OSError("simulated writer failure")
+        original(path, value)
+
+    monkeypatch.setattr(runner, "_write_json", fail_summary)
+    with pytest.raises(OSError, match="simulated writer"):
+        runner.run_c1_attrition(
+            tmp_path, output, replay=lambda _root, fold: {"fold": fold, "metrics": _metrics(fold)},
+            audit=lambda trace: _audit([key for key in keys if int(key.split(":", 1)[0]) == trace["fold"]]),
+            snapshot=lambda _root: {}, assert_unchanged=lambda _before, _root: None,
+            git_sha=lambda _root: "a" * 40,
+        )
+    assert not output.exists()
+    assert not list(output.parent.glob(".e03_5_c1_attrition.staging-*"))
+
+
+def test_policy_hash_normalizes_readonly_mappings():
+    """Attested read-only policy metadata must hash by values, never its repr/address."""
+    from src.pipeline.challenger.c1_attrition_run import _value_sha256
+
+    assert _value_sha256(MappingProxyType({"threshold": .5, "cap": 4})) == _value_sha256({"cap": 4, "threshold": .5})
+
+
+def test_runner_rejects_symlinked_immutable_output(tmp_path: Path):
+    """A reparse-point output cannot be used to escape the evidence boundary."""
+    from src.pipeline.challenger.c1_attrition_run import run_c1_attrition
+
+    keys = [f"{index % 5}:sid-{index}:0:1" for index in range(11)]
+    _fn_csv(tmp_path, keys)
+    output = tmp_path / "outputs/challenger_70/e03_5_c1_attrition"
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    try:
+        output.symlink_to(outside, target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"symlink creation unavailable on this Windows test host: {exc}")
+    with pytest.raises(RuntimeError, match="immutable"):
+        run_c1_attrition(
+            tmp_path, output, replay=lambda _root, fold: {"fold": fold, "metrics": _metrics(fold)},
+            audit=lambda trace: _audit([key for key in keys if int(key.split(":", 1)[0]) == trace["fold"]]),
+            snapshot=lambda _root: {}, assert_unchanged=lambda _before, _root: None,
+            git_sha=lambda _root: "a" * 40,
+        )
+
+
+def test_runner_never_trains_or_scores_after_injected_replay(tmp_path: Path):
+    """The runner consumes an already-scored trace; fit/predict hooks are forbidden."""
+    from src.pipeline.challenger.c1_attrition_run import run_c1_attrition
+
+    keys = [f"{index % 5}:sid-{index}:0:1" for index in range(11)]
+    _fn_csv(tmp_path, keys)
+    output = tmp_path / "outputs/challenger_70/e03_5_c1_attrition"
+
+    class FrozenTrace:
+        def __init__(self, fold: int):
+            self.fold, self.metrics, self.policy = fold, _metrics(fold), MappingProxyType({"threshold": .5})
+
+        def fit(self, *_args, **_kwargs):  # pragma: no cover - must remain unreachable
+            raise AssertionError("runner attempted fit")
+
+        def predict_proba(self, *_args, **_kwargs):  # pragma: no cover - must remain unreachable
+            raise AssertionError("runner attempted predict_proba")
+
+    run_c1_attrition(
+        tmp_path, output, replay=lambda _root, fold: FrozenTrace(fold),
+        audit=lambda trace: _audit([key for key in keys if int(key.split(":", 1)[0]) == trace.fold]),
+        snapshot=lambda _root: {}, assert_unchanged=lambda _before, _root: None,
+        git_sha=lambda _root: "a" * 40,
+    )
+    assert output.is_dir()
