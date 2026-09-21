@@ -169,8 +169,47 @@ def e03_train_only_input_fingerprints(
     if index_path is None or meals_path is None:
         from src.data import manifests
         index_path, meals_path = manifests.INDEX_CSV, manifests.MEALS_CSV
+    split_path = cache / "splits" / f"fold{config.outer_fold}.json"
+    try:
+        split = json.loads(split_path.read_text(encoding="utf-8"))
+        train_sessions = split["train_sessions"]
+    except (OSError, json.JSONDecodeError, KeyError, TypeError) as exc:
+        raise RuntimeError("E03 split manifest lacks train session provenance") from exc
+    if not isinstance(train_sessions, list) or any(not isinstance(sid, str) or not sid for sid in train_sessions):
+        raise RuntimeError("E03 split manifest has invalid train sessions")
+    # _micro_expected_metadata and _eligible_truths read these exact train
+    # session caches.  Do not inspect val_sessions here: E03's cache identity
+    # is intentionally train-only.
+    records.extend(("train_session_raw", cache / "sessions" / f"{sid}.npz") for sid in sorted(set(train_sessions)))
     records.extend((("sensor_index_and_bounds", Path(index_path)), ("meal_truth", Path(meals_path))))
     return tuple(_file_fingerprint(path, role=role) for role, path in records)
+
+
+def assert_e03_outer_subject_disjoint(train_subjects: Sequence[str] | set[str], outer_subjects: Sequence[str] | set[str]) -> None:
+    """Reject any held-out subject entering E03 train-only construction."""
+    overlap = sorted(set(train_subjects) & set(outer_subjects))
+    if overlap:
+        raise RuntimeError("E03 outer-validation subject overlap: " + ", ".join(overlap))
+
+
+def _e03_outer_subject_ids(root: Path, config: RunConfig) -> frozenset[str]:
+    """Load only held-out *identifiers* for the mandatory provenance guard."""
+    root = Path(root).resolve()
+    split_path = root / "cache" / "splits" / f"fold{config.outer_fold}.json"
+    try:
+        payload = json.loads(split_path.read_text(encoding="utf-8"))
+        val_sessions = payload["val_sessions"]
+    except (OSError, json.JSONDecodeError, KeyError, TypeError) as exc:
+        raise RuntimeError("E03 split manifest lacks outer subject guard") from exc
+    if not isinstance(val_sessions, list) or any(not isinstance(sid, str) or not sid for sid in val_sessions):
+        raise RuntimeError("E03 split manifest has invalid outer subject identifiers")
+    from src.data import manifests
+    index = manifests.load_sensor_index()
+    mapping = {str(row["session_id"]): str(row["externalid"]) for _, row in index.iterrows()}
+    missing = sorted(set(val_sessions) - set(mapping))
+    if missing:
+        raise RuntimeError("E03 outer subject guard lacks index mappings: " + ", ".join(missing))
+    return frozenset(mapping[sid] for sid in val_sessions)
 
 
 class _E03TrainOnlySource:
@@ -295,20 +334,30 @@ def _write_e03_inner_cache(root: Path, config: RunConfig, *, arm: str, code_sha:
 def append_e03_terminal_registry(root: Path, report: Mapping[str, object], *, code_sha: str) -> Path:
     """Atomically append one terminal E03 row; duplicate experiment IDs fail closed."""
     path = Path(root).resolve() / "outputs" / "challenger_70" / "experiment_registry.jsonl"
-    existing: list[dict[str, object]] = []
-    if path.exists():
-        existing = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
-    if any(row.get("experiment_id") == E03_ID for row in existing):
-        raise RuntimeError("terminal E03 registry row already exists")
-    row = {"experiment_id": E03_ID, "code_sha": code_sha, **dict(report)}
-    content = "".join(json.dumps(item, sort_keys=True) + "\n" for item in (*existing, row))
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    lock = path.parent / f".experiment_registry.{E03_ID}.lock"
     try:
-        temporary.write_text(content, encoding="utf-8", newline="\n")
-        temporary.replace(path)
+        descriptor = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError as exc:
+        raise RuntimeError("concurrent or stale E03 terminal registry writer") from exc
+    try:
+        os.write(descriptor, f"pid={os.getpid()}\n".encode("ascii"))
+        os.close(descriptor)
+        existing: list[dict[str, object]] = []
+        if path.exists():
+            existing = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        if any(row.get("experiment_id") == E03_ID for row in existing):
+            raise RuntimeError("terminal E03 registry row already exists")
+        row = {"experiment_id": E03_ID, "code_sha": code_sha, **dict(report)}
+        content = "".join(json.dumps(item, sort_keys=True) + "\n" for item in (*existing, row))
+        temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+        try:
+            temporary.write_text(content, encoding="utf-8", newline="\n")
+            temporary.replace(path)
+        finally:
+            temporary.unlink(missing_ok=True)
     finally:
-        temporary.unlink(missing_ok=True)
+        lock.unlink(missing_ok=True)
     return path
 
 
@@ -442,9 +491,11 @@ def run_e03_inner_gate(root: Path, output: Path, *, workers: int, source_factory
     for fold in range(5):
         config = registered_e03_config(fold, workers=workers)
         input_fingerprints = e03_train_only_input_fingerprints(root, config)
+        outer_subject_ids = _e03_outer_subject_ids(root, config)
         data = source.load_outer_train_only(config)
         if not isinstance(data, OuterTrainOnlyData):
             raise TypeError("E03 source must return OuterTrainOnlyData")
+        assert_e03_outer_subject_disjoint(set(data.subject_by_session.values()), outer_subject_ids)
         evidence, mined = build_e03_inner_weights(data, config)
         control = _weighted_inner_result(data, config, None)
         hard = _weighted_inner_result(data, config, mined.sample_weight)
@@ -454,7 +505,10 @@ def run_e03_inner_gate(root: Path, output: Path, *, workers: int, source_factory
         _write_e03_inner_cache(root, config, arm="hard_negative_v1", code_sha=code_sha,
                                input_fingerprints=input_fingerprints, metrics=hard.inner_metrics)
         folds.append({"outer_fold": fold, "threshold_only": _metrics_dict(control.inner_metrics), "hard_negative_v1": _metrics_dict(hard.inner_metrics),
-            "outer_validation_accessible": False, "input_fingerprints": [dict(row) for row in input_fingerprints],
+            "outer_validation_accessible": False, "outer_subject_guard": {
+                "passed": True, "subject_count": len(outer_subject_ids),
+                "subject_ids_sha256": hashlib.sha256("\n".join(sorted(outer_subject_ids)).encode()).hexdigest(),
+            }, "input_fingerprints": [dict(row) for row in input_fingerprints],
             "hard_negative": {"hard_count": int(mined.hard_mask.sum()), "category_counts": {key: int(value.sum()) for key, value in mined.category_mask.items()}, "weight_sum": float(mined.sample_weight.sum())}})
     report: dict[str, object] = {"experiment_id": E03_ID, "phase": "inner-gate", "code_sha": code_sha, "development_evidence": True,
         "not_independent_validation": True, "outer_validation_accessible": False,

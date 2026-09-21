@@ -83,6 +83,16 @@ def test_terminal_registry_is_atomic_append_only_and_rejects_duplicate_id(tmp_pa
         append_e03_terminal_registry(tmp_path, {"status": "complete", "passed": True}, code_sha="a" * 40)
 
 
+def test_terminal_registry_refuses_a_concurrent_e03_lock(tmp_path: Path):
+    """A stale/concurrent writer must fail closed instead of racing duplicate checks."""
+    from src.pipeline.challenger.e03 import append_e03_terminal_registry
+    lock = tmp_path / "outputs" / "challenger_70" / ".experiment_registry.E03-001.lock"
+    lock.parent.mkdir(parents=True)
+    lock.write_text("other process", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="concurrent"):
+        append_e03_terminal_registry(tmp_path, {"status": "stopped_inner_gate", "passed": False}, code_sha="a" * 40)
+
+
 def test_train_only_input_fingerprints_exclude_validation_artifacts(tmp_path: Path):
     """The E03 cache must bind every train-only source without opening val files."""
     from src.pipeline.challenger.e03 import e03_train_only_input_fingerprints, registered_e03_config
@@ -103,15 +113,37 @@ def test_train_only_input_fingerprints_exclude_validation_artifacts(tmp_path: Pa
     meals.write_text("meals", encoding="utf-8")
     # The presence of a validation file must not make it into E03's snapshot.
     (source / "slide" / "fold0_val.npz").write_bytes(b"outer validation")
+    (source / "splits" / "fold0.json").write_text(
+        json.dumps({"train_sessions": ["train-a"], "val_sessions": ["val-z"]}), encoding="utf-8",
+    )
+    sessions = source / "sessions"
+    sessions.mkdir()
+    (sessions / "train-a.npz").write_bytes(b"train raw")
+    (sessions / "val-z.npz").write_bytes(b"outer raw")
 
     rows = e03_train_only_input_fingerprints(
         tmp_path, registered_e03_config(0, workers=1), index_path=index, meals_path=meals,
     )
     paths = {Path(str(row["path"])).name for row in rows}
     assert "fold0_val.npz" not in paths
+    assert "val-z.npz" not in paths
     assert {"fold0_train.npz", "fold0_meal_train.npz", "fold0_no_meal_train.npz", "fold0.json", "sensor_index.csv", "meals.csv"} <= paths
     train = source / "slide" / "fold0_train.npz"
     assert next(row for row in rows if row["path"] == str(train.resolve()))["sha256"] == hashlib.sha256(train.read_bytes()).hexdigest()
+    raw = sessions / "train-a.npz"
+    before = e03_train_only_input_fingerprints(tmp_path, registered_e03_config(0, workers=1), index_path=index, meals_path=meals)
+    raw.write_bytes(b"changed train raw")
+    after = e03_train_only_input_fingerprints(tmp_path, registered_e03_config(0, workers=1), index_path=index, meals_path=meals)
+    assert before != after
+
+
+def test_outer_subject_guard_uses_only_subject_ids_and_rejects_overlap(tmp_path: Path):
+    """Outer IDs guard training provenance, but validation windows/truths stay inaccessible."""
+    from src.pipeline.challenger.e03 import assert_e03_outer_subject_disjoint
+
+    assert_e03_outer_subject_disjoint({"train-1", "train-2"}, {"outer-1"})
+    with pytest.raises(RuntimeError, match="outer-validation subject overlap"):
+        assert_e03_outer_subject_disjoint({"train-1", "outer-1"}, {"outer-1"})
 
 
 def test_outer_validation_sentinel_rejects_loader_or_outer_subject_access():
