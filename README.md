@@ -311,5 +311,15 @@ GT-aware 单候选 oracle 仅有 1/11 可通过原 event policy，其余 10 个�
 证据，不是新 F1、挑战者成绩或晋级依据。明细见
 `outputs/challenger_70/e03_5_c1_attrition/` 与
 `docs/superpowers/specs/2026-09-21-amendment-a1-e03-5-c1-attrition-design.md`。
-下一步由人工审阅原因/FP 成本后，再决定是否预注册窄范围 inner-only
-candidate-control challenger；当前发布与 `dist/` 均未变更。
+人工审阅 A1 后，以 Amendment A2 将原 E04 改为只读的 verifier failure audit，
+原 micro-v2 E04/E05 仍暂停。E04 在五折中审计了全部 31 个 raw 可达却最终
+漏检的 GT（C1=27、C2=4；32 条 GT/候选配对），并以官方最终匹配的
+114 个 TP 与 83 个 FP 作参考。按预注册的 best-score 见证，25/31 的 blend
+分数比原 event threshold 低超过 0.10，3/31 位于其下 0.05 以内；
+15/31 的 LR/LGBM 概率差至少 0.20。严格定义的 Context 过度压制 B 型为
+0/31；两模型的 Context raw-margin 贡献中位数对 FN 均为正，但低于 TP，
+不能据此声称“去掉 Context 会救回 FN”。完整分组、逐折特征方向和双见证
+结果见 `outputs/challenger_70/e04_verifier_audit/`；它们均为
+**DIAGNOSTIC ONLY / USES GT**，不是新 outer F1 或可直接使用的救援规则。
+下一位 challenger 须经人工审阅 A2 后独立预注册，只在 outer-train 的 inner
+OOF 上开发；当前发布与 `dist/` 均未变更。
