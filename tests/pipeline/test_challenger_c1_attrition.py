@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from src.pipeline.challenger.replay import ReplayTrace, official_match_indices
 from src.pipeline.event_stack import CandidateEvent, EventMetrics, EventRef, MultiScaleCandidate
@@ -82,3 +83,34 @@ def test_audit_counts_unmatched_final_events_with_official_matcher_and_nonmatchi
     assert nms["gross_introduced_final_fp"] == 0
     assert nms["net_final_fp_difference"] == 0
     assert nms["event_diffs"] == ()
+
+
+def test_audit_reports_only_short_c1_targets_and_all_counterfactual_effect_sets():
+    """Ablation summaries must not silently omit downstream losses or non-C1 collateral."""
+    from src.pipeline.challenger.c1_attrition import audit_trace
+
+    audit = audit_trace(_trace())
+
+    assert audit["target_truth_keys"] == ("0:cap:0:100", "0:n:100:200", "0:t:0:100")
+    threshold = audit["ablations"]["disable_admission_threshold_only"]
+    assert threshold["newly_reachable_c1_truth_keys"] == ("0:t:0:100",)
+    assert threshold["c1_truth_keys_still_lost_downstream"] == ("0:t:0:100",)
+    assert threshold["newly_matched_non_c1_truth_keys"] == ()
+    assert threshold["lost_non_c1_truth_keys"] == ()
+
+
+def test_oracle_records_a_downstream_rejection_reason():
+    """An unsuccessful GT-aware force must identify the frozen later control that rejects it."""
+    from src.pipeline.challenger.c1_attrition import audit_trace
+
+    oracle = {row["truth_key"]: row for row in audit_trace(_trace())["oracle_rows"]}
+
+    assert oracle["0:t:0:100"]["downstream_rejection_reason"] == "below_event_threshold"
+
+
+def test_replay_trace_policy_is_an_immutable_snapshot():
+    """Mutating a trace policy after construction must not rewrite frozen audit evidence."""
+    trace = _trace()
+
+    with pytest.raises(TypeError):
+        trace.policy["threshold"] = .1  # type: ignore[index]

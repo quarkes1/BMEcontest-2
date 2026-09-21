@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
+from types import MappingProxyType
 from typing import Mapping, Sequence
 
 import numpy as np
@@ -86,6 +87,10 @@ class ReplayTrace:
     # Preserves the attested policy verbatim for diagnostics.  A default keeps
     # historical synthetic trace construction source-compatible.
     policy: Mapping[str, object] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        """Snapshot policy metadata so diagnostics cannot mutate sealed evidence."""
+        object.__setattr__(self, "policy", MappingProxyType(dict(self.policy)))
 
 
 def official_match_indices(
@@ -381,4 +386,4 @@ def replay_outer_fold(root: Path, fold: int) -> ReplayTrace:
     if tuple(int(expected_metrics[name]) for name in ("n_tp", "n_true", "n_pred")) != (metrics.n_tp, metrics.n_true, metrics.n_pred):
         raise RuntimeError("replay metrics disagree with frozen outer bundle")
     rows = _ledger(raw_union, raw_macro, raw_micro, features, logistic, lgbm, scores, groups, admission, admitted, threshold, event_cap, final_raw, data.subject_by_session)
-    return ReplayTrace(fold, tuple(data.validation_truths), data.validation_truth_slices, raw_macro, raw_micro, raw_union, rows, tuple(admitted), final_raw, predictions, metrics, official_match_indices(predictions, data.validation_truths), dict(data.subject_by_session), dict(policy))
+    return ReplayTrace(fold, tuple(data.validation_truths), data.validation_truth_slices, raw_macro, raw_micro, raw_union, rows, tuple(admitted), final_raw, predictions, metrics, official_match_indices(predictions, data.validation_truths), dict(data.subject_by_session), MappingProxyType(dict(policy)))

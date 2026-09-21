@@ -17,6 +17,7 @@ from src.pipeline.challenger.replay import ReplayTrace, _event_policy_indices, o
 from src.pipeline.event_stack import apply_event_policy
 
 _IOU = 0.25
+_SHORT_MS = 600_000
 MODES = ("disable_nms_only", "disable_admission_threshold_only", "disable_subject_cap_only")
 
 
@@ -103,10 +104,18 @@ def _oracle(trace: ReplayTrace, truth_index: int, baseline: tuple[int, ...]) -> 
         success = any(pair.truth_index == truth_index for pair in pairs)
         attempts.append((success, _overlap(index, trace, truth_index), float(scores[index]), index, final))
     if not attempts:
-        return {"truth_key": _truth_key(trace, truth_index), "outcome": "downstream_still_rejects", "witness_raw_index": None, "final_indices": ()}
+        return {"truth_key": _truth_key(trace, truth_index), "outcome": "downstream_still_rejects", "witness_raw_index": None, "final_indices": (), "downstream_rejection_reason": "no_raw_reachable_candidate", "diagnostic_only": "DIAGNOSTIC ONLY / USES GT"}
     attempts.sort(key=lambda item: (not item[0], -item[1], -item[2], item[3]))
     success, _, _, index, final = attempts[0]
-    return {"truth_key": _truth_key(trace, truth_index), "outcome": "control_limited_and_downstream_capable" if success else "downstream_still_rejects", "witness_raw_index": index, "final_indices": final, "diagnostic_only": "DIAGNOSTIC ONLY / USES GT"}
+    if success:
+        reason = None
+    elif scores[index] < float(_frozen_policy(trace)["threshold"]):
+        reason = "below_event_threshold"
+    elif index not in final:
+        reason = "event_cap_excluded"
+    else:
+        reason = "official_matcher_unmatched"
+    return {"truth_key": _truth_key(trace, truth_index), "outcome": "control_limited_and_downstream_capable" if success else "downstream_still_rejects", "witness_raw_index": index, "final_indices": final, "downstream_rejection_reason": reason, "diagnostic_only": "DIAGNOSTIC ONLY / USES GT"}
 
 
 def audit_trace(trace: ReplayTrace) -> dict[str, object]:
@@ -117,7 +126,7 @@ def audit_trace(trace: ReplayTrace) -> dict[str, object]:
     expected = admit_candidates(trace.raw_union, scores, groups, CandidateAdmissionConfig(float(policy["nms_iou"]), float(policy["admission_threshold"]), policy["max_candidates_per_subject"]))
     if baseline != expected or tuple(trace.final_indices) != _final_for_indices(trace, baseline):
         raise RuntimeError("replay trace does not reproduce frozen admission/event policy")
-    c1 = [row for row in classify_false_negatives(trace) if row["fn_stage"] == "FN-C1"]
+    c1 = [row for row in classify_false_negatives(trace) if row["fn_stage"] == "FN-C1" and int(row["duration_ms"]) < _SHORT_MS]
     target_indices = [int(row["truth_index"]) for row in c1]
     ledger = {int(row["raw_index"]): row for row in trace.candidate_rows}
     truth_rows, candidate_rows = [], []
@@ -132,22 +141,26 @@ def audit_trace(trace: ReplayTrace) -> dict[str, object]:
         truth_rows.append({"truth_key": _truth_key(trace, truth_index), "truth_index": truth_index, "first_total_loss_stage": loss, "terminal_reason_set": tuple(sorted(reasons)), "cause": "mixed" if len(reasons) > 1 else (next(iter(reasons)) if reasons else None), "reachability": reachable_stages})
         for raw_index in reachable:
             candidate_rows.append({"truth_key": _truth_key(trace, truth_index), "raw_index": raw_index, "iou": _overlap(raw_index, trace, truth_index), **dict(ledger[raw_index])})
+    baseline_pairs = _matches(trace, trace.final_indices)
+    baseline_matched_truths = {pair.truth_index for pair in baseline_pairs}
     baseline_fp = _unmatched_event_counter(trace, trace.final_indices)
     ablations: dict[str, object] = {}
     for mode in MODES:
         admitted, final = _admitted_for_mode(trace, mode), _final_for_indices(trace, _admitted_for_mode(trace, mode))
         pairs = _matches(trace, final)
-        matched = {_truth_key(trace, pair.truth_index) for pair in pairs}
+        matched_truths = {pair.truth_index for pair in pairs}
+        matched = {_truth_key(trace, truth_index) for truth_index in matched_truths}
         new = set(admitted) - set(baseline)
         candidate_nonmatching = sum(not any(_overlap(i, trace, truth_index) >= _IOU for truth_index in range(len(trace.truths))) for i in new)
         current_fp = _unmatched_event_counter(trace, final)
-        event_diffs = tuple(
-            {"event": key, "kind": "introduced_unmatched_final_event", "count": count}
-            for key, count in sorted((current_fp - baseline_fp).items())
-        ) + tuple(
-            {"event": key, "kind": "removed_incumbent_unmatched_event", "count": count}
-            for key, count in sorted((baseline_fp - current_fp).items())
-        )
-        ablations[mode] = {"admitted_indices": admitted, "final_indices": final, "newly_admitted_indices": tuple(sorted(new)), "extra_nonmatching_candidates": candidate_nonmatching, "newly_matched_c1_truth_keys": tuple(sorted(matched & {_truth_key(trace, i) for i in target_indices})), "gross_introduced_final_fp": sum((current_fp - baseline_fp).values()), "removed_incumbent_final_fp": sum((baseline_fp - current_fp).values()), "net_final_fp_difference": sum(current_fp.values()) - sum(baseline_fp.values())}
+        baseline_unmatched_raw = {raw for pos, raw in enumerate(trace.final_indices) if pos not in {pair.prediction_index for pair in baseline_pairs}}
+        current_unmatched_raw = {raw for pos, raw in enumerate(final) if pos not in {pair.prediction_index for pair in pairs}}
+        def event_rows(raw_indices: set[int], kind: str) -> tuple[dict[str, object], ...]:
+            return tuple({"outer_fold": trace.fold, "raw_index": raw, "session_id": trace.raw_union[raw].event.sid, "start_ms": trace.raw_union[raw].event.start_ms, "end_ms": trace.raw_union[raw].event.end_ms, "kind": kind} for raw in sorted(raw_indices))
+        event_diffs = event_rows(current_unmatched_raw - baseline_unmatched_raw, "introduced_unmatched_final_event") + event_rows(baseline_unmatched_raw - current_unmatched_raw, "removed_incumbent_unmatched_event")
+        target_keys = {_truth_key(trace, i) for i in target_indices}
+        newly_reachable = {_truth_key(trace, truth_index) for truth_index in target_indices if not any(_overlap(raw, trace, truth_index) >= _IOU for raw in baseline) and any(_overlap(raw, trace, truth_index) >= _IOU for raw in admitted)}
+        newly_matched = (matched - {_truth_key(trace, i) for i in baseline_matched_truths})
+        ablations[mode] = {"admitted_indices": admitted, "final_indices": final, "newly_admitted_indices": tuple(sorted(new)), "extra_nonmatching_candidates": candidate_nonmatching, "newly_reachable_c1_truth_keys": tuple(sorted(newly_reachable)), "newly_matched_c1_truth_keys": tuple(sorted(newly_matched & target_keys)), "c1_truth_keys_still_lost_downstream": tuple(sorted(newly_reachable - matched)), "newly_matched_non_c1_truth_keys": tuple(sorted(newly_matched - target_keys)), "lost_non_c1_truth_keys": tuple(sorted({_truth_key(trace, i) for i in baseline_matched_truths - matched_truths if _truth_key(trace, i) not in target_keys})), "gross_introduced_final_fp": sum((current_fp - baseline_fp).values()), "removed_incumbent_final_fp": sum((baseline_fp - current_fp).values()), "net_final_fp_difference": sum(current_fp.values()) - sum(baseline_fp.values())}
         ablations[mode]["event_diffs"] = event_diffs
-    return {"diagnostic_only": "DIAGNOSTIC ONLY / USES GT", "frozen_policy": policy, "frozen_blend_scores": scores.copy(), "baseline_admitted_indices": baseline, "truth_rows": truth_rows, "candidate_rows": candidate_rows, "ablations": ablations, "oracle_rows": [_oracle(trace, i, baseline) for i in target_indices]}
+    return {"diagnostic_only": "DIAGNOSTIC ONLY / USES GT", "frozen_policy": policy, "frozen_blend_scores": scores.copy(), "baseline_admitted_indices": baseline, "target_truth_keys": tuple(sorted(_truth_key(trace, i) for i in target_indices)), "truth_rows": truth_rows, "candidate_rows": candidate_rows, "ablations": ablations, "oracle_rows": [_oracle(trace, i, baseline) for i in target_indices]}
