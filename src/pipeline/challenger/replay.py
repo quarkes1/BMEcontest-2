@@ -87,10 +87,23 @@ class ReplayTrace:
     # Preserves the attested policy verbatim for diagnostics.  A default keeps
     # historical synthetic trace construction source-compatible.
     policy: Mapping[str, object] = field(default_factory=dict)
+    # The frozen raw verifier surface is optional solely for historical
+    # synthetic traces created before the E04 audit view existed.
+    verifier_features: np.ndarray | None = None
+    # References are to the already-fitted verifier pipelines in the sealed
+    # bundle.  They are exposed for attribution only, never fitted by replay.
+    verifier_models: Mapping[str, object] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Snapshot policy metadata so diagnostics cannot mutate sealed evidence."""
         object.__setattr__(self, "policy", MappingProxyType(dict(self.policy)))
+        object.__setattr__(self, "verifier_models", MappingProxyType(dict(self.verifier_models)))
+        if self.verifier_features is not None:
+            frozen_features = np.array(self.verifier_features, copy=True)
+            if frozen_features.ndim != 2 or frozen_features.shape[1] != 116:
+                raise ValueError("replay verifier feature surface must have 116 columns")
+            frozen_features.setflags(write=False)
+            object.__setattr__(self, "verifier_features", frozen_features)
 
 
 def official_match_indices(
@@ -386,4 +399,12 @@ def replay_outer_fold(root: Path, fold: int) -> ReplayTrace:
     if tuple(int(expected_metrics[name]) for name in ("n_tp", "n_true", "n_pred")) != (metrics.n_tp, metrics.n_true, metrics.n_pred):
         raise RuntimeError("replay metrics disagree with frozen outer bundle")
     rows = _ledger(raw_union, raw_macro, raw_micro, features, logistic, lgbm, scores, groups, admission, admitted, threshold, event_cap, final_raw, data.subject_by_session)
-    return ReplayTrace(fold, tuple(data.validation_truths), data.validation_truth_slices, raw_macro, raw_micro, raw_union, rows, tuple(admitted), final_raw, predictions, metrics, official_match_indices(predictions, data.validation_truths), dict(data.subject_by_session), MappingProxyType(dict(policy)))
+    frozen_features = np.array(features, copy=True)
+    frozen_features.setflags(write=False)
+    return ReplayTrace(
+        fold, tuple(data.validation_truths), data.validation_truth_slices, raw_macro, raw_micro,
+        raw_union, rows, tuple(admitted), final_raw, predictions, metrics,
+        official_match_indices(predictions, data.validation_truths), dict(data.subject_by_session),
+        MappingProxyType(dict(policy)), frozen_features,
+        {"logistic": bundle.models["verifier_logistic"], "lgbm": bundle.models["verifier_lgbm"]},
+    )
