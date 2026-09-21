@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import hashlib
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -461,3 +462,14 @@ def test_e03_004_preflight_roundtrips_real_plan_without_loading_or_fitting(monke
     assert not (output / "inner_gate.json").exists()
     assert not (tmp_path / "cache" / "challenger_70" / "e03").exists()
     assert len(report["folds"]) == 5
+
+
+def test_e03_cli_is_runnable_directly_from_the_repository_root():
+    """The documented direct-script CLI must reach argparse before importing E03 code."""
+    root = Path(__file__).resolve().parents[2]
+    result = subprocess.run(
+        [sys.executable, "scripts/run_challenger_e03.py", "--help"],
+        cwd=root, capture_output=True, text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "preflight" in result.stdout
