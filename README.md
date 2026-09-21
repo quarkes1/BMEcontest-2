@@ -293,3 +293,23 @@ python main.py --official-input IN --output OUT                 # 退出码 2：
 课题背景详见 `docs/三阶段重构设计.md`、`docs/组内算法对比与外部数据审计.md`；
 仓库清理与删除清单见 `docs/repository_cleanup_audit.md` 与
 `tests/fixtures/deletion_manifest.json`。
+
+### Challenge 阶段（诊断，不改变当前发布）
+
+E00 已复现当前发布的五折计数 114/153/197；E01 将 39 个漏检拆分为
+C0=6、C1=27、C2=4、C3=2，其中短餐漏检 19 个、短餐 C1 为 11 个。
+E02 Context-v2 与 E03 hard-negative 均未通过预注册 inner gate，未进入
+outer challenger 或发布流程。
+
+Amendment A1 暂停 E04/E05，先完成只读的 E03.5 C1 attrition audit：
+11 个短餐 C1 的首次全量丢失为 admission threshold 5 个、subject cap 6 个、
+NMS 0 个。冻结 incumbent 分数及其余策略的单操作反事实中，取消 NMS
+未救回短餐；取消 admission threshold 新增可达 1 个但最终未匹配；取消
+subject cap 新增可达 6 个、最终匹配 1 个，同时新增 21 个最终 FP。
+GT-aware 单候选 oracle 仅有 1/11 可通过原 event policy，其余 10 个低于
+原 event threshold。以上均为已使用 outer folds 上的 **DIAGNOSTIC ONLY**
+证据，不是新 F1、挑战者成绩或晋级依据。明细见
+`outputs/challenger_70/e03_5_c1_attrition/` 与
+`docs/superpowers/specs/2026-09-21-amendment-a1-e03-5-c1-attrition-design.md`。
+下一步由人工审阅原因/FP 成本后，再决定是否预注册窄范围 inner-only
+candidate-control challenger；当前发布与 `dist/` 均未变更。
