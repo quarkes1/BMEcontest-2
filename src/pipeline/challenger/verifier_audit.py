@@ -13,7 +13,7 @@ import numpy as np
 
 from src.eval.metrics import event_iou
 from src.pipeline.challenger.atlas import classify_false_negatives
-from src.pipeline.challenger.replay import ReplayTrace
+from src.pipeline.challenger.replay import ReplayTrace, official_match_indices
 from src.pipeline.challenger.verifier_attribution import explain_fitted_verifiers
 from src.pipeline.context_features import CONTEXT_V1_COLUMNS
 
@@ -62,6 +62,9 @@ def _row(trace: ReplayTrace, index: int, contributions: Mapping[str, np.ndarray]
         "disagreement_flag": abs(lr - lgbm) >= .20,
         "higher_model": "logistic" if lr > lgbm else "lgbm" if lgbm > lr else "tie",
         "terminal_reason": ledger.get("terminal_reason"),
+        "macro_support": trace.raw_union[index].macro is not None,
+        "micro_support": trace.raw_union[index].micro is not None,
+        "macro_micro_support": trace.raw_union[index].macro is not None and trace.raw_union[index].micro is not None,
         "iou": iou, "diagnostic_only_uses_gt": truth is not None,
     }
     if truth is not None:
@@ -75,12 +78,22 @@ def _row(trace: ReplayTrace, index: int, contributions: Mapping[str, np.ndarray]
 
 def _references(trace: ReplayTrace, contributions: Mapping[str, np.ndarray]) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
     ledger = _ledger(trace)
-    final_by_prediction = {int(ledger[index]["final_event_index"]): index for index in trace.final_indices}
+    final_keys = [int(ledger[index]["final_event_index"]) for index in trace.final_indices]
+    if len(final_keys) != len(set(final_keys)):
+        raise RuntimeError("candidate ledger has duplicate final-event indices")
+    final_by_prediction = dict(zip(final_keys, trace.final_indices, strict=True))
     if set(final_by_prediction) != set(range(len(trace.predictions))):
         raise RuntimeError("candidate ledger final-event coordinates are incomplete")
     matched_predictions = {pair.prediction_index for pair in trace.match_pairs}
-    tp = [_row(trace, final_by_prediction[pair.prediction_index], contributions, group="tp_reference",
-               final_index=pair.prediction_index) for pair in trace.match_pairs]
+    tp = []
+    for pair in trace.match_pairs:
+        row = _row(trace, final_by_prediction[pair.prediction_index], contributions, group="tp_reference",
+                   final_index=pair.prediction_index)
+        truth = trace.truths[pair.truth_index]
+        row.update({"matched_truth_index": pair.truth_index,
+                    "matched_truth_key": f"{trace.fold}:{truth.sid}:{truth.start_ms}:{truth.end_ms}",
+                    "matched_iou": pair.iou})
+        tp.append(row)
     fp = [_row(trace, raw, contributions, group="fp_reference", final_index=final)
           for final, raw in sorted(final_by_prediction.items()) if final not in matched_predictions]
     return tp, fp
@@ -94,6 +107,8 @@ def audit_verifier_trace(trace: ReplayTrace) -> dict[str, object]:
     if set(models) != {"logistic", "lgbm"}:
         raise RuntimeError("E04 audit requires frozen logistic and lgbm verifier models")
     ledger = _ledger(trace)
+    if tuple(trace.match_pairs) != official_match_indices(trace.predictions, trace.truths):
+        raise RuntimeError("replay match pairs disagree with official matcher")
     contributions = explain_fitted_verifiers(
         trace.verifier_features, models["logistic"], models["lgbm"],
         np.asarray([float(ledger[index]["logistic_score"]) for index in range(len(ledger))]),
@@ -147,7 +162,7 @@ def _mechanisms(row: Mapping[str, object], tp: Sequence[Mapping[str, object]], f
     margin = float(row["margin"])
     if -.05 <= margin < 0:
         labels.append("A")
-    if bool(row["disagreement_flag"]):
+    if bool(row.get("disagreement_flag", abs(float(row["logistic_score"]) - float(row["lgbm_score"])) >= .20)):
         labels.append("C")
     tp_lr_base, tp_lgbm_base = _quantile(tp, "lr_base", .5), _quantile(tp, "lgbm_base", .5)
     tp_lr_ctx, tp_lgbm_ctx = _quantile(tp, "lr_context", .25), _quantile(tp, "lgbm_context", .25)
@@ -259,11 +274,46 @@ def summarize_verifier_audits(audits: Sequence[Mapping[str, object]]) -> dict[st
         "per_fold": {str(fold): {group: {"absolute_difference": _distribution([row for row in rows if int(row["fold"]) == fold], "absolute_lr_lgbm_difference"),
                                              "signed_lr_minus_lgbm": _distribution([row for row in rows if int(row["fold"]) == fold], "lr_minus_lgbm")}
                                   for group, rows in by_group.items()} for fold in folds},
-        "flagged": flags["flagged"], "unflagged": flags["unflagged"],
     }
-    # Short aliases retain a compact shape for callers that only need pooled facts.
-    return {"margin_bins": _margin_summary(analysis)["bins"], "score_margin_analysis": margin_analysis,
-            "disagreement": disagreement, "context_distributions": dict(contexts),
-            "context_contribution": contribution, "mechanism_counts": dict(mechanisms),
-            "feature_separability": feature_report,
-            "signed_lr_minus_lgbm": [float(row.get("lr_minus_lgbm", float(row["logistic_score"]) - float(row["lgbm_score"]))) for row in analysis]}
+    mechanism_summary: dict[str, object] = {}
+    for witness_name, key in (("best_iou", "best_iou_witnesses"), ("best_score", "best_score_witnesses")):
+        pooled: Counter[str] = Counter()
+        per_fold: dict[str, object] = {}
+        denominator = 0
+        for audit in audits:
+            rows = [row for row in audit.get(key, ()) if isinstance(row, Mapping)]
+            counts: Counter[str] = Counter()
+            tp = [row for row in audit.get("tp_reference", ()) if isinstance(row, Mapping)]
+            fp = [row for row in audit.get("fp_reference", ()) if isinstance(row, Mapping)]
+            for row in rows:
+                counts.update(_mechanisms(row, tp, fp))
+            denominator += len(rows)
+            pooled.update(counts)
+            per_fold[str(audit.get("fold"))] = {"denominator": len(rows), "counts": dict(counts)}
+        mechanism_summary[witness_name] = {"pooled": {"denominator": denominator, "counts": dict(pooled)}, "per_fold": per_fold}
+    # Preserve pooled and per-fold feature distributions for both witness definitions.
+    separability: dict[str, object] = {}
+    for witness_name, key in (("best_iou", "best_iou_witnesses"), ("best_score", "best_score_witnesses")):
+        feature_views: dict[str, object] = {}
+        for feature in _FEATURE_COLUMNS:
+            fn_rows = [row for audit in audits for row in audit.get(key, ()) if isinstance(row, Mapping)]
+            fp_rows = [row for audit in audits for row in audit.get("fp_reference", ()) if isinstance(row, Mapping)]
+            fn_median, fp_median = _quantile(fn_rows, feature, .5), _quantile(fp_rows, feature, .5)
+            per_fold = {}
+            signs: list[int] = []
+            for audit in audits:
+                fn = [row for row in audit.get(key, ()) if isinstance(row, Mapping)]
+                fp = [row for row in audit.get("fp_reference", ()) if isinstance(row, Mapping)]
+                left, right = _quantile(fn, feature, .5), _quantile(fp, feature, .5)
+                sign = None if left is None or right is None else (1 if left > right else -1 if left < right else 0)
+                if sign is not None:
+                    signs.append(sign)
+                per_fold[str(audit.get("fold"))] = {"fn": _distribution(fn, feature), "fp": _distribution(fp, feature),
+                                                     "fn_minus_fp_median": None if sign is None else left - right, "sign": sign}
+            feature_views[feature] = {"pooled": {"fn": _distribution(fn_rows, feature), "fp": _distribution(fp_rows, feature),
+                                                   "fn_minus_fp_median": None if fn_median is None or fp_median is None else fn_median - fp_median},
+                                      "per_fold": per_fold, "direction": "stable_descriptive" if max(signs.count(1), signs.count(-1)) >= 4 else "inconsistent_or_unsupported"}
+        separability[witness_name] = feature_views
+    return {"score_margin_analysis": margin_analysis, "lr_lgbm_disagreement": disagreement,
+            "context_contribution": contribution, "mechanisms": mechanism_summary,
+            "separability_by_witness": separability, "feature_separability": feature_report}

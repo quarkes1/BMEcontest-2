@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from dataclasses import replace
 
 from src.pipeline.challenger.replay import MatchPair, ReplayTrace
 from src.pipeline.event_stack import CandidateEvent, EventMetrics, EventRef, MultiScaleCandidate
@@ -73,8 +74,49 @@ def test_summary_uses_fixed_bins_flags_and_fold_sign_rule():
                "best_iou_witnesses": [], "best_score_witnesses": []} for row in rows]
     summary = summarize_verifier_audits(audits)
 
-    assert summary["margin_bins"]["deep_below"] == 1
-    assert summary["margin_bins"]["below_0_05_to_0"] == 1
-    assert summary["disagreement"]["flagged"] == 5
-    assert summary["mechanism_counts"].get("unsupported", 0) == 0
+    assert summary["score_margin_analysis"]["pooled"]["best_score_fn"]["bins"]["deep_below"] == 1
+    assert summary["score_margin_analysis"]["pooled"]["best_score_fn"]["bins"]["below_0_05_to_0"] == 1
+    assert summary["lr_lgbm_disagreement"]["pooled"]["best_score_fn"]["flagged"] == 5
     assert summary["feature_separability"]["base_00"]["direction"] == "inconsistent_or_unsupported"
+
+
+def test_tp_reference_keeps_official_truth_provenance_and_source_support(monkeypatch):
+    """Dropping the official pair makes a TP reference indistinguishable from any selected event."""
+    from src.pipeline.challenger import verifier_audit
+    monkeypatch.setattr(verifier_audit, "explain_fitted_verifiers", lambda features, *_: {
+        name: np.zeros(len(features)) for name in ("lr_base", "lr_context", "lr_bias", "lgbm_base", "lgbm_context", "lgbm_bias")
+    })
+
+    result = verifier_audit.audit_verifier_trace(_trace())
+
+    tp = result["tp_reference"][0]
+    assert (tp["matched_truth_index"], tp["matched_truth_key"], tp["matched_iou"]) == (0, "0:tp:0:100", 1.0)
+    assert tp["macro_support"] is True and tp["micro_support"] is False and tp["macro_micro_support"] is False
+
+
+def test_summary_separates_witness_denominators_and_has_no_mixed_unit_aliases():
+    """Combining the two witness definitions doubles the same truth in a mechanism count."""
+    from src.pipeline.challenger.verifier_audit import summarize_verifier_audits
+    witness = {"fold": 0, "margin": -.02, "logistic_score": .1, "lgbm_score": .35,
+               "lr_base": 1., "lr_context": -1., "lgbm_base": 1., "lgbm_context": -1., "base_00": 1.}
+    summary = summarize_verifier_audits([{"fold": 0, "analysis_rows": [], "tp_reference": [], "fp_reference": [],
+                                         "best_iou_witnesses": [witness], "best_score_witnesses": [witness]}])
+
+    assert summary["mechanisms"]["best_iou"]["pooled"]["denominator"] == 1
+    assert summary["mechanisms"]["best_score"]["pooled"]["denominator"] == 1
+    assert "margin_bins" not in summary and "signed_lr_minus_lgbm" not in summary
+
+
+def test_audit_rejects_nonofficial_pair_or_duplicate_final_ledger_coordinate(monkeypatch):
+    """A stale match list or ambiguous final coordinate would corrupt TP/FP references."""
+    from src.pipeline.challenger import verifier_audit
+    monkeypatch.setattr(verifier_audit, "explain_fitted_verifiers", lambda features, *_: {
+        name: np.zeros(len(features)) for name in ("lr_base", "lr_context", "lr_bias", "lgbm_base", "lgbm_context", "lgbm_bias")
+    })
+    trace = _trace()
+    with pytest.raises(RuntimeError, match="official matcher"):
+        verifier_audit.audit_verifier_trace(replace(trace, match_pairs=()))
+    duplicated = [dict(row) for row in trace.candidate_rows]
+    duplicated[3]["final_event_index"] = 0
+    with pytest.raises(RuntimeError, match="duplicate final-event"):
+        verifier_audit.audit_verifier_trace(replace(trace, candidate_rows=tuple(duplicated)))
