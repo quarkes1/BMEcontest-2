@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import hashlib
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -45,7 +46,7 @@ def test_plan_records_v1_constants_and_e02_derivation(monkeypatch, tmp_path: Pat
     output = root / "outputs" / "challenger_70" / "experiments" / "E03-001"
     monkeypatch.setattr(e03, "_require_e03_environment", lambda *_args, **kwargs: kwargs.get("code_sha") or "a" * 40)
     monkeypatch.setattr(e03, "_frozen_outer_anchor", lambda _root: {"run_key": "160afaf81debf1ee", "tp": 114, "eligible": 153, "pred": 197, "fp": 83, "f1": 0.6514285714285715})
-    plan_path = e03.write_e03_preregistration(root, output, code_sha="a" * 40)
+    plan_path = e03.write_e03_preregistration(root, output, code_sha="a" * 40, experiment_id="E03-001")
     plan = json.loads(plan_path.read_text(encoding="utf-8"))
 
     assert plan["experiment_id"] == "E03-001"
@@ -61,7 +62,7 @@ def test_plan_contains_verified_read_only_incumbent_anchor(monkeypatch, tmp_path
     output = tmp_path / "outputs" / "challenger_70" / "experiments" / "E03-001"
     monkeypatch.setattr(e03, "_require_e03_environment", lambda *_args, **kwargs: kwargs.get("code_sha") or "a" * 40)
     monkeypatch.setattr(e03, "_frozen_outer_anchor", lambda _root: {"run_key": "160afaf81debf1ee", "tp": 114, "eligible": 153, "pred": 197, "fp": 83, "f1": 0.6514285714285715})
-    plan = json.loads(e03.write_e03_preregistration(tmp_path, output, code_sha="a" * 40).read_text())
+    plan = json.loads(e03.write_e03_preregistration(tmp_path, output, code_sha="a" * 40, experiment_id="E03-001").read_text())
     assert plan["incumbent_outer_anchor"] == {"run_key": "160afaf81debf1ee", "tp": 114, "eligible": 153, "pred": 197, "fp": 83, "f1": 0.6514285714285715}
     assert plan["comparison_arms"] == ["threshold_only", "hard_negative_v1"]
 
@@ -72,6 +73,7 @@ def test_new_e03_experiment_id_requires_lineage_and_uses_its_own_output(monkeypa
     output = tmp_path / "outputs" / "challenger_70" / "experiments" / "E03-002"
     monkeypatch.setattr(e03, "_require_e03_environment", lambda *_args, **kwargs: kwargs.get("code_sha") or "b" * 40)
     monkeypatch.setattr(e03, "_frozen_outer_anchor", lambda _root: {"run_key": "160afaf81debf1ee", "tp": 114, "eligible": 153, "pred": 197, "fp": 83, "f1": 0.6514285714285715})
+    monkeypatch.setattr(e03, "_require_terminal_parent_abort", lambda *_args, **_kwargs: None)
     with pytest.raises(ValueError, match="derived_from"):
         e03.write_e03_preregistration(tmp_path, output, code_sha="b" * 40, experiment_id="E03-002")
     plan = json.loads(e03.write_e03_preregistration(tmp_path, output, code_sha="b" * 40, experiment_id="E03-002", derived_from="E03-001").read_text())
@@ -88,7 +90,7 @@ def test_preflight_abort_freezes_no_score_terminal_evidence(monkeypatch, tmp_pat
     monkeypatch.setattr(e03, "_require_e03_environment", lambda *_args, **_kwargs: "b" * 40)
     monkeypatch.setattr(e03, "_git_sha", lambda _root: "b" * 40)
 
-    target = e03.record_e03_preflight_abort(tmp_path, output, failure="missing raw session is canonical cache state")
+    target = e03.record_e03_preflight_abort(tmp_path, output, failure="missing raw session is canonical cache state", experiment_id="E03-001")
     evidence = json.loads(target.read_text())
     assert evidence["scores_recorded"] is False
     assert evidence["training_started"] is False
@@ -97,7 +99,7 @@ def test_preflight_abort_freezes_no_score_terminal_evidence(monkeypatch, tmp_pat
     assert evidence["replay_permitted"] is False
     assert "n_tp" not in evidence
     with pytest.raises(RuntimeError, match="immutable"):
-        e03.record_e03_preflight_abort(tmp_path, output, failure="different")
+        e03.record_e03_preflight_abort(tmp_path, output, failure="different", experiment_id="E03-001")
 
 
 def test_e03_plan_validation_rejects_copied_id_or_missing_retry_lineage():
@@ -136,7 +138,7 @@ def test_e03_experiment_chain_rejects_unregistered_id_or_wrong_e03_003_lineage()
     from src.pipeline.challenger import e03
 
     with pytest.raises(ValueError, match="registered"):
-        e03._plan_payload("a" * 40, experiment_id="E03-004", derived_from="E03-003")
+        e03._plan_payload("a" * 40, experiment_id="E03-005", derived_from="E03-004")
     with pytest.raises(ValueError, match="derived_from"):
         e03._plan_payload("a" * 40, experiment_id="E03-003", derived_from="E03-001")
     assert e03._plan_payload("a" * 40, experiment_id="E03-003", derived_from="E03-002")["derived_from"] == "E03-002"
@@ -228,9 +230,9 @@ def test_cache_identity_binds_namespace_config_code_and_input_fingerprints():
 def test_terminal_registry_is_atomic_append_only_and_rejects_duplicate_id(tmp_path: Path):
     """A second terminal status would overwrite the registered E03 result history."""
     from src.pipeline.challenger.e03 import append_e03_terminal_registry
-    append_e03_terminal_registry(tmp_path, {"status": "stopped_inner_gate", "passed": False}, code_sha="a" * 40)
+    append_e03_terminal_registry(tmp_path, {"status": "stopped_inner_gate", "passed": False}, code_sha="a" * 40, experiment_id="E03-001")
     with pytest.raises(RuntimeError, match="already exists"):
-        append_e03_terminal_registry(tmp_path, {"status": "complete", "passed": True}, code_sha="a" * 40)
+        append_e03_terminal_registry(tmp_path, {"status": "complete", "passed": True}, code_sha="a" * 40, experiment_id="E03-001")
 
 
 def test_terminal_registry_preserves_prior_rows_byte_for_byte(tmp_path: Path):
@@ -240,7 +242,7 @@ def test_terminal_registry_preserves_prior_rows_byte_for_byte(tmp_path: Path):
     registry.parent.mkdir(parents=True)
     prior = '{"code_sha":"old","experiment_id":"E00","status":"complete"}\n'
     registry.write_text(prior, encoding="utf-8", newline="\n")
-    append_e03_terminal_registry(tmp_path, {"status": "stopped_inner_gate", "passed": False}, code_sha="a" * 40)
+    append_e03_terminal_registry(tmp_path, {"status": "stopped_inner_gate", "passed": False}, code_sha="a" * 40, experiment_id="E03-001")
     assert registry.read_text(encoding="utf-8").startswith(prior)
 
 
@@ -251,7 +253,7 @@ def test_terminal_registry_refuses_a_concurrent_e03_lock(tmp_path: Path):
     lock.parent.mkdir(parents=True)
     lock.write_text("other process", encoding="utf-8")
     with pytest.raises(RuntimeError, match="concurrent"):
-        append_e03_terminal_registry(tmp_path, {"status": "stopped_inner_gate", "passed": False}, code_sha="a" * 40)
+        append_e03_terminal_registry(tmp_path, {"status": "stopped_inner_gate", "passed": False}, code_sha="a" * 40, experiment_id="E03-001")
 
 
 def test_train_only_input_fingerprints_exclude_validation_artifacts(tmp_path: Path):
@@ -343,3 +345,115 @@ def test_outer_validation_sentinel_rejects_loader_or_outer_subject_access():
     guarded = assert_e03_outer_validation_inaccessible(SafeSource())
     with pytest.raises(RuntimeError, match="outer-validation"):
         guarded.load_outer_fold(object())
+
+
+def test_e03_003_identity_uses_the_requested_experiment_output_not_e03_001(tmp_path: Path):
+    """Regression: the third retry once silently defaulted its identity path to E03-001."""
+    from src.pipeline.challenger import e03
+
+    def git(*args: str) -> str:
+        return subprocess.run(["git", "-C", str(tmp_path), *args], check=True, capture_output=True, text=True).stdout.strip()
+
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    git("config", "user.email", "e03-test@example.invalid")
+    git("config", "user.name", "E03 test")
+    output = tmp_path / "outputs" / "challenger_70" / "experiments" / "E03-003"
+    output.mkdir(parents=True)
+    output.joinpath("plan.json").write_text("{}\n", encoding="utf-8")
+    git("add", "outputs/challenger_70/experiments/E03-003/plan.json")
+    git("commit", "-qm", "e03 plan")
+    code_sha = git("rev-parse", "HEAD")
+
+    assert e03.verify_e03_code_identity(tmp_path, output, code_sha, experiment_id="E03-003") == code_sha
+
+
+def test_e03_004_is_the_only_next_retry_and_requires_e03_003_terminal_parent(tmp_path: Path):
+    """The fourth attempt has no alternate lineage and cannot skip the third terminal record."""
+    from src.pipeline.challenger import e03
+
+    assert e03._plan_payload("a" * 40, experiment_id="E03-004", derived_from="E03-003")["derived_from"] == "E03-003"
+    with pytest.raises(ValueError, match="derived_from"):
+        e03._plan_payload("a" * 40, experiment_id="E03-004", derived_from="E03-002")
+    with pytest.raises(RuntimeError, match="parent terminal abort"):
+        e03._require_terminal_parent_abort(tmp_path, experiment_id="E03-004")
+
+    terminal = {
+        "experiment_id": "E03-003", "status": "aborted_preflight", "scores_recorded": False,
+        "training_started": False, "cache_written": False, "historical_terminal": True,
+        "replay_permitted": False, "plan_code_sha": "a" * 40, "abort_code_sha": "b" * 40,
+        "failure": "identity output defaulted to E03-001 before data access",
+    }
+    artifact = tmp_path / "outputs" / "challenger_70" / "experiments" / "E03-003" / "preflight_abort.json"
+    artifact.parent.mkdir(parents=True)
+    artifact.write_text(json.dumps(terminal), encoding="utf-8")
+    registry = tmp_path / "outputs" / "challenger_70" / "experiment_registry.jsonl"
+    registry.parent.mkdir(parents=True, exist_ok=True)
+    registry.write_text(json.dumps({"code_sha": "a" * 40, **terminal}) + "\n", encoding="utf-8")
+    e03._require_terminal_parent_abort(tmp_path, experiment_id="E03-004")
+
+
+def test_e03_004_preflight_roundtrips_real_plan_without_loading_or_fitting(monkeypatch, tmp_path: Path):
+    """Preflight validates the committed E03-004 chain but creates no result/cache or fit side effect."""
+    from src.pipeline.challenger import e03
+
+    def git(*args: str) -> str:
+        return subprocess.run(["git", "-C", str(tmp_path), *args], check=True, capture_output=True, text=True).stdout.strip()
+
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    git("config", "user.email", "e03-test@example.invalid")
+    git("config", "user.name", "E03 test")
+    release = tmp_path / "release" / "event_stack_incumbent.json"
+    release.parent.mkdir(parents=True)
+    release.write_text(json.dumps({"run_key": "160afaf81debf1ee", "f1": 0.6514285714285715}), encoding="utf-8")
+    summary = tmp_path / "models" / "event_stack" / "160afaf81debf1ee" / "promotion_summary.json"
+    summary.parent.mkdir(parents=True)
+    summary.write_text(json.dumps({"outer_metrics": {"n_tp": 114, "n_true": 153, "n_pred": 197, "f1": 0.6514285714285715}}), encoding="utf-8")
+    for name in ("inference", "submission", "visual", "event_stack"):
+        (tmp_path / "dist" / name).mkdir(parents=True)
+    index = tmp_path / "data" / "sensor_index.csv"
+    index.parent.mkdir()
+    index.write_text("session_id,externalid\ntrain-a,subject-train\nval-a,subject-val\n", encoding="utf-8")
+    meals = tmp_path / "data" / "meals.csv"; meals.write_text("meal\n", encoding="utf-8")
+    for fold in range(5):
+        for folder in ("slide", "micro15"):
+            for suffix in ("train", "meal_train", "no_meal_train"):
+                path = tmp_path / "cache" / folder / f"fold{fold}_{suffix}.npz"
+                path.parent.mkdir(parents=True, exist_ok=True); path.write_bytes(b"train-only")
+        split = tmp_path / "cache" / "splits" / f"fold{fold}.json"
+        split.parent.mkdir(parents=True, exist_ok=True)
+        split.write_text(json.dumps({"train_sessions": ["train-a"], "val_sessions": ["val-a"]}), encoding="utf-8")
+    raw = tmp_path / "cache" / "sessions" / "train-a.npz"; raw.parent.mkdir(parents=True); raw.write_bytes(b"raw")
+    parent_terminal = {
+        "experiment_id": "E03-003", "status": "aborted_preflight", "scores_recorded": False,
+        "training_started": False, "cache_written": False, "historical_terminal": True,
+        "replay_permitted": False, "plan_code_sha": "a" * 40, "abort_code_sha": "b" * 40,
+        "failure": "historical preflight failure",
+    }
+    parent_abort = tmp_path / "outputs" / "challenger_70" / "experiments" / "E03-003" / "preflight_abort.json"
+    parent_abort.parent.mkdir(parents=True); parent_abort.write_text(json.dumps(parent_terminal), encoding="utf-8")
+    registry = tmp_path / "outputs" / "challenger_70" / "experiment_registry.jsonl"
+    registry.parent.mkdir(parents=True, exist_ok=True); registry.write_text(json.dumps({"code_sha": "a" * 40, **parent_terminal}) + "\n", encoding="utf-8")
+    git("add", "."); git("commit", "-qm", "frozen E03 preflight inputs")
+    code_sha = git("rev-parse", "HEAD")
+    output = tmp_path / "outputs" / "challenger_70" / "experiments" / "E03-004"
+    output.mkdir()
+    output.joinpath("plan.json").write_text(json.dumps(e03._plan_payload(code_sha, root=tmp_path, experiment_id="E03-004", derived_from="E03-003")), encoding="utf-8")
+    git("add", "outputs/challenger_70/experiments/E03-004/plan.json"); git("commit", "-qm", "preregister E03-004")
+
+    class NoTrainingSource:
+        calls = 0
+        def load_outer_train_only(self, _config):
+            self.calls += 1
+            raise AssertionError("preflight must not load training data")
+
+    source = NoTrainingSource()
+    report = e03.run_e03_preflight(tmp_path, output, workers=1, experiment_id="E03-004", source_factory=lambda _root: source, index_path=index, meals_path=meals)
+
+    assert report["phase"] == "preflight"
+    assert report["outer_validation_accessible"] is False
+    assert report["training_started"] is False
+    assert report["scoring_started"] is False
+    assert source.calls == 0
+    assert not (output / "inner_gate.json").exists()
+    assert not (tmp_path / "cache" / "challenger_70" / "e03").exists()
+    assert len(report["folds"]) == 5

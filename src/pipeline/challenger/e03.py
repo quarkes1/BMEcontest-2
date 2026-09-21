@@ -37,10 +37,16 @@ E03_ID = "E03-001"
 E03_NAMESPACE = "e03-v1-hard-negative"
 E03_BASE_RUN = "160afaf81debf1ee"
 E03_NUMPY_VERSION = "2.4.6"
+_E03_LINEAGE = {
+    "E03-001": "E02-005",
+    "E03-002": "E03-001",
+    "E03-003": "E03-002",
+    "E03-004": "E03-003",
+}
 
 
 def _validate_experiment_id(experiment_id: str) -> str:
-    if experiment_id not in {"E03-001", "E03-002", "E03-003"}:
+    if experiment_id not in _E03_LINEAGE:
         raise ValueError("E03 experiment_id is not registered")
     return experiment_id
 
@@ -50,7 +56,7 @@ def _validate_lineage(experiment_id: str, derived_from: str | None) -> str:
         if derived_from not in (None, "E02-005"):
             raise ValueError("E03-001 lineage is fixed to E02-005")
         return "E02-005"
-    expected = "E03-001" if experiment_id == "E03-002" else "E03-002"
+    expected = _E03_LINEAGE[experiment_id]
     if derived_from != expected:
         raise ValueError(f"{experiment_id} requires derived_from='{expected}'")
     return derived_from
@@ -59,38 +65,39 @@ def _validate_lineage(experiment_id: str, derived_from: str | None) -> str:
 def _retry_rationale(experiment_id: str) -> str:
     if experiment_id == E03_ID:
         return "E02-005 failed its TP-loss gate; E03 isolates v1 weighting rather than combining a failed v2 representation."
-    parent = "E03-001" if experiment_id == "E03-002" else "E03-002"
+    parent = _E03_LINEAGE[experiment_id]
     return f"{parent} aborted during preflight before scoring; this retry preserves its exact v1 hard-negative specification."
 
 
 def _require_terminal_parent_abort(root: Path, *, experiment_id: str) -> None:
-    """For E03-003, bind the retry to E03-002's no-score terminal record."""
-    if experiment_id != "E03-003":
+    """Bind every E03 retry to its own matching no-score terminal parent."""
+    experiment_id = _validate_experiment_id(experiment_id)
+    parent = _E03_LINEAGE[experiment_id]
+    if not parent.startswith("E03-"):
         return
     root = Path(root).resolve()
-    parent = "E03-002"
     artifact = root / "outputs" / "challenger_70" / "experiments" / parent / "preflight_abort.json"
     registry = root / "outputs" / "challenger_70" / "experiment_registry.jsonl"
     try:
         evidence = json.loads(artifact.read_text(encoding="utf-8"))
         rows = [json.loads(line) for line in registry.read_text(encoding="utf-8").splitlines() if line.strip()]
     except (OSError, json.JSONDecodeError) as exc:
-        raise RuntimeError("E03-003 requires E03-002 parent terminal abort evidence") from exc
+        raise RuntimeError(f"{experiment_id} requires {parent} parent terminal abort evidence") from exc
     required = {"experiment_id": parent, "status": "aborted_preflight", "scores_recorded": False,
                 "training_started": False, "cache_written": False, "historical_terminal": True,
                 "replay_permitted": False}
     if any(evidence.get(key) != value for key, value in required.items()):
-        raise RuntimeError("E03-003 parent terminal abort artifact is invalid")
+        raise RuntimeError(f"{experiment_id} parent terminal abort artifact is invalid")
     matching = [row for row in rows if row.get("experiment_id") == parent]
     if len(matching) != 1 or any(matching[0].get(key) != value for key, value in required.items()):
-        raise RuntimeError("E03-003 parent terminal abort registry is invalid")
+        raise RuntimeError(f"{experiment_id} parent terminal abort registry is invalid")
     row = matching[0]
     # Both records are independently immutable.  A retry may use them only
     # when they describe the *same* terminal event, not merely two valid
     # terminal events for the same experiment ID.
     shared_fields = (*required, "plan_code_sha", "abort_code_sha", "failure")
     if any(evidence.get(key) != row.get(key) for key in shared_fields):
-        raise RuntimeError("E03-003 parent terminal abort records disagree")
+        raise RuntimeError(f"{experiment_id} parent terminal abort records disagree")
     plan_sha = evidence.get("plan_code_sha")
     abort_sha = evidence.get("abort_code_sha")
     failure = evidence.get("failure")
@@ -98,7 +105,7 @@ def _require_terminal_parent_abort(root: Path, *, experiment_id: str) -> None:
             or row.get("code_sha") != plan_sha
             or not isinstance(abort_sha, str) or not re.fullmatch(r"[0-9a-f]{40}", abort_sha)
             or not isinstance(failure, str) or not failure.strip()):
-        raise RuntimeError("E03-003 parent terminal abort records are malformed")
+        raise RuntimeError(f"{experiment_id} parent terminal abort records are malformed")
 
 
 def registered_e03_config(outer_fold: int, *, workers: int) -> RunConfig:
@@ -136,7 +143,7 @@ def _e03_evidence_paths(root: Path, output: Path) -> frozenset[str]:
     })
 
 
-def verify_e03_code_identity(root: Path, output: Path, code_sha: str) -> str:
+def verify_e03_code_identity(root: Path, output: Path, code_sha: str, *, experiment_id: str) -> str:
     """Fail closed unless E03's plan still names the executable source.
 
     This deliberately shares E02's hardened Git semantics: a plan commit may
@@ -144,7 +151,8 @@ def verify_e03_code_identity(root: Path, output: Path, code_sha: str) -> str:
     registry; any source, docs, configuration, rename, copy, symlink, or
     relevant dirty path invalidates the identity.
     """
-    root, output = Path(root).resolve(), _validate_output(root, output)
+    experiment_id = _validate_experiment_id(experiment_id)
+    root, output = Path(root).resolve(), _validate_output(root, output, experiment_id=experiment_id)
     if not isinstance(code_sha, str) or not re.fullmatch(r"[0-9a-f]{40}", code_sha):
         raise RuntimeError("E03 plan has an invalid code SHA")
     if output.is_symlink():
@@ -189,7 +197,7 @@ def _require_e03_environment(root: Path, *, code_sha: str | None = None) -> str:
     return code_sha or _git_sha(Path(root))
 
 
-def _validate_output(root: Path, output: Path, *, experiment_id: str = E03_ID) -> Path:
+def _validate_output(root: Path, output: Path, *, experiment_id: str) -> Path:
     experiment_id = _validate_experiment_id(experiment_id)
     expected = Path(root).resolve() / "outputs" / "challenger_70" / "experiments" / experiment_id
     if Path(output).resolve(strict=False) != expected:
@@ -257,7 +265,7 @@ def assert_e03_outer_subject_disjoint(train_subjects: Sequence[str] | set[str], 
         raise RuntimeError("E03 outer-validation subject overlap: " + ", ".join(overlap))
 
 
-def _e03_outer_subject_ids(root: Path, config: RunConfig) -> frozenset[str]:
+def _e03_outer_subject_ids(root: Path, config: RunConfig, *, index_path: Path | None = None) -> frozenset[str]:
     """Load only held-out *identifiers* for the mandatory provenance guard."""
     root = Path(root).resolve()
     split_path = root / "cache" / "splits" / f"fold{config.outer_fold}.json"
@@ -268,8 +276,18 @@ def _e03_outer_subject_ids(root: Path, config: RunConfig) -> frozenset[str]:
         raise RuntimeError("E03 split manifest lacks outer subject guard") from exc
     if not isinstance(val_sessions, list) or any(not isinstance(sid, str) or not sid for sid in val_sessions):
         raise RuntimeError("E03 split manifest has invalid outer subject identifiers")
-    from src.data import manifests
-    index = manifests.load_sensor_index()
+    if index_path is None:
+        from src.data import manifests
+        index = manifests.load_sensor_index()
+    else:
+        import pandas as pd
+        index = pd.read_csv(index_path, encoding="utf-8", dtype={"externalid": str})
+        if "session_id" not in index.columns:
+            if "sensorData" not in index.columns:
+                raise RuntimeError("E03 outer subject guard index lacks session_id provenance")
+            index["session_id"] = index["sensorData"].map(lambda value: str(value).split("/")[-1].removesuffix(".zip"))
+        if "externalid" not in index.columns:
+            raise RuntimeError("E03 outer subject guard index lacks externalid provenance")
     mapping = {str(row["session_id"]): str(row["externalid"]) for _, row in index.iterrows()}
     missing = sorted(set(val_sessions) - set(mapping))
     if missing:
@@ -332,7 +350,7 @@ def _frozen_outer_anchor(root: Path) -> dict[str, int | float | str]:
     return anchor
 
 
-def _plan_payload(code_sha: str, *, root: Path | None = None, experiment_id: str = E03_ID,
+def _plan_payload(code_sha: str, *, root: Path | None = None, experiment_id: str,
                   derived_from: str | None = None) -> dict[str, object]:
     config = registered_e03_config(0, workers=5)
     experiment_id = _validate_experiment_id(experiment_id)
@@ -383,7 +401,7 @@ def validate_e03_plan(plan: Mapping[str, object], *, experiment_id: str) -> str:
 
 def write_e03_preregistration(
     root: Path, output: Path, *, code_sha: str | None = None,
-    experiment_id: str = E03_ID, derived_from: str | None = None,
+    experiment_id: str, derived_from: str | None = None,
 ) -> Path:
     """Atomically write E03's immutable preregistration before a gate run."""
     root = Path(root).resolve()
@@ -401,7 +419,7 @@ def write_e03_preregistration(
             raise RuntimeError("E03 preregistration is immutable") from exc
         if code_sha is not None and code_sha != plan_sha:
             raise RuntimeError("E03 preregistration is immutable")
-        bound = verify_e03_code_identity(root, output, plan_sha)
+        bound = verify_e03_code_identity(root, output, plan_sha, experiment_id=experiment_id)
         if existing != _plan_payload(bound, root=root, experiment_id=experiment_id, derived_from=derived_from):
             raise RuntimeError("E03 preregistration is immutable")
         return plan
@@ -429,7 +447,7 @@ def _write_e03_inner_cache(root: Path, config: RunConfig, *, arm: str, code_sha:
 
 
 def append_e03_terminal_registry(
-    root: Path, report: Mapping[str, object], *, code_sha: str, experiment_id: str = E03_ID,
+    root: Path, report: Mapping[str, object], *, code_sha: str, experiment_id: str,
 ) -> Path:
     """Atomically append one terminal E03 row; duplicate experiment IDs fail closed."""
     experiment_id = _validate_experiment_id(experiment_id)
@@ -465,7 +483,7 @@ def append_e03_terminal_registry(
 
 
 def record_e03_preflight_abort(root: Path, output: Path, *, failure: str,
-                               experiment_id: str = E03_ID) -> Path:
+                               experiment_id: str) -> Path:
     """Freeze a no-score/no-training E03 preflight failure without changing its plan."""
     root = Path(root).resolve()
     experiment_id = _validate_experiment_id(experiment_id)
@@ -616,9 +634,75 @@ def _weighted_inner_result(data: OuterTrainOnlyData, config: RunConfig, weights:
     return InnerOOFResult(best[1].metrics, 116, subjects, subjects, subjects)
 
 
+def run_e03_preflight(
+    root: Path,
+    output: Path,
+    *,
+    workers: int,
+    experiment_id: str,
+    source_factory: Callable[[Path], FilesystemDataSource] = FilesystemDataSource,
+    index_path: Path | None = None,
+    meals_path: Path | None = None,
+) -> dict[str, object]:
+    """Validate the exact one-shot gate boundary without loading, fitting, or scoring.
+
+    Preflight deliberately returns an in-memory report only.  The already
+    committed ``plan.json`` remains the sole experiment evidence at this
+    stage; no cache, result, registry, or model artifact is created.
+    """
+    root = Path(root).resolve()
+    experiment_id = _validate_experiment_id(experiment_id)
+    output = _validate_output(root, output, experiment_id=experiment_id)
+    _require_e03_environment(root)
+    plan_path = output / "plan.json"
+    if not plan_path.is_file():
+        raise RuntimeError("E03 preflight requires a committed immutable preregistration")
+    try:
+        plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError("E03 preflight plan is unreadable") from exc
+    plan_sha = validate_e03_plan(plan, experiment_id=experiment_id)
+    _require_terminal_parent_abort(root, experiment_id=experiment_id)
+    code_sha = verify_e03_code_identity(root, output, plan_sha, experiment_id=experiment_id)
+    before = protected_snapshot(root)
+    # Instantiation plus this wrapper is the executable access boundary.  Do
+    # not call even the train-only method here: this phase is expressly
+    # pre-data/pre-fit and exists to catch protocol wiring failures first.
+    assert_e03_outer_validation_inaccessible(source_factory(root))
+    folds: list[dict[str, object]] = []
+    for fold in range(5):
+        config = registered_e03_config(fold, workers=workers)
+        fingerprints = e03_train_only_input_fingerprints(
+            root, config, index_path=index_path, meals_path=meals_path,
+        )
+        outer_subject_ids = _e03_outer_subject_ids(root, config, index_path=index_path)
+        folds.append({
+            "outer_fold": fold,
+            "outer_validation_accessible": False,
+            "outer_subject_guard": {
+                "subject_count": len(outer_subject_ids),
+                "subject_ids_sha256": hashlib.sha256("\n".join(sorted(outer_subject_ids)).encode()).hexdigest(),
+            },
+            "input_fingerprints": [dict(row) for row in fingerprints],
+        })
+    assert_snapshot_unchanged(before, root)
+    return {
+        "experiment_id": experiment_id,
+        "phase": "preflight",
+        "code_sha": code_sha,
+        "plan_code_sha": plan_sha,
+        "outer_validation_accessible": False,
+        "training_started": False,
+        "scoring_started": False,
+        "cache_written": False,
+        "experiment_evidence_written": False,
+        "folds": folds,
+    }
+
+
 def run_e03_inner_gate(root: Path, output: Path, *, workers: int,
                        source_factory: Callable[[Path], FilesystemDataSource] = FilesystemDataSource,
-                       experiment_id: str = E03_ID) -> dict[str, object]:
+                       experiment_id: str) -> dict[str, object]:
     """Run only the E03 inner gate; formal outer evaluation is intentionally absent."""
     root = Path(root).resolve()
     experiment_id = _validate_experiment_id(experiment_id)
@@ -630,7 +714,7 @@ def run_e03_inner_gate(root: Path, output: Path, *, workers: int,
     plan = json.loads(plan_path.read_text(encoding="utf-8"))
     plan_sha = validate_e03_plan(plan, experiment_id=experiment_id)
     _require_terminal_parent_abort(root, experiment_id=experiment_id)
-    code_sha = verify_e03_code_identity(root, output, plan_sha)
+    code_sha = verify_e03_code_identity(root, output, plan_sha, experiment_id=experiment_id)
     before = protected_snapshot(root)
     source = assert_e03_outer_validation_inaccessible(source_factory(root))
     folds, control_rows, hard_rows = [], [], []
