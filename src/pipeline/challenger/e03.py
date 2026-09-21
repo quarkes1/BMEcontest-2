@@ -39,6 +39,22 @@ E03_BASE_RUN = "160afaf81debf1ee"
 E03_NUMPY_VERSION = "2.4.6"
 
 
+def _validate_experiment_id(experiment_id: str) -> str:
+    if not re.fullmatch(r"E03-\d{3}", experiment_id):
+        raise ValueError("E03 experiment_id must be E03-NNN")
+    return experiment_id
+
+
+def _validate_lineage(experiment_id: str, derived_from: str | None) -> str:
+    if experiment_id == E03_ID:
+        if derived_from not in (None, "E02-005"):
+            raise ValueError("E03-001 lineage is fixed to E02-005")
+        return "E02-005"
+    if derived_from != E03_ID:
+        raise ValueError("new E03 experiment requires derived_from='E03-001'")
+    return derived_from
+
+
 def registered_e03_config(outer_fold: int, *, workers: int) -> RunConfig:
     """Return E03's sole v1 control surface."""
     if outer_fold not in range(5) or workers < 1:
@@ -69,7 +85,7 @@ def _e03_evidence_paths(root: Path, output: Path) -> frozenset[str]:
         raise RuntimeError("E03 evidence output escapes repository root") from exc
     prefix = relative.as_posix()
     return frozenset({
-        f"{prefix}/plan.json", f"{prefix}/inner_gate.json",
+        f"{prefix}/plan.json", f"{prefix}/inner_gate.json", f"{prefix}/preflight_abort.json",
         "outputs/challenger_70/experiment_registry.jsonl",
     })
 
@@ -88,7 +104,7 @@ def verify_e03_code_identity(root: Path, output: Path, code_sha: str) -> str:
     if output.is_symlink():
         raise RuntimeError("E03 evidence output may not be a symlink")
     allowed = _e03_evidence_paths(root, output)
-    for name in ("plan.json", "inner_gate.json"):
+    for name in ("plan.json", "inner_gate.json", "preflight_abort.json"):
         if (output / name).is_symlink():
             raise RuntimeError("E03 immutable evidence may not be a symlink")
     head = _git_sha(root)
@@ -127,17 +143,20 @@ def _require_e03_environment(root: Path, *, code_sha: str | None = None) -> str:
     return code_sha or _git_sha(Path(root))
 
 
-def _validate_output(root: Path, output: Path) -> Path:
-    expected = Path(root).resolve() / "outputs" / "challenger_70" / "experiments" / E03_ID
+def _validate_output(root: Path, output: Path, *, experiment_id: str = E03_ID) -> Path:
+    experiment_id = _validate_experiment_id(experiment_id)
+    expected = Path(root).resolve() / "outputs" / "challenger_70" / "experiments" / experiment_id
     if Path(output).resolve(strict=False) != expected:
-        raise ValueError("E03 output must be exactly outputs/challenger_70/experiments/E03-001")
+        raise ValueError(f"E03 output must be exactly outputs/challenger_70/experiments/{experiment_id}")
     return expected
 
 
-def _file_fingerprint(path: Path, *, role: str) -> dict[str, object]:
+def _file_fingerprint(path: Path, *, role: str, allow_missing: bool = False) -> dict[str, object]:
     """Fingerprint one required train-only input without interpreting it."""
     canonical = Path(path).resolve()
     if not canonical.is_file():
+        if allow_missing and not canonical.exists():
+            return {"role": role, "path": str(canonical), "missing": True}
         raise FileNotFoundError(f"E03 required {role} input is missing: {canonical}")
     digest = hashlib.sha256()
     with canonical.open("rb") as handle:
@@ -182,7 +201,7 @@ def e03_train_only_input_fingerprints(
     # is intentionally train-only.
     records.extend(("train_session_raw", cache / "sessions" / f"{sid}.npz") for sid in sorted(set(train_sessions)))
     records.extend((("sensor_index_and_bounds", Path(index_path)), ("meal_truth", Path(meals_path))))
-    return tuple(_file_fingerprint(path, role=role) for role, path in records)
+    return tuple(_file_fingerprint(path, role=role, allow_missing=(role == "train_session_raw")) for role, path in records)
 
 
 def assert_e03_outer_subject_disjoint(train_subjects: Sequence[str] | set[str], outer_subjects: Sequence[str] | set[str]) -> None:
@@ -267,13 +286,16 @@ def _frozen_outer_anchor(root: Path) -> dict[str, int | float | str]:
     return anchor
 
 
-def _plan_payload(code_sha: str, *, root: Path | None = None) -> dict[str, object]:
+def _plan_payload(code_sha: str, *, root: Path | None = None, experiment_id: str = E03_ID,
+                  derived_from: str | None = None) -> dict[str, object]:
     config = registered_e03_config(0, workers=5)
+    experiment_id = _validate_experiment_id(experiment_id)
+    lineage = _validate_lineage(experiment_id, derived_from)
     return {
-        "experiment_id": E03_ID,
+        "experiment_id": experiment_id,
         "experiment_slug": E03_NAMESPACE,
-        "derived_from": "E02-005",
-        "derivation_rationale": "E02-005 failed its TP-loss gate; E03 isolates v1 weighting rather than combining a failed v2 representation.",
+        "derived_from": lineage,
+        "derivation_rationale": "E02-005 failed its TP-loss gate; E03 isolates v1 weighting rather than combining a failed v2 representation." if experiment_id == E03_ID else "E03-001 aborted during preflight before scoring; this retry preserves its exact v1 hard-negative specification.",
         "hypothesis": "Inner-OOF weighted v1 hard negatives reduce episode false positives beyond a same-grid threshold-only control.",
         "base_run": E03_BASE_RUN, "code_sha": code_sha, "numpy_version": E03_NUMPY_VERSION,
         "incumbent_outer_anchor": _frozen_outer_anchor(root) if root is not None else {"run_key": E03_BASE_RUN, "tp": 114, "eligible": 153, "pred": 197, "fp": 83, "f1": 0.6514285714285715},
@@ -291,9 +313,15 @@ def _plan_payload(code_sha: str, *, root: Path | None = None) -> dict[str, objec
     }
 
 
-def write_e03_preregistration(root: Path, output: Path, *, code_sha: str | None = None) -> Path:
+def write_e03_preregistration(
+    root: Path, output: Path, *, code_sha: str | None = None,
+    experiment_id: str = E03_ID, derived_from: str | None = None,
+) -> Path:
     """Atomically write E03's immutable preregistration before a gate run."""
-    root, output = Path(root).resolve(), _validate_output(root, output)
+    root = Path(root).resolve()
+    experiment_id = _validate_experiment_id(experiment_id)
+    derived_from = _validate_lineage(experiment_id, derived_from)
+    output = _validate_output(root, output, experiment_id=experiment_id)
     plan = output / "plan.json"
     if plan.exists():
         _require_e03_environment(root)
@@ -305,11 +333,11 @@ def write_e03_preregistration(root: Path, output: Path, *, code_sha: str | None 
         if code_sha is not None and code_sha != plan_sha:
             raise RuntimeError("E03 preregistration is immutable")
         bound = verify_e03_code_identity(root, output, plan_sha)
-        if existing != _plan_payload(bound, root=root):
+        if existing != _plan_payload(bound, root=root, experiment_id=experiment_id, derived_from=derived_from):
             raise RuntimeError("E03 preregistration is immutable")
         return plan
     bound = _require_e03_environment(root, code_sha=code_sha)
-    payload = _plan_payload(bound, root=root)
+    payload = _plan_payload(bound, root=root, experiment_id=experiment_id, derived_from=derived_from)
     if output.exists() and any(output.iterdir()):
         raise RuntimeError("E03 preregistration output must be empty")
     _atomic_json(plan, payload)
@@ -331,11 +359,14 @@ def _write_e03_inner_cache(root: Path, config: RunConfig, *, arm: str, code_sha:
     return path
 
 
-def append_e03_terminal_registry(root: Path, report: Mapping[str, object], *, code_sha: str) -> Path:
+def append_e03_terminal_registry(
+    root: Path, report: Mapping[str, object], *, code_sha: str, experiment_id: str = E03_ID,
+) -> Path:
     """Atomically append one terminal E03 row; duplicate experiment IDs fail closed."""
+    experiment_id = _validate_experiment_id(experiment_id)
     path = Path(root).resolve() / "outputs" / "challenger_70" / "experiment_registry.jsonl"
     path.parent.mkdir(parents=True, exist_ok=True)
-    lock = path.parent / f".experiment_registry.{E03_ID}.lock"
+    lock = path.parent / f".experiment_registry.{experiment_id}.lock"
     try:
         descriptor = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
     except FileExistsError as exc:
@@ -346,9 +377,9 @@ def append_e03_terminal_registry(root: Path, report: Mapping[str, object], *, co
         existing: list[dict[str, object]] = []
         if path.exists():
             existing = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
-        if any(row.get("experiment_id") == E03_ID for row in existing):
+        if any(row.get("experiment_id") == experiment_id for row in existing):
             raise RuntimeError("terminal E03 registry row already exists")
-        row = {"experiment_id": E03_ID, "code_sha": code_sha, **dict(report)}
+        row = {"experiment_id": experiment_id, "code_sha": code_sha, **dict(report)}
         content = "".join(json.dumps(item, sort_keys=True) + "\n" for item in (*existing, row))
         temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
         try:
@@ -359,6 +390,41 @@ def append_e03_terminal_registry(root: Path, report: Mapping[str, object], *, co
     finally:
         lock.unlink(missing_ok=True)
     return path
+
+
+def record_e03_preflight_abort(root: Path, output: Path, *, failure: str,
+                               experiment_id: str = E03_ID) -> Path:
+    """Freeze a no-score/no-training E03 preflight failure without changing its plan."""
+    root = Path(root).resolve()
+    experiment_id = _validate_experiment_id(experiment_id)
+    output = _validate_output(root, output, experiment_id=experiment_id)
+    if not isinstance(failure, str) or not failure.strip():
+        raise ValueError("E03 preflight abort requires a nonempty failure reason")
+    _require_e03_environment(root)
+    plan_path = output / "plan.json"
+    try:
+        plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError("E03 preflight abort requires an immutable plan") from exc
+    if plan.get("experiment_id") != experiment_id:
+        raise RuntimeError("E03 preflight abort plan identity mismatch")
+    if (output / "inner_gate.json").exists():
+        raise RuntimeError("E03 preflight abort cannot follow scored gate evidence")
+    target = output / "preflight_abort.json"
+    if target.exists():
+        raise RuntimeError("E03 preflight abort evidence is immutable")
+    evidence = {
+        "experiment_id": experiment_id, "status": "aborted_preflight", "plan_code_sha": plan.get("code_sha"),
+        "abort_code_sha": _git_sha(root), "failure": failure.strip(), "scores_recorded": False,
+        "training_started": False, "cache_written": False,
+    }
+    _atomic_json(target, evidence)
+    try:
+        append_e03_terminal_registry(root, evidence, code_sha=str(plan.get("code_sha")), experiment_id=experiment_id)
+    except Exception:
+        target.unlink(missing_ok=True)
+        raise
+    return target
 
 
 def _metrics_dict(value: EventMetrics) -> dict[str, int | float]:
@@ -476,9 +542,13 @@ def _weighted_inner_result(data: OuterTrainOnlyData, config: RunConfig, weights:
     return InnerOOFResult(best[1].metrics, 116, subjects, subjects, subjects)
 
 
-def run_e03_inner_gate(root: Path, output: Path, *, workers: int, source_factory: Callable[[Path], FilesystemDataSource] = FilesystemDataSource) -> dict[str, object]:
+def run_e03_inner_gate(root: Path, output: Path, *, workers: int,
+                       source_factory: Callable[[Path], FilesystemDataSource] = FilesystemDataSource,
+                       experiment_id: str = E03_ID) -> dict[str, object]:
     """Run only the E03 inner gate; formal outer evaluation is intentionally absent."""
-    root, output = Path(root).resolve(), _validate_output(root, output)
+    root = Path(root).resolve()
+    experiment_id = _validate_experiment_id(experiment_id)
+    output = _validate_output(root, output, experiment_id=experiment_id)
     _require_e03_environment(root)
     plan_path = output / "plan.json"
     if not plan_path.exists():
@@ -510,7 +580,7 @@ def run_e03_inner_gate(root: Path, output: Path, *, workers: int, source_factory
                 "subject_ids_sha256": hashlib.sha256("\n".join(sorted(outer_subject_ids)).encode()).hexdigest(),
             }, "input_fingerprints": [dict(row) for row in input_fingerprints],
             "hard_negative": {"hard_count": int(mined.hard_mask.sum()), "category_counts": {key: int(value.sum()) for key, value in mined.category_mask.items()}, "weight_sum": float(mined.sample_weight.sum())}})
-    report: dict[str, object] = {"experiment_id": E03_ID, "phase": "inner-gate", "code_sha": code_sha, "development_evidence": True,
+    report: dict[str, object] = {"experiment_id": experiment_id, "phase": "inner-gate", "code_sha": code_sha, "development_evidence": True,
         "not_independent_validation": True, "outer_validation_accessible": False,
         "incumbent_outer_anchor": _frozen_outer_anchor(root), "inner_control_arms": ["threshold_only", "hard_negative_v1"], "folds": folds,
         "threshold_only": _pooled_metrics(control_rows), "hard_negative_v1": _pooled_metrics(hard_rows)}
@@ -520,7 +590,7 @@ def run_e03_inner_gate(root: Path, output: Path, *, workers: int, source_factory
     if target.exists(): raise RuntimeError("E03 inner gate is immutable")
     _atomic_json(target, report)
     append_e03_terminal_registry(root, {"status": "passed_inner_gate" if report["passed"] else "stopped_inner_gate", "passed": bool(report["passed"]),
-        "inner_threshold_only_f1": report["threshold_only"]["f1"], "inner_hard_negative_f1": report["hard_negative_v1"]["f1"]}, code_sha=code_sha)
+        "inner_threshold_only_f1": report["threshold_only"]["f1"], "inner_hard_negative_f1": report["hard_negative_v1"]["f1"]}, code_sha=code_sha, experiment_id=experiment_id)
     return report
 
 

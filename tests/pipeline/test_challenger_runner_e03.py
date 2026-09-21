@@ -66,6 +66,38 @@ def test_plan_contains_verified_read_only_incumbent_anchor(monkeypatch, tmp_path
     assert plan["comparison_arms"] == ["threshold_only", "hard_negative_v1"]
 
 
+def test_new_e03_experiment_id_requires_lineage_and_uses_its_own_output(monkeypatch, tmp_path: Path):
+    """A post-abort retry must be a new immutable experiment, never E03-001 reuse."""
+    from src.pipeline.challenger import e03
+    output = tmp_path / "outputs" / "challenger_70" / "experiments" / "E03-002"
+    monkeypatch.setattr(e03, "_require_e03_environment", lambda *_args, **kwargs: kwargs.get("code_sha") or "b" * 40)
+    monkeypatch.setattr(e03, "_frozen_outer_anchor", lambda _root: {"run_key": "160afaf81debf1ee", "tp": 114, "eligible": 153, "pred": 197, "fp": 83, "f1": 0.6514285714285715})
+    with pytest.raises(ValueError, match="derived_from"):
+        e03.write_e03_preregistration(tmp_path, output, code_sha="b" * 40, experiment_id="E03-002")
+    plan = json.loads(e03.write_e03_preregistration(tmp_path, output, code_sha="b" * 40, experiment_id="E03-002", derived_from="E03-001").read_text())
+    assert plan["experiment_id"] == "E03-002"
+    assert plan["derived_from"] == "E03-001"
+
+
+def test_preflight_abort_freezes_no_score_terminal_evidence(monkeypatch, tmp_path: Path):
+    """A preregistered failure records no metric or training claim and cannot be overwritten."""
+    from src.pipeline.challenger import e03
+    output = tmp_path / "outputs" / "challenger_70" / "experiments" / "E03-001"
+    output.mkdir(parents=True)
+    (output / "plan.json").write_text(json.dumps({"experiment_id": "E03-001", "code_sha": "a" * 40}), encoding="utf-8")
+    monkeypatch.setattr(e03, "_require_e03_environment", lambda *_args, **_kwargs: "b" * 40)
+    monkeypatch.setattr(e03, "_git_sha", lambda _root: "b" * 40)
+
+    target = e03.record_e03_preflight_abort(tmp_path, output, failure="missing raw session is canonical cache state")
+    evidence = json.loads(target.read_text())
+    assert evidence["scores_recorded"] is False
+    assert evidence["training_started"] is False
+    assert evidence["cache_written"] is False
+    assert "n_tp" not in evidence
+    with pytest.raises(RuntimeError, match="immutable"):
+        e03.record_e03_preflight_abort(tmp_path, output, failure="different")
+
+
 def test_cache_identity_binds_namespace_config_code_and_input_fingerprints():
     """Omitting any source input signature could reuse a cache after train data changed."""
     from src.pipeline.challenger.e03 import e03_cache_key, registered_e03_config
@@ -144,6 +176,31 @@ def test_outer_subject_guard_uses_only_subject_ids_and_rejects_overlap(tmp_path:
     assert_e03_outer_subject_disjoint({"train-1", "train-2"}, {"outer-1"})
     with pytest.raises(RuntimeError, match="outer-validation subject overlap"):
         assert_e03_outer_subject_disjoint({"train-1", "outer-1"}, {"outer-1"})
+
+
+def test_missing_train_raw_session_uses_canonical_missing_fingerprint(tmp_path: Path):
+    """Missing raw caches are legal in micro metadata and must not block E03 preflight."""
+    from src.pipeline.challenger.e03 import e03_train_only_input_fingerprints, registered_e03_config
+
+    cache = tmp_path / "cache"
+    for folder, names in {"slide": ("train", "meal_train", "no_meal_train"), "micro15": ("train", "meal_train", "no_meal_train")}.items():
+        for name in names:
+            path = cache / folder / f"fold0_{name}.npz"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"input")
+    manifest = cache / "splits" / "fold0.json"
+    manifest.parent.mkdir(parents=True)
+    manifest.write_text(json.dumps({"train_sessions": ["present", "missing"], "val_sessions": []}), encoding="utf-8")
+    sessions = cache / "sessions"
+    sessions.mkdir()
+    (sessions / "present.npz").write_bytes(b"present raw")
+    index = tmp_path / "index.csv"; index.write_text("index", encoding="utf-8")
+    meals = tmp_path / "meals.csv"; meals.write_text("meals", encoding="utf-8")
+
+    rows = e03_train_only_input_fingerprints(tmp_path, registered_e03_config(0, workers=1), index_path=index, meals_path=meals)
+    by_path = {Path(str(row["path"])).name: row for row in rows}
+    assert by_path["missing.npz"] == {"role": "train_session_raw", "path": str((sessions / "missing.npz").resolve()), "missing": True}
+    assert {"size", "mtime_ns", "sha256"} <= set(by_path["present.npz"])
 
 
 def test_outer_validation_sentinel_rejects_loader_or_outer_subject_access():
