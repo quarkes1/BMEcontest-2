@@ -56,6 +56,36 @@ def _validate_lineage(experiment_id: str, derived_from: str | None) -> str:
     return derived_from
 
 
+def _retry_rationale(experiment_id: str) -> str:
+    if experiment_id == E03_ID:
+        return "E02-005 failed its TP-loss gate; E03 isolates v1 weighting rather than combining a failed v2 representation."
+    parent = "E03-001" if experiment_id == "E03-002" else "E03-002"
+    return f"{parent} aborted during preflight before scoring; this retry preserves its exact v1 hard-negative specification."
+
+
+def _require_terminal_parent_abort(root: Path, *, experiment_id: str) -> None:
+    """For E03-003, bind the retry to E03-002's no-score terminal record."""
+    if experiment_id != "E03-003":
+        return
+    root = Path(root).resolve()
+    parent = "E03-002"
+    artifact = root / "outputs" / "challenger_70" / "experiments" / parent / "preflight_abort.json"
+    registry = root / "outputs" / "challenger_70" / "experiment_registry.jsonl"
+    try:
+        evidence = json.loads(artifact.read_text(encoding="utf-8"))
+        rows = [json.loads(line) for line in registry.read_text(encoding="utf-8").splitlines() if line.strip()]
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError("E03-003 requires E03-002 parent terminal abort evidence") from exc
+    required = {"experiment_id": parent, "status": "aborted_preflight", "scores_recorded": False,
+                "training_started": False, "cache_written": False, "historical_terminal": True,
+                "replay_permitted": False}
+    if any(evidence.get(key) != value for key, value in required.items()):
+        raise RuntimeError("E03-003 parent terminal abort artifact is invalid")
+    matching = [row for row in rows if row.get("experiment_id") == parent]
+    if len(matching) != 1 or any(matching[0].get(key) != value for key, value in required.items()):
+        raise RuntimeError("E03-003 parent terminal abort registry is invalid")
+
+
 def registered_e03_config(outer_fold: int, *, workers: int) -> RunConfig:
     """Return E03's sole v1 control surface."""
     if outer_fold not in range(5) or workers < 1:
@@ -296,7 +326,7 @@ def _plan_payload(code_sha: str, *, root: Path | None = None, experiment_id: str
         "experiment_id": experiment_id,
         "experiment_slug": E03_NAMESPACE,
         "derived_from": lineage,
-        "derivation_rationale": "E02-005 failed its TP-loss gate; E03 isolates v1 weighting rather than combining a failed v2 representation." if experiment_id == E03_ID else "E03-001 aborted during preflight before scoring; this retry preserves its exact v1 hard-negative specification.",
+        "derivation_rationale": _retry_rationale(experiment_id),
         "hypothesis": "Inner-OOF weighted v1 hard negatives reduce episode false positives beyond a same-grid threshold-only control.",
         "base_run": E03_BASE_RUN, "code_sha": code_sha, "numpy_version": E03_NUMPY_VERSION,
         "incumbent_outer_anchor": _frozen_outer_anchor(root) if root is not None else {"run_key": E03_BASE_RUN, "tp": 114, "eligible": 153, "pred": 197, "fp": 83, "f1": 0.6514285714285715},
@@ -345,6 +375,7 @@ def write_e03_preregistration(
     experiment_id = _validate_experiment_id(experiment_id)
     derived_from = _validate_lineage(experiment_id, derived_from)
     output = _validate_output(root, output, experiment_id=experiment_id)
+    _require_terminal_parent_abort(root, experiment_id=experiment_id)
     plan = output / "plan.json"
     if plan.exists():
         _require_e03_environment(root)
