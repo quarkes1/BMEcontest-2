@@ -447,6 +447,9 @@ def test_e03_004_preflight_roundtrips_real_plan_without_loading_or_fitting(monke
             raise AssertionError("preflight must not load training data")
 
     source = NoTrainingSource()
+    fit_calls: list[str] = []
+    monkeypatch.setattr(e03, "crossfit_predict_proba", lambda *_args, **_kwargs: fit_calls.append("crossfit"))
+    monkeypatch.setattr(e03._runner, "_window_estimator", lambda *_args, **_kwargs: fit_calls.append("window-estimator"))
     report = e03.run_e03_preflight(tmp_path, output, workers=1, experiment_id="E03-004", source_factory=lambda _root: source, index_path=index, meals_path=meals)
 
     assert report["phase"] == "preflight"
@@ -454,6 +457,7 @@ def test_e03_004_preflight_roundtrips_real_plan_without_loading_or_fitting(monke
     assert report["training_started"] is False
     assert report["scoring_started"] is False
     assert source.calls == 0
+    assert fit_calls == []
     assert not (output / "inner_gate.json").exists()
     assert not (tmp_path / "cache" / "challenger_70" / "e03").exists()
     assert len(report["folds"]) == 5
