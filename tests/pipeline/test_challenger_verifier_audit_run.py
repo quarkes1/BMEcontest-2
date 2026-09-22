@@ -75,6 +75,10 @@ def test_runner_installs_exact_atomic_e04_surface_and_preserves_registry(tmp_pat
     assert installed == output
     assert tuple(sorted(path.name for path in output.iterdir())) == tuple(sorted(OUTPUT_FILES))
     assert (output / "candidate_examples").is_dir()
+    manifest = __import__("json").loads((output / "manifest.json").read_text(encoding="utf-8"))
+    assert sorted(manifest["output_files"]) == sorted(
+        path.relative_to(output).as_posix() for path in output.rglob("*") if path.is_file()
+    )
     assert registry.read_text(encoding="utf-8") == '{"historical": true}\n'
     assert "outer_f1" not in (output / "report.md").read_text(encoding="utf-8")
 
@@ -182,6 +186,11 @@ def test_report_describes_mechanisms_model_spaces_and_fold_support_without_recom
     for count in ("A=1", "B=2", "C=3", "D=4", "B_model_disagreement=5", "unsupported=6", "unresolved=7",
                   "A=2", "B=3", "C=4", "D=5", "B_model_disagreement=6", "unsupported=7", "unresolved=8"):
         assert count in report
+    for rule in (
+        "non-exclusive", "[-0.05, 0)", "both fitted models", "B_model_disagreement",
+        "|LR-LGBM| >= 0.20", "first quartile", "interquartile range", "unsupported",
+    ):
+        assert rule in report
 
 
 def test_candidate_example_filename_is_stable_and_cannot_embed_truth_key_path_segments():

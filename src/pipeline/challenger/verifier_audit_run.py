@@ -227,6 +227,14 @@ def _report(expected: Sequence[str], summary: Mapping[str, object]) -> str:
         "## Raw-reachable false-negative population", "",
         f"The E01-bound target population contains {len(expected)} truths: 27 C1 and 4 C2 (fold counts 3/1/10/6/11).",
         "", "## Mechanism counts", "",
+        "Legend (all flags are non-exclusive and descriptive; a row may carry several flags):",
+        "- A: frozen blend margin is [-0.05, 0).",
+        "- B: both fitted models have base contribution at least their same-fold matched-TP median and Context contribution negative and at or below their same-fold matched-TP first quartile.",
+        "- B_model_disagreement: the B condition is met by exactly one model when both model reference quantiles are defined.",
+        "- C: |LR-LGBM| >= 0.20.",
+        "- D: both probabilities are below their same-fold matched-TP first quartile and within their same-fold final-FP interquartile range.",
+        "- unsupported: any required same-fold reference quantile is undefined; unresolved: no supported A/B/C/D or B_model_disagreement flag applies.",
+        "",
         f"best-IoU witness labels are non-exclusive: {iou_counts}. best-IoU fold support: {iou_support}.",
         f"best-score witness labels are non-exclusive: {score_counts}. best-score fold support: {score_support}.",
         "", "## LR/LGBM and Context findings", "",
@@ -295,14 +303,13 @@ def run_verifier_audit(
         } if promotion.is_file() else {}),
         "frozen_policy_sha256_by_fold": {str(index): _value_sha256(value) for index, value in enumerate(policies)},
         "frozen_blend_score_sha256_by_fold": {str(index): _value_sha256(value) for index, value in enumerate(blend_scores)},
-        "code_sha": git_sha(base), "protected_snapshot": before, "output_files": list(OUTPUT_FILES), "registry_written": False,
+        "code_sha": git_sha(base), "protected_snapshot": before, "registry_written": False,
     }
     # Verify the frozen release before even creating an output staging surface.
     assert_unchanged(before, base)
     stage = target.parent / f".{target.name}.staging-{uuid.uuid4().hex}"
     try:
         stage.mkdir()
-        _write_json(stage / "manifest.json", manifest)
         _write_csv(stage / "reachable_fn_candidates.csv", [row for audit in audits for row in _rows(audit.get("reachable_fn_candidates"))])
         _write_csv(stage / "tp_reference.csv", [row for audit in audits for row in _rows(audit.get("tp_reference"))])
         _write_csv(stage / "fp_reference.csv", [row for audit in audits for row in _rows(audit.get("fp_reference"))])
@@ -320,6 +327,11 @@ def run_verifier_audit(
                 name = _example_filename(audit_row["fold"], row.get("truth_key"), row.get("raw_index"))
                 _write_json(examples / name, {**row, "diagnostic_only_uses_gt": True})
         (stage / "report.md").write_text(_report(expected, summary), encoding="utf-8")
+        manifest["output_files"] = sorted([
+            "manifest.json",
+            *(path.relative_to(stage).as_posix() for path in stage.rglob("*") if path.is_file()),
+        ])
+        _write_json(stage / "manifest.json", manifest)
         if tuple(sorted(path.name for path in stage.iterdir())) != tuple(sorted(OUTPUT_FILES)):
             raise RuntimeError("E04 staging surface is incomplete")
         # Both guards occur before the atomic install: a failed guard can only

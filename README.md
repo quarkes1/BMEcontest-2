@@ -323,3 +323,7 @@ GT-aware 单候选 oracle 仅有 1/11 可通过原 event policy，其余 10 个�
 **DIAGNOSTIC ONLY / USES GT**，不是新 outer F1 或可直接使用的救援规则。
 下一位 challenger 须经人工审阅 A2 后独立预注册，只在 outer-train 的 inner
 OOF 上开发；当前发布与 `dist/` 均未变更。
+
+Installed-artifact hashes, the independent frozen-blend identity check, and
+the formal non-exclusive mechanism legend are recorded in
+[`docs/challenge_e04_validation_addendum.md`](docs/challenge_e04_validation_addendum.md).

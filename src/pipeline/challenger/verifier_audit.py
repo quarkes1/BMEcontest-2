@@ -50,13 +50,19 @@ def _row(trace: ReplayTrace, index: int, contributions: Mapping[str, np.ndarray]
     lr, lgbm, blend = (_finite(ledger.get(name)) for name in ("logistic_score", "lgbm_score", "blend_score"))
     if lr is None or lgbm is None or blend is None:
         raise RuntimeError("candidate ledger has invalid frozen verifier scores")
+    blend_weight = _finite(trace.policy.get("blend_weight"))
+    if blend_weight is None:
+        raise RuntimeError("E04 audit requires a finite frozen blend weight")
+    expected_blend = blend_weight * lr + (1.0 - blend_weight) * lgbm
+    if abs(blend - expected_blend) > 1e-12:
+        raise RuntimeError("candidate ledger blend score disagrees with the frozen blend identity")
     result: dict[str, object] = {
         "fold": trace.fold, "outer_fold": trace.fold, "group": group, "raw_index": index,
         "candidate_key": f"{trace.fold}:{index}", "final_index": final_index,
         "session_id": ledger.get("session_id"), "subject_id": ledger.get("subject_id"),
         "start_ms": ledger.get("start_ms"), "end_ms": ledger.get("end_ms"),
         "logistic_score": lr, "lgbm_score": lgbm, "blend_score": blend,
-        "blend_weight": _finite(trace.policy.get("blend_weight")), "event_threshold": threshold,
+        "blend_weight": blend_weight, "event_threshold": threshold,
         "margin": blend - threshold, "lr_minus_lgbm": lr - lgbm,
         "absolute_lr_lgbm_difference": abs(lr - lgbm),
         "disagreement_flag": abs(lr - lgbm) >= .20,
@@ -172,6 +178,8 @@ def _mechanisms(row: Mapping[str, object], tp: Sequence[Mapping[str, object]], f
         labels.append("B")
     elif b_lr is not None and b_lgbm is not None and b_lr != b_lgbm:
         labels.append("B_model_disagreement")
+    elif b_lr is None or b_lgbm is None:
+        labels.append("unsupported")
     tp_lr, tp_lgbm = _quantile(tp, "logistic_score", .25), _quantile(tp, "lgbm_score", .25)
     fp_lr_q1, fp_lr_q3 = _quantile(fp, "logistic_score", .25), _quantile(fp, "logistic_score", .75)
     fp_lgbm_q1, fp_lgbm_q3 = _quantile(fp, "lgbm_score", .25), _quantile(fp, "lgbm_score", .75)

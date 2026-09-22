@@ -127,6 +127,21 @@ def test_audit_rejects_nonofficial_pair_or_duplicate_final_ledger_coordinate(mon
         verifier_audit.audit_verifier_trace(replace(trace, candidate_rows=tuple(duplicated)))
 
 
+def test_audit_rejects_nonfinite_weight_and_frozen_blend_identity_mismatch(monkeypatch):
+    """A corrupt frozen blend chain must not be exported as a verifier explanation."""
+    from src.pipeline.challenger import verifier_audit
+    monkeypatch.setattr(verifier_audit, "explain_fitted_verifiers", lambda features, *_: {
+        name: np.zeros(len(features)) for name in ("lr_base", "lr_context", "lr_bias", "lgbm_base", "lgbm_context", "lgbm_bias")
+    })
+    trace = _trace()
+    with pytest.raises(RuntimeError, match="blend weight"):
+        verifier_audit.audit_verifier_trace(replace(trace, policy={"blend_weight": float("nan"), "threshold": .4}))
+    rows = [dict(row) for row in trace.candidate_rows]
+    rows[0]["blend_score"] = .7500000001
+    with pytest.raises(RuntimeError, match="blend score"):
+        verifier_audit.audit_verifier_trace(replace(trace, candidate_rows=tuple(rows)))
+
+
 def test_summary_requires_exactly_five_distinct_folds_and_four_fold_sign_gate():
     """A stable descriptive sign is meaningful only across the sealed five-fold population."""
     from src.pipeline.challenger.verifier_audit import summarize_verifier_audits
