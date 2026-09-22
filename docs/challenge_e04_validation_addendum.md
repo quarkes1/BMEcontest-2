@@ -3,8 +3,8 @@
 This is a post-hoc validation record for the already-installed diagnostic-only
 artifact at `outputs/challenger_70/e04_verifier_audit/`. It does not alter that
 artifact, rerun E04, create F1, train, tune a policy, write a registry, or
-change a release, model, or distribution. A future execution must create a new
-F1 artifact rather than modify this one.
+change a release, model, or distribution. A future execution must create a
+separately versioned diagnostic artifact rather than modify this one.
 
 ## Installed provenance
 
