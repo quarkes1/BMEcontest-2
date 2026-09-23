@@ -239,11 +239,18 @@ def temporal_outputs(scale: pd.DataFrame, output: Path) -> dict:
     best = max(candidate_scores, key=lambda x: (x[0], x[1], x[2]))
     signal = bool(best[0] >= 4 and best[1] >= 0.25 and best[2])
     result = {"population_summaries": summaries, "fold_directions": directions, "best_candidate": {"scale_s": best[3], "metric": best[4], "consistent_folds": best[0], "robust_separation": best[1], "reachable_fn_tp_like": best[2]}, "temporal_scale_signal": signal}
+    result["coverage_audit"] = {
+        "rows_below_0_8": int(np.sum(scale.window_coverage < 0.8)),
+        "total_rows": int(len(scale)),
+        "minimum": float(scale.window_coverage.min()),
+        "note": "low-coverage rows remain explicit and yield NaN proxies when fewer than four samples are available",
+    }
     write_json(target / "summary.json", result)
     write_report(target / "report.md", "Temporal-scale audit", [
         "Fixed scales: 5/10/15/30/60 s. All measurements use cached raw IMU and the fixed incumbent populations.",
         "",
         f"Strongest registered proxy: `{best[4]}` at {best[3]} s; TP–FP direction agreed in {best[0]}/5 folds, robust separation={best[1]:.3f}, reachable FN TP-like={best[2]}.",
+        f"Coverage audit: {result['coverage_audit']['rows_below_0_8']}/{result['coverage_audit']['total_rows']} scale rows are below 0.8 coverage; no imputation was used.",
         f"Mechanism flag: **{'present' if signal else 'not established'}**. No feature or classifier was promoted.",
     ])
     return result
@@ -327,18 +334,27 @@ def subject_outputs(scale: pd.DataFrame, combined: pd.DataFrame, store: SignalSt
     return result
 
 
-def hand_scenario_outputs(combined: pd.DataFrame, output: Path) -> dict:
+def hand_scenario_outputs(combined: pd.DataFrame, scale: pd.DataFrame, periodic: pd.DataFrame, output: Path) -> dict:
     target = prepare_output_dir(output / "hand_scenario")
     meals = load_meals()
     rows = []
     for _, row in combined.iterrows():
         centre = (row.start_ms + row.end_ms) / 2
         match = meals[(meals.externalid == row.subject_id) & (meals.before_ms <= centre) & (meals.after_ms >= centre)]
-        rows.append({"population": row.population, "fold": int(row.fold), "subject_id": row.subject_id, "scene": match.iloc[0].scene if len(match) else "unknown", "duration_s": (row.end_ms - row.start_ms) / 1000, "blend_score": row.blend_score})
+        rows.append({"candidate_key": row.candidate_key, "population": row.population, "fold": int(row.fold), "subject_id": row.subject_id, "scene": match.iloc[0].scene if len(match) else "unknown", "duration_s": (row.end_ms - row.start_ms) / 1000, "blend_score": row.blend_score})
     frame = pd.DataFrame(rows)
+    signal = scale[scale.scale_s == 60][["candidate_key", "activity_magnitude", "short_term_energy", "gyro_variance"]]
+    repetition = periodic[["candidate_key", "repetition_regularity"]]
+    frame = frame.merge(signal, on="candidate_key", how="left").merge(repetition, on="candidate_key", how="left")
     counts = frame.groupby(["population", "scene"]).size().unstack(fill_value=0).to_dict("index")
     fold_counts = frame.groupby(["fold", "scene"]).size().unstack(fill_value=0).to_dict("index")
-    result = {"population_scene_counts": counts, "fold_scene_counts": fold_counts, "known_scene_fraction": float(np.mean(frame.scene != "unknown")), "limitation": "scene is assigned only when the analysed interval centre overlaps labelled meal metadata; unmatched FP scene remains unknown"}
+    known = frame[frame.scene != "unknown"]
+    metrics = ["duration_s", "blend_score", "activity_magnitude", "short_term_energy", "gyro_variance", "repetition_regularity"]
+    scene_metrics = {
+        scene: {metric: {"median": float(part[metric].median()), "n": int(part[metric].notna().sum())} for metric in metrics}
+        for scene, part in known.groupby("scene")
+    }
+    result = {"population_scene_counts": counts, "fold_scene_counts": fold_counts, "scene_metric_summaries": scene_metrics, "known_scene_fraction": float(np.mean(frame.scene != "unknown")), "limitation": "scene is assigned only when the analysed interval centre overlaps labelled meal metadata; unmatched FP scene remains unknown"}
     frame.to_csv(target / "metrics.csv", index=False)
     write_json(target / "summary.json", result)
     write_report(target / "report.md", "Hand / scenario audit", [
@@ -348,9 +364,10 @@ def hand_scenario_outputs(combined: pd.DataFrame, output: Path) -> dict:
     return result
 
 
-def fold_outputs(combined: pd.DataFrame, scale: pd.DataFrame, store: SignalStore, output: Path) -> dict:
+def fold_outputs(root: Path, combined: pd.DataFrame, scale: pd.DataFrame, store: SignalStore, output: Path) -> dict:
     target = prepare_output_dir(output / "fold_weakness")
     sixty = scale[scale.scale_s == 60]
+    all_fn = pd.read_csv(root / "outputs" / "challenger_70" / "error_atlas" / "fn.csv")
     rows = []
     for fold in range(5):
         pop = combined[combined.fold == fold]
@@ -360,6 +377,7 @@ def fold_outputs(combined: pd.DataFrame, scale: pd.DataFrame, store: SignalStore
             "fold": fold,
             "subjects": int(pop.subject_id.nunique()), "sessions": int(len(sessions)),
             "matched_tp": int(np.sum(pop.population == "matched_tp")), "final_fp": int(np.sum(pop.population == "final_fp")),
+            "eligible_meal_count": int(np.sum(pop.population == "matched_tp") + np.sum(all_fn.outer_fold == fold)),
             "reachable_fn": int(np.sum(pop.population == "reachable_fn")), "c0_fn": int(np.sum(pop.population == "c0_fn")),
             "short_event_fraction": float(np.mean(pop.duration_s < 600)) if "duration_s" in pop else float(np.mean((pop.end_ms-pop.start_ms) < 600000)),
             "median_event_duration_s": float(np.median((pop.end_ms-pop.start_ms)/1000)),
@@ -450,8 +468,8 @@ def main() -> int:
     periodic_result = periodic_outputs(periodic, output)
     morphology_result = morphology_outputs(combined, profiles, output)
     subject_result = subject_outputs(scale, combined, store, output)
-    hand_result = hand_scenario_outputs(combined, output)
-    fold_result = fold_outputs(combined, scale, store, output)
+    hand_result = hand_scenario_outputs(combined, scale, periodic, output)
+    fold_result = fold_outputs(root, combined, scale, store, output)
     fp_result = fp_outputs(scale, periodic, output)
     status, rationale = choose_status(track_a_result, temporal_result, periodic_result, subject_result, morphology_result)
 
