@@ -1,0 +1,51 @@
+{
+  "abort_conditions": [
+    "outer access",
+    "candidate identity change",
+    "schema drift",
+    "non-OOF score"
+  ],
+  "base_probabilities": "subject-OOF only",
+  "base_run": "160afaf81debf1ee",
+  "candidate_population": "incumbent raw macro/micro union",
+  "code_sha": "4f262b01b87d9d145f1230d5571dd7e52e6a1794",
+  "controls": [
+    "release-fold scalar",
+    "inner-retuned scalar"
+  ],
+  "experiment_id": "E06-001",
+  "feature_list": [
+    "p_lr",
+    "p_lgbm",
+    "lr_minus_lgbm",
+    "abs_lr_minus_lgbm",
+    "duration_seconds",
+    "has_macro",
+    "has_micro",
+    "macro_micro_ratio"
+  ],
+  "gate": {
+    "majority_folds_required": true,
+    "review": [
+      0.772,
+      0.78
+    ],
+    "strong": 0.78
+  },
+  "hypothesis": "candidate-dependent LR/LGBM complementarity improves fixed scalar blend",
+  "inner_folds": 4,
+  "lr_grid": [
+    0.1,
+    1.0,
+    10.0
+  ],
+  "matcher": "official IoU>=0.25",
+  "model": "LogisticRegression",
+  "normalization": "fold-contained median imputer + StandardScaler",
+  "outer_evaluation_authorized": false,
+  "phase": "inner-only",
+  "seeds": [
+    42
+  ],
+  "threshold_procedure": "incumbent inner event threshold/admission grid"
+}

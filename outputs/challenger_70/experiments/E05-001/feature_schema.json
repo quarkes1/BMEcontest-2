@@ -1,0 +1,12 @@
+{
+  "count": 6,
+  "names": [
+    "gyro5_magnitude_variance",
+    "gyro5_magnitude_rms",
+    "gyro5_delta_energy",
+    "gyro5_magnitude_max",
+    "gyro5_active_fraction",
+    "gyro5_to_gyro15_variance_ratio"
+  ],
+  "version": "gyro5-v1"
+}

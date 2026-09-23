@@ -1,0 +1,14 @@
+{
+  "count": 8,
+  "names": [
+    "p_lr",
+    "p_lgbm",
+    "lr_minus_lgbm",
+    "abs_lr_minus_lgbm",
+    "duration_seconds",
+    "has_macro",
+    "has_micro",
+    "macro_micro_ratio"
+  ],
+  "version": "adaptive-fusion-v1"
+}

@@ -1,0 +1,46 @@
+{
+  "abort_conditions": [
+    "outer access",
+    "candidate identity change",
+    "schema drift",
+    "non-OOF score"
+  ],
+  "aggregation_definition": "six deterministic scalar proxies",
+  "base_run": "160afaf81debf1ee",
+  "candidate_population": "incumbent raw macro/micro union",
+  "code_sha": "4f262b01b87d9d145f1230d5571dd7e52e6a1794",
+  "experiment_id": "E05-001",
+  "feature_definitions": "see committed tier1_challenger.py",
+  "feature_list": [
+    "gyro5_magnitude_variance",
+    "gyro5_magnitude_rms",
+    "gyro5_delta_energy",
+    "gyro5_magnitude_max",
+    "gyro5_active_fraction",
+    "gyro5_to_gyro15_variance_ratio"
+  ],
+  "fusion_procedure": "incumbent weights grid",
+  "gate": {
+    "majority_folds_required": true,
+    "review": [
+      0.772,
+      0.78
+    ],
+    "strong": 0.78
+  },
+  "hypothesis": "centred 5 s GYRO information improves event TP/FP trade-off",
+  "inner_folds": 4,
+  "lgbm_settings": "incumbent constrained settings",
+  "lr_grid": [
+    0.1
+  ],
+  "matcher": "official IoU>=0.25",
+  "normalization": "LR fold-contained median imputer + StandardScaler; LGBM fold-contained imputer",
+  "outer_evaluation_authorized": false,
+  "phase": "inner-only",
+  "seeds": [
+    42
+  ],
+  "threshold_procedure": "incumbent inner event threshold/admission grid",
+  "window_definition": "15 s cached raw GYRO around candidate midpoint; centred 5 s subwindow"
+}
