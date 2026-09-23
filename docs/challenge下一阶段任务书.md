@@ -1,428 +1,582 @@
 # BMEcontest-2 下一轮 Challenge 任务书
 
-## E05-GYRO5 → E06-FUSION → E07-COMBINATION
+## E05.1 Decision Churn Audit → E05-R Frozen GYRO Residual
 
-### Cache-first / Inner-only / Mechanism-isolated
+### Low-cost / Cache-first / Incumbent-frozen
 
 ---
 
-# 0. 当前基线与研究状态
+# 0. 当前正式状态
 
-当前正式 incumbent：
+正式 incumbent 保持：
 
 * run key：`160afaf81debf1ee`
 * strict subject-disjoint nested 5-fold development F1：`0.6514285714`
 * TP / eligible truth / predictions：`114 / 153 / 197`
 
-当前正式 release、models、dist 均保持冻结。
+当前分支：
+
+`research/f1-070-challenger`
 
 已完成：
 
 * E00 incumbent reproduction
 * E01 Error Atlas
-* E02 Context-v2：inner gate failed
-* E03 hard-negative：inner gate failed
+* E02 Context-v2：failed
+* E03 hard-negative：failed
 * E03.5 candidate-control audit
-* E04 verifier failure audit
+* E04 verifier audit
 * Data Characterization Sprint
+* E05-GYRO5
+* E06-FUSION
 
-Data Sprint 最终状态：
+当前 Tier 1 状态：
 
-`MULTIPLE_SIGNALS_FOUND_NEEDS_HUMAN_SELECTION`
-
-已确认两个值得进入 Tier 1 的方向：
-
-### Signal A — 5 s GYRO short-scale representation
-
-最强 proxy：
-
-`5 s gyro_variance`
-
-诊断中位数：
-
-* TP：`56944`
-* reachable FN：`39369`
-* final FP：`9257`
-
-且：
-
-* TP–FP 方向在 `5/5 folds` 一致；
-* reachable FN 更接近 TP；
-* temporal-scale signal gate 已通过。
-
-### Signal B — LR/LGBM adaptive fusion
-
-`LR - LGBM >= 0.20`：
-
-* reachable FN：`12 / 31`
-* final FP：`9 / 83`
-* 方向在 `4 / 5 folds` 一致。
-
-其他数据路线：
-
-* periodicity：未成立；
-* subject-relative shift：未成立；
-* direct TCN/Transformer：暂不支持；
-* hand/scenario：metadata 不足；
-* fold0/fold2：主要表现为较高 FP/session density，约其他折 `1.36×`；
-* FP dominant modes：
-
-  * long continuous movement：39
-  * low-frequency long movement：27
-  * fragmented high activity：11
+`NO_TIER1_CHALLENGER_PASSED`
 
 ---
 
-# 1. 本轮总体决策
+# 1. 已知 E05 结果
 
-本轮按以下顺序执行：
+E05-GYRO5：
 
-`E05-GYRO5 → E06-FUSION → E07-COMBINATION`
+* Control inner F1：`0.7655986509`
+* Challenger inner F1：`0.7651006711`
+* TP Δ：`+2`
+* FP Δ：`+4`
+* only `2/5 folds` improved
 
-但每一步都有独立 gate。
+但 decision churn 明显：
 
-禁止因为任务书中写了后续阶段就自动全部执行。
+* TP recovered：11
+* TP lost：9
+* FP removed：16
+* FP introduced：20
 
-逻辑：
+short events：
 
-1. 先验证新的信息源：5 s GYRO；
-2. 再验证现有信息的自适应融合；
-3. 只有两者都独立成立，才允许组合；
-4. 整个任务默认禁止完整 outer evaluation。
+* TP recovered：5
+* TP lost：3
 
-本轮目标不是直接报告新的正式 F1。
+因此：
 
-目标是产生：
+> GYRO5 不是完全无信息，而是改变了大量 decision，但当前“116D + 6 GYRO5 features 后整体重训 verifier”的方式未改善 TP/FP trade-off。
 
-> 一个或最多两个值得人工批准 full outer 的 inner-only challenger。
+E06 adaptive fusion：
 
----
+* Control A：`0.7655986509`
+* Control B：`0.7655986509`
+* Adaptive：`0.7567114094`
 
-# 2. 最高优先级原则
+因此 E06 路线正式停止。
 
-## 2.1 Cache first
-
-每一步开始前必须先判断：
-
-> 是否可以用已有 frozen cache 完成？
-
-如果可以：
-
-禁止重新执行：
-
-* raw full parsing
-* macro full extraction
-* micro-v1 full extraction
-* Context-v1 full extraction
-* sealed outer replay
-* dist rebuild
-* release rebuild
-* full clean-machine validation
+不要再继续 adaptive fusion。
 
 ---
 
-## 2.2 只重算真正变化的模块
+# 2. 本轮核心研究问题
 
-E05 改变的是：
+本轮只回答：
 
-`5 s GYRO representation`
+> E05 的 churn 是否存在稳定结构，支持“冻结 incumbent，只让 GYRO5 对有限 candidate 做 residual correction”？
 
-因此只允许：
+重点不是：
 
-* 从已解析 IMU 或已有低层缓存提取新增 5 s GYRO feature；
-* 重新训练使用这些新增 feature 的 verifier 部分。
+> GYRO5 能否重新训练一个更好的 verifier？
 
-不要重新计算无关模块。
+这个问题 E05 已经回答：
 
-E06 只改变 fusion：
-
-因此若 base OOF scores 已存在：
-
-**禁止重新训练 base LR/LGBM。**
+**当前方式不能。**
 
 ---
 
-# 3. 不得修改的资产
+# 3. 总体执行顺序
 
-在人工批准 promotion 前，不得修改：
+严格按：
+
+`E05.1 → human-style gate → optional E05-R`
+
+执行。
+
+不得跳过 E05.1 直接训练 E05-R。
+
+---
+
+# 4. 本轮最高优先级：节省计算
+
+优先复用：
+
+* E05 inner event diff
+* E05 GYRO5 feature cache
+* incumbent inner OOF scores
+* candidate metadata
+* fold assignments
+* existing matcher outputs
+
+禁止无理由重新：
+
+* 解析全部 raw TSV
+* 提取全部 63D macro
+* 提取全部 47D micro
+* 提取全部 Context-v1
+* 训练 incumbent LR/LGBM
+* 跑 sealed outer
+* rebuild dist
+* full regression suite
+* clean-machine validation
+
+---
+
+# 5. 不修改资产
+
+禁止修改：
 
 * `release/event_stack_incumbent.json`
 * `models/event_stack/160afaf81debf1ee/**`
 * `dist/**`
 * official submission
-* production visual
-* incumbent release metadata
+* production README headline
 
-研究代码优先放：
-
-`scripts/research/`
-
-或已有等价 research 路径。
-
-研究结果统一放：
-
-`outputs/challenger_70/`
+本轮只能新增 research artifact。
 
 ---
 
-# 4. 本轮禁止事项
+# 6. Phase A — E05.1 Decision Churn Audit
+
+E05.1：
+
+**DIAGNOSTIC ONLY**
+
+不得：
+
+* 训练新模型
+* 调 threshold
+* 计算 outer F1
+* 创建正式 challenger score
+* 修改 event policy
+
+---
+
+# 7. E05.1 population
+
+使用 E05 exact inner event diff 中已有四类事件：
+
+1. `TP_RECOVERED = 11`
+2. `TP_LOST = 9`
+3. `FP_REMOVED = 16`
+4. `FP_INTRODUCED = 20`
+
+必须使用 exact identity mapping。
+
+不得重新定义 population。
+
+---
+
+# 8. E05.1 必须分析的变量
+
+对四类事件至少比较：
+
+### GYRO5
+
+* 5 s gyro variance
+* 5 s gyro RMS / energy
+* 5 s / 15 s gyro variance ratio
+* 5 s local concentration
+
+只使用 E05 已经 preregistered / computed 的 feature。
+
+不要新增 feature search。
+
+### incumbent evidence
+
+* incumbent blend score
+* incumbent event threshold
+* incumbent score margin
+* LR score
+* LGBM score
+
+### candidate metadata
+
+* duration
+* macro evidence
+* micro evidence
+* macro/micro composition
+
+### fold
+
+* fold id
+
+---
+
+# 9. 重点变量：incumbent margin
+
+定义：
+
+`margin = incumbent_score - incumbent_event_threshold`
+
+必须重点比较：
+
+* TP recovered margin
+* TP lost margin
+* FP removed margin
+* FP introduced margin
+
+核心问题：
+
+> GYRO5 是否主要帮助 incumbent 原本低置信 / 边界 candidate，同时伤害高置信 incumbent decision？
+
+---
+
+# 10. 需要验证的主要 hypothesis
+
+## H1 — Boundary rescue hypothesis
+
+理想结构：
+
+* TP recovered 多集中在低 margin / near-boundary
+* TP lost 多集中在高 margin
+* FP removed 多集中在边界
+* FP introduced 多集中在较低 incumbent confidence
+
+如果成立：
+
+支持 uncertainty-gated residual。
+
+---
+
+## H2 — Monotonic GYRO signal hypothesis
+
+理想结构：
+
+* TP recovered 的 GYRO5 明显高于 FP introduced
+* FP removed 的 GYRO5 明显低于 TP recovered
+* 方向至少多数 folds 一致
+
+如果成立：
+
+支持简单 residual correction。
+
+---
+
+## H3 — Churn chaos
+
+如果：
+
+* 四类 GYRO5 分布高度混合
+* margin 无结构
+* fold 方向不稳定
+
+则：
+
+GYRO5 路线停止。
+
+---
+
+# 11. E05.1 禁止事项
 
 禁止：
 
-1. full outer evaluation；
-2. automatic promotion；
-3. 修改 eligible truth；
-4. 修改 matcher；
-5. 修改 outer fold；
-6. 修改 NMS；
-7. 修改 admission threshold；
-8. 修改 subject cap；
-9. 修改 Context-v1；
-10. 重新启动 Context-v2/v3；
-11. hard-negative v2；
-12. PPG；
-13. external FD；
-14. TCN；
-15. Transformer；
-16. RNN；
-17. AutoML；
-18. Optuna / 大规模 Bayesian search；
-19. 大规模 window sweep；
-20. 大规模 feature ranking；
-21. fold-specific threshold；
-22. fold-specific model；
-23. 根据 sealed outer GT 挑 feature；
-24. 删除失败实验；
-25. 重用 experiment ID。
+* 根据四类 event 人工搜索最佳阈值
+* brute-force GYRO threshold
+* 100 个 interaction
+* outer-derived rules
+* classifier benchmark
+* UMAP / clustering sweep
+* post-hoc feature explosion
+
+这是机制审计，不是调参。
 
 ---
 
-# 5. E05-GYRO5 — Short-scale GYRO Representation
+# 12. E05.1 最低输出
 
-## 5.1 Hypothesis
+创建：
 
-当前 micro-v1 主要使用 15 s 尺度。
+`outputs/challenger_70/e05_1_churn_audit/`
 
-Data Sprint 表明：
+至少包含：
 
-> 5 s GYRO variance 包含现有 15 s representation 未充分表达的短时腕部运动强度信息。
-
-该信息可能：
-
-* 提高部分 reachable FN；
-* 区分 long / low-frequency FP；
-* 同时改善 recall 与 precision。
-
----
-
-# 6. E05 不做完整 micro-v2
-
-第一版禁止：
-
-* 5/10/15/30/60 s 全尺度展开；
-* 第二套完整 47D micro features；
-* 新 candidate generator；
-* 新 sequence model。
-
-第一版只做：
-
-> 极小的 5 s GYRO representation augmentation。
+* `report.md`
+* `churn_population.csv`
+* `margin_summary.json`
+* `gyro5_summary.json`
+* `fold_direction.json`
+* `manifest.json`
 
 ---
 
-# 7. E05 feature budget
+# 13. E05.1 report 必须回答
 
-新增 feature 上限：
+只回答：
 
-**10 个。**
+1. TP recovered 是否集中于低 incumbent margin？
+2. TP lost 是否主要来自高-confidence incumbent decision？
+3. FP removed / introduced 的 GYRO5 是否有明显区别？
+4. GYRO5 signal 与 incumbent confidence 是否存在稳定 interaction？
+5. 多 fold 是否一致？
+6. 是否支持 frozen residual？
+7. 是否支持 uncertainty gating？
 
-推荐从以下语义中预注册少量 feature：
+---
 
+# 14. E05.1 Gate
+
+最终必须输出：
+
+`GYRO_RESIDUAL_SUPPORTED`
+
+或：
+
+`GYRO_RESIDUAL_NOT_SUPPORTED`
+
+---
+
+# 15. Supported 最低要求
+
+不能只因为 recovered TP 有 11 个就通过。
+
+至少满足：
+
+* GYRO5 与 margin 存在可解释 interaction；
+* TP recovered 与 TP lost 之间有稳定差异；
+* FP removed / introduced 不是完全不可分；
+* 至少 3/5 folds 大方向一致；
+* 机制不是单 fold 驱动。
+
+若不满足：
+
+输出：
+
+`GYRO_RESIDUAL_NOT_SUPPORTED`
+
+停止整个 GYRO5 路线。
+
+不要运行 E05-R。
+
+---
+
+# 16. Phase B — E05-R Frozen GYRO Residual
+
+只有：
+
+`GYRO_RESIDUAL_SUPPORTED`
+
+时允许执行。
+
+---
+
+# 17. E05-R 核心原则
+
+**冻结 incumbent verifier。**
+
+不得重新训练：
+
+* incumbent LR
+* incumbent LGBM
+* Context-v1 verifier
+* candidate generator
+
+base output 为固定：
+
+`p_incumbent`
+
+E05-R 只学习：
+
+`small correction`
+
+---
+
+# 18. E05-R conceptual form
+
+推荐：
+
+`p_final = p_incumbent + delta`
+
+其中：
+
+`delta = g(GYRO5, incumbent_margin, limited interaction features)`
+
+重点：
+
+> residual 默认为接近 0。
+
+只有有证据时才修正 incumbent。
+
+---
+
+# 19. E05-R feature budget
+
+最多：
+
+**4–6 个输入。**
+
+建议：
+
+* incumbent score
+* incumbent margin
 * 5 s gyro variance
-* 5 s gyro RMS
-* 5 s gyro energy
-* 5 s gyro max magnitude
-* 5 s gyro active fraction
-* 5 s gyro local peak count
-* 5 s gyro concentration
 * 5 s / 15 s gyro variance ratio
-* local max 5 s variance inside candidate
-* local 5 s contrast vs nearby baseline
+* optional gyro concentration
+* optional margin × gyro interaction
 
-不要求全部使用。
+不要加入：
 
-正式 E05-001 开始前，在：
-
-`plan.json`
-
-中固定 feature schema。
-
----
-
-# 8. 禁止 outer-derived feature selection
-
-不能因为 Data Sprint 中：
-
-`gyro_variance@5s`
-
-表现最好，就进一步在 sealed outer 上搜索：
-
-* 第几个轴最好；
-* 4.5 s 还是 5.5 s；
-* variance 还是 std；
-* threshold 怎样最好。
-
-5 s 是已有 diagnostic evidence 支持的 hypothesis。
-
-正式 challenger 内的任何进一步选择必须在 inner hierarchy 中完成。
+* 全 116D
+* 全 6D E05 block 加大量 expansion
+* raw micro representation
+* Context-v1 full vector
 
 ---
 
-# 9. 建议 E05 最小版本
+# 20. E05-R model
 
-优先：
+首选：
 
-`E05-001 = incumbent 116D + very-small GYRO5 feature block`
+`LogisticRegression`
 
-不要修改：
+或极小 linear residual model。
 
-* candidate generation
-* candidate-control
-* Context-v1
-* verifier family
-* event policy
+禁止：
+
+* LightGBM
+* RandomForest
+* XGBoost
+* neural net
+* TCN
 
 目标：
 
-隔离回答：
-
-> 5 s short-scale GYRO information 本身是否有 event-level增益？
+最小容量。
 
 ---
 
-# 10. E05 模型
+# 21. Optional uncertainty gate
 
-保持 incumbent verifier 架构优先。
+若 E05.1 明确支持 H1，可以允许：
 
-即：
+> residual 只作用于 incumbent uncertainty region。
 
-* LogisticRegression
-* constrained LightGBM
-* incumbent-style fusion
+但 uncertainty region 必须：
 
-不要同时改变模型结构。
+* 在 inner training hierarchy 内选择；
+* 不看 held-out inner GT；
+* 不看 outer；
+* preregister search space。
 
-否则无法区分：
-
-> feature improvement
-
-和：
-
-> model improvement。
+不要手写 sealed diagnostic threshold。
 
 ---
 
-# 11. E05 preregistration
+# 22. 推荐 gate 形式
 
-正式运行前创建：
+如果使用 uncertainty gate：
 
-`outputs/challenger_70/experiments/E05-001/plan.json`
+概念：
 
-必须记录：
+`|margin| > M → delta = 0`
+
+`|margin| <= M → allow residual`
+
+M 只能从一个极小 preregistered inner grid 中选择。
+
+例如：
+
+* 0.05
+* 0.10
+* 0.15
+
+具体值在 `plan.json` 固定。
+
+---
+
+# 23. E05-R preregistration
+
+创建：
+
+`outputs/challenger_70/experiments/E05R-001/plan.json`
+
+记录：
 
 * hypothesis
-* feature list
-* feature definitions
-* window definition
-* aggregation definition
-* candidate population
-* normalization
-* LR grid
-* LGBM settings
-* fusion procedure
-* threshold procedure
+* exact inputs
+* model
+* regularization
+* uncertainty gate grid if used
+* correction formulation
+* threshold policy
 * inner folds
 * seeds
 * gate
-* abort conditions
+* abort criteria
 
-一旦正式执行：
-
-不得修改 E05-001。
-
-若 implementation bug：
-
-记录失败；
-
-创建 E05-002。
+正式运行后不得修改。
 
 ---
 
-# 12. E05 normalization
+# 24. E05-R 必须保持 incumbent base prediction OOF
 
-任何 learned normalization：
+训练 residual 时：
 
-* scaler
-* percentile transform
-* clipping threshold
-* robust center/scale
+base incumbent score 必须来自：
 
-必须 fold-contained。
+**OOF prediction**
 
-禁止：
+不能使用：
 
-全数据先算 normalization，再做 CV。
+> base model 在见过该 subject 后产生的 score。
 
-如果 feature 本身可以无需 learned scaling：
+必须验证：
 
-优先保持简单。
-
----
-
-# 13. E05 candidate population
-
-保持 incumbent candidate population。
-
-第一版不要因为有 5 s signal 就增加候选。
-
-原因：
-
-先验证 representation，而不是 candidate recall。
-
-只有 E05 证明 5 s feature 有判别价值但候选 recall 成为明显瓶颈，未来才单独讨论 candidate-generation extension。
+* subject isolation
+* score provenance
+* no held-out leakage
 
 ---
 
-# 14. E05 primary metric
+# 25. E05-R Control
 
-Primary：
+必须比较：
+
+### Control A
+
+exact incumbent inner OOF：
+
+`0.7655986509`
+
+或完全相同协议下的 cached control。
+
+### Challenger
+
+Frozen incumbent + residual。
+
+禁止重训 Control A。
+
+只要 cache identity 已验证即可直接复用。
+
+---
+
+# 26. Primary metric
+
+仍为：
 
 **event-level aggregate inner OOF F1**
 
-保持：
-
-* incumbent eligible denominator
-* incumbent event matcher
-* incumbent evaluation semantics
-
-同时报告：
+必须同时报告：
 
 * TP
 * FP
 * FN
-* prediction count
+* predictions
 * precision
 * recall
-* short recall
-* medium recall
-* long recall
-* per-fold F1
+* fold F1
+* short / medium / long recall
 
 ---
 
-# 15. E05 必须做 event accounting
+# 27. E05-R 必须输出 churn accounting
 
-相对于 exact inner control：
+相对 incumbent：
 
 * TP retained
 * TP recovered
@@ -431,720 +585,296 @@ Primary：
 * FP removed
 * FP introduced
 
-尤其检查：
+特别关注：
 
-> 是否真的同时改善 reachable FN 与 long/low-frequency FP。
-
----
-
-# 16. E05 FP mechanism report
-
-只使用已有预定义 FP behavioral modes：
-
-* long continuous movement
-* low-frequency long movement
-* fragmented high activity
-
-比较 challenger 相对 control：
-
-* removed FP
-* retained FP
-* introduced FP
-
-禁止为了 E05 结果重新定义 FP taxonomy。
+> 是否显著降低 E05 的 destructive churn。
 
 ---
 
-# 17. E05 short-meal report
+# 28. E05-R 成功结构
 
-因为 5 s hypothesis 可能与短餐有关，报告：
+E05 原始 churn：
 
-* short TP recovered
-* short TP lost
-* short FP change
+* recover TP 11
+* lose TP 9
+* remove FP 16
+* introduce FP 20
 
-但：
+E05-R 理想目标不是复制这套 churn。
 
-**不要为 short meal 单独调 threshold。**
+而是类似：
+
+* recover fewer TP
+* lose much fewer TP
+* introduce much fewer FP
+
+例如：
+
+* TP recovered +5
+* TP lost -1
+* FP removed 8
+* FP introduced 2
+
+这种结构远优于高 churn。
 
 ---
 
-# 18. E05 inner control
-
-Control 必须是：
-
-> 完全相同 inner protocol 下的 incumbent representation。
-
-不能直接拿历史 `.76560` 数字做唯一 control。
-
-如果已有可信、完全相同 split/cache 的 control artifact，可直接复用。
-
-否则只重跑最小必要 control。
-
----
-
-# 19. E05 gate
-
-参考 inner：
-
-约 `0.7656`
-
-E05 outer-review 候选门槛：
+# 29. E05-R Gate
 
 ### Strong pass
 
+要求：
+
 `inner aggregate F1 >= 0.780`
 
-并满足：
+并且：
 
-* 多数 folds 同方向；
-* 不是单 fold 驱动；
-* TP/FP accounting 支持 GYRO5 hypothesis；
-* 无明显 short recall tradeoff；
-* 无 leakage。
+* 至少 3/5 folds 改善；
+* 最好 4/5；
+* TP lost 明显低于 E05；
+* FP introduced 明显低于 E05；
+* mechanism 与 E05.1 一致；
+* no leakage。
 
-### Weak / ambiguous
+### Weak
 
 `0.772–0.780`
 
-保留结果，但：
+输出：
 
-`REVIEW_REQUIRED`
+`E05R_REVIEW_REQUIRED`
 
-默认不授权 outer。
+默认不进入 outer。
 
 ### Fail
 
 `< 0.772`
 
-或提升几乎完全来自单 fold：
+或 fold instability：
 
-`E05_INNER_GATE_FAILED`
-
-停止扩展 GYRO5。
+`E05R_INNER_GATE_FAILED`
 
 ---
 
-# 20. E05 不允许 feature explosion
-
-如果 E05-001 失败：
-
-禁止立即：
-
-* 加 50 个 GYRO feature；
-* 增加 10 s / 30 s / 60 s；
-* 上 TCN；
-* 大网格搜索。
-
-先停下人工复核。
-
----
-
-# 21. E05 runtime budget
-
-尽量复用：
-
-* parsed IMU
-* candidate windows
-* 15 s feature cache
-* existing verifier feature cache
-
-只补计算 5 s block。
-
-记录：
-
-* extraction time
-* training time
-* cache hit rate
-* model size
-* inference overhead
-
----
-
-# 22. E05 输出
-
-`outputs/challenger_70/experiments/E05-XXX/`
-
-至少：
-
-* `plan.json`
-* `feature_schema.json`
-* `inner_gate.json`
-* `fold_metrics.json`
-* `aggregate_metrics.json`
-* `event_diff.json`
-* `fp_mode_effect.json`
-* `short_meal_effect.json`
-* `leakage_audit.json`
-* `runtime.json`
-* `manifest.json`
-* `report.md`
-
----
-
-# 23. E05 完成后状态
-
-只能输出：
-
-`E05_INNER_GATE_FAILED`
-
-`E05_REVIEW_REQUIRED`
-
-或：
-
-`E05_READY_FOR_HUMAN_OUTER_REVIEW`
-
-但：
-
-**不要跑 outer。**
-
-然后进入 E06 only if allowed below.
-
----
-
-# 24. E06-FUSION — Adaptive Verifier Fusion
-
-E06 可以在 E05 之后独立执行。
-
-即使 E05 fail：
-
-E06 仍允许，因为两者机制独立。
-
----
-
-# 25. E06 hypothesis
-
-Data Sprint 表明：
-
-`LR - LGBM >= 0.20`
-
-出现在：
-
-* reachable FN：12/31
-* final FP：9/83
-
-且 4/5 folds 方向一致。
-
-Hypothesis：
-
-> frozen LR/LGBM base models 存在 candidate-dependent complementary information，而固定 scalar blend 不能充分利用。
-
----
-
-# 26. E06 必须尽可能零重算
-
-优先直接使用：
-
-* base OOF LR scores
-* base OOF LGBM scores
-* existing candidate metadata
-* existing inner folds
-
-如果这些已有：
-
-**禁止重新训练 base LR/LGBM。**
-
----
-
-# 27. E06 controls
-
-必须比较三者：
-
-### Control A
-
-incumbent scalar blend
-
-### Control B
-
-inner-retuned scalar blend
-
-### Challenger C
-
-adaptive meta-fusion
-
----
-
-# 28. E06 meta-feature budget
-
-最多：
-
-**8–10 个。**
-
-优先只使用：
-
-* `p_lr`
-* `p_lgbm`
-* `p_lr - p_lgbm`
-* `abs(p_lr - p_lgbm)`
-* candidate duration
-* has_macro
-* has_micro
-* macro/micro evidence ratio
-
-禁止：
-
-把完整 116D feature 塞进 meta-fuser。
-
----
-
-# 29. E06 model
-
-第一版只允许：
-
-`LogisticRegression`
-
-小正则网格。
-
-例如：
-
-`C ∈ {0.1, 1, 10}`
-
-正式运行前预注册。
-
-禁止：
-
-* LGBM meta-fuser
-* XGBoost
-* RF
-* neural net
-
----
-
-# 30. E06 stacking leakage
-
-base-model probability 必须是 OOF。
-
-禁止：
-
-base model 见过该 subject 后的 prediction 被用于 meta-fuser training。
-
-必须有测试验证：
-
-* subject disjoint
-* base prediction OOF provenance
-* no outer-val leakage
-* no cross-fold normalization leakage
-
----
-
-# 31. E06 primary metric
-
-同 E05：
-
-event-level inner OOF aggregate F1。
-
-必须报告：
-
-* Control A
-* Control B
-* Adaptive
-
-同时报告 TP/FP/FN 和 fold results。
-
----
-
-# 32. E06 gate
-
-adaptive fusion 必须同时：
-
-1. 明显优于 Control A；
-2. 明显优于 Control B；
-3. aggregate inner F1 建议 `>=0.780`；
-4. 多 fold 一致；
-5. disagreement subgroup improvement 与 hypothesis 一致。
+# 30. 不允许因接近 gate继续调
 
 如果：
 
-Control B ≈ Adaptive
+`0.779`
 
-则：
+不要自动：
 
-`ADAPTIVE_FUSION_NOT_JUSTIFIED`
+* 扩大 M grid
+* 加 feature
+* 换 LGBM
+* 改 threshold
+* 加 10s features
 
-即使两者都高。
-
----
-
-# 33. E06 输出
-
-`outputs/challenger_70/experiments/E06-XXX/`
-
-至少：
-
-* `plan.json`
-* `meta_feature_schema.json`
-* `control_comparison.json`
-* `inner_gate.json`
-* `fold_metrics.json`
-* `event_diff.json`
-* `disagreement_effect.json`
-* `leakage_audit.json`
-* `runtime.json`
-* `manifest.json`
-* `report.md`
+记录结果并停止。
 
 ---
 
-# 34. E07-COMBINATION 触发条件
+# 31. E05-R runtime / compute requirement
 
-只有当：
+本实验应非常低成本。
 
-* E05 单独通过 strong gate；
-* E06 单独通过 strong gate；
+应尽量只依赖：
 
-才允许 E07。
+* cached incumbent OOF scores
+* cached GYRO5 features
+* cached candidate/event mapping
 
-如果只有一条通过：
+若发现需要重新跑完整 feature pipeline：
 
-不要组合。
-
-保留该单独 challenger 等待人工 outer review。
-
----
-
-# 35. E07 hypothesis
-
-E05：
-
-提供新的 short-scale GYRO information。
-
-E06：
-
-改善已有 verifier evidence 的融合。
-
-两者理论上属于不同层次：
-
-`representation → base verifier → fusion`
-
-因此可能存在互补。
+先调查是否可以从 E05 artifact 复用。
 
 ---
 
-# 36. E07 组合原则
+# 32. 测试要求
 
-E07 只允许：
+只运行针对性 tests：
 
-`E05 best frozen config + E06 best frozen fusion`
+* residual feature schema
+* OOF provenance
+* fold isolation
+* score calculation
+* event matcher regression
 
-不得重新联合搜索：
+不要运行：
 
-* GYRO feature set
-* fusion parameters
-* threshold
-* model grid
+* full clean-machine
+* dist parity
+* submission suite
 
-即：
-
-**组合，不重新调参。**
-
----
-
-# 37. E07 control
-
-必须比较：
-
-* incumbent
-* E05 alone
-* E06 alone
-* E05 + E06
-
-否则无法判断组合是否具有真实增量。
+除非研究代码触及生产代码。
 
 ---
 
-# 38. E07 gate
+# 33. Experiment registry
 
-只有组合明显优于两条单独方法时，才值得成为 outer champion candidate。
+正式 E05-R 写入：
 
-例如：
+`experiment_registry.jsonl`
 
-* E05 = 0.785
-* E06 = 0.781
-* combo = 0.787
+E05.1 diagnostic 不伪装成 challenger。
 
-则组合收益太小。
-
-可能优先选择更简单的 E05。
-
-如果：
-
-* E05 = 0.785
-* E06 = 0.783
-* combo = 0.802
-
-则组合很有价值。
+失败记录保留。
 
 ---
 
-# 39. Complexity penalty
+# 34. Outer 禁止
 
-如果两个 challenger inner F1 相近：
+本任务不授权 full outer。
 
-优先选择：
+即使：
 
-* feature 更少
-* runtime 更低
-* dependency 更少
-* artifact 更简单
-* leakage surface 更小
-
-的方案。
-
----
-
-# 40. Outer budget
-
-本任务禁止 outer。
-
-即使出现：
-
-`inner F1 > 0.80`
+`E05-R inner = 0.80+`
 
 也只能输出：
 
-`READY_FOR_HUMAN_OUTER_REVIEW`
-
-完整 outer 必须由人工单独批准。
+`GYRO_RESIDUAL_READY_FOR_HUMAN_OUTER_REVIEW`
 
 ---
 
-# 41. 不允许连续 outer 多候选
+# 35. 如果 E05-R 失败
 
-未来人工批准 outer 时：
-
-优先选一个 champion。
-
-不要：
-
-* E05 outer
-* E06 outer
-* E07 outer
-
-全部跑一遍再选最好。
-
-如果 E07 明显最优且机制合理：
-
-优先只跑 E07。
-
-如果组合收益很小：
-
-优先跑更简单的单模型 challenger。
-
----
-
-# 42. Codex 配额优化
-
-本轮明确以降低执行成本为目标。
-
-不要为每个实验重新：
-
-* 浏览整个 repo
-* 重写架构说明
-* 重查全部 baseline
-* 重跑 full tests
-* 重建 artifacts
-
-实验开始时：
-
-只确认与当前实验相关的 invariant。
-
----
-
-# 43. 测试分层
-
-## Tier 0 / research code
-
-只跑：
-
-* directly affected unit tests
-* leakage tests
-* cache-contract tests
-
-## Tier 1 experiment
-
-增加：
-
-* event matcher regression
-* fold isolation
-* feature schema consistency
-
-## promotion 前
-
-才运行：
-
-* full test suite
-* clean-machine
-* parity
-* dist/submission validation
-
----
-
-# 44. 不要重复 immutable audit
-
-E03.5、E04、Data Sprint 已经冻结。
-
-除非其文件发生改变：
-
-禁止重新 hash / replay / validate。
-
-已有证据视为有效依赖。
-
----
-
-# 45. Experiment registry
-
-所有正式 Tier 1 attempt 写入：
-
-`outputs/challenger_70/experiment_registry.jsonl`
-
-记录：
-
-* ID
-* hypothesis
-* result
-* failure reason
-* gate
-* commit
-
-失败记录不得删除。
-
----
-
-# 46. Commit discipline
-
-建议：
-
-### E05
-
-一个 implementation commit
-
-一个 result/artifact commit
-
-### E06
-
-同样
-
-不要每个小统计文件都产生多个无意义提交。
-
----
-
-# 47. 最终汇报格式
-
-完成后只需给人工一份紧凑表格：
-
-| Experiment | Control F1 | Challenger F1 | TP Δ | FP Δ | Fold stability | Mechanism | Gate |
-| ---------- | ---------: | ------------: | ---: | ---: | -------------- | --------- | ---- |
-| E05-GYRO5  |            |               |      |      |                |           |      |
-| E06-FUSION |            |               |      |      |                |           |      |
-| E07-COMBO  |            |               |      |      |                |           |      |
-
-以及：
-
-### E05
-
-* best config
-* feature count
-* event accounting
-* short-meal effect
-* FP-mode effect
-
-### E06
-
-* scalar control
-* retuned scalar
-* adaptive fusion
-* disagreement subgroup result
-
-### E07
-
-* 是否有真实组合增益
-
----
-
-# 48. 最终允许状态
-
-整个任务结束时只能输出以下之一：
-
-`NO_TIER1_CHALLENGER_PASSED`
-
-`GYRO5_READY_FOR_HUMAN_OUTER_REVIEW`
-
-`FUSION_READY_FOR_HUMAN_OUTER_REVIEW`
-
-`COMBINATION_READY_FOR_HUMAN_OUTER_REVIEW`
-
-`MULTIPLE_TIER1_CANDIDATES_NEED_HUMAN_SELECTION`
-
-`INVALID_EXPERIMENT`
-
-不得自行运行 outer。
-
----
-
-# 49. 如果 E05/E06 都失败
+GYRO5 simple-statistics 路线正式停止。
 
 不要继续：
 
-* E05-v10
-* E06-v10
-* larger models
-* threshold hunting
+* GYRO5-v3
+* 10s/30s brute-force
+* massive feature engineering
+* threshold rescue
 
-停止并报告：
+下一阶段重新讨论：
 
-`NO_TIER1_CHALLENGER_PASSED`
+**temporal-shape representation**
 
-下一阶段才考虑：
+重点可能是：
 
--真正的 multi-scale micro-v2；
+* rolling 5 s variance distribution
+* within-event concentration
+* short-vs-long energy structure
+* temporal envelope
 
-* candidate temporal representation；
-* lightweight TCN。
-
----
-
-# 50. 本轮研究目标
-
-本轮不是为了穷举。
-
-我们已经有两个数据支持的 hypothesis。
-
-现在只验证：
-
-### Hypothesis A
-
-> 5 s short-scale GYRO information 能否在保持 incumbent pipeline 基本不变的情况下，改善 event-level TP/FP trade-off？
-
-### Hypothesis B
-
-> LR/LGBM 已有互补信息能否通过低容量 adaptive fusion 转化成稳定 event-level收益？
-
-如果成立：
-
-才花 outer 预算。
-
-如果不成立：
-
-快速停止。
+但不属于本任务。
 
 ---
 
-# 51. 最重要的执行原则
+# 36. 不要恢复 E06
 
-**Do not re-prove what is already proven.**
+Adaptive fusion 已有明确负证据。
 
-**Do not recompute what can be cached.**
+禁止：
 
-**Do not combine mechanisms before each works alone.**
+* fusion-v2
+* LGBM meta-fusion
+* larger stacking
+* disagreement rescue heuristic
 
-**Do not use outer as a development loop.**
+E06 正式关闭。
 
-**Do not increase model complexity unless new information requires it.**
+---
 
-**Data signal → cheap isolated challenger → inner gate → human review → outer last.**
+# 37. 最终输出格式
+
+如果只完成 E05.1：
+
+报告：
+
+* churn population
+* margin pattern
+* GYRO pattern
+* fold consistency
+* residual hypothesis status
+
+最终状态：
+
+`GYRO_RESIDUAL_NOT_SUPPORTED`
+
+或允许进入 E05-R。
+
+如果完成 E05-R：
+
+输出表：
+
+| Metric         | Incumbent | E05 original | E05-R |
+| -------------- | --------: | -----------: | ----: |
+| F1             |           |              |       |
+| TP             |           |              |       |
+| FP             |           |              |       |
+| TP recovered   |         — |           11 |       |
+| TP lost        |         — |            9 |       |
+| FP removed     |         — |           16 |       |
+| FP introduced  |         — |           20 |       |
+| folds improved |         — |          2/5 |       |
+
+并报告：
+
+* feature count
+* runtime
+* gate status
+* leakage audit
+
+---
+
+# 38. 最终允许状态
+
+只能是：
+
+`GYRO_RESIDUAL_NOT_SUPPORTED`
+
+`E05R_INNER_GATE_FAILED`
+
+`E05R_REVIEW_REQUIRED`
+
+`GYRO_RESIDUAL_READY_FOR_HUMAN_OUTER_REVIEW`
+
+`INVALID_EXPERIMENT`
+
+不得自动继续下一路线。
+
+---
+
+# 39. 本轮判断标准
+
+不要问：
+
+> GYRO5 能不能让模型产生更多 TP？
+
+E05 已经证明能。
+
+真正的问题是：
+
+> 能否利用 GYRO5 的新信息，同时尽量保护 incumbent 已经正确的决策？
+
+即：
+
+**low-churn improvement**
+
+而不是：
+
+**global decision-boundary rewrite**
+
+---
+
+# 40. 最重要执行原则
+
+**Freeze what already works.**
+
+**Use GYRO5 as a correction, not as a reason to relearn everything.**
+
+**Analyze churn before training.**
+
+**Prefer fewer corrected events with better net accounting.**
+
+**If the interaction is not stable, stop GYRO5.**
+
+**Do not spend outer budget on an inner-negative challenger.**
 
 正式 incumbent 始终保持：
 
 `0.6514285714 / 114 / 153 / 197`
 
-直到人工批准新的 full outer challenger 并完成全部验证。
+直到人工批准下一次完整 outer evaluation。
