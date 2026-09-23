@@ -1,0 +1,8 @@
+{
+  "experiment": "R1-002",
+  "status": "INVALID_EXPERIMENT",
+  "metrics_written": false,
+  "failure": "Held-out predictions were indexed with a full-population boolean mask during fold reporting.",
+  "repair_scope": "use the held-out population vector for held-out predictions",
+  "retry": "R1-003"
+}

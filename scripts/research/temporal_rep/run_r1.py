@@ -17,7 +17,7 @@ if str(ROOT) not in sys.path: sys.path.insert(0,str(ROOT))
 from scripts.research.temporal_rep.core import SmallTokenTCN, robust_channel_stats, topk_mean
 from scripts.research.tier1_challenger import gyro5_feature_block
 
-OUT=ROOT/'outputs/challenger_70/temporal_rep'; CACHE=OUT/'cache'; R1=OUT/'r1_token_probe_002'
+OUT=ROOT/'outputs/challenger_70/temporal_rep'; CACHE=OUT/'cache'; R1=OUT/'r1_token_probe_003'
 SEED=20260923; MAX_TOKENS=47; TOKEN_SAMPLES=50
 
 def dump(p,v): p.parent.mkdir(parents=True,exist_ok=True); p.write_text(json.dumps(v,indent=2,sort_keys=True)+'\n',encoding='utf8')
@@ -57,7 +57,7 @@ def r0():
 def prereg():
     if R1.exists(): raise RuntimeError('R1 already exists')
     code=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
-    plan={'experiment':'R1-002','derived_from':'R1-001 implementation failure','diagnostic_only':True,'code_sha':code,'architecture':'SmallTokenTCN','channels':24,'blocks':3,'dilations':[1,2,4],'embedding_dim':16,'parameter_limit':100000,'token_seconds':5,'stride_seconds':2.5,'candidate_span_seconds':120,'pooling':'top-k mean','topk_fraction':.2,'epochs':30,'seed':SEED,'device':'cuda if available','normalization':'fold-contained channel median/MAD','populations':{'positive':['matched_tp','reachable_fn'],'negative':['final_fp']},'controls':['GYRO5 scalar logistic','frozen random TCN embedding logistic'],'challenger':'trained TCN embedding + GYRO5 scalar logistic','probe_C':1.0,'gate':{'trained_minus_random_f1':.02,'incremental_minus_scalar_f1':.02,'direction_folds':4,'reachable_fn_tp_like':True},'outer_f1':False,'abort':['subject overlap','cache mismatch','parameter count >=100000']}
+    plan={'experiment':'R1-003','derived_from':'R1-002 implementation failure','diagnostic_only':True,'code_sha':code,'architecture':'SmallTokenTCN','channels':24,'blocks':3,'dilations':[1,2,4],'embedding_dim':16,'parameter_limit':100000,'token_seconds':5,'stride_seconds':2.5,'candidate_span_seconds':120,'pooling':'top-k mean','topk_fraction':.2,'epochs':30,'seed':SEED,'device':'cuda if available','normalization':'fold-contained channel median/MAD','populations':{'positive':['matched_tp','reachable_fn'],'negative':['final_fp']},'controls':['GYRO5 scalar logistic','frozen random TCN embedding logistic'],'challenger':'trained TCN embedding + GYRO5 scalar logistic','probe_C':1.0,'gate':{'trained_minus_random_f1':.02,'incremental_minus_scalar_f1':.02,'direction_folds':4,'reachable_fn_tp_like':True},'outer_f1':False,'abort':['subject overlap','cache mismatch','parameter count >=100000']}
     dump(R1/'plan.json',plan)
 
 def bag_embedding(model,x,mask):
@@ -88,7 +88,8 @@ def run():
         for name,f in features.items():
             probe=make_pipeline(SimpleImputer(strategy='median'),StandardScaler(),LogisticRegression(C=1,max_iter=2000,random_state=SEED))
             probe.fit(f[tr],y[tr]); pred=probe.predict_proba(f[va])[:,1]; all_pred[name][va]=pred
-            foldrow[name]={'f1':f1_score(y[va],pred>=.5),'auc':roc_auc_score(y[va],pred),'tp_fp_direction':float(np.median(pred[(va)&(pops=='matched_tp')])-np.median(pred[(va)&(pops=='final_fp')]))}
+            heldout_pop=pops[va]
+            foldrow[name]={'f1':f1_score(y[va],pred>=.5),'auc':roc_auc_score(y[va],pred),'tp_fp_direction':float(np.median(pred[heldout_pop=='matched_tp'])-np.median(pred[heldout_pop=='final_fp']))}
         rows.append(foldrow)
     agg={}
     for name,pred in all_pred.items(): agg[name]={'f1':f1_score(y,pred>=.5),'auc':roc_auc_score(y,pred),'matched_tp_median':float(np.median(pred[pops=='matched_tp'])),'reachable_fn_median':float(np.median(pred[pops=='reachable_fn'])),'final_fp_median':float(np.median(pred[pops=='final_fp']))}
