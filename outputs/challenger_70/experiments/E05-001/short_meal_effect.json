@@ -1,0 +1,6 @@
+{
+  "limitation": "The immutable E05-001 runner retained exact short-GT matching counts but did not persist duration-tagged unmatched-event identities; short-FP change is therefore not inferred after the run.",
+  "short_fp_change": null,
+  "short_tp_lost": 3,
+  "short_tp_recovered": 5
+}

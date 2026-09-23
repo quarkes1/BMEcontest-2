@@ -1,0 +1,33 @@
+{
+  "final_status": "NO_TIER1_CHALLENGER_PASSED",
+  "outer_evaluation_run": false,
+  "e05": {
+    "experiment_id": "E05-001",
+    "control_f1": 0.7655986509274874,
+    "challenger_f1": 0.7651006711409396,
+    "tp_delta": 2,
+    "fp_delta": 4,
+    "folds_improved": 2,
+    "gate": "E05_INNER_GATE_FAILED"
+  },
+  "e06": {
+    "experiment_id": "E06-001",
+    "control_a_f1": 0.7655986509274874,
+    "control_b_f1": 0.7655986509274874,
+    "challenger_f1": 0.7567114093959731,
+    "tp_delta": -3,
+    "fp_delta": 9,
+    "folds_improved": 1,
+    "gate": "ADAPTIVE_FUSION_NOT_JUSTIFIED"
+  },
+  "e07": {
+    "run": false,
+    "reason": "E05 and E06 both failed their strong gates"
+  },
+  "incumbent_unchanged": {
+    "f1": 0.6514285714285715,
+    "tp": 114,
+    "eligible_truth": 153,
+    "predictions": 197
+  }
+}

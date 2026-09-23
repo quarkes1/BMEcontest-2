@@ -1,0 +1,10 @@
+{
+  "cache_hit_rate": 0.8543950361944157,
+  "cache_hits": 4131,
+  "cache_misses": 704,
+  "extraction_seconds": 17.745205299997906,
+  "feature_count_e05": 6,
+  "feature_count_e06": 8,
+  "total_seconds": 514.9427087999975,
+  "training_seconds": 387.4931194999954
+}

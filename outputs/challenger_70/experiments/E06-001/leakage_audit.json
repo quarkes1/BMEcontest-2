@@ -1,0 +1,6 @@
+{
+  "base_predictions_subject_oof": true,
+  "fold_contained_normalization": true,
+  "meta_predictions_subject_oof": true,
+  "outer_validation_accessible": false
+}

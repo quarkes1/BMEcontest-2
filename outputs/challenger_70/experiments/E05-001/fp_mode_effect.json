@@ -1,0 +1,4 @@
+{
+  "reason": "predefined sealed-outer FP modes have no leakage-safe inner identity mapping; event-level FP accounting retained",
+  "status": "not_estimable_inner_only"
+}

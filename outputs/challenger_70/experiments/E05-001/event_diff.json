@@ -1,0 +1,81 @@
+{
+  "aggregate": {
+    "challenger_truth_keys": 456,
+    "control_truth_keys": 454,
+    "fp_introduced": 20,
+    "fp_removed": 16,
+    "fp_retained": 104,
+    "short_tp_lost": 3,
+    "short_tp_recovered": 5,
+    "tp_lost": 9,
+    "tp_recovered": 11,
+    "tp_retained": 445
+  },
+  "folds": [
+    {
+      "challenger_truth_keys": 102,
+      "control_truth_keys": 99,
+      "fold": 0,
+      "fp_introduced": 5,
+      "fp_removed": 2,
+      "fp_retained": 24,
+      "short_tp_lost": 0,
+      "short_tp_recovered": 2,
+      "tp_lost": 0,
+      "tp_recovered": 3,
+      "tp_retained": 99
+    },
+    {
+      "challenger_truth_keys": 90,
+      "control_truth_keys": 84,
+      "fold": 1,
+      "fp_introduced": 10,
+      "fp_removed": 0,
+      "fp_retained": 24,
+      "short_tp_lost": 0,
+      "short_tp_recovered": 2,
+      "tp_lost": 0,
+      "tp_recovered": 6,
+      "tp_retained": 84
+    },
+    {
+      "challenger_truth_keys": 99,
+      "control_truth_keys": 102,
+      "fold": 2,
+      "fp_introduced": 2,
+      "fp_removed": 5,
+      "fp_retained": 22,
+      "short_tp_lost": 1,
+      "short_tp_recovered": 0,
+      "tp_lost": 3,
+      "tp_recovered": 0,
+      "tp_retained": 99
+    },
+    {
+      "challenger_truth_keys": 89,
+      "control_truth_keys": 89,
+      "fold": 3,
+      "fp_introduced": 2,
+      "fp_removed": 2,
+      "fp_retained": 20,
+      "short_tp_lost": 1,
+      "short_tp_recovered": 0,
+      "tp_lost": 1,
+      "tp_recovered": 1,
+      "tp_retained": 88
+    },
+    {
+      "challenger_truth_keys": 76,
+      "control_truth_keys": 80,
+      "fold": 4,
+      "fp_introduced": 1,
+      "fp_removed": 7,
+      "fp_retained": 14,
+      "short_tp_lost": 1,
+      "short_tp_recovered": 1,
+      "tp_lost": 5,
+      "tp_recovered": 1,
+      "tp_retained": 75
+    }
+  ]
+}

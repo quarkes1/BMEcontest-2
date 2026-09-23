@@ -1,0 +1,6 @@
+{
+  "candidate_population_frozen": true,
+  "fold_contained_normalization": true,
+  "outer_validation_accessible": false,
+  "subject_oof": true
+}
