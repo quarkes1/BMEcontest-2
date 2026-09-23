@@ -1,0 +1,101 @@
+{
+  "populations": {
+    "final_fp": {
+      "0": {
+        "lgbm_minus_lr_ge_0_20": 2,
+        "lr_minus_lgbm_ge_0_20": 3,
+        "neither": 14,
+        "population_size": 19
+      },
+      "1": {
+        "lgbm_minus_lr_ge_0_20": 2,
+        "lr_minus_lgbm_ge_0_20": 1,
+        "neither": 13,
+        "population_size": 16
+      },
+      "2": {
+        "lgbm_minus_lr_ge_0_20": 7,
+        "lr_minus_lgbm_ge_0_20": 2,
+        "neither": 9,
+        "population_size": 18
+      },
+      "3": {
+        "lgbm_minus_lr_ge_0_20": 2,
+        "lr_minus_lgbm_ge_0_20": 1,
+        "neither": 14,
+        "population_size": 17
+      },
+      "4": {
+        "lgbm_minus_lr_ge_0_20": 4,
+        "lr_minus_lgbm_ge_0_20": 2,
+        "neither": 7,
+        "population_size": 13
+      }
+    },
+    "matched_tp": {
+      "0": {
+        "lgbm_minus_lr_ge_0_20": 0,
+        "lr_minus_lgbm_ge_0_20": 0,
+        "neither": 16,
+        "population_size": 16
+      },
+      "1": {
+        "lgbm_minus_lr_ge_0_20": 0,
+        "lr_minus_lgbm_ge_0_20": 0,
+        "neither": 30,
+        "population_size": 30
+      },
+      "2": {
+        "lgbm_minus_lr_ge_0_20": 1,
+        "lr_minus_lgbm_ge_0_20": 0,
+        "neither": 14,
+        "population_size": 15
+      },
+      "3": {
+        "lgbm_minus_lr_ge_0_20": 3,
+        "lr_minus_lgbm_ge_0_20": 1,
+        "neither": 21,
+        "population_size": 25
+      },
+      "4": {
+        "lgbm_minus_lr_ge_0_20": 1,
+        "lr_minus_lgbm_ge_0_20": 0,
+        "neither": 27,
+        "population_size": 28
+      }
+    },
+    "reachable_fn": {
+      "0": {
+        "lgbm_minus_lr_ge_0_20": 1,
+        "lr_minus_lgbm_ge_0_20": 0,
+        "neither": 2,
+        "population_size": 3
+      },
+      "1": {
+        "lgbm_minus_lr_ge_0_20": 0,
+        "lr_minus_lgbm_ge_0_20": 1,
+        "neither": 0,
+        "population_size": 1
+      },
+      "2": {
+        "lgbm_minus_lr_ge_0_20": 0,
+        "lr_minus_lgbm_ge_0_20": 3,
+        "neither": 7,
+        "population_size": 10
+      },
+      "3": {
+        "lgbm_minus_lr_ge_0_20": 1,
+        "lr_minus_lgbm_ge_0_20": 2,
+        "neither": 3,
+        "population_size": 6
+      },
+      "4": {
+        "lgbm_minus_lr_ge_0_20": 1,
+        "lr_minus_lgbm_ge_0_20": 6,
+        "neither": 4,
+        "population_size": 11
+      }
+    }
+  },
+  "threshold": 0.2
+}

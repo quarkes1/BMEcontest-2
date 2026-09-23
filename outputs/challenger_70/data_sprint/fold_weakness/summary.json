@@ -1,0 +1,95 @@
+{
+  "by_fold": [
+    {
+      "c0_fn": 3,
+      "eligible_meal_count": 23,
+      "final_fp": 19,
+      "fold": 0,
+      "fp_density_per_session": 0.5,
+      "gap_count": 112,
+      "matched_tp": 16,
+      "median_candidate_activity": 175.55302524670762,
+      "median_event_duration_s": 675.0,
+      "median_sensor_coverage": 0.9267059879767499,
+      "reachable_fn": 3,
+      "sessions": 38,
+      "short_event_fraction": 0.3902439024390244,
+      "subjects": 8
+    },
+    {
+      "c0_fn": 0,
+      "eligible_meal_count": 31,
+      "final_fp": 16,
+      "fold": 1,
+      "fp_density_per_session": 0.37209302325581395,
+      "gap_count": 123,
+      "matched_tp": 30,
+      "median_candidate_activity": 198.43275206915862,
+      "median_event_duration_s": 870.0,
+      "median_sensor_coverage": 0.9267612416477717,
+      "reachable_fn": 1,
+      "sessions": 43,
+      "short_event_fraction": 0.3617021276595745,
+      "subjects": 7
+    },
+    {
+      "c0_fn": 1,
+      "eligible_meal_count": 27,
+      "final_fp": 18,
+      "fold": 2,
+      "fp_density_per_session": 0.42857142857142855,
+      "gap_count": 120,
+      "matched_tp": 15,
+      "median_candidate_activity": 187.4544954227826,
+      "median_event_duration_s": 952.5,
+      "median_sensor_coverage": 0.9269643594529042,
+      "reachable_fn": 10,
+      "sessions": 42,
+      "short_event_fraction": 0.3181818181818182,
+      "subjects": 8
+    },
+    {
+      "c0_fn": 1,
+      "eligible_meal_count": 32,
+      "final_fp": 17,
+      "fold": 3,
+      "fp_density_per_session": 0.37777777777777777,
+      "gap_count": 122,
+      "matched_tp": 25,
+      "median_candidate_activity": 185.9899877131277,
+      "median_event_duration_s": 840.0,
+      "median_sensor_coverage": 0.9272571202183387,
+      "reachable_fn": 6,
+      "sessions": 45,
+      "short_event_fraction": 0.32653061224489793,
+      "subjects": 8
+    },
+    {
+      "c0_fn": 1,
+      "eligible_meal_count": 40,
+      "final_fp": 13,
+      "fold": 4,
+      "fp_density_per_session": 0.2708333333333333,
+      "gap_count": 111,
+      "matched_tp": 28,
+      "median_candidate_activity": 176.82318516727713,
+      "median_event_duration_s": 1140.0,
+      "median_sensor_coverage": 0.9272955099773801,
+      "reachable_fn": 11,
+      "sessions": 48,
+      "short_event_fraction": 0.24528301886792453,
+      "subjects": 8
+    }
+  ],
+  "candidate_volume": "not available as a complete ledger; fixed-population event volume reported instead",
+  "notable_shared_differences": {
+    "fp_density_per_session": 1.3646041902507107
+  },
+  "weak_fold_ratios_vs_others": {
+    "fp_density_per_session": 1.3646041902507107,
+    "median_candidate_activity": 0.9701830459619951,
+    "median_event_duration_s": 0.8565789473675194,
+    "median_sensor_coverage": 0.9997093626482358,
+    "short_event_fraction": 1.1383188420018866
+  }
+}

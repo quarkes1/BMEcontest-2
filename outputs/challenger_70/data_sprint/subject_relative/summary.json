@@ -1,0 +1,223 @@
+{
+  "baseline_scope": "all sealed cached sessions referenced by fixed populations",
+  "fold_directions": {
+    "candidate_activity_percentile": {
+      "consistent_fold_count": 4,
+      "folds": {
+        "0": {
+          "a_median": 0.6904761904761905,
+          "b_median": 0.5,
+          "difference": 0.19047619047619047
+        },
+        "1": {
+          "a_median": 0.6125,
+          "b_median": 0.5625,
+          "difference": 0.050000000000000044
+        },
+        "2": {
+          "a_median": 0.6,
+          "b_median": 0.6571428571428571,
+          "difference": -0.05714285714285716
+        },
+        "3": {
+          "a_median": 0.6666666666666666,
+          "b_median": 0.5,
+          "difference": 0.16666666666666663
+        },
+        "4": {
+          "a_median": 0.6904761904761905,
+          "b_median": 0.3333333333333333,
+          "difference": 0.35714285714285715
+        }
+      }
+    },
+    "candidate_activity_ratio": {
+      "consistent_fold_count": 4,
+      "folds": {
+        "0": {
+          "a_median": 0.481843312696819,
+          "b_median": 0.36224005876952065,
+          "difference": 0.11960325392729837
+        },
+        "1": {
+          "a_median": 0.5074445320582408,
+          "b_median": 0.5073204255192401,
+          "difference": 0.00012410653900074564
+        },
+        "2": {
+          "a_median": 0.5040118632323346,
+          "b_median": 0.7061984454790228,
+          "difference": -0.20218658224668817
+        },
+        "3": {
+          "a_median": 0.5025832015110865,
+          "b_median": 0.3746961925169976,
+          "difference": 0.1278870089940889
+        },
+        "4": {
+          "a_median": 0.6351754433903811,
+          "b_median": 0.15537321296704165,
+          "difference": 0.47980223042333947
+        }
+      }
+    },
+    "candidate_energy_ratio": {
+      "consistent_fold_count": 4,
+      "folds": {
+        "0": {
+          "a_median": 0.23466898694927765,
+          "b_median": 0.08469693049016268,
+          "difference": 0.149972056459115
+        },
+        "1": {
+          "a_median": 0.22178788696113985,
+          "b_median": 0.18635315935546487,
+          "difference": 0.03543472760567498
+        },
+        "2": {
+          "a_median": 0.23772286902659095,
+          "b_median": 0.30869621483031084,
+          "difference": -0.07097334580371989
+        },
+        "3": {
+          "a_median": 0.25355982708469493,
+          "b_median": 0.12680773065209364,
+          "difference": 0.1267520964326013
+        },
+        "4": {
+          "a_median": 0.3049948432826557,
+          "b_median": 0.01969690648121356,
+          "difference": 0.2852979368014421
+        }
+      }
+    },
+    "candidate_gyro_ratio": {
+      "consistent_fold_count": 5,
+      "folds": {
+        "0": {
+          "a_median": 0.49299378318765646,
+          "b_median": 0.27846387076561746,
+          "difference": 0.214529912422039
+        },
+        "1": {
+          "a_median": 0.3689613108621099,
+          "b_median": 0.34708514802002954,
+          "difference": 0.021876162842080382
+        },
+        "2": {
+          "a_median": 0.30613787094252304,
+          "b_median": 0.2962530876618351,
+          "difference": 0.009884783280687925
+        },
+        "3": {
+          "a_median": 0.4081408526167748,
+          "b_median": 0.21938850096039147,
+          "difference": 0.18875235165638332
+        },
+        "4": {
+          "a_median": 0.3821359215568532,
+          "b_median": 0.14672581126978787,
+          "difference": 0.23541011028706535
+        }
+      }
+    }
+  },
+  "population_summaries": {
+    "c0_fn": {
+      "candidate_activity_percentile": {
+        "mad": 0.11823593073593071,
+        "median": 0.22619047619047616,
+        "n": 6
+      },
+      "candidate_activity_ratio": {
+        "mad": 0.10239049401198722,
+        "median": 0.22975254855384986,
+        "n": 6
+      },
+      "candidate_energy_ratio": {
+        "mad": 0.02409036804058439,
+        "median": 0.04344666048272292,
+        "n": 6
+      },
+      "candidate_gyro_ratio": {
+        "mad": 0.13632865251039275,
+        "median": 0.16855839736039815,
+        "n": 6
+      }
+    },
+    "final_fp": {
+      "candidate_activity_percentile": {
+        "mad": 0.25,
+        "median": 0.5,
+        "n": 83
+      },
+      "candidate_activity_ratio": {
+        "mad": 0.2230797325661564,
+        "median": 0.3746961925169976,
+        "n": 83
+      },
+      "candidate_energy_ratio": {
+        "mad": 0.11313403526654087,
+        "median": 0.12680773065209364,
+        "n": 83
+      },
+      "candidate_gyro_ratio": {
+        "mad": 0.1929051077632522,
+        "median": 0.2375761081476561,
+        "n": 83
+      }
+    },
+    "matched_tp": {
+      "candidate_activity_percentile": {
+        "mad": 0.24107142857142855,
+        "median": 0.625,
+        "n": 114
+      },
+      "candidate_activity_ratio": {
+        "mad": 0.1943321761216627,
+        "median": 0.5109643255894389,
+        "n": 114
+      },
+      "candidate_energy_ratio": {
+        "mad": 0.19149886874245575,
+        "median": 0.25235312093183215,
+        "n": 114
+      },
+      "candidate_gyro_ratio": {
+        "mad": 0.2690227992958612,
+        "median": 0.40746493596961697,
+        "n": 114
+      }
+    },
+    "reachable_fn": {
+      "candidate_activity_percentile": {
+        "mad": 0.2666666666666666,
+        "median": 0.6666666666666666,
+        "n": 31
+      },
+      "candidate_activity_ratio": {
+        "mad": 0.34233370764948845,
+        "median": 0.49157906347325175,
+        "n": 31
+      },
+      "candidate_energy_ratio": {
+        "mad": 0.20923482440952157,
+        "median": 0.2157163009623716,
+        "n": 31
+      },
+      "candidate_gyro_ratio": {
+        "mad": 0.2425653449937735,
+        "median": 0.27083442713320427,
+        "n": 31
+      }
+    }
+  },
+  "sessions": 216,
+  "subject_shift_signal": false,
+  "subjects": 39,
+  "weak_vs_other_activity_ratio": {
+    "other_median": 0.4850139321349369,
+    "ratio": 1.0054642304830548,
+    "weak_median": 0.48766416105307914
+  }
+}

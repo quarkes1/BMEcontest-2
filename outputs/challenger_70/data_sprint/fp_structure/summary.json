@@ -1,0 +1,55 @@
+{
+  "by_fold": {
+    "0": {
+      "fragmented_high_activity": 3,
+      "long_continuous_movement": 9,
+      "low_frequency_long_movement": 6,
+      "unresolved_mixed": 1
+    },
+    "1": {
+      "fragmented_high_activity": 0,
+      "long_continuous_movement": 8,
+      "low_frequency_long_movement": 7,
+      "unresolved_mixed": 1
+    },
+    "2": {
+      "fragmented_high_activity": 2,
+      "long_continuous_movement": 10,
+      "low_frequency_long_movement": 6,
+      "unresolved_mixed": 0
+    },
+    "3": {
+      "fragmented_high_activity": 3,
+      "long_continuous_movement": 8,
+      "low_frequency_long_movement": 3,
+      "unresolved_mixed": 3
+    },
+    "4": {
+      "fragmented_high_activity": 3,
+      "long_continuous_movement": 4,
+      "low_frequency_long_movement": 5,
+      "unresolved_mixed": 1
+    }
+  },
+  "counts": {
+    "fragmented_high_activity": 11,
+    "long_continuous_movement": 39,
+    "low_frequency_long_movement": 27,
+    "unresolved_mixed": 6
+  },
+  "dominant_cross_fold_modes": [
+    [
+      "long_continuous_movement",
+      39
+    ],
+    [
+      "low_frequency_long_movement",
+      27
+    ],
+    [
+      "fragmented_high_activity",
+      11
+    ]
+  ],
+  "taxonomy": "fixed deterministic descriptive rules; not a classifier"
+}

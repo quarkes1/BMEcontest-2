@@ -1,0 +1,23 @@
+{
+  "populations": {
+    "final_fp": {
+      "lgbm_minus_lr_ge_0_20": 17,
+      "lr_minus_lgbm_ge_0_20": 9,
+      "neither": 57,
+      "population_size": 83
+    },
+    "matched_tp": {
+      "lgbm_minus_lr_ge_0_20": 5,
+      "lr_minus_lgbm_ge_0_20": 1,
+      "neither": 108,
+      "population_size": 114
+    },
+    "reachable_fn": {
+      "lgbm_minus_lr_ge_0_20": 3,
+      "lr_minus_lgbm_ge_0_20": 12,
+      "neither": 16,
+      "population_size": 31
+    }
+  },
+  "threshold": 0.2
+}

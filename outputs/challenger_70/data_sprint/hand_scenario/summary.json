@@ -1,0 +1,107 @@
+{
+  "fold_scene_counts": {
+    "0": {
+      "dominant": 9,
+      "nondominant": 17,
+      "unknown": 15
+    },
+    "1": {
+      "dominant": 19,
+      "nondominant": 19,
+      "unknown": 9
+    },
+    "2": {
+      "dominant": 11,
+      "nondominant": 14,
+      "unknown": 19
+    },
+    "3": {
+      "dominant": 10,
+      "nondominant": 21,
+      "unknown": 18
+    },
+    "4": {
+      "dominant": 15,
+      "nondominant": 24,
+      "unknown": 14
+    }
+  },
+  "known_scene_fraction": 0.6794871794871795,
+  "limitation": "scene is assigned only when the analysed interval centre overlaps labelled meal metadata; unmatched FP scene remains unknown",
+  "population_scene_counts": {
+    "c0_fn": {
+      "dominant": 1,
+      "nondominant": 5,
+      "unknown": 0
+    },
+    "final_fp": {
+      "dominant": 9,
+      "nondominant": 15,
+      "unknown": 59
+    },
+    "matched_tp": {
+      "dominant": 46,
+      "nondominant": 57,
+      "unknown": 11
+    },
+    "reachable_fn": {
+      "dominant": 8,
+      "nondominant": 18,
+      "unknown": 5
+    }
+  },
+  "scene_metric_summaries": {
+    "dominant": {
+      "activity_magnitude": {
+        "median": 261.3545095954896,
+        "n": 64
+      },
+      "blend_score": {
+        "median": 0.950206847799944,
+        "n": 63
+      },
+      "duration_s": {
+        "median": 930.0,
+        "n": 64
+      },
+      "gyro_variance": {
+        "median": 295905.63788858755,
+        "n": 64
+      },
+      "repetition_regularity": {
+        "median": 0.47580022691293056,
+        "n": 64
+      },
+      "short_term_energy": {
+        "median": 212261.18611664366,
+        "n": 64
+      }
+    },
+    "nondominant": {
+      "activity_magnitude": {
+        "median": 141.281626925225,
+        "n": 95
+      },
+      "blend_score": {
+        "median": 0.9020218792645432,
+        "n": 90
+      },
+      "duration_s": {
+        "median": 720.0,
+        "n": 95
+      },
+      "gyro_variance": {
+        "median": 182180.77301704895,
+        "n": 95
+      },
+      "repetition_regularity": {
+        "median": 0.4917160216782375,
+        "n": 95
+      },
+      "short_term_energy": {
+        "median": 99297.00961586919,
+        "n": 95
+      }
+    }
+  }
+}

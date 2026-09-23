@@ -1,0 +1,46 @@
+{
+  "analysis_rate_hz": 10.0,
+  "candidate_policy_version": "incumbent:160afaf81debf1ee",
+  "diagnostic_only": true,
+  "eligible_denominator_checksum": "5cba2a97eea60d4a6b3e43c6bacd2a8ac3d474185c4bbe7e868bc83835db0945",
+  "feature_schema_version": "data-sprint-v1",
+  "fold_assignment_checksum": "6db82ee3b4c0683cd3803c5ce952519eece6af5df7805ebf60c3c61b23b44a71",
+  "headline_unchanged": {
+    "eligible_truth": 153,
+    "f1": 0.6514285714285715,
+    "predictions": 197,
+    "tp": 114
+  },
+  "incumbent_run_key": "160afaf81debf1ee",
+  "matcher_version": "iou-event-0.25-canonical",
+  "outer_f1_computed": false,
+  "population_sizes": {
+    "c0_fn": 6,
+    "final_fp": 83,
+    "matched_tp": 114,
+    "reachable_fn": 31
+  },
+  "sampling_units": {
+    "c0_fn": "GT event",
+    "final_fp": "unmatched final event",
+    "matched_tp": "final matched event",
+    "reachable_fn": "unique GT with highest frozen-blend reachable candidate"
+  },
+  "scales_seconds": [
+    5,
+    10,
+    15,
+    30,
+    60
+  ],
+  "source_commit_sha": "4f1260aec5d003cca5a9c27f9eb7ee92f4247fe3",
+  "source_evidence": {
+    "fp_reference.csv": "9b0cd935b89f8b9e5a75766eb32bb0c9689883cadd9551eb51887f271a38326a",
+    "manifest.json": "0dbf50f172f52d59af43a4faab6fe0f5507b30feed82f07dc6c2c6d675b09419",
+    "reachable_fn_candidates.csv": "3b05952a63e73a602f72cd0fab142343c4df14d94786688c26d732f8d97cc5d0",
+    "tp_reference.csv": "e963fd43964c948f05f11c199923469200d4ab1eda433b473fdb5a405809cc41"
+  },
+  "status": "MULTIPLE_SIGNALS_FOUND_NEEDS_HUMAN_SELECTION",
+  "status_rationale": "frozen LR/LGBM direction; fold-stable short-scale proxy",
+  "training_performed": false
+}

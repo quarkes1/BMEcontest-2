@@ -1,0 +1,521 @@
+{
+  "best_candidate": {
+    "consistent_folds": 5,
+    "metric": "burst_count",
+    "reachable_fn_tp_like": false,
+    "robust_separation": 0.2820512820368179
+  },
+  "fold_directions": {
+    "autocorrelation_first_peak_s": {
+      "consistent_fold_count": 3,
+      "folds": {
+        "0": {
+          "a_median": 0.7971014382583309,
+          "b_median": 0.7196261682242991,
+          "difference": 0.07747527003403176
+        },
+        "1": {
+          "a_median": 0.8310200576970549,
+          "b_median": 0.6899641671398008,
+          "difference": 0.1410558905572541
+        },
+        "2": {
+          "a_median": 0.6979062599218258,
+          "b_median": 0.8007325505946423,
+          "difference": -0.10282629067281657
+        },
+        "3": {
+          "a_median": 0.7963800904977376,
+          "b_median": 1.016635888193406,
+          "difference": -0.22025579769566828
+        },
+        "4": {
+          "a_median": 0.6148125738450054,
+          "b_median": 0.8026755735806428,
+          "difference": -0.18786299973563736
+        }
+      }
+    },
+    "autocorrelation_peak_strength": {
+      "consistent_fold_count": 3,
+      "folds": {
+        "0": {
+          "a_median": 0.3444786735528833,
+          "b_median": 0.34829984187079854,
+          "difference": -0.0038211683179152356
+        },
+        "1": {
+          "a_median": 0.36928054114893816,
+          "b_median": 0.3708299737468038,
+          "difference": -0.0015494325978656631
+        },
+        "2": {
+          "a_median": 0.35236525163087423,
+          "b_median": 0.35103854723250333,
+          "difference": 0.0013267043983709037
+        },
+        "3": {
+          "a_median": 0.38968473954473454,
+          "b_median": 0.3281105439158874,
+          "difference": 0.06157419562884714
+        },
+        "4": {
+          "a_median": 0.223885604932578,
+          "b_median": 0.34186384200569847,
+          "difference": -0.11797823707312047
+        }
+      }
+    },
+    "burst_count": {
+      "consistent_fold_count": 5,
+      "folds": {
+        "0": {
+          "a_median": 74.0,
+          "b_median": 77.0,
+          "difference": -3.0
+        },
+        "1": {
+          "a_median": 71.0,
+          "b_median": 73.0,
+          "difference": -2.0
+        },
+        "2": {
+          "a_median": 73.0,
+          "b_median": 74.0,
+          "difference": -1.0
+        },
+        "3": {
+          "a_median": 69.0,
+          "b_median": 78.0,
+          "difference": -9.0
+        },
+        "4": {
+          "a_median": 75.0,
+          "b_median": 91.0,
+          "difference": -16.0
+        }
+      }
+    },
+    "burst_interval_mean_s": {
+      "consistent_fold_count": 3,
+      "folds": {
+        "0": {
+          "a_median": 0.8198600668994338,
+          "b_median": 0.7779720279720279,
+          "difference": 0.04188803892740589
+        },
+        "1": {
+          "a_median": 0.8731768961621609,
+          "b_median": 0.8932671297284015,
+          "difference": -0.020090233566240623
+        },
+        "2": {
+          "a_median": 0.8607637400728083,
+          "b_median": 0.8764545869650144,
+          "difference": -0.015690846892206123
+        },
+        "3": {
+          "a_median": 0.8517898995719752,
+          "b_median": 0.8052109291235917,
+          "difference": 0.04657897044838344
+        },
+        "4": {
+          "a_median": 0.7973300189737901,
+          "b_median": 0.7917987519123981,
+          "difference": 0.0055312670613919535
+        }
+      }
+    },
+    "burst_interval_variance_s2": {
+      "consistent_fold_count": 3,
+      "folds": {
+        "0": {
+          "a_median": 0.6576028913011533,
+          "b_median": 0.6259180784955353,
+          "difference": 0.03168481280561808
+        },
+        "1": {
+          "a_median": 0.7243343674279927,
+          "b_median": 1.0238201494944663,
+          "difference": -0.2994857820664736
+        },
+        "2": {
+          "a_median": 0.8334928028477279,
+          "b_median": 1.0170182810028752,
+          "difference": -0.1835254781551473
+        },
+        "3": {
+          "a_median": 1.2381565876437288,
+          "b_median": 0.619260078921966,
+          "difference": 0.6188965087217628
+        },
+        "4": {
+          "a_median": 0.6294711245050577,
+          "b_median": 0.953119173129845,
+          "difference": -0.32364804862478724
+        }
+      }
+    },
+    "dominant_frequency_hz": {
+      "consistent_fold_count": 4,
+      "folds": {
+        "0": {
+          "a_median": 0.1671605281286477,
+          "b_median": 0.1751430339291834,
+          "difference": -0.007982505800535694
+        },
+        "1": {
+          "a_median": 0.17910096401821957,
+          "b_median": 0.14244148646649468,
+          "difference": 0.036659477551724884
+        },
+        "2": {
+          "a_median": 0.1591184982207209,
+          "b_median": 0.17606938132844732,
+          "difference": -0.01695088310772641
+        },
+        "3": {
+          "a_median": 0.17404410113952434,
+          "b_median": 0.17884011702104052,
+          "difference": -0.00479601588151618
+        },
+        "4": {
+          "a_median": 0.170504823312913,
+          "b_median": 0.25978591194890294,
+          "difference": -0.08928108863598994
+        }
+      }
+    },
+    "peak_interval_mean_s": {
+      "consistent_fold_count": 3,
+      "folds": {
+        "0": {
+          "a_median": 0.8198600668994338,
+          "b_median": 0.7779720279720279,
+          "difference": 0.04188803892740589
+        },
+        "1": {
+          "a_median": 0.8731768961621609,
+          "b_median": 0.8932671297284015,
+          "difference": -0.020090233566240623
+        },
+        "2": {
+          "a_median": 0.8607637400728083,
+          "b_median": 0.8764545869650144,
+          "difference": -0.015690846892206123
+        },
+        "3": {
+          "a_median": 0.8517898995719752,
+          "b_median": 0.8052109291235917,
+          "difference": 0.04657897044838344
+        },
+        "4": {
+          "a_median": 0.7973300189737901,
+          "b_median": 0.7917987519123981,
+          "difference": 0.0055312670613919535
+        }
+      }
+    },
+    "peak_interval_variance_s2": {
+      "consistent_fold_count": 3,
+      "folds": {
+        "0": {
+          "a_median": 0.6576028913011533,
+          "b_median": 0.6259180784955353,
+          "difference": 0.03168481280561808
+        },
+        "1": {
+          "a_median": 0.7243343674279927,
+          "b_median": 1.0238201494944663,
+          "difference": -0.2994857820664736
+        },
+        "2": {
+          "a_median": 0.8334928028477279,
+          "b_median": 1.0170182810028752,
+          "difference": -0.1835254781551473
+        },
+        "3": {
+          "a_median": 1.2381565876437288,
+          "b_median": 0.619260078921966,
+          "difference": 0.6188965087217628
+        },
+        "4": {
+          "a_median": 0.6294711245050577,
+          "b_median": 0.953119173129845,
+          "difference": -0.32364804862478724
+        }
+      }
+    },
+    "repetition_regularity": {
+      "consistent_fold_count": 4,
+      "folds": {
+        "0": {
+          "a_median": 0.4868059157464685,
+          "b_median": 0.5060747949504887,
+          "difference": -0.019268879204020206
+        },
+        "1": {
+          "a_median": 0.5028174065660381,
+          "b_median": 0.4426243589293703,
+          "difference": 0.06019304763666783
+        },
+        "2": {
+          "a_median": 0.4853668728760851,
+          "b_median": 0.4878427757408496,
+          "difference": -0.002475902864764512
+        },
+        "3": {
+          "a_median": 0.43600671918028705,
+          "b_median": 0.49233931346323545,
+          "difference": -0.0563325942829484
+        },
+        "4": {
+          "a_median": 0.4906003564095427,
+          "b_median": 0.5191907309669335,
+          "difference": -0.028590374557390774
+        }
+      }
+    },
+    "spectral_entropy": {
+      "consistent_fold_count": 4,
+      "folds": {
+        "0": {
+          "a_median": 0.8705113770129519,
+          "b_median": 0.8792473904833733,
+          "difference": -0.008736013470421411
+        },
+        "1": {
+          "a_median": 0.8667825696644639,
+          "b_median": 0.8663389634758389,
+          "difference": 0.0004436061886249343
+        },
+        "2": {
+          "a_median": 0.8972269608339686,
+          "b_median": 0.8918303418179676,
+          "difference": 0.00539661901600097
+        },
+        "3": {
+          "a_median": 0.8793675654413148,
+          "b_median": 0.8752854184774328,
+          "difference": 0.004082146963881983
+        },
+        "4": {
+          "a_median": 0.8955079909866621,
+          "b_median": 0.8720646512942047,
+          "difference": 0.023443339692457377
+        }
+      }
+    }
+  },
+  "periodicity_signal": false,
+  "population_summaries": {
+    "c0_fn": {
+      "autocorrelation_first_peak_s": {
+        "mad": 0.2829342263698632,
+        "median": 0.8626242731426588,
+        "n": 6
+      },
+      "autocorrelation_peak_strength": {
+        "mad": 0.1572561621214484,
+        "median": 0.45106631904261624,
+        "n": 6
+      },
+      "burst_count": {
+        "mad": 33.5,
+        "median": 100.0,
+        "n": 6
+      },
+      "burst_interval_mean_s": {
+        "mad": 0.48779598738462426,
+        "median": 1.3616303978503783,
+        "n": 6
+      },
+      "burst_interval_variance_s2": {
+        "mad": 1.1713979409254685,
+        "median": 1.7610234387403128,
+        "n": 6
+      },
+      "dominant_frequency_hz": {
+        "mad": 0.05521256172209415,
+        "median": 0.17516340420982057,
+        "n": 6
+      },
+      "peak_interval_mean_s": {
+        "mad": 0.48779598738462426,
+        "median": 1.3616303978503783,
+        "n": 6
+      },
+      "peak_interval_variance_s2": {
+        "mad": 1.1713979409254685,
+        "median": 1.7610234387403128,
+        "n": 6
+      },
+      "repetition_regularity": {
+        "mad": 0.042698695769876616,
+        "median": 0.5197436214094775,
+        "n": 6
+      },
+      "spectral_entropy": {
+        "mad": 0.01865384312255325,
+        "median": 0.8717134272486387,
+        "n": 6
+      }
+    },
+    "final_fp": {
+      "autocorrelation_first_peak_s": {
+        "mad": 0.252936461164231,
+        "median": 0.7675211741546724,
+        "n": 82
+      },
+      "autocorrelation_peak_strength": {
+        "mad": 0.14101402852406114,
+        "median": 0.3475012708204458,
+        "n": 83
+      },
+      "burst_count": {
+        "mad": 11.0,
+        "median": 77.0,
+        "n": 83
+      },
+      "burst_interval_mean_s": {
+        "mad": 0.12577464950765194,
+        "median": 0.841891891891892,
+        "n": 83
+      },
+      "burst_interval_variance_s2": {
+        "mad": 0.4477792506624421,
+        "median": 0.8172117466014602,
+        "n": 83
+      },
+      "dominant_frequency_hz": {
+        "mad": 0.06026910323891366,
+        "median": 0.17669291338582674,
+        "n": 83
+      },
+      "peak_interval_mean_s": {
+        "mad": 0.12577464950765194,
+        "median": 0.841891891891892,
+        "n": 83
+      },
+      "peak_interval_variance_s2": {
+        "mad": 0.4477792506624421,
+        "median": 0.8172117466014602,
+        "n": 83
+      },
+      "repetition_regularity": {
+        "mad": 0.05410375224925701,
+        "median": 0.49233931346323545,
+        "n": 83
+      },
+      "spectral_entropy": {
+        "mad": 0.023628512079709063,
+        "median": 0.8827451677776332,
+        "n": 83
+      }
+    },
+    "matched_tp": {
+      "autocorrelation_first_peak_s": {
+        "mad": 0.196189089727423,
+        "median": 0.6986034849411736,
+        "n": 114
+      },
+      "autocorrelation_peak_strength": {
+        "mad": 0.11952129554111923,
+        "median": 0.33505569904603594,
+        "n": 114
+      },
+      "burst_count": {
+        "mad": 8.5,
+        "median": 71.5,
+        "n": 114
+      },
+      "burst_interval_mean_s": {
+        "mad": 0.09034984939934637,
+        "median": 0.8461749848945797,
+        "n": 114
+      },
+      "burst_interval_variance_s2": {
+        "mad": 0.45416052887951686,
+        "median": 0.7847425261951606,
+        "n": 114
+      },
+      "dominant_frequency_hz": {
+        "mad": 0.06036409444923989,
+        "median": 0.17248940256380652,
+        "n": 114
+      },
+      "peak_interval_mean_s": {
+        "mad": 0.09034984939934637,
+        "median": 0.8461749848945797,
+        "n": 114
+      },
+      "peak_interval_variance_s2": {
+        "mad": 0.45416052887951686,
+        "median": 0.7847425261951606,
+        "n": 114
+      },
+      "repetition_regularity": {
+        "mad": 0.07292177446546394,
+        "median": 0.47978931441554673,
+        "n": 114
+      },
+      "spectral_entropy": {
+        "mad": 0.02798014373071467,
+        "median": 0.8791277006936589,
+        "n": 114
+      }
+    },
+    "reachable_fn": {
+      "autocorrelation_first_peak_s": {
+        "mad": 0.2126314056479781,
+        "median": 0.6974764419367825,
+        "n": 30
+      },
+      "autocorrelation_peak_strength": {
+        "mad": 0.20407581842339353,
+        "median": 0.4256056423740375,
+        "n": 31
+      },
+      "burst_count": {
+        "mad": 21.0,
+        "median": 76.0,
+        "n": 31
+      },
+      "burst_interval_mean_s": {
+        "mad": 0.10100201237976825,
+        "median": 0.8411069891186705,
+        "n": 31
+      },
+      "burst_interval_variance_s2": {
+        "mad": 0.6896192697303322,
+        "median": 1.0799522891681308,
+        "n": 31
+      },
+      "dominant_frequency_hz": {
+        "mad": 0.036575623140640987,
+        "median": 0.13819455500716446,
+        "n": 31
+      },
+      "peak_interval_mean_s": {
+        "mad": 0.10100201237976825,
+        "median": 0.8411069891186705,
+        "n": 31
+      },
+      "peak_interval_variance_s2": {
+        "mad": 0.6896192697303322,
+        "median": 1.0799522891681308,
+        "n": 31
+      },
+      "repetition_regularity": {
+        "mad": 0.056611464016146695,
+        "median": 0.45971959974281196,
+        "n": 31
+      },
+      "spectral_entropy": {
+        "mad": 0.02344467682983087,
+        "median": 0.8791392261262335,
+        "n": 31
+      }
+    }
+  }
+}
