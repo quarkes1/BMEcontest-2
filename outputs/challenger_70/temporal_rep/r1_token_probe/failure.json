@@ -1,0 +1,8 @@
+{
+  "experiment": "R1-001",
+  "status": "INVALID_EXPERIMENT",
+  "metrics_written": false,
+  "failure": "Random-encoder probe feature assembly referenced the model object instead of the computed random embedding tensor.",
+  "repair_scope": "single local variable reference",
+  "retry": "R1-002"
+}
