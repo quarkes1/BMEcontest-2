@@ -1,0 +1,7 @@
+{
+  "cache_sha256": "d08a9146f4a02afb1801bf6d67465215f4e50c2bac07838cfcd1830c18ce94d8",
+  "fold_contained_normalization": true,
+  "outer_f1": false,
+  "status": "TEMPORAL_REPRESENTATION_NOT_SUPPORTED",
+  "subject_isolation": true
+}
