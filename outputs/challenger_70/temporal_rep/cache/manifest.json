@@ -1,0 +1,25 @@
+{
+  "channels": [
+    "acc_x",
+    "acc_y",
+    "acc_z",
+    "gyro_x",
+    "gyro_y",
+    "gyro_z"
+  ],
+  "fd_checkpoint": true,
+  "fd_preprocessed": true,
+  "gravity_alignment": "source cache coordinates; no additional learned transform",
+  "max_candidate_span_seconds": 120,
+  "population_counts": {
+    "final_fp": 83,
+    "matched_tp": 114,
+    "reachable_fn": 31
+  },
+  "rows": 228,
+  "runtime_seconds": 13.202467399998568,
+  "status": "R0_READY",
+  "stride_seconds": 2.5,
+  "token_samples": 50,
+  "token_seconds": 5
+}
