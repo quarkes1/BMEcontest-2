@@ -1,0 +1,52 @@
+{
+  "abort": [
+    "subject overlap",
+    "cache mismatch",
+    "parameter count >=100000"
+  ],
+  "architecture": "SmallTokenTCN",
+  "blocks": 3,
+  "candidate_span_seconds": 120,
+  "challenger": "trained TCN embedding + GYRO5 scalar logistic",
+  "channels": 24,
+  "code_sha": "76c96b7265dd3694b15eb488fac0c0a66ec8c1fb",
+  "controls": [
+    "GYRO5 scalar logistic",
+    "frozen random TCN embedding logistic"
+  ],
+  "derived_from": "R1-002 implementation failure",
+  "device": "cuda if available",
+  "diagnostic_only": true,
+  "dilations": [
+    1,
+    2,
+    4
+  ],
+  "embedding_dim": 16,
+  "epochs": 30,
+  "experiment": "R1-003",
+  "gate": {
+    "direction_folds": 4,
+    "incremental_minus_scalar_f1": 0.02,
+    "reachable_fn_tp_like": true,
+    "trained_minus_random_f1": 0.02
+  },
+  "normalization": "fold-contained channel median/MAD",
+  "outer_f1": false,
+  "parameter_limit": 100000,
+  "pooling": "top-k mean",
+  "populations": {
+    "negative": [
+      "final_fp"
+    ],
+    "positive": [
+      "matched_tp",
+      "reachable_fn"
+    ]
+  },
+  "probe_C": 1.0,
+  "seed": 20260923,
+  "stride_seconds": 2.5,
+  "token_seconds": 5,
+  "topk_fraction": 0.2
+}
