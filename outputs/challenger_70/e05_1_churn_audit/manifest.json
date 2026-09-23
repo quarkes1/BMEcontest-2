@@ -1,0 +1,19 @@
+{
+  "cache_hit_rate": 0.8543950361944157,
+  "consistent_folds": 3,
+  "counts": {
+    "FP_INTRODUCED": 20,
+    "FP_REMOVED": 16,
+    "TP_LOST": 9,
+    "TP_RECOVERED": 11
+  },
+  "diagnostic_only": true,
+  "h1": true,
+  "h2": false,
+  "new_model_trained": false,
+  "outer_f1_computed": false,
+  "recovery_replay": true,
+  "runtime_seconds": 395.13323749999836,
+  "source_commit": "d985a65deaf64e56289b2585f12235e64dc7f23a",
+  "status": "GYRO_RESIDUAL_NOT_SUPPORTED"
+}

@@ -1,0 +1,30 @@
+{
+  "consistent_folds": 3,
+  "folds": {
+    "0": {
+      "fp_introduced_n": 5,
+      "gyro_variance_median_difference": -303351.36653602513,
+      "tp_recovered_n": 3
+    },
+    "1": {
+      "fp_introduced_n": 10,
+      "gyro_variance_median_difference": 2127.4542937159636,
+      "tp_recovered_n": 6
+    },
+    "2": {
+      "fp_introduced_n": 2,
+      "gyro_variance_median_difference": null,
+      "tp_recovered_n": 0
+    },
+    "3": {
+      "fp_introduced_n": 2,
+      "gyro_variance_median_difference": 127782.56716757531,
+      "tp_recovered_n": 1
+    },
+    "4": {
+      "fp_introduced_n": 1,
+      "gyro_variance_median_difference": 289155.1890238952,
+      "tp_recovered_n": 1
+    }
+  }
+}
