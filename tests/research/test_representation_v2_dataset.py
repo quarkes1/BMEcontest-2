@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from scripts.research.representation_v2.dataset import PreprocessConfig, build_token_bag, pool_time_bins
+from scripts.research.representation_v2.dataset import PreprocessConfig, build_token_bag, load_candidate_bags, pool_time_bins
 from src.pipeline.event_stack import EventRef
 
 
@@ -26,6 +26,17 @@ def test_token_covers_start_middle_end_of_ten_minute_candidate():
     assert bag.token_center_ms[60] == 302_500
     assert bag.token_center_ms[-1] == 597_500
     assert bag.token_mask.all()
+
+
+def test_candidate_bag_loader_reads_only_named_sessions(tmp_path):
+    directory = tmp_path / "cache" / "sessions"
+    directory.mkdir(parents=True)
+    session = _session(np.arange(0, 20_000, 10, dtype=np.int64))
+    np.savez(directory / "allowed.npz", acc=session.acc, gyro=session.gyro, t_acc=session.t_acc,
+             imu_valid=session.imu_valid, row_rate=session.row_rate)
+    bags = load_candidate_bags(tmp_path, (EventRef("allowed", 0, 5_000), EventRef("allowed", 5_000, 10_000)))
+    assert [bag.candidate_key for bag in bags] == [("allowed", 0, 5_000), ("allowed", 5_000, 10_000)]
+    assert len(list(directory.iterdir())) == 1
 
 
 def test_timestamp_interpolation_uses_elapsed_time_not_row_index():

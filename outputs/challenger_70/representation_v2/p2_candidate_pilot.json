@@ -1,0 +1,23 @@
+{
+  "base_macro_fits": 5,
+  "base_micro_fits": 5,
+  "fit_subjects_disjoint_score_subjects": true,
+  "fold": 0,
+  "inner_fold": 0,
+  "micro_threshold": 0.1,
+  "outer_calls": 0,
+  "outer_score": null,
+  "read_seconds": 4.83727460000955,
+  "score_candidates": 223,
+  "score_invalid_candidates": 53,
+  "score_positive_candidates": 32,
+  "score_subject_count": 7,
+  "score_token_count": 41608,
+  "stage": "P2_CANDIDATE_PILOT",
+  "total_wall_seconds": 103.50983720000659,
+  "train_candidates": 772,
+  "train_invalid_candidates": 136,
+  "train_positive_candidates": 96,
+  "train_subject_count": 24,
+  "train_token_count": 148183
+}

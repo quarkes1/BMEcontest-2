@@ -7,7 +7,7 @@ import torch
 from scripts.research.representation_v2.dataset import TokenBag
 from scripts.research.representation_v2.models import MotionBranch
 from scripts.research.representation_v2.train import (
-    collate_bags, fit_motion_branch, fit_robust_channels, load_checkpoint, save_checkpoint,
+    collate_bags, fit_motion_branch, fit_robust_channels, load_checkpoint, predict_motion_branch, save_checkpoint,
 )
 
 
@@ -43,6 +43,17 @@ def test_fixed_budget_and_checkpoint_round_trip(tmp_path):
     batch = collate_bags(bags[:2], *normalization)
     with torch.no_grad():
         assert torch.allclose(result["model"](*batch), restored(*batch))
+
+
+def test_prediction_is_chunk_invariant():
+    bags = [_bag(i, float(i % 2)) for i in range(5)]
+    result = fit_motion_branch(bags, np.array([0, 1, 0, 1, 0]),
+                               [f"subject{i}" for i in range(5)], steps=1, seed=4)
+    one = predict_motion_branch(result, bags, batch_size=1)
+    many = predict_motion_branch(result, bags, batch_size=5)
+    assert one.shape == (5,)
+    assert np.all((one >= 0) & (one <= 1))
+    np.testing.assert_allclose(one, many, atol=1e-6)
 
 
 def test_training_refuses_one_class_partition():

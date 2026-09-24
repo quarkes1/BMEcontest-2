@@ -174,6 +174,30 @@ def build_token_bag(session: object, candidate: object, preprocess_config: Prepr
     )
 
 
+def load_candidate_bags(root: object, candidates: object, *, config: PreprocessConfig | None = None) -> tuple[TokenBag, ...]:
+    """Read only referenced session caches; retain one prepared session at a time."""
+    from pathlib import Path
+    from types import SimpleNamespace
+
+    source = Path(root) / "cache" / "sessions"
+    preprocessing = config or PreprocessConfig()
+    prepared = None
+    current_sid = None
+    bags = []
+    for candidate in candidates:
+        sid, _, _ = _event_parts(candidate)
+        if sid != current_sid:
+            path = source / f"{sid}.npz"
+            if not path.is_file():
+                raise FileNotFoundError(f"candidate session cache missing: {sid}")
+            with np.load(path, allow_pickle=False) as payload:
+                raw = SimpleNamespace(**{key: payload[key] for key in ("acc", "gyro", "t_acc", "imu_valid", "row_rate")})
+            prepared = prepare_session(raw)
+            current_sid = sid
+        bags.append(build_token_bag(prepared, candidate, preprocessing))
+    return tuple(bags)
+
+
 def pool_time_bins(embeddings: np.ndarray, bag: TokenBag, *, bins: int = 64) -> tuple[np.ndarray, np.ndarray]:
     vectors = np.asarray(embeddings, dtype=np.float32)
     if vectors.shape != (len(bag.token_mask), 16) or bins < 1:

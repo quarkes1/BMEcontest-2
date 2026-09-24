@@ -137,6 +137,26 @@ def fit_motion_branch(
             "seed": seed, "train_subjects": tuple(sorted(set(subjects)))}
 
 
+def predict_motion_branch(result: dict[str, object], bags: Sequence[TokenBag], *,
+                          batch_size: int = 8, device: str = "cpu") -> np.ndarray:
+    """Return ordered candidate probabilities without fitting on score bags."""
+    if batch_size < 1:
+        raise ValueError("prediction batch size must be positive")
+    model = result["model"]
+    if not isinstance(model, MotionBranch):
+        raise ValueError("result lacks a MotionBranch")
+    model.to(device).eval()
+    center, scale = np.asarray(result["center"]), np.asarray(result["scale"])
+    scores = []
+    with torch.inference_mode():
+        for start in range(0, len(bags), batch_size):
+            values, masks, times, intervals = collate_bags(bags[start:start + batch_size], center, scale)
+            logits = model(values.to(device), (masks[0].to(device), masks[1].to(device)),
+                           times.to(device), intervals.to(device))
+            scores.append(torch.sigmoid(logits).cpu().numpy())
+    return np.concatenate(scores).astype(np.float64) if scores else np.empty(0, dtype=np.float64)
+
+
 def save_checkpoint(path: Path, result: dict[str, object], *, provenance: dict[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     model = result["model"]

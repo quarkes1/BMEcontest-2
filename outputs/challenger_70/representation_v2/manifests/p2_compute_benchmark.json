@@ -1,0 +1,23 @@
+{
+  "device": "cuda",
+  "optimizer_steps_charged": 40,
+  "outer_calls": 0,
+  "records": [
+    {
+      "peak_cuda_bytes": 240235520,
+      "seconds_per_step": 0.046770445000584006,
+      "steps": 20,
+      "tokens_per_candidate": 192,
+      "wall_seconds": 0.9354089000116801
+    },
+    {
+      "peak_cuda_bytes": 570806784,
+      "seconds_per_step": 0.04944607500001439,
+      "steps": 20,
+      "tokens_per_candidate": 512,
+      "wall_seconds": 0.9889215000002878
+    }
+  ],
+  "stage": "P2_COMPUTE_BENCHMARK",
+  "synthetic_only": true
+}
