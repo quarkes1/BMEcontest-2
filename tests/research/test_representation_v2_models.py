@@ -2,7 +2,7 @@
 
 import torch
 
-from scripts.research.representation_v2.models import MotionBranch, aggregate_time_bins
+from scripts.research.representation_v2.models import MotionBranch, aggregate_time_bins, sample_time_coverage
 
 
 def _inputs():
@@ -60,3 +60,21 @@ def test_chunked_and_unchunked_local_encoder_agree():
         small = model(values, masks, times, intervals, chunk_size=2)
         large = model(values, masks, times, intervals, chunk_size=100)
     assert torch.allclose(small, large, atol=1e-6)
+
+
+def test_bin_coverage_integrates_observed_time_not_token_average():
+    # First 2 seconds missing in an otherwise observed 5 second token.
+    samples = torch.ones(1, 1, 125, dtype=torch.bool)
+    samples[:, :, :50] = False
+    coverage = sample_time_coverage(samples, torch.tensor([[0, 5_000]]), bins=5)
+    torch.testing.assert_close(coverage, torch.tensor([[0., 0., 1., 1., 1.]]))
+
+
+def test_time_coverage_clips_tail_and_ignores_padding():
+    samples = torch.ones(1, 1, 125, dtype=torch.bool)
+    samples[:, :, 75:] = False
+    interval = torch.tensor([[1_000, 4_000]])
+    actual = sample_time_coverage(samples, interval)
+    assert torch.all(actual == 1)
+    padded = torch.cat((samples, torch.zeros_like(samples)), dim=1)
+    torch.testing.assert_close(actual, sample_time_coverage(padded, interval))

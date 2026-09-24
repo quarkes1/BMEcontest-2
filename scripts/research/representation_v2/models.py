@@ -24,6 +24,23 @@ class _TokenEncoder(nn.Module):
         return self.project(pooled)
 
 
+def sample_time_coverage(sample_mask: torch.Tensor, intervals: torch.Tensor, *, bins: int = 64) -> torch.Tensor:
+    """Integrate observed 40ms cells on the fixed 5s/25Hz candidate grid."""
+    if sample_mask.ndim != 3 or sample_mask.shape[-1] != 125 or bins < 1:
+        raise ValueError("coverage requires the registered uniform 25Hz token grid")
+    if intervals.shape != (len(sample_mask), 2) or torch.any(intervals[:, 1] <= intervals[:, 0]):
+        raise ValueError("invalid coverage intervals")
+    cells = sample_mask.reshape(len(sample_mask), -1).to(torch.float64)
+    prefix = torch.cat((torch.zeros(len(cells), 1, device=cells.device, dtype=cells.dtype), cells.cumsum(1)), dim=1)
+    duration = (intervals[:, 1] - intervals[:, 0]).to(torch.float64)
+    edges = duration[:, None] / 40 * torch.linspace(0, 1, bins + 1, device=cells.device, dtype=torch.float64)[None]
+    indices = edges.floor().long().clamp(0, cells.shape[1])
+    fractions = (edges - indices).clamp(0, 1)
+    at_edge = torch.cat((cells, torch.zeros_like(cells[:, :1])), dim=1).gather(1, indices)
+    integral = prefix.gather(1, indices) + fractions * at_edge
+    return ((integral[:, 1:] - integral[:, :-1]) * 40 / (duration[:, None] / bins)).clamp(0, 1).float()
+
+
 def aggregate_time_bins(
     embeddings: torch.Tensor,
     coverage: torch.Tensor,
@@ -32,6 +49,7 @@ def aggregate_time_bins(
     intervals: torch.Tensor,
     *,
     bins: int = 64,
+    time_coverage: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Project every token into its real-time bin, preserving ordering and gaps."""
     if embeddings.ndim != 3 or embeddings.shape[-1] != 16 or coverage.shape != embeddings.shape[:2]:
@@ -62,9 +80,11 @@ def aggregate_time_bins(
     has_valid = valid_count > 0
     vector_max = torch.where(has_valid.unsqueeze(-1), vector_max, torch.zeros_like(vector_max))
     centers = ((torch.arange(bins, device=embeddings.device, dtype=embeddings.dtype) + 0.5) / bins)
+    if time_coverage is not None and time_coverage.shape != valid_count.shape:
+        raise ValueError("true time coverage must match event bins")
     metadata = torch.stack((centers.expand(batch, -1),
                             torch.full_like(valid_count, 1.0 / bins),
-                            coverage_sum / real_count.clamp_min(1),
+                            coverage_sum / real_count.clamp_min(1) if time_coverage is None else time_coverage,
                             valid_count / real_count.clamp_min(1)), dim=-1)
     result = torch.cat((vector_sum / valid_count.clamp_min(1).unsqueeze(-1), vector_max, metadata), dim=-1)
     result = result * has_valid.unsqueeze(-1).to(result.dtype)
@@ -72,8 +92,11 @@ def aggregate_time_bins(
 
 
 class MotionBranch(nn.Module):
-    def __init__(self) -> None:
+    def __init__(self, *, time_coverage_mode: str = "sample_time") -> None:
         super().__init__()
+        if time_coverage_mode not in {"sample_time", "token_average"}:
+            raise ValueError("unknown time coverage mode")
+        self.time_coverage_mode = time_coverage_mode
         self.token_encoder = _TokenEncoder()
         self.event_stem = nn.Conv1d(36, 32, 1)
         self.event_blocks = nn.ModuleList(ResidualBlock(32, dilation) for dilation in (1, 2, 4))
@@ -102,7 +125,9 @@ class MotionBranch(nn.Module):
         if chunks:
             token_vectors[trainable] = torch.cat(chunks, dim=0)
         coverage = sample_mask.to(values.dtype).mean(dim=-1)
-        binned, bin_mask = aggregate_time_bins(token_vectors, coverage, token_mask, times, intervals)
+        binned, bin_mask = aggregate_time_bins(token_vectors, coverage, token_mask, times, intervals,
+                                              time_coverage=(sample_time_coverage(sample_mask, intervals)
+                                                             if self.time_coverage_mode == "sample_time" else None))
         weight = bin_mask[:, None, :].to(values.dtype)
         sequence = torch.relu(self.event_stem(binned.transpose(1, 2))) * weight
         for block in self.event_blocks:

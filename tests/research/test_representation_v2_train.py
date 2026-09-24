@@ -7,7 +7,8 @@ import torch
 from scripts.research.representation_v2.dataset import TokenBag
 from scripts.research.representation_v2.models import MotionBranch
 from scripts.research.representation_v2.train import (
-    collate_bags, fit_motion_branch, fit_robust_channels, load_checkpoint, predict_motion_branch,
+    _balanced_indices, collate_bags, fit_motion_branch, fit_robust_channels, load_checkpoint,
+    predict_motion_branch, predict_motion_logits,
     repair_numpy_checkpoint_provenance, save_checkpoint,
 )
 
@@ -40,7 +41,9 @@ def test_fixed_budget_and_checkpoint_round_trip(tmp_path):
     assert all(np.isfinite(result["losses"]))
     path = tmp_path / "branch.pt"
     save_checkpoint(path, result, provenance={"train_subjects": subjects})
+    assert torch.load(path, weights_only=True)["model_config"] == {"time_coverage_mode": "sample_time"}
     restored, normalization = load_checkpoint(path, device="cpu")
+    assert restored.time_coverage_mode == "sample_time"
     batch = collate_bags(bags[:2], *normalization)
     with torch.no_grad():
         assert torch.allclose(result["model"](*batch), restored(*batch))
@@ -55,6 +58,76 @@ def test_prediction_is_chunk_invariant():
     assert one.shape == (5,)
     assert np.all((one >= 0) & (one <= 1))
     np.testing.assert_allclose(one, many, atol=1e-6)
+
+
+def test_balanced_indices_selects_subject_before_available_class():
+    labels = np.asarray([0, 0, 0, 1])
+    subjects = ["only_zero_a", "only_zero_b", "mixed", "mixed"]
+    indices = _balanced_indices(labels, subjects, np.random.default_rng(7), 12_000)
+    selected_subjects = np.asarray(subjects)[indices]
+    selected_labels = labels[indices]
+    subject_counts = {subject: int((selected_subjects == subject).sum())
+                      for subject in set(subjects)}
+    assert max(subject_counts.values()) - min(subject_counts.values()) < 400
+    mixed = selected_labels[selected_subjects == "mixed"]
+    assert abs(int((mixed == 0).sum()) - int((mixed == 1).sum())) < 200
+    # Subjects with one available class are valid fallbacks, so the total batch
+    # need not contain equal class counts.
+    assert int((selected_labels == 0).sum()) != int((selected_labels == 1).sum())
+
+
+def test_training_reports_sampling_history_and_short_run_convergence_status():
+    bags = [_bag(i, float(i % 2)) for i in range(4)]
+    observations = []
+    result = fit_motion_branch(bags, np.asarray([0, 0, 1, 1]),
+                               ["only_zero", "mixed", "mixed", "only_one"],
+                               steps=100, seed=7,
+                               observation_callback=lambda model, center, scale, step:
+                               observations.append((model.training, center.copy(), scale.copy(), step)))
+    assert result["convergence"] == "NOT_ASSESSED"
+    assert result["convergence_summary"] == {
+        "prior_400_loss_mean": None,
+        "recent_400_loss_mean": None,
+        "relative_improvement": None,
+    }
+    assert all(isinstance(count, int) for count in result["sample_counts"])
+    assert sum(result["sample_counts"]) == 800
+    history = result["training_history"]
+    assert len(history) == 1
+    assert history[0]["step"] == 100
+    assert np.isfinite(history[0]["loss_mean"])
+    assert sum(history[0]["cumulative_sample_counts"]["classes"].values()) == 800
+    assert sum(history[0]["cumulative_sample_counts"]["subjects"].values()) == 800
+    assert observations[0][0] is False
+    assert observations[0][3] == 100
+
+
+def test_checkpoint_optionally_serializes_training_observations(tmp_path):
+    model = MotionBranch()
+    path = tmp_path / "observations.pt"
+    result = {
+        "model": model, "center": np.zeros(6), "scale": np.ones(6), "steps": 100,
+        "seed": 7, "training_history": [{"step": 100, "loss_mean": 0.5}],
+        "convergence": "NOT_ASSESSED", "sample_counts": [3, 4],
+    }
+    save_checkpoint(path, result, provenance={"identity": "test"})
+    payload = torch.load(path, weights_only=True)
+    assert payload["training_history"] == [{"step": 100, "loss_mean": 0.5}]
+    assert payload["convergence"] == "NOT_ASSESSED"
+    assert payload["sample_counts"] == [3, 4]
+    assert isinstance(load_checkpoint(path)[0], MotionBranch)
+
+
+def test_predict_motion_logits_preserves_large_finite_values():
+    bags = [_bag(0, 1.0), _bag(1, 2.0)]
+    model = MotionBranch().eval()
+    model.forward = lambda values, masks, times, intervals: torch.full(
+        (values.shape[0],), 100.0, device=values.device
+    )
+    result = {"model": model, "center": np.zeros(6, np.float32), "scale": np.ones(6, np.float32)}
+    logits = predict_motion_logits(result, bags)
+    np.testing.assert_array_equal(logits, np.asarray([100.0, 100.0]))
+    assert np.all(predict_motion_branch(result, bags) == 1.0)
 
 
 def test_checkpoint_safe_load_accepts_numpy_subject_identifiers(tmp_path):
@@ -79,6 +152,7 @@ def test_legacy_numpy_provenance_repair_preserves_weights(tmp_path):
     result = repair_numpy_checkpoint_provenance(path, expected_identity="known")
     assert result["weights_unchanged"]
     restored, _ = load_checkpoint(path)
+    assert restored.time_coverage_mode == "token_average"
     assert all(torch.equal(left, right) for left, right in zip(model.state_dict().values(), restored.state_dict().values()))
 
 
@@ -102,7 +176,10 @@ def test_small_training_set_can_learn_token_order():
             subjects.append(f"s{subject}")
     device = "cuda" if torch.cuda.is_available() else "cpu"
     result = fit_motion_branch(bags, np.asarray(labels), subjects, steps=80, seed=20260924, device=device)
-    assert np.mean(result["losses"][-10:]) < np.mean(result["losses"][:10]) * 0.75
+    # Subject-first sampling intentionally does not impose a 4:4 batch split;
+    # this smoke check therefore asserts learning without assuming that former
+    # class-first batch composition.
+    assert np.mean(result["losses"][-10:]) < np.mean(result["losses"][:10])
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA unavailable")

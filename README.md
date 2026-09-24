@@ -334,6 +334,15 @@ log loss 更差；状态为 `P2_NO_SUPPORTED_BRANCH`，依照 gate **不进入 P
 本项目 raw counts 尚未验证，迁移臂 Q2/Q3 未运行、不能记作失败。阶段账本见
 [`representation_v2/summary.md`](outputs/challenger_70/representation_v2/summary.md)。
 
+后续审计发现上述 P2 实现在固定200ms间隙、candidate-local滤波、subject-first
+采样、真实时间coverage及完整训练轨迹上存在协议偏差。旧分数保留，但不能据此
+声称完整协议已验收或表示学习路线无效。已批准
+[`RV2 Amendment A1`](docs/challenge_070_amendment_rv2_a1.md)：先修复合同，再仅在
+原inner T内部额外划分train/health进行配对Q0/Q1健康检查（各2000步，不选epoch）。
+入口 `python -m scripts.research.representation_v2.health`，独立证据目录
+`outputs/challenger_70/representation_v2/amendment_a1/`。旧checkpoint显式保留
+legacy coverage语义，新checkpoint记录模型配置；不修改旧P2产物、outer或dist。
+
 Installed-artifact hashes, the independent frozen-blend identity check, and
 the formal non-exclusive mechanism legend are recorded in
 [`docs/challenge_e04_validation_addendum.md`](docs/challenge_e04_validation_addendum.md).

@@ -13,6 +13,7 @@ from src.pipeline.preprocessing.timeline import valid_imu_spans
 
 @dataclass(frozen=True)
 class PreprocessConfig:
+    schema_version: str = "motion-input-rv2-a1"
     sampling_hz: int = 25
     token_seconds: int = 5
     stride_seconds: int = 5
@@ -21,6 +22,8 @@ class PreprocessConfig:
     gravity_align: bool = True
 
     def __post_init__(self) -> None:
+        if self.schema_version != "motion-input-rv2-a1":
+            raise ValueError("unknown preprocessing schema")
         if (self.sampling_hz, self.token_seconds, self.stride_seconds, self.max_gap_ms, self.min_coverage) != (25, 5, 5, 200, 0.8):
             raise ValueError("v2 first-pass preprocessing contract is frozen")
 
@@ -95,7 +98,10 @@ def prepare_session(session: object) -> PreparedMotionSession:
             raise ValueError("timeline span lacks source row mapping")
         t = _expand_packet_timestamps(span.timestamps_ms, rate)
         values = np.vstack((acc[:, span.row_indices], gyro[:, span.row_indices])).astype(np.float64)
-        expanded_spans.append((t, values))
+        # The canonical acquisition splitter has a packet-relative threshold.
+        # Research v2 additionally promises an absolute 200ms observation gap.
+        for indices in np.split(np.arange(len(t)), np.flatnonzero(np.diff(t) > 200) + 1):
+            expanded_spans.append((t[indices], values[:, indices]))
     return PreparedMotionSession(tuple(expanded_spans), float(expanded_spans[0][0][0]),
                                  float(expanded_spans[-1][0][-1]), rate)
 
@@ -147,8 +153,8 @@ def build_token_bag(session: object, candidate: object, preprocess_config: Prepr
     for span_t, span_values in prepared.spans:
         if span_t[-1] < start or span_t[0] >= end:
             continue
-        left = max(0, int(np.searchsorted(span_t, start - 1_000)))
-        right = min(len(span_t), int(np.searchsorted(span_t, end + 1_000, side="right")))
+        left = int(np.searchsorted(span_t, start, side="left"))
+        right = int(np.searchsorted(span_t, end, side="left"))
         if right - left < 32:
             continue
         source_t = span_t[left:right]
@@ -205,6 +211,12 @@ def pool_time_bins(embeddings: np.ndarray, bag: TokenBag, *, bins: int = 64) -> 
     result = np.zeros((bins, 36), dtype=np.float32)
     output_mask = np.zeros(bins, dtype=bool)
     span = bag.end_ms - bag.start_ms
+    cells = bag.sample_mask.ravel().astype(np.float64)
+    prefix = np.r_[0.0, cells.cumsum()]
+    edges = np.linspace(0.0, span / 40, bins + 1)
+    indices = np.clip(np.floor(edges).astype(int), 0, len(cells))
+    integral = prefix[indices] + np.clip(edges - indices, 0, 1) * np.r_[cells, 0.0][indices]
+    true_coverage = np.clip(np.diff(integral) * 40 / (span / bins), 0, 1)
     placement = np.minimum(bins - 1, ((bag.token_center_ms - bag.start_ms) * bins // span).astype(int))
     for bin_index in range(bins):
         assigned = placement == bin_index
@@ -215,7 +227,7 @@ def pool_time_bins(embeddings: np.ndarray, bag: TokenBag, *, bins: int = 64) -> 
         result[bin_index, 16:32] = vectors[kept].max(axis=0)
         result[bin_index, 32] = (bin_index + 0.5) / bins
         result[bin_index, 33] = 1.0 / bins
-        result[bin_index, 34] = bag.coverage[assigned].mean()
+        result[bin_index, 34] = true_coverage[bin_index]
         result[bin_index, 35] = kept.sum() / max(1, assigned.sum())
         output_mask[bin_index] = True
     return result, output_mask

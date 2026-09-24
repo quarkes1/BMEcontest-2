@@ -113,3 +113,22 @@ def test_low_rate_session_retains_invalid_candidate_for_control_fallback():
     bag = build_token_bag(session, EventRef("one", 0, 5_000), PreprocessConfig())
     assert bag.values.shape == (1, 6, 125)
     assert not bag.token_mask.any()
+
+
+def test_packet_period_cannot_relax_fixed_200ms_gap_limit():
+    anchors = np.arange(0, 5_500, 160)
+    anchors = anchors + (anchors >= 2_560) * 150
+    session = _session(np.repeat(anchors, 10))
+    bag = build_token_bag(session, EventRef("one", 0, 5_000), PreprocessConfig(gravity_align=False))
+    # Expanded samples jump from 2490 to 2710ms: the 2600ms point is unobserved.
+    assert not bag.sample_mask[0, 65]
+
+
+def test_candidate_tokens_do_not_depend_on_outside_signal():
+    times = np.arange(0, 8_000, 10, dtype=np.int64)
+    left, right = _session(times), _session(times)
+    right.acc[0, times == 5_020] += 1_000
+    config = PreprocessConfig(gravity_align=False)
+    before = build_token_bag(left, EventRef("one", 0, 5_000), config)
+    after = build_token_bag(right, EventRef("one", 0, 5_000), config)
+    np.testing.assert_array_equal(before.values, after.values)

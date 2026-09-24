@@ -7,10 +7,11 @@ import json
 import hashlib
 import time
 from pathlib import Path
-from typing import Sequence
+from typing import Callable, Sequence
 
 import numpy as np
 import torch
+from scipy.special import expit
 from torch.nn import functional as F
 
 from scripts.research.representation_v2.dataset import TokenBag
@@ -67,16 +68,21 @@ def collate_bags(
 
 
 def _balanced_indices(labels: np.ndarray, subjects: Sequence[str], rng: np.random.Generator, size: int) -> np.ndarray:
-    eligible: dict[int, dict[str, list[int]]] = {0: {}, 1: {}}
+    eligible: dict[str, dict[int, list[int]]] = {}
     for index, (label, subject) in enumerate(zip(labels, subjects)):
-        eligible[int(label)].setdefault(str(subject), []).append(index)
-    if not eligible[0] or not eligible[1]:
+        eligible.setdefault(str(subject), {}).setdefault(int(label), []).append(index)
+    if not any(0 in classes for classes in eligible.values()) or not any(1 in classes for classes in eligible.values()):
         raise ValueError("training partition needs both classes")
     chosen = []
-    for position in range(size):
-        by_subject = eligible[position % 2]
-        subject = rng.choice(tuple(by_subject))
-        chosen.append(int(rng.choice(by_subject[subject])))
+    subject_names = tuple(eligible)
+    for _ in range(size):
+        # The sampling contract is subject-first: class balance is only within
+        # a selected subject's available classes.  Single-class subjects are a
+        # deliberate fallback and do not force a globally half-and-half batch.
+        subject = str(rng.choice(subject_names))
+        classes = eligible[subject]
+        label = int(rng.choice(tuple(classes)))
+        chosen.append(int(rng.choice(classes[label])))
     return np.asarray(chosen, dtype=int)
 
 
@@ -87,6 +93,7 @@ def fit_motion_branch(
     fixed_normalization: tuple[np.ndarray, np.ndarray] | None = None,
     freeze_token_encoder: bool = False,
     max_wall_seconds: float | None = None,
+    observation_callback: Callable[[MotionBranch, np.ndarray, np.ndarray, int], None] | None = None,
 ) -> dict[str, object]:
     if steps < 1 or batch_size != 8 or len(bags) != len(labels) or len(subjects) != len(bags):
         raise ValueError("invalid frozen training contract")
@@ -111,10 +118,18 @@ def fit_motion_branch(
     start = time.perf_counter()
     losses: list[float] = []
     gradient_norms: list[float] = []
+    sample_counts = [0] * len(bags)
+    class_counts = {"0": 0, "1": 0}
+    subject_counts = {str(subject): 0 for subject in sorted(set(subjects))}
+    training_history: list[dict[str, object]] = []
     for step in range(steps):
         if max_wall_seconds is not None and time.perf_counter() - start > max_wall_seconds:
             raise TimeoutError(f"training budget ended after {step} of {steps} steps")
         indices = _balanced_indices(classes, subjects, rng, batch_size)
+        for index in indices:
+            sample_counts[int(index)] += 1
+            class_counts[str(int(classes[int(index)]))] += 1
+            subject_counts[str(subjects[int(index)])] += 1
         inputs = collate_bags([bags[int(i)] for i in indices], center, scale)
         values, masks, times, intervals = inputs
         values = values.to(device)
@@ -134,14 +149,53 @@ def fit_motion_branch(
         optimizer.step()
         losses.append(float(loss.detach().cpu()))
         gradient_norms.append(float(norm.detach().cpu()))
+        if (step + 1) % 100 == 0:
+            window = slice(max(0, len(losses) - 100), len(losses))
+            training_history.append({
+                "step": step + 1,
+                "loss_mean": float(np.mean(losses[window])),
+                "gradient_norm": {
+                    "mean": float(np.mean(gradient_norms[window])),
+                    "max": float(np.max(gradient_norms[window])),
+                },
+                "cumulative_sample_counts": {
+                    "classes": dict(class_counts), "subjects": dict(subject_counts),
+                },
+            })
+            if observation_callback is not None:
+                was_training = model.training
+                try:
+                    model.eval()
+                    observation_callback(model, center, scale, step + 1)
+                finally:
+                    model.train(was_training)
+    if steps < 800:
+        convergence = "NOT_ASSESSED"
+        convergence_summary = {
+            "prior_400_loss_mean": None,
+            "recent_400_loss_mean": None,
+            "relative_improvement": None,
+        }
+    else:
+        prior_loss = float(np.mean(losses[-800:-400]))
+        recent_loss = float(np.mean(losses[-400:]))
+        relative_improvement = (prior_loss - recent_loss) / prior_loss if prior_loss else 0.0
+        convergence = "CONVERGENCE_UNRESOLVED" if relative_improvement > 0.1 else "NO_TAIL_IMPROVEMENT_ALERT"
+        convergence_summary = {
+            "prior_400_loss_mean": prior_loss,
+            "recent_400_loss_mean": recent_loss,
+            "relative_improvement": relative_improvement,
+        }
     return {"model": model.eval(), "center": center, "scale": scale, "steps": steps,
             "losses": losses, "gradient_norms": gradient_norms, "wall_seconds": time.perf_counter() - start,
-            "seed": seed, "train_subjects": tuple(sorted(set(subjects)))}
+            "seed": seed, "train_subjects": tuple(sorted(set(subjects))),
+            "training_history": training_history, "convergence": convergence,
+            "convergence_summary": convergence_summary, "sample_counts": sample_counts}
 
 
-def predict_motion_branch(result: dict[str, object], bags: Sequence[TokenBag], *,
+def predict_motion_logits(result: dict[str, object], bags: Sequence[TokenBag], *,
                           batch_size: int = 8, device: str = "cpu") -> np.ndarray:
-    """Return ordered candidate probabilities without fitting on score bags."""
+    """Return ordered candidate logits without fitting on score bags."""
     if batch_size < 1:
         raise ValueError("prediction batch size must be positive")
     model = result["model"]
@@ -149,14 +203,20 @@ def predict_motion_branch(result: dict[str, object], bags: Sequence[TokenBag], *
         raise ValueError("result lacks a MotionBranch")
     model.to(device).eval()
     center, scale = np.asarray(result["center"]), np.asarray(result["scale"])
-    scores = []
+    logits_by_batch = []
     with torch.inference_mode():
         for start in range(0, len(bags), batch_size):
             values, masks, times, intervals = collate_bags(bags[start:start + batch_size], center, scale)
             logits = model(values.to(device), (masks[0].to(device), masks[1].to(device)),
                            times.to(device), intervals.to(device))
-            scores.append(torch.sigmoid(logits).cpu().numpy())
-    return np.concatenate(scores).astype(np.float64) if scores else np.empty(0, dtype=np.float64)
+            logits_by_batch.append(logits.cpu().numpy())
+    return np.concatenate(logits_by_batch).astype(np.float64) if logits_by_batch else np.empty(0, dtype=np.float64)
+
+
+def predict_motion_branch(result: dict[str, object], bags: Sequence[TokenBag], *,
+                          batch_size: int = 8, device: str = "cpu") -> np.ndarray:
+    """Return ordered candidate probabilities without fitting on score bags."""
+    return expit(predict_motion_logits(result, bags, batch_size=batch_size, device=device))
 
 
 def save_checkpoint(path: Path, result: dict[str, object], *, provenance: dict[str, object]) -> None:
@@ -177,8 +237,12 @@ def save_checkpoint(path: Path, result: dict[str, object], *, provenance: dict[s
         "scale": np.asarray(result["scale"]).tolist(),
         "steps": int(result["steps"]),
         "seed": int(result["seed"]),
+        "model_config": {"time_coverage_mode": model.time_coverage_mode},
         "provenance": safe_provenance,
     }
+    for key in ("training_history", "convergence", "convergence_summary", "sample_counts"):
+        if key in result:
+            payload[key] = json.loads(json.dumps(result[key], default=json_scalar))
     temporary = path.with_name(path.name + ".tmp")
     try:
         torch.save(payload, temporary)
@@ -238,7 +302,10 @@ def load_checkpoint(path: Path, *, device: str = "cpu") -> tuple[MotionBranch, t
     payload = torch.load(path, map_location="cpu", weights_only=True)
     if payload.get("schema") != "representation-v2-motion-branch-v1":
         raise ValueError("unknown branch checkpoint schema")
-    model = MotionBranch()
+    model_config = payload.get("model_config", {"time_coverage_mode": "token_average"})
+    if not isinstance(model_config, dict):
+        raise ValueError("checkpoint model configuration is invalid")
+    model = MotionBranch(**model_config)
     model.load_state_dict(payload["weights"], strict=True)
     center = np.asarray(payload["center"], dtype=np.float32)
     scale = np.asarray(payload["scale"], dtype=np.float32)
