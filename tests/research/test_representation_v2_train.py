@@ -7,7 +7,8 @@ import torch
 from scripts.research.representation_v2.dataset import TokenBag
 from scripts.research.representation_v2.models import MotionBranch
 from scripts.research.representation_v2.train import (
-    collate_bags, fit_motion_branch, fit_robust_channels, load_checkpoint, predict_motion_branch, save_checkpoint,
+    collate_bags, fit_motion_branch, fit_robust_channels, load_checkpoint, predict_motion_branch,
+    repair_numpy_checkpoint_provenance, save_checkpoint,
 )
 
 
@@ -54,6 +55,31 @@ def test_prediction_is_chunk_invariant():
     assert one.shape == (5,)
     assert np.all((one >= 0) & (one <= 1))
     np.testing.assert_allclose(one, many, atol=1e-6)
+
+
+def test_checkpoint_safe_load_accepts_numpy_subject_identifiers(tmp_path):
+    bags = [_bag(i, float(i % 2)) for i in range(4)]
+    result = fit_motion_branch(bags, np.asarray([0, 1, 0, 1]),
+                               ["s0", "s1", "s2", "s3"], steps=1, seed=1)
+    path = tmp_path / "numpy_subject.pt"
+    save_checkpoint(path, result, provenance={"fit_subjects": [np.str_("s0"), np.str_("s1")]})
+    restored, _ = load_checkpoint(path)
+    assert isinstance(restored, MotionBranch)
+
+
+def test_legacy_numpy_provenance_repair_preserves_weights(tmp_path):
+    model = MotionBranch()
+    path = tmp_path / "old.pt"
+    old = {"schema": "representation-v2-motion-branch-v1", "weights": model.state_dict(),
+           "center": [0.0] * 6, "scale": [1.0] * 6, "steps": 2000, "seed": 20260924,
+           "provenance": {"fit_subjects": [np.str_("s0")], "identity": "known"}}
+    torch.save(old, path)
+    with pytest.raises(Exception):
+        load_checkpoint(path)
+    result = repair_numpy_checkpoint_provenance(path, expected_identity="known")
+    assert result["weights_unchanged"]
+    restored, _ = load_checkpoint(path)
+    assert all(torch.equal(left, right) for left, right in zip(model.state_dict().values(), restored.state_dict().values()))
 
 
 def test_training_refuses_one_class_partition():

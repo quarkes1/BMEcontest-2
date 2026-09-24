@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+import json
+import hashlib
 import time
 from pathlib import Path
 from typing import Sequence
@@ -162,6 +164,12 @@ def save_checkpoint(path: Path, result: dict[str, object], *, provenance: dict[s
     model = result["model"]
     if not isinstance(model, MotionBranch):
         raise ValueError("result lacks a MotionBranch")
+    def json_scalar(value: object) -> object:
+        if isinstance(value, np.generic):
+            return value.item()
+        raise TypeError(f"checkpoint provenance is not JSON scalar: {type(value).__name__}")
+
+    safe_provenance = json.loads(json.dumps(provenance, default=json_scalar))
     payload = {
         "schema": "representation-v2-motion-branch-v1",
         "weights": {key: value.cpu() for key, value in model.state_dict().items()},
@@ -169,7 +177,7 @@ def save_checkpoint(path: Path, result: dict[str, object], *, provenance: dict[s
         "scale": np.asarray(result["scale"]).tolist(),
         "steps": int(result["steps"]),
         "seed": int(result["seed"]),
-        "provenance": provenance,
+        "provenance": safe_provenance,
     }
     temporary = path.with_name(path.name + ".tmp")
     try:
@@ -177,6 +185,53 @@ def save_checkpoint(path: Path, result: dict[str, object], *, provenance: dict[s
         temporary.replace(path)
     finally:
         temporary.unlink(missing_ok=True)
+
+
+def repair_numpy_checkpoint_provenance(path: Path, *, expected_identity: str) -> dict[str, object]:
+    """Repair only this run's old NumPy subject scalars, with restricted loading.
+
+    The known artifact was written by this project; this is never a general
+    external-checkpoint loader. Model tensors are checked unchanged before the
+    atomic replacement, and the replacement must pass plain weights-only load.
+    """
+    if not expected_identity:
+        raise ValueError("repair requires a registered partition identity")
+    path = Path(path)
+    before_sha = hashlib.sha256(path.read_bytes()).hexdigest()
+    with torch.serialization.safe_globals([np._core.multiarray.scalar, np.dtype, np.dtypes.StrDType]):
+        payload = torch.load(path, map_location="cpu", weights_only=True)
+    if payload.get("schema") != "representation-v2-motion-branch-v1":
+        raise ValueError("repair refuses an unknown checkpoint schema")
+    provenance = payload.get("provenance")
+    if not isinstance(provenance, dict) or provenance.get("identity") != expected_identity:
+        raise ValueError("repair refuses a mismatched partition identity")
+    if not isinstance(payload.get("weights"), dict) or not all(
+        isinstance(value, torch.Tensor) for value in payload["weights"].values()
+    ):
+        raise ValueError("repair requires tensor-only model weights")
+
+    def json_scalar(value: object) -> object:
+        if isinstance(value, np.generic):
+            return value.item()
+        raise TypeError(f"unsupported provenance value: {type(value).__name__}")
+
+    payload["provenance"] = json.loads(json.dumps(provenance, default=json_scalar))
+    temporary = path.with_name(path.name + ".repair.tmp")
+    try:
+        torch.save(payload, temporary)
+        verified = torch.load(temporary, map_location="cpu", weights_only=True)
+        unchanged = payload["weights"].keys() == verified["weights"].keys() and all(
+            torch.equal(payload["weights"][key], verified["weights"][key])
+            for key in payload["weights"]
+        )
+        if not unchanged:
+            raise RuntimeError("checkpoint repair altered model weights")
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
+    return {"path": str(path), "sha256_before": before_sha,
+            "sha256_after": hashlib.sha256(path.read_bytes()).hexdigest(),
+            "weights_unchanged": True, "identity": expected_identity}
 
 
 def load_checkpoint(path: Path, *, device: str = "cpu") -> tuple[MotionBranch, tuple[np.ndarray, np.ndarray]]:

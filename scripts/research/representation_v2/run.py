@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import pickle
 import subprocess
 import time
 from pathlib import Path
@@ -324,6 +325,39 @@ def run_probe(root: Path, output: Path, *, limit_partitions: int | None = None) 
             "completed_partitions": completed, "outer_calls": 0}
 
 
+def repair_probe_checkpoints(root: Path, output: Path) -> dict[str, object]:
+    """Normalize only the 40 known P2 provenance payloads; leave scores fixed."""
+    import torch
+    from scripts.research.representation_v2.train import repair_numpy_checkpoint_provenance
+
+    state = json.loads((output / "state.json").read_text(encoding="utf-8"))
+    if state.get("status") != "P2_NO_SUPPORTED_BRANCH" or state.get("outer_calls") != 0:
+        raise RuntimeError("repair requires completed failed P2 without outer access")
+    reports = sorted((output / "p2_probe").glob("fold*_inner*.json"))
+    if len(reports) != 20:
+        raise RuntimeError("repair requires all 20 sealed P2 partition reports")
+    audit = []
+    for report_path in reports:
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        for arm in ("q0", "q1"):
+            checkpoint = (root / report["arms"][arm]["checkpoint"]).resolve()
+            if checkpoint.parent != (output / "p2_probe").resolve():
+                raise RuntimeError("checkpoint repair target escapes P2 output")
+            try:
+                verified = torch.load(checkpoint, map_location="cpu", weights_only=True)
+            except pickle.UnpicklingError:
+                audit.append(repair_numpy_checkpoint_provenance(checkpoint, expected_identity=report["identity"]))
+            else:
+                if verified["provenance"]["identity"] != report["identity"]:
+                    raise RuntimeError("safe checkpoint identity differs from score ledger")
+                audit.append({"path": str(checkpoint), "identity": report["identity"],
+                              "weights_unchanged": True, "already_safe": True})
+    result = {"status": "P2_CHECKPOINT_REPAIR_COMPLETE", "checkpoint_count": len(audit),
+              "scores_recomputed": False, "training_repeated": False, "outer_calls": 0, "artifacts": audit}
+    _write_json(output / "p2_probe/checkpoint_repair.json", result)
+    return {"status": result["status"], "checkpoint_count": len(audit), "outer_calls": 0}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     commands = parser.add_subparsers(dest="command", required=True)
@@ -337,6 +371,7 @@ def main() -> None:
     commands.add_parser("compute-benchmark")
     probe_stage = commands.add_parser("probe")
     probe_stage.add_argument("--limit-partitions", type=int)
+    commands.add_parser("repair-checkpoints")
     args = parser.parse_args()
     if args.command == "preflight":
         result = preflight(ROOT, args.plan.resolve().parent)
@@ -352,6 +387,8 @@ def main() -> None:
         print(json.dumps(compute_benchmark(DEFAULT_OUTPUT), sort_keys=True))
     elif args.command == "probe":
         print(json.dumps(run_probe(ROOT, DEFAULT_OUTPUT, limit_partitions=args.limit_partitions), sort_keys=True))
+    elif args.command == "repair-checkpoints":
+        print(json.dumps(repair_probe_checkpoints(ROOT, DEFAULT_OUTPUT), sort_keys=True))
 
 
 if __name__ == "__main__":
