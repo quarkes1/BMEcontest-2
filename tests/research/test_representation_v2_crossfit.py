@@ -1,0 +1,46 @@
+"""An inner score's candidate producers must exclude its subjects."""
+
+import numpy as np
+import pytest
+
+from scripts.research.representation_v2.crossfit import inner_subject_partitions, slice_outer_train
+from src.pipeline.event_stack import EventRef
+from src.pipeline.runner import OuterTrainOnlyData, WindowBatch
+
+
+def _batch(sids):
+    windows = tuple(EventRef(sid, i * 10_000, (i + 1) * 10_000) for i, sid in enumerate(sids))
+    return WindowBatch(np.zeros((len(sids), 2)), np.asarray([i % 2 for i in range(len(sids))]), windows)
+
+
+def _data():
+    sids = tuple(f"sid{i}" for i in range(8))
+    return OuterTrainOnlyData(
+        window_train=_batch(sids), candidate_train=_batch(sids),
+        train_truths=(EventRef("sid0", 0, 10_000), EventRef("sid7", 70_000, 80_000)),
+        subject_by_session={sid: f"person{i}" for i, sid in enumerate(sids)},
+        session_bounds_by_sid={sid: (0, 100_000) for sid in sids},
+        micro_window_train=_batch(sids), micro_candidate_train=_batch(sids),
+    )
+
+
+def test_slice_removes_held_out_subject_from_every_train_input():
+    sliced = slice_outer_train(_data(), {"person0", "person1"})
+    assert {x.sid for x in sliced.window_train.windows} == {"sid0", "sid1"}
+    assert {x.sid for x in sliced.candidate_train.windows} == {"sid0", "sid1"}
+    assert {x.sid for x in sliced.micro_window_train.windows} == {"sid0", "sid1"}
+    assert {x.sid for x in sliced.micro_candidate_train.windows} == {"sid0", "sid1"}
+    assert [x.sid for x in sliced.train_truths] == ["sid0"]
+    assert set(sliced.subject_by_session) == {"sid0", "sid1"}
+
+
+def test_inner_partitions_are_subject_disjoint_and_cover_every_subject():
+    folds = inner_subject_partitions(_data(), n_splits=4)
+    assert len(folds) == 4
+    assert set.union(*(set(score) for _, score in folds)) == {f"person{i}" for i in range(8)}
+    assert all(not set(train) & set(score) for train, score in folds)
+
+
+def test_slice_rejects_unknown_subject():
+    with pytest.raises(ValueError, match="unknown"):
+        slice_outer_train(_data(), {"not-present"})
