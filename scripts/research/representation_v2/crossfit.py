@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from dataclasses import dataclass
 
 import numpy as np
 from sklearn.model_selection import GroupKFold
 
+from src.pipeline import runner as _runner
+from src.pipeline.crossfit import crossfit_predict_proba
 from src.pipeline.runner import OuterTrainOnlyData, WindowBatch
 
 
@@ -54,3 +57,72 @@ def inner_subject_partitions(data: OuterTrainOnlyData, *, n_splits: int = 4) -> 
             raise RuntimeError("inner partition subject overlap")
         folds.append((train, score))
     return tuple(folds)
+
+
+@dataclass(frozen=True)
+class CandidateLedger:
+    candidates: tuple[object, ...]
+    features: np.ndarray
+    labels: np.ndarray
+    groups: np.ndarray
+    micro_threshold: float
+    fit_subjects: tuple[str, ...]
+    score_subjects: tuple[str, ...]
+
+
+def build_candidate_ledgers(data: OuterTrainOnlyData, config: object, train_subjects: Iterable[str],
+                            score_subjects: Iterable[str]) -> tuple[CandidateLedger, CandidateLedger]:
+    """Build T OOF and V held-out candidate sets with T-only learned ancestors.
+
+    The micro threshold is selected from T truth only. V truth is consulted only
+    after candidate generation, for probe metrics/labels.
+    """
+    train = tuple(sorted(set(train_subjects)))
+    score = tuple(sorted(set(score_subjects)))
+    if set(train) & set(score):
+        raise ValueError("candidate producer train/score subject overlap")
+    t, v = slice_outer_train(data, train), slice_outer_train(data, score)
+    if t.micro_window_train is None or t.micro_candidate_train is None or v.micro_candidate_train is None:
+        raise ValueError("registered candidate producer requires micro path")
+
+    def _fit_and_score(train_batch: WindowBatch, t_candidate: WindowBatch, v_candidate: WindowBatch,
+                       keep: np.ndarray, estimator_factory, *, time_prior: bool):
+        x = lambda batch: _runner._with_time_prior(batch.features, batch.windows) if time_prior else batch.features
+        labels = np.asarray(train_batch.labels[keep], dtype=np.int8)
+        _runner._validate_binary(labels, "candidate producer training")
+        groups = _runner._groups_for(train_batch.windows, t.subject_by_session)[keep]
+        t_groups = _runner._groups_for(t_candidate.windows, t.subject_by_session)
+        t_scores = crossfit_predict_proba(x(train_batch)[keep], labels, groups, x(t_candidate), t_groups,
+                                          config.inner_splits, estimator_factory=estimator_factory).probabilities
+        model = estimator_factory()
+        model.fit(x(train_batch)[keep], labels)
+        v_scores = _runner._positive_probability(model, x(v_candidate))
+        return (_runner._windows_by_session(t_candidate.windows, t_scores),
+                _runner._windows_by_session(v_candidate.windows, v_scores))
+
+    macro_t, macro_v = _fit_and_score(
+        t.window_train, t.candidate_train, v.candidate_train,
+        np.asarray(t.window_train.labels) >= 0,
+        lambda: _runner._window_estimator(config.seed), time_prior=True)
+    micro_t, micro_v = _fit_and_score(
+        t.micro_window_train, t.micro_candidate_train, v.micro_candidate_train,
+        _runner._micro_training_keep(t.micro_window_train, t.train_truths, config.micro_positive_middle_fraction),
+        lambda: _runner._micro_window_estimator(config.seed + 10), time_prior=False)
+    selected = _runner.select_micro_candidate_threshold(
+        micro_t, t.train_truths, config.micro_threshold_grid, config.micro_candidate)
+
+    def _ledger(partition: OuterTrainOnlyData, macro: dict, micro: dict, scored_subjects: tuple[str, ...]) -> CandidateLedger:
+        candidates = tuple(_runner.union_candidates(
+            _runner.density_candidates(macro, config.density),
+            _runner.micro_candidates(micro, selected.threshold, config.micro_candidate)))
+        features = _runner.multiscale_verifier_features(
+            candidates, macro, micro, context_features_version="v1",
+            session_bounds_by_sid=_runner._context_session_bounds(
+                partition, candidates, partition.candidate_train.windows, partition.micro_candidate_train.windows))
+        if features.shape != (len(candidates), 116):
+            raise RuntimeError("candidate ledger must use incumbent 116D Context-v1")
+        labels = _runner._candidate_labels(candidates, partition.train_truths)
+        groups = _runner._groups_for([candidate.event for candidate in candidates], partition.subject_by_session)
+        return CandidateLedger(candidates, features, labels, groups, float(selected.threshold), train, scored_subjects)
+
+    return _ledger(t, macro_t, micro_t, train), _ledger(v, macro_v, micro_v, score)

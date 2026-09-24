@@ -324,6 +324,14 @@ GT-aware 单候选 oracle 仅有 1/11 可通过原 event policy，其余 10 个�
 下一位 challenger 须经人工审阅 A2 后独立预注册，只在 outer-train 的 inner
 OOF 上开发；当前发布与 `dist/` 均未变更。
 
+当前已批准的下一轮研究按 [`0.70+ 任务书`](docs/challenge_070突破任务书_v2.md)
+执行，授权仅覆盖 P0–P3，P4 全量 outer 与 P5 发布仍需分别人工批准。P0
+溯源及资源预检、P1 时间轴/5 秒 token/小型有序时序网络与训练 smoke 已完成；
+P2 正在建立受试者隔离的候选与 probe 管线，**尚无新的 P2/P3 F1**。
+FD-I 外部数据的陀螺仪物理单位与本项目 raw counts 尚未验证，迁移臂 Q2/Q3
+不可运行；目标数据 scratch 臂 Q0/Q1 可独立继续。阶段账本见
+[`representation_v2/summary.md`](outputs/challenger_70/representation_v2/summary.md)。
+
 Installed-artifact hashes, the independent frozen-blend identity check, and
 the formal non-exclusive mechanism legend are recorded in
 [`docs/challenge_e04_validation_addendum.md`](docs/challenge_e04_validation_addendum.md).

@@ -2,8 +2,10 @@
 
 import numpy as np
 import pytest
+from dataclasses import replace
 
-from scripts.research.representation_v2.crossfit import inner_subject_partitions, slice_outer_train
+from scripts.research.representation_v2.crossfit import build_candidate_ledgers, inner_subject_partitions, slice_outer_train
+from src.pipeline.challenger.e03 import registered_e03_config
 from src.pipeline.event_stack import EventRef
 from src.pipeline.runner import OuterTrainOnlyData, WindowBatch
 
@@ -44,3 +46,25 @@ def test_inner_partitions_are_subject_disjoint_and_cover_every_subject():
 def test_slice_rejects_unknown_subject():
     with pytest.raises(ValueError, match="unknown"):
         slice_outer_train(_data(), {"not-present"})
+
+
+def test_candidate_producer_rejects_overlapping_subject_ancestry():
+    config = replace(registered_e03_config(0, workers=1), micro_positive_middle_fraction=None)
+    with pytest.raises(ValueError, match="overlap"):
+        build_candidate_ledgers(_data(), config, {"person0", "person1"}, {"person1"})
+
+
+def test_candidate_producer_never_uses_score_truth_for_features():
+    data = _data()
+    config = replace(registered_e03_config(0, workers=1), micro_positive_middle_fraction=None)
+    train = {f"person{i}" for i in range(6)}
+    score = {"person6", "person7"}
+    left_t, left_v = build_candidate_ledgers(data, config, train, score)
+    changed = replace(data, train_truths=tuple(truth for truth in data.train_truths if truth.sid != "sid7"))
+    right_t, right_v = build_candidate_ledgers(changed, config, train, score)
+    assert left_t.fit_subjects == tuple(sorted(train))
+    assert left_v.score_subjects == tuple(sorted(score))
+    assert not set(left_v.fit_subjects) & set(left_v.score_subjects)
+    assert left_v.candidates == right_v.candidates
+    np.testing.assert_array_equal(left_v.features, right_v.features)
+    assert left_v.micro_threshold == right_v.micro_threshold

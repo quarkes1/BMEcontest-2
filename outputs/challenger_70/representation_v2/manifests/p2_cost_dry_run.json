@@ -1,0 +1,21 @@
+{
+  "status": "IMPLEMENTATION_AND_FD_UNIT_REVIEW_PENDING",
+  "outer_calls": 0,
+  "inner_train_score_partitions": 20,
+  "base_macro_fits_per_partition": 5,
+  "base_micro_fits_per_partition": 5,
+  "base_fits_p2_if_candidate_ledger_shared_across_arms": 200,
+  "target_branch_fits_q0_q1": 40,
+  "target_branch_fits_q2_q3_if_fd_unit_gate_passes": 40,
+  "source_fd_fits_if_fd_unit_gate_passes": 1,
+  "target_branch_optimizer_steps_q0_q1": 80000,
+  "target_branch_optimizer_steps_all_p2_arms": 160000,
+  "source_fd_optimizer_steps": 10000,
+  "p3_primary_additional_branch_fits_if_gate_passes": 60,
+  "p3_confirmation_branch_fits_if_both_gates_pass": 80,
+  "wall_clock_estimate_status": "not_established; no P2 model fit has started",
+  "resource_gate": "GPU <=24h, wall <=48h, cache <=12GiB, checkpoints <=2GiB; track all failed and retried fits",
+  "candidate_ledger_rule": "one T/V candidate ledger per partition, reused unchanged across Q0-Q3",
+  "transfer_gate": "FD-I and target ACC/GYRO physical unit compatibility unverified; Q2/Q3 prohibited until resolved",
+  "allowed_next_action": "complete and verify candidate producer, then timed Q0/Q1 feasibility pilot on one T/V partition charged to total budget"
+}
