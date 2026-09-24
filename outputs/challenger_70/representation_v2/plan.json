@@ -1,0 +1,44 @@
+{
+  "base_git_sha": "1ef5ca557f6c01c9287060eb711fdb8a9a48eb35",
+  "budget": {
+    "cache_bytes_limit": 12884901888,
+    "checkpoints_bytes_limit": 2147483648,
+    "fd_source_fits": 1,
+    "gpu_hours_limit": 24,
+    "p2_target_fits": 80,
+    "p3_confirmation_fits": 80,
+    "p3_primary_additional_fits": 60,
+    "seconds_per_step_ceiling_if_all_gates_pass": 0.192,
+    "total_steps_including_fd": 450000,
+    "total_target_steps_if_all_gates_pass": 440000,
+    "wall_hours_limit": 48
+  },
+  "event_bins": 64,
+  "experiment": "RV2-P0-001",
+  "fd_pretrain_steps": 10000,
+  "old_fd_checkpoint_reusable": false,
+  "outer_calls": 0,
+  "release_changes": false,
+  "sampling_hz": 25,
+  "schema": "representation-v2-20260924",
+  "seed_confirmation": 20260925,
+  "seed_primary": 20260924,
+  "source_dataset": "doi:10.48804/CN8VBB v1 FD-I",
+  "source_rules": [
+    "outer train only",
+    "no E01/E03.5/E04/Data Sprint/R1 row tables in training",
+    "every learned ancestor excludes its held-out subject"
+  ],
+  "spec": "docs/challenge_070突破任务书_v2.md",
+  "status": "APPROVED_FOR_P0_TO_P3_SUBJECT_TO_GATES",
+  "stride_seconds": 5,
+  "target_arms": [
+    "Q0_random_frozen",
+    "Q1_scratch",
+    "Q2_fd_frozen",
+    "Q3_fd_finetuned"
+  ],
+  "target_steps_per_fit": 2000,
+  "token_samples": 125,
+  "token_seconds": 5
+}

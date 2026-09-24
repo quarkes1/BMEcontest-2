@@ -1,0 +1,11 @@
+{
+  "status": "DIAGNOSTIC_ONLY",
+  "model": "legacy SmallTokenTCN, not the proposed full P1 branch",
+  "device": "NVIDIA GeForce RTX 5060 Laptop GPU",
+  "batch_tokens": 480,
+  "samples_per_token": 125,
+  "warmup_forwards": 5,
+  "timed_forwards": 30,
+  "mean_forward_seconds": 0.00128,
+  "note": "No training step was executed. This excludes loading, preprocessing, event aggregation, FD pretraining and verifier costs, so it is not a full-project runtime estimate."
+}

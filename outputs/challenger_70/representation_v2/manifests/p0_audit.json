@@ -1,0 +1,111 @@
+{
+  "base_git_sha": "1ef5ca557f6c01c9287060eb711fdb8a9a48eb35",
+  "budget": {
+    "cache_bytes_limit": 12884901888,
+    "checkpoints_bytes_limit": 2147483648,
+    "fd_source_fits": 1,
+    "gpu_hours_limit": 24,
+    "p2_target_fits": 80,
+    "p3_confirmation_fits": 80,
+    "p3_primary_additional_fits": 60,
+    "seconds_per_step_ceiling_if_all_gates_pass": 0.192,
+    "total_steps_including_fd": 450000,
+    "total_target_steps_if_all_gates_pass": 440000,
+    "wall_hours_limit": 48
+  },
+  "fd": {
+    "dataset": "doi:10.48804/CN8VBB v1",
+    "label_1": "eating gesture",
+    "label_2": "drinking gesture",
+    "license": "CC BY-NC-ND 4.0 (official dataset page)",
+    "license_url": "https://rdr.kuleuven.be/dataset.xhtml?persistentId=doi:10.48804/CN8VBB",
+    "old_checkpoint": {
+      "mtime_ns": 1788268765834091500,
+      "path": "D:/BMEtest/checkpoints/fd_pretrained_s1.pt",
+      "size": 1039995
+    },
+    "old_checkpoint_reason": "provenance is insufficient; safe weights-only load fails",
+    "old_checkpoint_reusable": false,
+    "readme": {
+      "mtime_ns": 1788229032359450300,
+      "path": "D:/BMEtest/FDdatasets/doi-10.48804-CN8VBB/v1.0/00_ReadMe.txt",
+      "sha256": "cd65758e9200b26d261d987a610b9e1a6d67facc4220ccfb3560b0d7ffb14ea5",
+      "size": 6754
+    },
+    "reported_participants_fd_i": 34,
+    "sample_rate_hz": 64,
+    "source": [
+      {
+        "mtime_ns": 1709442976000000000,
+        "path": "D:/BMEtest/FDdatasets/doi-10.48804-CN8VBB/v1.0/FD-I/X_L.pkl",
+        "size": 2783616991
+      },
+      {
+        "mtime_ns": 1709442972000000000,
+        "path": "D:/BMEtest/FDdatasets/doi-10.48804-CN8VBB/v1.0/FD-I/X_R.pkl",
+        "size": 2783616991
+      },
+      {
+        "mtime_ns": 1709442978000000000,
+        "path": "D:/BMEtest/FDdatasets/doi-10.48804-CN8VBB/v1.0/FD-I/Y_L.pkl",
+        "size": 231969715
+      },
+      {
+        "mtime_ns": 1709442978000000000,
+        "path": "D:/BMEtest/FDdatasets/doi-10.48804-CN8VBB/v1.0/FD-I/Y_R.pkl",
+        "size": 231969715
+      }
+    ]
+  },
+  "hardware": {
+    "free_disk_bytes": 145953656832
+  },
+  "limits": [
+    "no outer GT use",
+    "no sealed diagnostic rows for training",
+    "no legacy checkpoint reuse"
+  ],
+  "protected_tree_entries": 4654,
+  "protected_tree_sha256": "bf74ba7a008ed8813cd480822ffdb0cdab87318d19a539c180e18b706d485d27",
+  "release": {
+    "f1": 0.6514285714285715,
+    "run_key": "160afaf81debf1ee"
+  },
+  "status": "P0_READY",
+  "target": {
+    "folds": [
+      {
+        "outer_fold": 0,
+        "subject_ids_sha256": "30e7d61511f857d5999d2036b04f52fe19ab9c5fbf9ff01d1490b154b426c8ee",
+        "train_sessions": 917,
+        "train_subjects": 32
+      },
+      {
+        "outer_fold": 1,
+        "subject_ids_sha256": "68448de9e9d1e96df7b054586483922a1e8cbea2be5ba6eef120862e7401cd7e",
+        "train_sessions": 922,
+        "train_subjects": 33
+      },
+      {
+        "outer_fold": 2,
+        "subject_ids_sha256": "911b3debba5ae3c7ffb119bb3ecb8bdf7ac20152dbe91f1c000ee7399f9700d5",
+        "train_sessions": 916,
+        "train_subjects": 33
+      },
+      {
+        "outer_fold": 3,
+        "subject_ids_sha256": "646fa53ce1d9be9871721bb69e2e85df875eee3d09ec36ac1661d84ec696da41",
+        "train_sessions": 913,
+        "train_subjects": 33
+      },
+      {
+        "outer_fold": 4,
+        "subject_ids_sha256": "fe2a8e75f3fedd03d1c4e94309527a337e15d09adf8035d60bc667c8e9160872",
+        "train_sessions": 916,
+        "train_subjects": 33
+      }
+    ],
+    "session_cache_files": 1130,
+    "subject_count": 41
+  }
+}

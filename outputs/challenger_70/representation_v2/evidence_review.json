@@ -1,0 +1,54 @@
+{
+  "evidence_type": "historical diagnostic audit only",
+  "items": [
+    {
+      "finding": "Population is selected from E04 outer-derived matched TP, final FP and reachable FN.",
+      "id": "R1_population",
+      "source": "scripts/research/temporal_rep/run_r1.py:26-33",
+      "status": "confirmed"
+    },
+    {
+      "finding": "Top-k token embedding mean is invariant to event token order.",
+      "id": "R1_unordered",
+      "source": "scripts/research/temporal_rep/run_r1.py:63-67",
+      "status": "confirmed"
+    },
+    {
+      "finding": "Only central 120 seconds are sampled and interpolation uses row index rather than timestamps.",
+      "id": "R1_center_and_time",
+      "source": "scripts/research/temporal_rep/run_r1.py:37-44",
+      "status": "confirmed"
+    },
+    {
+      "finding": "Thirty epochs correspond to thirty full-batch optimizer updates per fold; convergence was not established.",
+      "id": "R1_training_budget",
+      "source": "scripts/research/temporal_rep/run_r1.py:78-83",
+      "status": "confirmed"
+    },
+    {
+      "finding": "145 positive and 83 negative selected rows; always-positive candidate F1 = 290/373 = 0.77748.",
+      "id": "R1_candidate_metric",
+      "source": "outputs/challenger_70/temporal_rep/cache/manifest.json",
+      "status": "confirmed"
+    },
+    {
+      "finding": "Base OOF scores and meta OOF share the same group split without fully nesting base-model training inside meta training.",
+      "id": "E06_meta_dependencies",
+      "source": "scripts/research/run_tier1_challengers.py:185-203",
+      "status": "confirmed"
+    },
+    {
+      "finding": "The augmented arm refits LR/LGBM and reselects the incumbent policy grid; churn is not a frozen-score effect.",
+      "id": "E05_policy_reselection",
+      "source": "scripts/research/run_tier1_challengers.py:185-200",
+      "status": "confirmed"
+    },
+    {
+      "finding": "Legacy checkpoint provenance is insufficient for this protocol and safe weights-only loading fails.",
+      "id": "FD_legacy_checkpoint",
+      "source": "checkpoints/fd_pretrained_s1.pt",
+      "status": "confirmed"
+    }
+  ],
+  "not_reusable_for_current_gate": true
+}

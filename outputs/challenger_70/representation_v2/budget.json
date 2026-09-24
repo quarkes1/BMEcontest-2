@@ -1,0 +1,13 @@
+{
+  "cache_bytes_limit": 12884901888,
+  "checkpoints_bytes_limit": 2147483648,
+  "fd_source_fits": 1,
+  "gpu_hours_limit": 24,
+  "p2_target_fits": 80,
+  "p3_confirmation_fits": 80,
+  "p3_primary_additional_fits": 60,
+  "seconds_per_step_ceiling_if_all_gates_pass": 0.192,
+  "total_steps_including_fd": 450000,
+  "total_target_steps_if_all_gates_pass": 440000,
+  "wall_hours_limit": 48
+}
