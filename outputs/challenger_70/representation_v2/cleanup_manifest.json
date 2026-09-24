@@ -1,0 +1,21 @@
+{
+  "stage": "P2_CLOSEOUT",
+  "status": "P2_NO_SUPPORTED_BRANCH",
+  "outer_calls": 0,
+  "protected_tree_sha256_p0_and_closeout": "bf74ba7a008ed8813cd480822ffdb0cdab87318d19a539c180e18b706d485d27",
+  "protected_tree_unchanged": true,
+  "new_persistent_token_cache_bytes": 0,
+  "p2_probe_file_count": 70,
+  "p2_probe_total_bytes": 7257726,
+  "p2_checkpoint_count": 40,
+  "p2_checkpoint_bytes": 5709320,
+  "retained": [
+    "20 partition JSON score/provenance ledgers",
+    "40 fixed-step checkpoints required to audit the negative comparison",
+    "aggregate_metrics.json, named diagnostic JSON files and report.md",
+    "run_identity.json, progress.json, checkpoint_repair.json"
+  ],
+  "temporary_files_remaining": 0,
+  "files_deleted": [],
+  "reason_no_deletion": "No generated temporary or orphan cache remained; source caches and other experiments were not touched."
+}

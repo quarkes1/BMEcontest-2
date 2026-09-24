@@ -358,6 +358,37 @@ def repair_probe_checkpoints(root: Path, output: Path) -> dict[str, object]:
     return {"status": result["status"], "checkpoint_count": len(audit), "outer_calls": 0}
 
 
+def export_probe_report(output: Path) -> dict[str, object]:
+    """Materialize the task-book's named P2 diagnostics from sealed evidence."""
+    state = json.loads((output / "state.json").read_text(encoding="utf-8"))
+    aggregate = json.loads((output / "p2_probe/aggregate_metrics.json").read_text(encoding="utf-8"))
+    if state.get("status") != "P2_NO_SUPPORTED_BRANCH" or aggregate.get("outer_calls") != 0:
+        raise RuntimeError("P2 report requires a complete failed inner gate")
+    directory = output / "p2_probe"
+    _write_json(directory / "fold_metrics.json", aggregate["wrapper_metrics"])
+    _write_json(directory / "subject_metrics.json", [
+        {**row, "undefined_reason": "single_class_labels" if row["metrics"]["average_precision"] is None else None}
+        for row in aggregate["subject_metrics"]
+    ])
+    _write_json(directory / "probe_controls.json", {
+        "status": "RECORDED", "threshold": .5,
+        "always_positive_f1_by_wrapper": [row["q0"]["always_positive_f1"] for row in aggregate["wrapper_metrics"]],
+        "always_negative_f1_by_wrapper": [row["q0"]["always_negative_f1"] for row in aggregate["wrapper_metrics"]],
+        "candidate_prevalence_by_wrapper": [row["q0"]["prevalence"] for row in aggregate["wrapper_metrics"]],
+        "note": "All-positive/negative are candidate-level baselines, never event F1."
+    })
+    _write_json(directory / "transfer_comparison.json", {
+        "status": "FD_DATA_REVIEW_REQUIRED", "q2_ran": False, "q3_ran": False,
+        "fd_vs_scratch_conclusion": None,
+        "reason": "FD-I source/target ACC/GYRO unit conversion is undocumented; transfer was not guessed."
+    })
+    _write_json(directory / "order_perturbation.json", {
+        "status": "NOT_RUN_NO_SELECTED_P2_BRANCH", "result": None,
+        "reason": "The registered order diagnostic applies only to a selected branch; no arm passed P2."
+    })
+    return {"status": aggregate["status"], "named_diagnostics_written": 5, "outer_calls": 0}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     commands = parser.add_subparsers(dest="command", required=True)
@@ -372,6 +403,7 @@ def main() -> None:
     probe_stage = commands.add_parser("probe")
     probe_stage.add_argument("--limit-partitions", type=int)
     commands.add_parser("repair-checkpoints")
+    commands.add_parser("report")
     args = parser.parse_args()
     if args.command == "preflight":
         result = preflight(ROOT, args.plan.resolve().parent)
@@ -389,6 +421,8 @@ def main() -> None:
         print(json.dumps(run_probe(ROOT, DEFAULT_OUTPUT, limit_partitions=args.limit_partitions), sort_keys=True))
     elif args.command == "repair-checkpoints":
         print(json.dumps(repair_probe_checkpoints(ROOT, DEFAULT_OUTPUT), sort_keys=True))
+    elif args.command == "report":
+        print(json.dumps(export_probe_report(DEFAULT_OUTPUT), sort_keys=True))
 
 
 if __name__ == "__main__":

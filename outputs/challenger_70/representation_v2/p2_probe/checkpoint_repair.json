@@ -1,0 +1,289 @@
+{
+  "artifacts": [
+    {
+      "identity": "ba797bcd3366eba67c7762341e2904c714f585f064495ff9a3b0011e75a087b1",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold0_inner0_q0.pt",
+      "sha256_after": "5dcfa9b4143ede2ed3d03e05ac18165c8d189ebb16c087cc9c23a9c72a053b67",
+      "sha256_before": "febc74457c3e8e973f9639d57d82916fa109e943cb2a82f1269dad61e04d3549",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "ba797bcd3366eba67c7762341e2904c714f585f064495ff9a3b0011e75a087b1",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold0_inner0_q1.pt",
+      "sha256_after": "fbd539f562fcff48513fbc5dc62a51f89ad0395ea5348046af6f62d9dc4a6ff1",
+      "sha256_before": "06cda0f70d8e63567fcbc8738d0cfbc776e577dd4df2a3d480540134c842264f",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "fe76bbab200c9306f52c2b9d060f1d4c804a1b1f36aa3b6f5d21098c1df0f6f5",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold0_inner1_q0.pt",
+      "sha256_after": "c59d153567418749da1138ec1a999fccd95a726c593e019b680048b0d84de8b5",
+      "sha256_before": "fd416371bb5bd690ba0f0847f1a8a3871b30127028e260af32d80c191523a237",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "fe76bbab200c9306f52c2b9d060f1d4c804a1b1f36aa3b6f5d21098c1df0f6f5",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold0_inner1_q1.pt",
+      "sha256_after": "f680f4521cfc808f4c3b6e0f0b035025efa858ff1ce198e66d76f3f601ad1bc5",
+      "sha256_before": "ffb1e156fa6e7d30cdd40ca147d1a91f44c4e5f42866362c5e2ede9cffc92641",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "787f334843e4432d68dc0ebd2d74fb782bcb8f3e8eddffe9335d114aa8d0054d",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold0_inner2_q0.pt",
+      "sha256_after": "5bec4390f3a1c08aac0dfdbf6d30e3e801b3c012fa4e615b3c4c9f2ba565cb77",
+      "sha256_before": "c509d23c9fcdbe2ce48da9ee262ac8e6fc4365c8c1136231afced6962ddb66b8",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "787f334843e4432d68dc0ebd2d74fb782bcb8f3e8eddffe9335d114aa8d0054d",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold0_inner2_q1.pt",
+      "sha256_after": "f5a7f9c06aa6bbbf2f48ec81398d6204bbee4e4a80ccfacf5123fd8f020c3b97",
+      "sha256_before": "a07c4a06ca6d509d999e509d9a8c79a66eafe6691ecc25e691c799cf301beef5",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "3db6545ac99da6c61fe03f82f9f6f85613b6cd7d1a87514db76c107ed74a7864",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold0_inner3_q0.pt",
+      "sha256_after": "7cd48a3707d59f0d36138d9227e23b5e5cc7ed8cb60944ca755cf73eb893918a",
+      "sha256_before": "955d822cbb2cdf358314ecde33967903aa50d0613553a2254fa0ed71ce097469",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "3db6545ac99da6c61fe03f82f9f6f85613b6cd7d1a87514db76c107ed74a7864",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold0_inner3_q1.pt",
+      "sha256_after": "b35e46e9bb63949177180e5d6ddef1c58bbd8e76847c95a3583ebd86a089cff5",
+      "sha256_before": "c48470b06ce1ea139f3203d9a09a7a3054ce6108eaa9f10a1059076439b5c78c",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "af765b589b0015058407275bd1c0275dc16ef91f6f38aca53bce3931112f3aca",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold1_inner0_q0.pt",
+      "sha256_after": "7dfe8331060c872ef4a3a11f8b0a05d946bb312764b7489cd68c73247c2c59db",
+      "sha256_before": "fa41336377f60762f2f0cf7476937bf6caf66ca29837ff4efabb141d8ef983fe",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "af765b589b0015058407275bd1c0275dc16ef91f6f38aca53bce3931112f3aca",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold1_inner0_q1.pt",
+      "sha256_after": "304099452ded24c60f5aa75278d58c21149dcb6b88fc3bdd45b0752a8160f1c8",
+      "sha256_before": "bcc77d52509a9a14ae6dc6f87a859599d8def3194b213e1b8dc09834935c48f2",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "a05b29b557f3b3999e2a0a24e1f3689baf57a43514a3f4c76be04de02545dd95",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold1_inner1_q0.pt",
+      "sha256_after": "6fe877a3ac3a8dec6d9f42606b1fbdc6cff756170a31bf4c65275248a3d76c66",
+      "sha256_before": "a47ee2252b9b47182ba854b30d455237a0d779b153df2a75e1d2083b9bd364fc",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "a05b29b557f3b3999e2a0a24e1f3689baf57a43514a3f4c76be04de02545dd95",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold1_inner1_q1.pt",
+      "sha256_after": "06a3d269a5f94dbef8308246dd5f5852b18b8ba8460b494830801817c497868a",
+      "sha256_before": "dc0eb51f0ccce50e59e41cca7f49e38f455727431e84cf66d835945ad750b0b6",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "a60c152ee0953a9f98468d1e32a692b1f89cda020d209fdfd2ebefbd33b953fd",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold1_inner2_q0.pt",
+      "sha256_after": "51c81a1d57da86c380257d8bfb3177d4e895a4feaeacc894ddac39841dc08985",
+      "sha256_before": "2962b432c775d179ceaed4664adc7df4047c33b48e37ac20f61ec3d7f8e90e88",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "a60c152ee0953a9f98468d1e32a692b1f89cda020d209fdfd2ebefbd33b953fd",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold1_inner2_q1.pt",
+      "sha256_after": "342ffbb0fc07e8b6ff6fa6bd66b47ea332ae1143855bbcf3962ea10b24f643fc",
+      "sha256_before": "0b93f2433378389924262cd14086bd8f3a26ad81a9a347829b1dcfde1fd2e6d7",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "1f0614c787b17b829935a7eb907954e28aefbdcfbf707f756c3db49eaa3dad81",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold1_inner3_q0.pt",
+      "sha256_after": "02e4216e45870924db2a9dd80b449807e6c20524128f85dc93bb5e4a5fbac75b",
+      "sha256_before": "1a31c9249d17f2a3728c07932355e05775e500c188c7fb8aa3ed92f5a605ebfe",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "1f0614c787b17b829935a7eb907954e28aefbdcfbf707f756c3db49eaa3dad81",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold1_inner3_q1.pt",
+      "sha256_after": "0e87749435382193db5ed1647105d1e3bb038a2ffc7a0751e006aa1c6e557b87",
+      "sha256_before": "4ca484fc2c73a08888473161ed0bbb0d35cc43b62c7a54a9934eb0a9fb4b176c",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "fc93dcc9660a9b499d6804c016c5cc93fc7c8b44c764fd5de9ac3fec04bc4d57",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold2_inner0_q0.pt",
+      "sha256_after": "b44cc26557d98e7bffe9e40f6847c2f3d4daff22037b75190ca6a0c942aa1890",
+      "sha256_before": "588731ad5bd1340fa515cfaf9fe45e045927d3ed37b2ae9a3b5cc2d368c56860",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "fc93dcc9660a9b499d6804c016c5cc93fc7c8b44c764fd5de9ac3fec04bc4d57",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold2_inner0_q1.pt",
+      "sha256_after": "2c6c6c16e8f39fca6aff373860f42d56a3d2eb865cb419900bbafe5ea51a8f60",
+      "sha256_before": "ee2414bfffecf9aed689ef75cbfac922ec3e96ee5c1f7c33f998e60e5975052a",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "9c9a3a2258767426ccb02f999ed250ec884af26482f7ae0a801caf5b554f3861",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold2_inner1_q0.pt",
+      "sha256_after": "d4eacbb40ef5c69fbf77f931e58c4abda7e0e6ffe3f88fe0f1877f2f72716b1b",
+      "sha256_before": "fee99fe891e297506eeb1c3538f979adaa2a678667084dcd756b1b71631b1b66",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "9c9a3a2258767426ccb02f999ed250ec884af26482f7ae0a801caf5b554f3861",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold2_inner1_q1.pt",
+      "sha256_after": "c8c707b31a7e66eab7628f81fd4518443ff6474a96e6a0ac03bd4c73bd28356d",
+      "sha256_before": "689a362ae2602e054a8d7139aa9f51ba1cd673edd9a2da0cd67bf69b7ad775d1",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "11f718ea26c88f361b2051964604f5dd4d26634f81b958a2910c0aec1ea16f58",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold2_inner2_q0.pt",
+      "sha256_after": "ac7b995f3d3395a820d8f83061164ca86f9f5109ab98be9ebc7bd0edc580cd2e",
+      "sha256_before": "94f168783fa529f6839174a905838d7efe643ba0c85ec28dab1920b33bbdf67f",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "11f718ea26c88f361b2051964604f5dd4d26634f81b958a2910c0aec1ea16f58",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold2_inner2_q1.pt",
+      "sha256_after": "83a08df2343ad81478f51b41bb66e32efcb4318db2bb08f027997d36623af938",
+      "sha256_before": "0efd5a9f3e962a6130c75e3880f0ba7439aca2b628bb89a8a0f532b7b29ec97a",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "f1d8f3ca15341c4cbe344b48ec7bc99b2699b9a82e7c5fe8d712626eb6acb47b",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold2_inner3_q0.pt",
+      "sha256_after": "5ce48eb24ee77961e856a9e998f19600efeed2f6bd304390b8aff329b8a495be",
+      "sha256_before": "a1566eb581a329f2034e713442f68e074b60ba94782b4d97c3a3c313cd5a0e5c",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "f1d8f3ca15341c4cbe344b48ec7bc99b2699b9a82e7c5fe8d712626eb6acb47b",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold2_inner3_q1.pt",
+      "sha256_after": "222fc025a8e07503147baa7012069503aa6191577a42e19c3fba56693b746f96",
+      "sha256_before": "12b09cad61a1e493a4024e3560470ac944040250b806a82ece65d2523ad1214c",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "90efd6cf1bf3f93bae89994e7d4ed3903a1525a6eca7905d90ea7761f7940170",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold3_inner0_q0.pt",
+      "sha256_after": "dff5f72b9a226b0a406a38328db77200709d95289137b29d97ecad82f34937e9",
+      "sha256_before": "12cb7331a904f0065f57abf0a16b502723854c2da7dc8d86ae475b9db5a941d3",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "90efd6cf1bf3f93bae89994e7d4ed3903a1525a6eca7905d90ea7761f7940170",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold3_inner0_q1.pt",
+      "sha256_after": "3a24bdfdb7451105a7fad9629cd5632b8b7d0f492941a39aa9aaf04c6597f252",
+      "sha256_before": "1ac121596e41fc8ec24a2322b8f4197b27d9dd48b8b4c3cb8d7d82134a7e53c8",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "e0ad60da5ac8ab1ebcad1d1549a1923d5c87b943d61c505b7b003fb4a5a57560",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold3_inner1_q0.pt",
+      "sha256_after": "ea2b4a9f992f34513dbab378b4999299a20277e63de5be3654722f054b8f5f9b",
+      "sha256_before": "89a2d0b2f73c3df889cbbc59c3b2396ff99fa47f230d0d38758b470c076cf1af",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "e0ad60da5ac8ab1ebcad1d1549a1923d5c87b943d61c505b7b003fb4a5a57560",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold3_inner1_q1.pt",
+      "sha256_after": "b993a2e9c8de5f0ac1576ae34ab92addb8bd69985cdb8bef72ce2fe02d310c3c",
+      "sha256_before": "332e3913d2c907aae17b00ba531cc60e7e0aff3cdb7d09e5914e63209e07f75e",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "288be246512b52b5e38a37353e8377ba21d660132bfef78d8627d4a9e78b9739",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold3_inner2_q0.pt",
+      "sha256_after": "71c7b4126123c9b564e62eea5b1324457608f0b89fc5b742694bf1009bd28dd3",
+      "sha256_before": "7f84fd92011d56fcc212fa86ecd9f3ac95c30c359dd1c653b466866ed26ed99f",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "288be246512b52b5e38a37353e8377ba21d660132bfef78d8627d4a9e78b9739",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold3_inner2_q1.pt",
+      "sha256_after": "d19c56e815656dd12f85296d9ae8626e94cdfa3f51bb593a2c118f0abfc86071",
+      "sha256_before": "6038515f2389e68c161a501ac540d38d92f53f8fb7f829c14b2b13bed324e3f7",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "722928b9af6c42c73d4cdbad28487243678a83581023a1cbc4945062b02eea5f",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold3_inner3_q0.pt",
+      "sha256_after": "bdf4bf43d117266d5a67d8f472d644896c44906939dbcb06045f30c9a81c264b",
+      "sha256_before": "8db9b0e0fa5e8e72967a648c8eb4b064a5271a90b107ca7f7d06566e4c901d0a",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "722928b9af6c42c73d4cdbad28487243678a83581023a1cbc4945062b02eea5f",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold3_inner3_q1.pt",
+      "sha256_after": "9407ff37fb5e7eb97f603a396c25e723163bd275868b169508d9d37cf6b07914",
+      "sha256_before": "e03b87770de68c684b3f866784b3f8e7e518d851044c68f814b24c17871d49f4",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "bc93bb80a350bdd49b79baed93f426a3dd1e48516f75a3bd878764e3f163a140",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold4_inner0_q0.pt",
+      "sha256_after": "01f469afcee39aadb951ba1c79c05b37b2a88bd950551558b32d2599c377b628",
+      "sha256_before": "29b8f498a4bf7f5d56d597c5c13b19621c55563cbe89046a62df9a8568eb4ae5",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "bc93bb80a350bdd49b79baed93f426a3dd1e48516f75a3bd878764e3f163a140",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold4_inner0_q1.pt",
+      "sha256_after": "d9d104ec4e5f0185e8491e4c38f144ef1740d4d348dbc111828daf810a62981c",
+      "sha256_before": "18795a96c7d616c9c0f63ecb6042bbe8ca718e7dc0e46dc04493a952f9fc0464",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "4449bad21abaa0a63368b15674057197008907f620eb2ca323ffca19e0712917",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold4_inner1_q0.pt",
+      "sha256_after": "03db3f1dc5a038946f8cee61a67856fb3a52e4e6e7076a7a93bbe0c73e254539",
+      "sha256_before": "ad87d6579268e8ff7e28aede9d9c3198a1d08abea75d26e94ed5a0091ee90e65",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "4449bad21abaa0a63368b15674057197008907f620eb2ca323ffca19e0712917",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold4_inner1_q1.pt",
+      "sha256_after": "598aa18b59b99b6da1ae6f4d3f51c792af19042e970f66931a8fb92fb8e56779",
+      "sha256_before": "2de231fa4315c2406af42faa193903e44dac2e3d905ad46dbaa591543f8de861",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "d25ca5b7af7f5448c934bf0b63a064cbacb254ca7c084d0e39f24d14a1447700",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold4_inner2_q0.pt",
+      "sha256_after": "1979b010364603daee40ad2c99e484da414e19dc7eed07d58ce3f49cd4ba347f",
+      "sha256_before": "f0b3a02e08dbe92844c628552ef5a9f61fe267eeea1a5840135d1e645fd364ab",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "d25ca5b7af7f5448c934bf0b63a064cbacb254ca7c084d0e39f24d14a1447700",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold4_inner2_q1.pt",
+      "sha256_after": "6144aa3edd5b44b5fd5cda28f8bb9775daed37b9f72da6ec9d3e3299f19d5ae4",
+      "sha256_before": "0f3808090882e0f23382c0553d1fe76c8cab9316afaef726c6dac9555896ba0a",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "462c9e9ef71a11d820382ad374bf5867674788cc7cae87d7324fb98063690ae8",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold4_inner3_q0.pt",
+      "sha256_after": "bffc30fd201fe3fe949b1fc7842b1329f7c725a5b3de89633415a8e257be083a",
+      "sha256_before": "6814e171f2a98acf51bd61476a45aa006529705dd1d00577e6fb4776fe3759e9",
+      "weights_unchanged": true
+    },
+    {
+      "identity": "462c9e9ef71a11d820382ad374bf5867674788cc7cae87d7324fb98063690ae8",
+      "path": "D:\\BMEtest\\outputs\\challenger_70\\representation_v2\\p2_probe\\fold4_inner3_q1.pt",
+      "sha256_after": "4abf0dfcca04fafd22d9bdf3af0ee7883ae0e4eca9d391287a73872ae27c3ee7",
+      "sha256_before": "ea477a45c7a0edd51c2f14568972dbe5cf8b059a64571fe85244dfead15f178c",
+      "weights_unchanged": true
+    }
+  ],
+  "checkpoint_count": 40,
+  "outer_calls": 0,
+  "scores_recomputed": false,
+  "status": "P2_CHECKPOINT_REPAIR_COMPLETE",
+  "training_repeated": false
+}

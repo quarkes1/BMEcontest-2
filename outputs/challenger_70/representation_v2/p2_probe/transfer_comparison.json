@@ -1,0 +1,7 @@
+{
+  "fd_vs_scratch_conclusion": null,
+  "q2_ran": false,
+  "q3_ran": false,
+  "reason": "FD-I source/target ACC/GYRO unit conversion is undocumented; transfer was not guessed.",
+  "status": "FD_DATA_REVIEW_REQUIRED"
+}

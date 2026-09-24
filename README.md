@@ -327,9 +327,11 @@ OOF 上开发；当前发布与 `dist/` 均未变更。
 当前已批准的下一轮研究按 [`0.70+ 任务书`](docs/challenge_070突破任务书_v2.md)
 执行，授权仅覆盖 P0–P3，P4 全量 outer 与 P5 发布仍需分别人工批准。P0
 溯源及资源预检、P1 时间轴/5 秒 token/小型有序时序网络与训练 smoke 已完成；
-P2 正在建立受试者隔离的候选与 probe 管线，**尚无新的 P2/P3 F1**。
-FD-I 外部数据的陀螺仪物理单位与本项目 raw counts 尚未验证，迁移臂 Q2/Q3
-不可运行；目标数据 scratch 臂 Q0/Q1 可独立继续。阶段账本见
+P2 的 Q0/Q1 目标数据 probe 已按 5×4 个内层分区完成，Q1 scratch 五组平均
+candidate AP 0.26439，低于 Q0 frozen-random 的 0.28847，且仅 1/5 组正向、
+log loss 更差；状态为 `P2_NO_SUPPORTED_BRANCH`，依照 gate **不进入 P3**。
+这些不是事件 F1，也不是新 outer 成绩。FD-I 外部数据的陀螺仪物理单位与
+本项目 raw counts 尚未验证，迁移臂 Q2/Q3 未运行、不能记作失败。阶段账本见
 [`representation_v2/summary.md`](outputs/challenger_70/representation_v2/summary.md)。
 
 Installed-artifact hashes, the independent frozen-blend identity check, and

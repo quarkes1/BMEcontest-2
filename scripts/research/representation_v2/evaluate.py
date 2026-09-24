@@ -63,6 +63,11 @@ def select_p2_branch(wrappers: Sequence[dict[str, dict[str, float | int | None]]
                             "eligible": passed}
         if passed:
             eligible.append(arm)
-    selected = max(eligible, key=lambda arm: (diagnostics[arm]["macro_ap"], -("q1", "q2", "q3").index(arm))) if eligible else None
+    # All registered branches share one inference architecture.  Within the
+    # predeclared 1e-6 AP tie band, Q1/Q2/Q3 order is the deterministic tie.
+    selected = None
+    for arm in eligible:
+        if selected is None or diagnostics[arm]["macro_ap"] > diagnostics[selected]["macro_ap"] + 1e-6:
+            selected = arm
     return {"status": "P2_SUPPORTED_BRANCH" if selected else "P2_NO_SUPPORTED_BRANCH",
             "selected_arm": selected, "q0_macro_ap": float(np.mean(q0_ap)), "arms": diagnostics}

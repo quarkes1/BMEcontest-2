@@ -1,6 +1,7 @@
 {
-  "fd_transfer_status": "FD_SOURCE_UNIT_REVIEW_REQUIRED",
+  "fd_transfer_status": "FD_DATA_REVIEW_REQUIRED",
   "outer_calls": 0,
-  "stage": "P1",
-  "status": "P1_READY"
+  "selected_arm": null,
+  "stage": "P2",
+  "status": "P2_NO_SUPPORTED_BRANCH"
 }

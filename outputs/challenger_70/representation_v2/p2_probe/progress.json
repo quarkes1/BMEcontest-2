@@ -1,0 +1,7 @@
+{
+  "charged_training_seconds": 1560.7386475999956,
+  "completed_partitions": 20,
+  "device": "cuda",
+  "outer_calls": 0,
+  "wall_seconds_this_invocation": 3308.6387953999947
+}

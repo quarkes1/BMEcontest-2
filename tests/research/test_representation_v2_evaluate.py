@@ -24,3 +24,11 @@ def test_p2_gate_requires_four_wrapper_wins_and_log_loss_guard():
     assert chosen["selected_arm"] == "q1"
     wrappers[0]["q1"]["log_loss"] = .9
     assert select_p2_branch(wrappers)["status"] == "P2_NO_SUPPORTED_BRANCH"
+
+
+def test_p2_near_equal_ap_uses_registered_arm_order():
+    wrappers = [{"q0": {"average_precision": .40, "log_loss": .50},
+                 "q1": {"average_precision": .45, "log_loss": .51},
+                 "q2": {"average_precision": .4500005, "log_loss": .51}}
+                for _ in range(5)]
+    assert select_p2_branch(wrappers)["selected_arm"] == "q1"

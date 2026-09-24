@@ -1,0 +1,26 @@
+{
+  "always_negative_f1_by_wrapper": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "always_positive_f1_by_wrapper": [
+    0.23297491039426524,
+    0.2,
+    0.22929936305732485,
+    0.2199248120300752,
+    0.18456375838926176
+  ],
+  "candidate_prevalence_by_wrapper": [
+    0.13184584178498987,
+    0.1111111111111111,
+    0.12949640287769784,
+    0.1235480464625132,
+    0.10166358595194085
+  ],
+  "note": "All-positive/negative are candidate-level baselines, never event F1.",
+  "status": "RECORDED",
+  "threshold": 0.5
+}
