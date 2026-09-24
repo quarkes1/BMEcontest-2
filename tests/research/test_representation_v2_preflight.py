@@ -31,3 +31,9 @@ def test_preflight_writes_reviewable_artifacts_without_training(tmp_path, monkey
     assert (tmp_path / "out/evidence_review.json").is_file()
     assert (tmp_path / "out/state.json").is_file()
     assert not (tmp_path / "out/checkpoints").exists()
+
+
+def test_p1_cache_command_rejects_unfinished_p0(tmp_path):
+    import pytest
+    with pytest.raises(RuntimeError, match="P0_READY"):
+        run.input_audit(tmp_path, tmp_path / "out")

@@ -82,8 +82,8 @@ def prepare_session(session: object) -> PreparedMotionSession:
         raise ValueError("session needs integer millisecond IMU timestamps")
     if acc.shape != gyro.shape or acc.shape != (3, len(timestamps)) or valid.shape != timestamps.shape:
         raise ValueError("session ACC/GYRO/validity shapes disagree")
-    if not np.isfinite(rate) or rate <= 20:
-        raise ValueError("source IMU sampling rate is too low for 10 Hz anti-alias cutoff")
+    if not np.isfinite(rate) or rate <= 0:
+        raise ValueError("source IMU sampling rate must be positive")
     if not np.isfinite(acc[:, valid]).all() or not np.isfinite(gyro[:, valid]).all():
         raise ValueError("valid IMU samples must be finite")
     source_spans = valid_imu_spans(session)
@@ -127,6 +127,12 @@ def build_token_bag(session: object, candidate: object, preprocess_config: Prepr
     flat = target.ravel()
     flat_values = np.zeros((6, flat.size), dtype=np.float32)
     flat_mask = np.zeros(flat.size, dtype=bool)
+
+    if prepared.row_rate <= 20:
+        return TokenBag((sid, start, end), np.zeros((count, 6, sample_count), dtype=np.float32),
+                        flat_mask.reshape(count, sample_count), np.zeros(count, dtype=bool),
+                        token_starts + config.token_seconds * 500, start, end,
+                        np.zeros(count, dtype=np.float32))
 
     # Candidate-local gravity estimate uses only this session's valid samples.
     gravity_sources = []

@@ -1,5 +1,6 @@
 {
+  "fd_transfer_status": "FD_SOURCE_UNIT_REVIEW_REQUIRED",
   "outer_calls": 0,
-  "stage": "P0",
-  "status": "P0_READY"
+  "stage": "P1",
+  "status": "P1_READY"
 }

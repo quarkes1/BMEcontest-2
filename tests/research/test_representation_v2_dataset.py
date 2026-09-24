@@ -93,3 +93,12 @@ def test_gravity_rotation_is_shared_by_acc_and_gyro():
     session.gyro[:] = session.acc
     bag = build_token_bag(session, EventRef("one", 0, 5_000), PreprocessConfig())
     assert np.allclose(bag.values[0, :3, bag.sample_mask[0]], bag.values[0, 3:, bag.sample_mask[0]])
+
+
+def test_low_rate_session_retains_invalid_candidate_for_control_fallback():
+    times = np.arange(0, 10_000, 500, dtype=np.int64)
+    session = _session(times)
+    session.row_rate = 2.0
+    bag = build_token_bag(session, EventRef("one", 0, 5_000), PreprocessConfig())
+    assert bag.values.shape == (1, 6, 125)
+    assert not bag.token_mask.any()
