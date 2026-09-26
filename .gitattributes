@@ -4,4 +4,4 @@ dist/event_stack/** -text
 # .bat 需要保持 CRLF 字节（批处理对行尾敏感）；-text 禁用文本转换，-eol 清除 eol=lf 残留
 *.bat -text -eol
 # R0 audit JSON carries byte-level SHA identities; preserve recorded line endings.
-outputs/challenger_70/representation_v2/amendment_a1/*.json -text -eol
+outputs/challenger_70/representation_v2/amendment_a1/*.json -text -eol whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
