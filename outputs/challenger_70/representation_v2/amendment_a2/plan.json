@@ -1,0 +1,15 @@
+{
+  "base_fits": 30,
+  "code_sha": "d089391ca67340b0f48ce298518fc22cc49637e3",
+  "device": "cuda",
+  "id": "RV2-A2-R1-001",
+  "max_training_seconds": 10800,
+  "max_wall_seconds": 21600,
+  "outer_calls": 0,
+  "protected_digest": "bf74ba7a008ed8813cd480822ffdb0cdab87318d19a539c180e18b706d485d27",
+  "readout_fits": 9,
+  "seed": 20260926,
+  "spec_sha256": "82a8ff9d4bafc8cb9bc4e8940661d23c74841f2c56efb4748fa2b11d10e43ebd",
+  "ssl_fits": 3,
+  "steps_per_ssl": 5000
+}

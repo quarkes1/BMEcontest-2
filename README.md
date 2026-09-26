@@ -357,6 +357,11 @@ VICReg冻结表示；统一固定正则化线性读出，不训练事件TCN。�
 入口 `python -m scripts.research.representation_v2.explore`；三折probe不能替代事件F1，
 outer与正式发布仍不在本轮授权范围。
 
+A2已完成三折：随机冻结表示R的macro candidate AP/BCE为0.39779/0.32274，
+candidate-conditioned SSL的S为0.29587/0.35450，0/3折AP改善，状态
+`R1_NO_SUPPORTED_SSL_BRANCH`。见[A2报告](outputs/challenger_70/representation_v2/amendment_a2/report.md)。
+不扩大此SSL配置；后续独立考虑无量纲FD手势监督预训练，不将其称为物理单位已校准。
+
 Installed-artifact hashes, the independent frozen-blend identity check, and
 the formal non-exclusive mechanism legend are recorded in
 [`docs/challenge_e04_validation_addendum.md`](docs/challenge_e04_validation_addendum.md).

@@ -1,0 +1,31 @@
+{
+  "ap_gain_s_vs_r": -0.10191769403050199,
+  "macro_metrics": {
+    "m": {
+      "average_precision": 0.20060084323769992,
+      "raw_logit_bce": 0.3514740293310246
+    },
+    "prior": {
+      "average_precision": 0.12253789025885069,
+      "raw_logit_bce": 0.37346664954199316
+    },
+    "r": {
+      "average_precision": 0.39778770535330366,
+      "raw_logit_bce": 0.3227398205860316
+    },
+    "s": {
+      "average_precision": 0.29587001132280166,
+      "raw_logit_bce": 0.35449584449759075
+    }
+  },
+  "optimizer_steps": 15000,
+  "outer_calls": 0,
+  "output_bytes": 838790,
+  "passed": false,
+  "persistent_token_cache_bytes": 0,
+  "positive_folds": 0,
+  "protected_unchanged": true,
+  "status": "R1_NO_SUPPORTED_SSL_BRANCH",
+  "training_seconds": 194.47354350000023,
+  "wall_seconds": 465.12545450000107
+}

@@ -1,0 +1,317 @@
+{
+  "bank": {
+    "fit_subjects": [
+      "HNU21002",
+      "HNU21003",
+      "HNU21005",
+      "HNU21006",
+      "HNU21008",
+      "HNU21011",
+      "HNU21012",
+      "HNU21015",
+      "HNU21016",
+      "HNU21021",
+      "HNU21022",
+      "HNU21023",
+      "HNU21024",
+      "HNU21031",
+      "HNU21032",
+      "HNU21037"
+    ],
+    "parents": [
+      "candidates"
+    ]
+  },
+  "candidates": {
+    "fit_subjects": [],
+    "parents": [
+      "macro_oof0",
+      "macro_oof1",
+      "macro_oof2",
+      "macro_oof3",
+      "macro_refit",
+      "micro_oof0",
+      "micro_oof1",
+      "micro_oof2",
+      "micro_oof3",
+      "micro_refit",
+      "threshold"
+    ]
+  },
+  "macro_oof0": {
+    "fit_subjects": [
+      "HNU21003",
+      "HNU21005",
+      "HNU21008",
+      "HNU21011",
+      "HNU21015",
+      "HNU21016",
+      "HNU21021",
+      "HNU21022",
+      "HNU21023",
+      "HNU21024",
+      "HNU21031",
+      "HNU21032"
+    ],
+    "parents": []
+  },
+  "macro_oof1": {
+    "fit_subjects": [
+      "HNU21002",
+      "HNU21006",
+      "HNU21011",
+      "HNU21012",
+      "HNU21015",
+      "HNU21016",
+      "HNU21022",
+      "HNU21023",
+      "HNU21024",
+      "HNU21031",
+      "HNU21032",
+      "HNU21037"
+    ],
+    "parents": []
+  },
+  "macro_oof2": {
+    "fit_subjects": [
+      "HNU21002",
+      "HNU21003",
+      "HNU21005",
+      "HNU21006",
+      "HNU21008",
+      "HNU21011",
+      "HNU21012",
+      "HNU21015",
+      "HNU21016",
+      "HNU21021",
+      "HNU21024",
+      "HNU21037"
+    ],
+    "parents": []
+  },
+  "macro_oof3": {
+    "fit_subjects": [
+      "HNU21002",
+      "HNU21003",
+      "HNU21005",
+      "HNU21006",
+      "HNU21008",
+      "HNU21012",
+      "HNU21021",
+      "HNU21022",
+      "HNU21023",
+      "HNU21031",
+      "HNU21032",
+      "HNU21037"
+    ],
+    "parents": []
+  },
+  "macro_refit": {
+    "fit_subjects": [
+      "HNU21002",
+      "HNU21003",
+      "HNU21005",
+      "HNU21006",
+      "HNU21008",
+      "HNU21011",
+      "HNU21012",
+      "HNU21015",
+      "HNU21016",
+      "HNU21021",
+      "HNU21022",
+      "HNU21023",
+      "HNU21024",
+      "HNU21031",
+      "HNU21032",
+      "HNU21037"
+    ],
+    "parents": []
+  },
+  "micro_oof0": {
+    "fit_subjects": [
+      "HNU21003",
+      "HNU21005",
+      "HNU21006",
+      "HNU21011",
+      "HNU21012",
+      "HNU21015",
+      "HNU21022",
+      "HNU21023",
+      "HNU21024",
+      "HNU21031",
+      "HNU21032",
+      "HNU21037"
+    ],
+    "parents": []
+  },
+  "micro_oof1": {
+    "fit_subjects": [
+      "HNU21002",
+      "HNU21005",
+      "HNU21008",
+      "HNU21011",
+      "HNU21012",
+      "HNU21015",
+      "HNU21016",
+      "HNU21021",
+      "HNU21022",
+      "HNU21023",
+      "HNU21024",
+      "HNU21037"
+    ],
+    "parents": []
+  },
+  "micro_oof2": {
+    "fit_subjects": [
+      "HNU21002",
+      "HNU21003",
+      "HNU21006",
+      "HNU21008",
+      "HNU21011",
+      "HNU21015",
+      "HNU21016",
+      "HNU21021",
+      "HNU21022",
+      "HNU21031",
+      "HNU21032",
+      "HNU21037"
+    ],
+    "parents": []
+  },
+  "micro_oof3": {
+    "fit_subjects": [
+      "HNU21002",
+      "HNU21003",
+      "HNU21005",
+      "HNU21006",
+      "HNU21008",
+      "HNU21012",
+      "HNU21016",
+      "HNU21021",
+      "HNU21023",
+      "HNU21024",
+      "HNU21031",
+      "HNU21032"
+    ],
+    "parents": []
+  },
+  "micro_refit": {
+    "fit_subjects": [
+      "HNU21002",
+      "HNU21003",
+      "HNU21005",
+      "HNU21006",
+      "HNU21008",
+      "HNU21011",
+      "HNU21012",
+      "HNU21015",
+      "HNU21016",
+      "HNU21021",
+      "HNU21022",
+      "HNU21023",
+      "HNU21024",
+      "HNU21031",
+      "HNU21032",
+      "HNU21037"
+    ],
+    "parents": []
+  },
+  "normalization": {
+    "fit_subjects": [
+      "HNU21002",
+      "HNU21003",
+      "HNU21005",
+      "HNU21006",
+      "HNU21008",
+      "HNU21011",
+      "HNU21012",
+      "HNU21015",
+      "HNU21016",
+      "HNU21021",
+      "HNU21022",
+      "HNU21023",
+      "HNU21024",
+      "HNU21031",
+      "HNU21032",
+      "HNU21037"
+    ],
+    "parents": [
+      "candidates"
+    ]
+  },
+  "readout": {
+    "fit_subjects": [
+      "HNU21002",
+      "HNU21003",
+      "HNU21005",
+      "HNU21006",
+      "HNU21008",
+      "HNU21011",
+      "HNU21012",
+      "HNU21015",
+      "HNU21016",
+      "HNU21021",
+      "HNU21022",
+      "HNU21023",
+      "HNU21024",
+      "HNU21031",
+      "HNU21032",
+      "HNU21037"
+    ],
+    "parents": [
+      "candidates",
+      "normalization",
+      "ssl"
+    ]
+  },
+  "ssl": {
+    "fit_subjects": [
+      "HNU21002",
+      "HNU21003",
+      "HNU21005",
+      "HNU21006",
+      "HNU21008",
+      "HNU21011",
+      "HNU21012",
+      "HNU21015",
+      "HNU21016",
+      "HNU21021",
+      "HNU21022",
+      "HNU21023",
+      "HNU21024",
+      "HNU21031",
+      "HNU21032",
+      "HNU21037"
+    ],
+    "parents": [
+      "bank",
+      "normalization"
+    ]
+  },
+  "threshold": {
+    "fit_subjects": [
+      "HNU21002",
+      "HNU21003",
+      "HNU21005",
+      "HNU21006",
+      "HNU21008",
+      "HNU21011",
+      "HNU21012",
+      "HNU21015",
+      "HNU21016",
+      "HNU21021",
+      "HNU21022",
+      "HNU21023",
+      "HNU21024",
+      "HNU21031",
+      "HNU21032",
+      "HNU21037"
+    ],
+    "parents": [
+      "micro_oof0",
+      "micro_oof1",
+      "micro_oof2",
+      "micro_oof3"
+    ]
+  }
+}
