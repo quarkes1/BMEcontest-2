@@ -1,0 +1,63 @@
+{
+  "arms": {
+    "q0": {
+      "convergence": "CONVERGENCE_UNRESOLVED",
+      "convergence_summary": {
+        "prior_400_loss_mean": 0.0686581335469441,
+        "recent_400_loss_mean": 0.0304653266565391,
+        "relative_improvement": 0.5562750531849393
+      },
+      "final_valid": {
+        "average_precision": 0.34628639239659137,
+        "brier": 0.12375950559678235,
+        "candidate_count": 233,
+        "exact_probability_endpoints": 0,
+        "log_loss": 1.181631948285761,
+        "logit_max": 29.29497528076172,
+        "logit_min": -114.89453125,
+        "negative_above_099": 5,
+        "negative_count": 205,
+        "positive_below_001": 19,
+        "positive_count": 28,
+        "prevalence": 0.12017167381974249,
+        "raw_logit_bce": 1.1887732875253552,
+        "roc_auc": 0.8094076655052265
+      },
+      "wall_seconds": 65.43709059999674
+    },
+    "q1": {
+      "convergence": "CONVERGENCE_UNRESOLVED",
+      "convergence_summary": {
+        "prior_400_loss_mean": 0.05445619049520336,
+        "recent_400_loss_mean": 0.03061124756610316,
+        "relative_improvement": 0.43787387094586655
+      },
+      "final_valid": {
+        "average_precision": 0.4024153684381373,
+        "brier": 0.1207479808989141,
+        "candidate_count": 233,
+        "exact_probability_endpoints": 0,
+        "log_loss": 1.967433101123012,
+        "logit_max": 35.56975555419922,
+        "logit_min": -274.9413146972656,
+        "negative_above_099": 12,
+        "negative_count": 205,
+        "positive_below_001": 11,
+        "positive_count": 28,
+        "prevalence": 0.12017167381974249,
+        "raw_logit_bce": 2.3207495152947737,
+        "roc_auc": 0.7878048780487805
+      },
+      "wall_seconds": 86.5068775999971
+    }
+  },
+  "code_sha": "6e5647ee36b8fb92f018032c6f0fc490f67cee40",
+  "optimizer_steps": 4000,
+  "outer_calls": 0,
+  "persistent_token_cache_bytes": 0,
+  "plan_sha256": "df672d87efed2ef163766d4c0535771eb8bd73b42f90e90e0bccfe5a5a8cc584",
+  "protected_unchanged": true,
+  "status": "R0_COMPLETE_REVIEW_REQUIRED",
+  "training_seconds": 151.94396819999383,
+  "wall_seconds": 267.65587680001045
+}

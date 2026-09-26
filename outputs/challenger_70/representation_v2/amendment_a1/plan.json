@@ -1,0 +1,20 @@
+{
+  "batch_size": 8,
+  "code_sha": "6e5647ee36b8fb92f018032c6f0fc490f67cee40",
+  "device": "cuda",
+  "experiment": "RV2-A1-R0-001",
+  "health_fold": 0,
+  "health_group_folds": 3,
+  "max_training_seconds": 7200,
+  "max_wall_seconds": 10800,
+  "original_inner": 0,
+  "outer_calls": 0,
+  "outer_wrapper": 0,
+  "protected_digest": "bf74ba7a008ed8813cd480822ffdb0cdab87318d19a539c180e18b706d485d27",
+  "purpose": "TRAINING HEALTH ONLY; no epoch selection or full P2 gate",
+  "release_changes": false,
+  "schema": "motion-input-rv2-a1",
+  "seed": 20260924,
+  "spec_sha256": "36a161fbd8d690e0415c21180fe634573439b13db74429e525c05c4cd3a3bd1c",
+  "steps": 2000
+}

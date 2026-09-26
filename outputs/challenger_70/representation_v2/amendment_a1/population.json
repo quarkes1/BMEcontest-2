@@ -1,0 +1,2233 @@
+{
+  "candidate_producer_fits": 10,
+  "health_baseline": {
+    "average_precision": 0.11594202898550725,
+    "brier": 0.10258152173913043,
+    "candidate_count": 276,
+    "exact_probability_endpoints": 0,
+    "log_loss": 0.3591441635294865,
+    "logit_max": -1.9459101490553135,
+    "logit_min": -1.9459101490553135,
+    "negative_above_099": 0,
+    "negative_count": 244,
+    "positive_below_001": 0,
+    "positive_count": 32,
+    "prevalence": 0.11594202898550725,
+    "raw_logit_bce": 0.3591441635294866,
+    "roc_auc": 0.5
+  },
+  "health_rows": [
+    {
+      "end_ms": 1784547717159,
+      "label": 0,
+      "sid": "sensorData-1784557693483-00f4c85af3dc4b1fa4e745661d472c8e",
+      "start_ms": 1784546367159,
+      "subject": "HNU21002",
+      "valid": true
+    },
+    {
+      "end_ms": 1784541279590,
+      "label": 1,
+      "sid": "sensorData-1784557876964-97236e0d0dda409f90e8088c128caa77",
+      "start_ms": 1784539929590,
+      "subject": "HNU21002",
+      "valid": true
+    },
+    {
+      "end_ms": 1784544159590,
+      "label": 0,
+      "sid": "sensorData-1784557876964-97236e0d0dda409f90e8088c128caa77",
+      "start_ms": 1784541969590,
+      "subject": "HNU21002",
+      "valid": true
+    },
+    {
+      "end_ms": 1784543094590,
+      "label": 0,
+      "sid": "sensorData-1784557876964-97236e0d0dda409f90e8088c128caa77",
+      "start_ms": 1784542749590,
+      "subject": "HNU21002",
+      "valid": true
+    },
+    {
+      "end_ms": 1784551661117,
+      "label": 0,
+      "sid": "sensorData-1784557893629-3d00f9218b844046963251ff74dd3f00",
+      "start_ms": 1784550873617,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784552268617,
+      "label": 0,
+      "sid": "sensorData-1784557893629-3d00f9218b844046963251ff74dd3f00",
+      "start_ms": 1784551758617,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784554346117,
+      "label": 0,
+      "sid": "sensorData-1784557893629-3d00f9218b844046963251ff74dd3f00",
+      "start_ms": 1784551848617,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784555073617,
+      "label": 0,
+      "sid": "sensorData-1784557893629-3d00f9218b844046963251ff74dd3f00",
+      "start_ms": 1784554698617,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784540002857,
+      "label": 0,
+      "sid": "sensorData-1784559243716-f1583a21a914450d8a7dbe5ff9bed9f3",
+      "start_ms": 1784535772857,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784537940357,
+      "label": 0,
+      "sid": "sensorData-1784559243716-f1583a21a914450d8a7dbe5ff9bed9f3",
+      "start_ms": 1784537160357,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784539260357,
+      "label": 0,
+      "sid": "sensorData-1784559243716-f1583a21a914450d8a7dbe5ff9bed9f3",
+      "start_ms": 1784538870357,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784540250357,
+      "label": 0,
+      "sid": "sensorData-1784559243716-f1583a21a914450d8a7dbe5ff9bed9f3",
+      "start_ms": 1784540100357,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784544309883,
+      "label": 0,
+      "sid": "sensorData-1784562356253-23edff73a65e4e9583c963c5a6ee26dd",
+      "start_ms": 1784542524883,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784545029883,
+      "label": 0,
+      "sid": "sensorData-1784562356253-23edff73a65e4e9583c963c5a6ee26dd",
+      "start_ms": 1784544782383,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784545502383,
+      "label": 1,
+      "sid": "sensorData-1784562356253-23edff73a65e4e9583c963c5a6ee26dd",
+      "start_ms": 1784545179883,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784545674883,
+      "label": 0,
+      "sid": "sensorData-1784562356253-23edff73a65e4e9583c963c5a6ee26dd",
+      "start_ms": 1784545599883,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784546754883,
+      "label": 0,
+      "sid": "sensorData-1784562356253-23edff73a65e4e9583c963c5a6ee26dd",
+      "start_ms": 1784546214883,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784556219028,
+      "label": 0,
+      "sid": "sensorData-1784566716252-3fa846d1177846659678e58795f9027c",
+      "start_ms": 1784554869028,
+      "subject": "HNU21011",
+      "valid": true
+    },
+    {
+      "end_ms": 1784557786528,
+      "label": 0,
+      "sid": "sensorData-1784566716252-3fa846d1177846659678e58795f9027c",
+      "start_ms": 1784557344028,
+      "subject": "HNU21011",
+      "valid": true
+    },
+    {
+      "end_ms": 1784541845359,
+      "label": 0,
+      "sid": "sensorData-1784567665729-5d3c6ed918484df7b5eb7726ff647beb",
+      "start_ms": 1784541102859,
+      "subject": "HNU21011",
+      "valid": true
+    },
+    {
+      "end_ms": 1784542580359,
+      "label": 1,
+      "sid": "sensorData-1784567665729-5d3c6ed918484df7b5eb7726ff647beb",
+      "start_ms": 1784542100359,
+      "subject": "HNU21011",
+      "valid": true
+    },
+    {
+      "end_ms": 1784542925359,
+      "label": 0,
+      "sid": "sensorData-1784567665729-5d3c6ed918484df7b5eb7726ff647beb",
+      "start_ms": 1784542820359,
+      "subject": "HNU21011",
+      "valid": true
+    },
+    {
+      "end_ms": 1784545655359,
+      "label": 0,
+      "sid": "sensorData-1784567665729-5d3c6ed918484df7b5eb7726ff647beb",
+      "start_ms": 1784544260359,
+      "subject": "HNU21011",
+      "valid": true
+    },
+    {
+      "end_ms": 1784636612920,
+      "label": 0,
+      "sid": "sensorData-1784640486184-56d1c3438dff4b59be5cd8e6429ee91c",
+      "start_ms": 1784632637920,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784625631213,
+      "label": 0,
+      "sid": "sensorData-1784640571451-e264b5ee5adf4d50ae753bc39dc3dcad",
+      "start_ms": 1784624731213,
+      "subject": "HNU21002",
+      "valid": true
+    },
+    {
+      "end_ms": 1784628241213,
+      "label": 1,
+      "sid": "sensorData-1784640571451-e264b5ee5adf4d50ae753bc39dc3dcad",
+      "start_ms": 1784626096213,
+      "subject": "HNU21002",
+      "valid": true
+    },
+    {
+      "end_ms": 1784628998713,
+      "label": 0,
+      "sid": "sensorData-1784640571451-e264b5ee5adf4d50ae753bc39dc3dcad",
+      "start_ms": 1784628931213,
+      "subject": "HNU21002",
+      "valid": true
+    },
+    {
+      "end_ms": 1784625922582,
+      "label": 0,
+      "sid": "sensorData-1784641423835-071579d8872f4f288c754aaf2d309fe9",
+      "start_ms": 1784623522582,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784624197582,
+      "label": 0,
+      "sid": "sensorData-1784641423835-071579d8872f4f288c754aaf2d309fe9",
+      "start_ms": 1784623792582,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784627722582,
+      "label": 0,
+      "sid": "sensorData-1784641423835-071579d8872f4f288c754aaf2d309fe9",
+      "start_ms": 1784626132582,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784605634413,
+      "label": 0,
+      "sid": "sensorData-1784641518041-31967ca1d994490c90b03f88d9ba57ed",
+      "start_ms": 1784602056913,
+      "subject": "HNU21002",
+      "valid": true
+    },
+    {
+      "end_ms": 1784602896913,
+      "label": 0,
+      "sid": "sensorData-1784641518041-31967ca1d994490c90b03f88d9ba57ed",
+      "start_ms": 1784602236913,
+      "subject": "HNU21002",
+      "valid": true
+    },
+    {
+      "end_ms": 1784604366913,
+      "label": 0,
+      "sid": "sensorData-1784641518041-31967ca1d994490c90b03f88d9ba57ed",
+      "start_ms": 1784603841913,
+      "subject": "HNU21002",
+      "valid": true
+    },
+    {
+      "end_ms": 1784605491913,
+      "label": 1,
+      "sid": "sensorData-1784641518041-31967ca1d994490c90b03f88d9ba57ed",
+      "start_ms": 1784604621913,
+      "subject": "HNU21002",
+      "valid": true
+    },
+    {
+      "end_ms": 1784606339413,
+      "label": 0,
+      "sid": "sensorData-1784641518041-31967ca1d994490c90b03f88d9ba57ed",
+      "start_ms": 1784605911913,
+      "subject": "HNU21002",
+      "valid": true
+    },
+    {
+      "end_ms": 1784606804413,
+      "label": 0,
+      "sid": "sensorData-1784641518041-31967ca1d994490c90b03f88d9ba57ed",
+      "start_ms": 1784606444413,
+      "subject": "HNU21002",
+      "valid": true
+    },
+    {
+      "end_ms": 1784605667097,
+      "label": 0,
+      "sid": "sensorData-1784643716053-b9bf48fe4dfd415b992e003ccdeac4a2",
+      "start_ms": 1784601467097,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784603687097,
+      "label": 0,
+      "sid": "sensorData-1784643716053-b9bf48fe4dfd415b992e003ccdeac4a2",
+      "start_ms": 1784603282097,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784604332097,
+      "label": 0,
+      "sid": "sensorData-1784643716053-b9bf48fe4dfd415b992e003ccdeac4a2",
+      "start_ms": 1784603942097,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784605532097,
+      "label": 1,
+      "sid": "sensorData-1784643716053-b9bf48fe4dfd415b992e003ccdeac4a2",
+      "start_ms": 1784604692097,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784606034597,
+      "label": 0,
+      "sid": "sensorData-1784643716053-b9bf48fe4dfd415b992e003ccdeac4a2",
+      "start_ms": 1784605944597,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784633817203,
+      "label": 0,
+      "sid": "sensorData-1784647263099-beadab420ca04857b743d1deb554f1d4",
+      "start_ms": 1784633359703,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784634514703,
+      "label": 0,
+      "sid": "sensorData-1784647263099-beadab420ca04857b743d1deb554f1d4",
+      "start_ms": 1784633539703,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784635167203,
+      "label": 0,
+      "sid": "sensorData-1784647263099-beadab420ca04857b743d1deb554f1d4",
+      "start_ms": 1784634934703,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784635602203,
+      "label": 1,
+      "sid": "sensorData-1784647263099-beadab420ca04857b743d1deb554f1d4",
+      "start_ms": 1784635317203,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784636539703,
+      "label": 0,
+      "sid": "sensorData-1784647263099-beadab420ca04857b743d1deb554f1d4",
+      "start_ms": 1784636014703,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784638167203,
+      "label": 0,
+      "sid": "sensorData-1784647263099-beadab420ca04857b743d1deb554f1d4",
+      "start_ms": 1784637439703,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784626433617,
+      "label": 1,
+      "sid": "sensorData-1784648175447-fa8f54edb75b42949e3e059d476899e7",
+      "start_ms": 1784625428617,
+      "subject": "HNU21011",
+      "valid": true
+    },
+    {
+      "end_ms": 1784628908617,
+      "label": 0,
+      "sid": "sensorData-1784648175447-fa8f54edb75b42949e3e059d476899e7",
+      "start_ms": 1784627543617,
+      "subject": "HNU21011",
+      "valid": true
+    },
+    {
+      "end_ms": 1784623687773,
+      "label": 0,
+      "sid": "sensorData-1784648777541-e4d616d2fc4c44e491cebb32531fbf93",
+      "start_ms": 1784620402773,
+      "subject": "HNU21011",
+      "valid": true
+    },
+    {
+      "end_ms": 1784560736965,
+      "label": 0,
+      "sid": "sensorData-1784648905124-287c59380f584fef8364189dadb39fdc",
+      "start_ms": 1784560444465,
+      "subject": "HNU21006",
+      "valid": false
+    },
+    {
+      "end_ms": 1784561036965,
+      "label": 0,
+      "sid": "sensorData-1784648905124-287c59380f584fef8364189dadb39fdc",
+      "start_ms": 1784560834465,
+      "subject": "HNU21006",
+      "valid": false
+    },
+    {
+      "end_ms": 1784606824465,
+      "label": 0,
+      "sid": "sensorData-1784648905124-287c59380f584fef8364189dadb39fdc",
+      "start_ms": 1784606741965,
+      "subject": "HNU21006",
+      "valid": false
+    },
+    {
+      "end_ms": 1784607559465,
+      "label": 0,
+      "sid": "sensorData-1784648905124-287c59380f584fef8364189dadb39fdc",
+      "start_ms": 1784607071965,
+      "subject": "HNU21006",
+      "valid": false
+    },
+    {
+      "end_ms": 1784608849465,
+      "label": 1,
+      "sid": "sensorData-1784648905124-287c59380f584fef8364189dadb39fdc",
+      "start_ms": 1784607814465,
+      "subject": "HNU21006",
+      "valid": false
+    },
+    {
+      "end_ms": 1784609164465,
+      "label": 0,
+      "sid": "sensorData-1784648905124-287c59380f584fef8364189dadb39fdc",
+      "start_ms": 1784609081965,
+      "subject": "HNU21006",
+      "valid": false
+    },
+    {
+      "end_ms": 1784609779465,
+      "label": 0,
+      "sid": "sensorData-1784648905124-287c59380f584fef8364189dadb39fdc",
+      "start_ms": 1784609261965,
+      "subject": "HNU21006",
+      "valid": false
+    },
+    {
+      "end_ms": 1784610874465,
+      "label": 0,
+      "sid": "sensorData-1784648905124-287c59380f584fef8364189dadb39fdc",
+      "start_ms": 1784610124465,
+      "subject": "HNU21006",
+      "valid": false
+    },
+    {
+      "end_ms": 1784612554527,
+      "label": 0,
+      "sid": "sensorData-1784650023964-872c020472434953ae6eb219a819087b",
+      "start_ms": 1784611257027,
+      "subject": "HNU21011",
+      "valid": true
+    },
+    {
+      "end_ms": 1784613087027,
+      "label": 0,
+      "sid": "sensorData-1784650023964-872c020472434953ae6eb219a819087b",
+      "start_ms": 1784612764527,
+      "subject": "HNU21011",
+      "valid": true
+    },
+    {
+      "end_ms": 1784615434527,
+      "label": 0,
+      "sid": "sensorData-1784650023964-872c020472434953ae6eb219a819087b",
+      "start_ms": 1784614969527,
+      "subject": "HNU21011",
+      "valid": true
+    },
+    {
+      "end_ms": 1784626591587,
+      "label": 0,
+      "sid": "sensorData-1784654301283-eab1138256c14136aec116bcc5c5400a",
+      "start_ms": 1784625511587,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784629756587,
+      "label": 1,
+      "sid": "sensorData-1784654301283-eab1138256c14136aec116bcc5c5400a",
+      "start_ms": 1784628736587,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784727106915,
+      "label": 0,
+      "sid": "sensorData-1784727190598-a8a0063b2a874433ac667afcfbfa010e",
+      "start_ms": 1784726559415,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784716273833,
+      "label": 1,
+      "sid": "sensorData-1784727895335-1d34fbbcbb05480fbd6d18dfc1ad5631",
+      "start_ms": 1784715208833,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784717068833,
+      "label": 0,
+      "sid": "sensorData-1784727895335-1d34fbbcbb05480fbd6d18dfc1ad5631",
+      "start_ms": 1784716498833,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784717323833,
+      "label": 0,
+      "sid": "sensorData-1784727895335-1d34fbbcbb05480fbd6d18dfc1ad5631",
+      "start_ms": 1784717248833,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784712384574,
+      "label": 0,
+      "sid": "sensorData-1784728111860-a9670e882310442998544c62dbc4851d",
+      "start_ms": 1784708897074,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784710862074,
+      "label": 0,
+      "sid": "sensorData-1784728111860-a9670e882310442998544c62dbc4851d",
+      "start_ms": 1784710427074,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784711522074,
+      "label": 0,
+      "sid": "sensorData-1784728111860-a9670e882310442998544c62dbc4851d",
+      "start_ms": 1784710997074,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784712729574,
+      "label": 0,
+      "sid": "sensorData-1784728111860-a9670e882310442998544c62dbc4851d",
+      "start_ms": 1784712654574,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784713269574,
+      "label": 0,
+      "sid": "sensorData-1784728111860-a9670e882310442998544c62dbc4851d",
+      "start_ms": 1784712932074,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784652903818,
+      "label": 0,
+      "sid": "sensorData-1784729012073-46c2028b7ab941bc8cef52c90c6e6a68",
+      "start_ms": 1784652011318,
+      "subject": "HNU21015",
+      "valid": false
+    },
+    {
+      "end_ms": 1784692826318,
+      "label": 0,
+      "sid": "sensorData-1784729012073-46c2028b7ab941bc8cef52c90c6e6a68",
+      "start_ms": 1784692068818,
+      "subject": "HNU21015",
+      "valid": false
+    },
+    {
+      "end_ms": 1784693711318,
+      "label": 0,
+      "sid": "sensorData-1784729012073-46c2028b7ab941bc8cef52c90c6e6a68",
+      "start_ms": 1784693276318,
+      "subject": "HNU21015",
+      "valid": false
+    },
+    {
+      "end_ms": 1784694836318,
+      "label": 1,
+      "sid": "sensorData-1784729012073-46c2028b7ab941bc8cef52c90c6e6a68",
+      "start_ms": 1784693951318,
+      "subject": "HNU21015",
+      "valid": false
+    },
+    {
+      "end_ms": 1784695653818,
+      "label": 0,
+      "sid": "sensorData-1784729012073-46c2028b7ab941bc8cef52c90c6e6a68",
+      "start_ms": 1784695151318,
+      "subject": "HNU21015",
+      "valid": false
+    },
+    {
+      "end_ms": 1784689714451,
+      "label": 0,
+      "sid": "sensorData-1784730203149-e1655fc94adb4fdbb5e27e9475dc2bab",
+      "start_ms": 1784688424451,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784717463568,
+      "label": 0,
+      "sid": "sensorData-1784730509247-4d91b6fa36324de78c9bb59c4041467b",
+      "start_ms": 1784717028568,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784718333568,
+      "label": 1,
+      "sid": "sensorData-1784730509247-4d91b6fa36324de78c9bb59c4041467b",
+      "start_ms": 1784717853568,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784718656068,
+      "label": 0,
+      "sid": "sensorData-1784730509247-4d91b6fa36324de78c9bb59c4041467b",
+      "start_ms": 1784718566068,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784721363568,
+      "label": 0,
+      "sid": "sensorData-1784730509247-4d91b6fa36324de78c9bb59c4041467b",
+      "start_ms": 1784719443568,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784696272019,
+      "label": 0,
+      "sid": "sensorData-1784730592730-79e64848db9c4a1883125f70aa5d782b",
+      "start_ms": 1784696024519,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784696932019,
+      "label": 0,
+      "sid": "sensorData-1784730592730-79e64848db9c4a1883125f70aa5d782b",
+      "start_ms": 1784696699519,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784697269519,
+      "label": 0,
+      "sid": "sensorData-1784730592730-79e64848db9c4a1883125f70aa5d782b",
+      "start_ms": 1784696804519,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784698589519,
+      "label": 0,
+      "sid": "sensorData-1784730592730-79e64848db9c4a1883125f70aa5d782b",
+      "start_ms": 1784697142019,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784713765247,
+      "label": 0,
+      "sid": "sensorData-1784730836213-1f97fe5fac9644de99dafb83195ef248",
+      "start_ms": 1784712880247,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784715070247,
+      "label": 0,
+      "sid": "sensorData-1784730836213-1f97fe5fac9644de99dafb83195ef248",
+      "start_ms": 1784714125247,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784716637747,
+      "label": 0,
+      "sid": "sensorData-1784730836213-1f97fe5fac9644de99dafb83195ef248",
+      "start_ms": 1784715715247,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784715362096,
+      "label": 0,
+      "sid": "sensorData-1784731029154-6464b4d2030a4871acbdad693f59d7a0",
+      "start_ms": 1784714912096,
+      "subject": "HNU21002",
+      "valid": true
+    },
+    {
+      "end_ms": 1784715677096,
+      "label": 0,
+      "sid": "sensorData-1784731029154-6464b4d2030a4871acbdad693f59d7a0",
+      "start_ms": 1784715467096,
+      "subject": "HNU21002",
+      "valid": true
+    },
+    {
+      "end_ms": 1784718902096,
+      "label": 0,
+      "sid": "sensorData-1784731029154-6464b4d2030a4871acbdad693f59d7a0",
+      "start_ms": 1784716157096,
+      "subject": "HNU21002",
+      "valid": true
+    },
+    {
+      "end_ms": 1784712775766,
+      "label": 0,
+      "sid": "sensorData-1784731185617-be773502f4b741149923a34473674249",
+      "start_ms": 1784710233266,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784714433266,
+      "label": 0,
+      "sid": "sensorData-1784731185617-be773502f4b741149923a34473674249",
+      "start_ms": 1784713458266,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784712215180,
+      "label": 0,
+      "sid": "sensorData-1784731216032-d567df6ba7734b6b87195b5f35b17de0",
+      "start_ms": 1784710805180,
+      "subject": "HNU21002",
+      "valid": true
+    },
+    {
+      "end_ms": 1784714735180,
+      "label": 1,
+      "sid": "sensorData-1784731216032-d567df6ba7734b6b87195b5f35b17de0",
+      "start_ms": 1784713265180,
+      "subject": "HNU21002",
+      "valid": true
+    },
+    {
+      "end_ms": 1784703771050,
+      "label": 0,
+      "sid": "sensorData-1784731410628-9d5624907648428a83cc6cf40812d6ef",
+      "start_ms": 1784703351050,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784706426050,
+      "label": 0,
+      "sid": "sensorData-1784731410628-9d5624907648428a83cc6cf40812d6ef",
+      "start_ms": 1784704821050,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784707401050,
+      "label": 0,
+      "sid": "sensorData-1784731410628-9d5624907648428a83cc6cf40812d6ef",
+      "start_ms": 1784707146050,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784706127659,
+      "label": 0,
+      "sid": "sensorData-1784731606595-4b70ecd285c04a569fd26d6edf16b6f8",
+      "start_ms": 1784702272659,
+      "subject": "HNU21002",
+      "valid": true
+    },
+    {
+      "end_ms": 1784704035159,
+      "label": 0,
+      "sid": "sensorData-1784731606595-4b70ecd285c04a569fd26d6edf16b6f8",
+      "start_ms": 1784703225159,
+      "subject": "HNU21002",
+      "valid": true
+    },
+    {
+      "end_ms": 1784700764491,
+      "label": 0,
+      "sid": "sensorData-1784731692587-58b2372f414a4a7381101addde9e5f6a",
+      "start_ms": 1784699519491,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784703134491,
+      "label": 0,
+      "sid": "sensorData-1784731692587-58b2372f414a4a7381101addde9e5f6a",
+      "start_ms": 1784701319491,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784694240579,
+      "label": 0,
+      "sid": "sensorData-1784731977300-6848300842eb42d1b33bbd095ff00239",
+      "start_ms": 1784694060579,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784694503079,
+      "label": 0,
+      "sid": "sensorData-1784731977300-6848300842eb42d1b33bbd095ff00239",
+      "start_ms": 1784694353079,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784695988079,
+      "label": 0,
+      "sid": "sensorData-1784731977300-6848300842eb42d1b33bbd095ff00239",
+      "start_ms": 1784695283079,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784698763079,
+      "label": 0,
+      "sid": "sensorData-1784731977300-6848300842eb42d1b33bbd095ff00239",
+      "start_ms": 1784697675579,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784702349172,
+      "label": 0,
+      "sid": "sensorData-1784732088203-80c498c0d15d49e2a22fdeca6ba796ff",
+      "start_ms": 1784700204172,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784702821672,
+      "label": 0,
+      "sid": "sensorData-1784732088203-80c498c0d15d49e2a22fdeca6ba796ff",
+      "start_ms": 1784702596672,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784703444172,
+      "label": 0,
+      "sid": "sensorData-1784732088203-80c498c0d15d49e2a22fdeca6ba796ff",
+      "start_ms": 1784703159172,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784705859172,
+      "label": 0,
+      "sid": "sensorData-1784732088203-80c498c0d15d49e2a22fdeca6ba796ff",
+      "start_ms": 1784705116672,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784688616818,
+      "label": 0,
+      "sid": "sensorData-1784732185290-b24eceacb4b54078b26a626a833c2529",
+      "start_ms": 1784688144318,
+      "subject": "HNU21002",
+      "valid": true
+    },
+    {
+      "end_ms": 1784689599318,
+      "label": 0,
+      "sid": "sensorData-1784732185290-b24eceacb4b54078b26a626a833c2529",
+      "start_ms": 1784689044318,
+      "subject": "HNU21002",
+      "valid": true
+    },
+    {
+      "end_ms": 1784691969318,
+      "label": 1,
+      "sid": "sensorData-1784732185290-b24eceacb4b54078b26a626a833c2529",
+      "start_ms": 1784690934318,
+      "subject": "HNU21002",
+      "valid": true
+    },
+    {
+      "end_ms": 1784692449318,
+      "label": 0,
+      "sid": "sensorData-1784732185290-b24eceacb4b54078b26a626a833c2529",
+      "start_ms": 1784692164318,
+      "subject": "HNU21002",
+      "valid": true
+    },
+    {
+      "end_ms": 1784692951818,
+      "label": 0,
+      "sid": "sensorData-1784732185290-b24eceacb4b54078b26a626a833c2529",
+      "start_ms": 1784692644318,
+      "subject": "HNU21002",
+      "valid": true
+    },
+    {
+      "end_ms": 1784639379083,
+      "label": 0,
+      "sid": "sensorData-1784732378280-03b56011b04a498bbcd4309728aca8e8",
+      "start_ms": 1784638569083,
+      "subject": "HNU21002",
+      "valid": false
+    },
+    {
+      "end_ms": 1784688144083,
+      "label": 0,
+      "sid": "sensorData-1784732378280-03b56011b04a498bbcd4309728aca8e8",
+      "start_ms": 1784685511583,
+      "subject": "HNU21002",
+      "valid": false
+    },
+    {
+      "end_ms": 1784687979083,
+      "label": 0,
+      "sid": "sensorData-1784732378280-03b56011b04a498bbcd4309728aca8e8",
+      "start_ms": 1784687529083,
+      "subject": "HNU21002",
+      "valid": false
+    },
+    {
+      "end_ms": 1784696316332,
+      "label": 0,
+      "sid": "sensorData-1784732549773-46a6000058fb4e71980ae795b22ab668",
+      "start_ms": 1784695686332,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784696586332,
+      "label": 0,
+      "sid": "sensorData-1784732549773-46a6000058fb4e71980ae795b22ab668",
+      "start_ms": 1784696511332,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784697643832,
+      "label": 0,
+      "sid": "sensorData-1784732549773-46a6000058fb4e71980ae795b22ab668",
+      "start_ms": 1784696803832,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784698333832,
+      "label": 0,
+      "sid": "sensorData-1784732549773-46a6000058fb4e71980ae795b22ab668",
+      "start_ms": 1784697861332,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784698918832,
+      "label": 0,
+      "sid": "sensorData-1784732549773-46a6000058fb4e71980ae795b22ab668",
+      "start_ms": 1784698723832,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784699533832,
+      "label": 0,
+      "sid": "sensorData-1784732549773-46a6000058fb4e71980ae795b22ab668",
+      "start_ms": 1784699316332,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784713415718,
+      "label": 0,
+      "sid": "sensorData-1784734330913-e9a36d505321421994b62511882d6f50",
+      "start_ms": 1784711525718,
+      "subject": "HNU21011",
+      "valid": true
+    },
+    {
+      "end_ms": 1784714218218,
+      "label": 0,
+      "sid": "sensorData-1784734330913-e9a36d505321421994b62511882d6f50",
+      "start_ms": 1784713918218,
+      "subject": "HNU21011",
+      "valid": true
+    },
+    {
+      "end_ms": 1784715305718,
+      "label": 1,
+      "sid": "sensorData-1784734330913-e9a36d505321421994b62511882d6f50",
+      "start_ms": 1784714465718,
+      "subject": "HNU21011",
+      "valid": true
+    },
+    {
+      "end_ms": 1784715920718,
+      "label": 0,
+      "sid": "sensorData-1784734330913-e9a36d505321421994b62511882d6f50",
+      "start_ms": 1784715733218,
+      "subject": "HNU21011",
+      "valid": true
+    },
+    {
+      "end_ms": 1784717222177,
+      "label": 0,
+      "sid": "sensorData-1784736396842-45004dfae20247d3b53d7eb0f7cfe145",
+      "start_ms": 1784715707177,
+      "subject": "HNU21022",
+      "valid": true
+    },
+    {
+      "end_ms": 1784718129677,
+      "label": 0,
+      "sid": "sensorData-1784736396842-45004dfae20247d3b53d7eb0f7cfe145",
+      "start_ms": 1784717912177,
+      "subject": "HNU21022",
+      "valid": true
+    },
+    {
+      "end_ms": 1784719179677,
+      "label": 0,
+      "sid": "sensorData-1784736396842-45004dfae20247d3b53d7eb0f7cfe145",
+      "start_ms": 1784718234677,
+      "subject": "HNU21022",
+      "valid": true
+    },
+    {
+      "end_ms": 1784719967177,
+      "label": 0,
+      "sid": "sensorData-1784736396842-45004dfae20247d3b53d7eb0f7cfe145",
+      "start_ms": 1784719487177,
+      "subject": "HNU21022",
+      "valid": true
+    },
+    {
+      "end_ms": 1784691402121,
+      "label": 0,
+      "sid": "sensorData-1784736831890-65da5e071b7f45e19907f9eebd1e1fe3",
+      "start_ms": 1784688679621,
+      "subject": "HNU21011",
+      "valid": true
+    },
+    {
+      "end_ms": 1784691244621,
+      "label": 0,
+      "sid": "sensorData-1784736831890-65da5e071b7f45e19907f9eebd1e1fe3",
+      "start_ms": 1784690584621,
+      "subject": "HNU21011",
+      "valid": true
+    },
+    {
+      "end_ms": 1784692219621,
+      "label": 0,
+      "sid": "sensorData-1784736831890-65da5e071b7f45e19907f9eebd1e1fe3",
+      "start_ms": 1784691724621,
+      "subject": "HNU21011",
+      "valid": true
+    },
+    {
+      "end_ms": 1784692969621,
+      "label": 1,
+      "sid": "sensorData-1784736831890-65da5e071b7f45e19907f9eebd1e1fe3",
+      "start_ms": 1784692474621,
+      "subject": "HNU21011",
+      "valid": true
+    },
+    {
+      "end_ms": 1784693449621,
+      "label": 0,
+      "sid": "sensorData-1784736831890-65da5e071b7f45e19907f9eebd1e1fe3",
+      "start_ms": 1784693337121,
+      "subject": "HNU21011",
+      "valid": true
+    },
+    {
+      "end_ms": 1784648597843,
+      "label": 0,
+      "sid": "sensorData-1784737651615-eafa124158f44108938eb0166e96f532",
+      "start_ms": 1784648477843,
+      "subject": "HNU21022",
+      "valid": false
+    },
+    {
+      "end_ms": 1784679670343,
+      "label": 0,
+      "sid": "sensorData-1784737651615-eafa124158f44108938eb0166e96f532",
+      "start_ms": 1784679400343,
+      "subject": "HNU21022",
+      "valid": false
+    },
+    {
+      "end_ms": 1784693545343,
+      "label": 0,
+      "sid": "sensorData-1784737651615-eafa124158f44108938eb0166e96f532",
+      "start_ms": 1784693485343,
+      "subject": "HNU21022",
+      "valid": false
+    },
+    {
+      "end_ms": 1784694182843,
+      "label": 0,
+      "sid": "sensorData-1784737651615-eafa124158f44108938eb0166e96f532",
+      "start_ms": 1784694055343,
+      "subject": "HNU21022",
+      "valid": false
+    },
+    {
+      "end_ms": 1784695345343,
+      "label": 0,
+      "sid": "sensorData-1784737651615-eafa124158f44108938eb0166e96f532",
+      "start_ms": 1784694805343,
+      "subject": "HNU21022",
+      "valid": false
+    },
+    {
+      "end_ms": 1784696455343,
+      "label": 0,
+      "sid": "sensorData-1784737651615-eafa124158f44108938eb0166e96f532",
+      "start_ms": 1784695825343,
+      "subject": "HNU21022",
+      "valid": false
+    },
+    {
+      "end_ms": 1784696890343,
+      "label": 0,
+      "sid": "sensorData-1784737651615-eafa124158f44108938eb0166e96f532",
+      "start_ms": 1784696500343,
+      "subject": "HNU21022",
+      "valid": false
+    },
+    {
+      "end_ms": 1784697452843,
+      "label": 0,
+      "sid": "sensorData-1784737651615-eafa124158f44108938eb0166e96f532",
+      "start_ms": 1784696957843,
+      "subject": "HNU21022",
+      "valid": false
+    },
+    {
+      "end_ms": 1784701757843,
+      "label": 0,
+      "sid": "sensorData-1784737651615-eafa124158f44108938eb0166e96f532",
+      "start_ms": 1784701585343,
+      "subject": "HNU21022",
+      "valid": false
+    },
+    {
+      "end_ms": 1784702095343,
+      "label": 0,
+      "sid": "sensorData-1784737651615-eafa124158f44108938eb0166e96f532",
+      "start_ms": 1784702020343,
+      "subject": "HNU21022",
+      "valid": false
+    },
+    {
+      "end_ms": 1784786533057,
+      "label": 0,
+      "sid": "sensorData-1784791720462-5a28c07466424a288805e6c1d25f3059",
+      "start_ms": 1784786405557,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784787598057,
+      "label": 0,
+      "sid": "sensorData-1784791720462-5a28c07466424a288805e6c1d25f3059",
+      "start_ms": 1784787500557,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784788235557,
+      "label": 0,
+      "sid": "sensorData-1784791720462-5a28c07466424a288805e6c1d25f3059",
+      "start_ms": 1784787830557,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784789300557,
+      "label": 0,
+      "sid": "sensorData-1784791720462-5a28c07466424a288805e6c1d25f3059",
+      "start_ms": 1784788723057,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784781403745,
+      "label": 0,
+      "sid": "sensorData-1784792102150-4a9e728ad5d84be58c5f8a97f2210d92",
+      "start_ms": 1784781163745,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784782873745,
+      "label": 0,
+      "sid": "sensorData-1784792102150-4a9e728ad5d84be58c5f8a97f2210d92",
+      "start_ms": 1784782386245,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784783391245,
+      "label": 0,
+      "sid": "sensorData-1784792102150-4a9e728ad5d84be58c5f8a97f2210d92",
+      "start_ms": 1784783136245,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784784456245,
+      "label": 0,
+      "sid": "sensorData-1784792102150-4a9e728ad5d84be58c5f8a97f2210d92",
+      "start_ms": 1784783646245,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784785423745,
+      "label": 0,
+      "sid": "sensorData-1784792102150-4a9e728ad5d84be58c5f8a97f2210d92",
+      "start_ms": 1784785356245,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784779277837,
+      "label": 1,
+      "sid": "sensorData-1784793259633-430434ae1ca14879ae85e6421958cd77",
+      "start_ms": 1784778992837,
+      "subject": "HNU21002",
+      "valid": true
+    },
+    {
+      "end_ms": 1784782397837,
+      "label": 0,
+      "sid": "sensorData-1784793259633-430434ae1ca14879ae85e6421958cd77",
+      "start_ms": 1784780117837,
+      "subject": "HNU21002",
+      "valid": true
+    },
+    {
+      "end_ms": 1784777377294,
+      "label": 0,
+      "sid": "sensorData-1784793465704-66b9331e59a9442b837a9925e9c022f5",
+      "start_ms": 1784775172294,
+      "subject": "HNU21002",
+      "valid": true
+    },
+    {
+      "end_ms": 1784778217294,
+      "label": 0,
+      "sid": "sensorData-1784793465704-66b9331e59a9442b837a9925e9c022f5",
+      "start_ms": 1784777692294,
+      "subject": "HNU21002",
+      "valid": true
+    },
+    {
+      "end_ms": 1784692194885,
+      "label": 1,
+      "sid": "sensorData-1784793754770-4037b9b85a804e14ba9e99642ebda922",
+      "start_ms": 1784691444885,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784692562385,
+      "label": 0,
+      "sid": "sensorData-1784793754770-4037b9b85a804e14ba9e99642ebda922",
+      "start_ms": 1784692494885,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784693462385,
+      "label": 0,
+      "sid": "sensorData-1784793754770-4037b9b85a804e14ba9e99642ebda922",
+      "start_ms": 1784693162385,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784693814885,
+      "label": 0,
+      "sid": "sensorData-1784793754770-4037b9b85a804e14ba9e99642ebda922",
+      "start_ms": 1784693732385,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784694594885,
+      "label": 0,
+      "sid": "sensorData-1784793754770-4037b9b85a804e14ba9e99642ebda922",
+      "start_ms": 1784694174885,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784695232385,
+      "label": 0,
+      "sid": "sensorData-1784793754770-4037b9b85a804e14ba9e99642ebda922",
+      "start_ms": 1784694804885,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784695637385,
+      "label": 0,
+      "sid": "sensorData-1784793754770-4037b9b85a804e14ba9e99642ebda922",
+      "start_ms": 1784695524885,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784695922385,
+      "label": 0,
+      "sid": "sensorData-1784793754770-4037b9b85a804e14ba9e99642ebda922",
+      "start_ms": 1784695854885,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784776841566,
+      "label": 0,
+      "sid": "sensorData-1784794865251-a0d8e49fb5ff4d438b7ecdf7689593a7",
+      "start_ms": 1784776444066,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784779354066,
+      "label": 1,
+      "sid": "sensorData-1784794865251-a0d8e49fb5ff4d438b7ecdf7689593a7",
+      "start_ms": 1784777089066,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784780081566,
+      "label": 0,
+      "sid": "sensorData-1784794865251-a0d8e49fb5ff4d438b7ecdf7689593a7",
+      "start_ms": 1784779826566,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784781169066,
+      "label": 0,
+      "sid": "sensorData-1784794865251-a0d8e49fb5ff4d438b7ecdf7689593a7",
+      "start_ms": 1784780179066,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784781246860,
+      "label": 0,
+      "sid": "sensorData-1784795055470-8ed34013b2e040d48e62382b6f66bc6c",
+      "start_ms": 1784780661860,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784783256860,
+      "label": 1,
+      "sid": "sensorData-1784795055470-8ed34013b2e040d48e62382b6f66bc6c",
+      "start_ms": 1784781501860,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784785259360,
+      "label": 0,
+      "sid": "sensorData-1784795055470-8ed34013b2e040d48e62382b6f66bc6c",
+      "start_ms": 1784783519360,
+      "subject": "HNU21006",
+      "valid": true
+    },
+    {
+      "end_ms": 1784792450920,
+      "label": 0,
+      "sid": "sensorData-1784795216537-68e0bbd0dfc84650b2e87181d1eac1cd",
+      "start_ms": 1784790335920,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784794295920,
+      "label": 0,
+      "sid": "sensorData-1784795216537-68e0bbd0dfc84650b2e87181d1eac1cd",
+      "start_ms": 1784793905920,
+      "subject": "HNU21003",
+      "valid": true
+    },
+    {
+      "end_ms": 1784777445932,
+      "label": 0,
+      "sid": "sensorData-1784801556759-9ff0f6b2c13e4c458d2f43b6b1c5980c",
+      "start_ms": 1784775015932,
+      "subject": "HNU21011",
+      "valid": true
+    },
+    {
+      "end_ms": 1784775525932,
+      "label": 0,
+      "sid": "sensorData-1784801556759-9ff0f6b2c13e4c458d2f43b6b1c5980c",
+      "start_ms": 1784775195932,
+      "subject": "HNU21011",
+      "valid": true
+    },
+    {
+      "end_ms": 1784776605932,
+      "label": 0,
+      "sid": "sensorData-1784801556759-9ff0f6b2c13e4c458d2f43b6b1c5980c",
+      "start_ms": 1784776110932,
+      "subject": "HNU21011",
+      "valid": true
+    },
+    {
+      "end_ms": 1784778210932,
+      "label": 1,
+      "sid": "sensorData-1784801556759-9ff0f6b2c13e4c458d2f43b6b1c5980c",
+      "start_ms": 1784777700932,
+      "subject": "HNU21011",
+      "valid": true
+    },
+    {
+      "end_ms": 1784779125932,
+      "label": 0,
+      "sid": "sensorData-1784801556759-9ff0f6b2c13e4c458d2f43b6b1c5980c",
+      "start_ms": 1784779065932,
+      "subject": "HNU21011",
+      "valid": true
+    },
+    {
+      "end_ms": 1784788508432,
+      "label": 0,
+      "sid": "sensorData-1784801556759-9ff0f6b2c13e4c458d2f43b6b1c5980c",
+      "start_ms": 1784787945932,
+      "subject": "HNU21011",
+      "valid": true
+    },
+    {
+      "end_ms": 1784802847269,
+      "label": 1,
+      "sid": "sensorData-1784808852096-f968ee73cba5454ba3891c5d7769d6c7",
+      "start_ms": 1784801977269,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784803409769,
+      "label": 0,
+      "sid": "sensorData-1784808852096-f968ee73cba5454ba3891c5d7769d6c7",
+      "start_ms": 1784803244769,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784805952269,
+      "label": 0,
+      "sid": "sensorData-1784808852096-f968ee73cba5454ba3891c5d7769d6c7",
+      "start_ms": 1784804557269,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784802066017,
+      "label": 0,
+      "sid": "sensorData-1784812050866-7281e38cb476430b931a17cae37397b1",
+      "start_ms": 1784801796017,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784802898517,
+      "label": 0,
+      "sid": "sensorData-1784812050866-7281e38cb476430b931a17cae37397b1",
+      "start_ms": 1784802621017,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784803536017,
+      "label": 0,
+      "sid": "sensorData-1784812050866-7281e38cb476430b931a17cae37397b1",
+      "start_ms": 1784803213517,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784804458517,
+      "label": 0,
+      "sid": "sensorData-1784812050866-7281e38cb476430b931a17cae37397b1",
+      "start_ms": 1784803753517,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784805801017,
+      "label": 0,
+      "sid": "sensorData-1784812050866-7281e38cb476430b931a17cae37397b1",
+      "start_ms": 1784804991017,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784785553246,
+      "label": 0,
+      "sid": "sensorData-1784812871582-99d9b0abe403477bb2000e2031b94308",
+      "start_ms": 1784784113246,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784788448246,
+      "label": 0,
+      "sid": "sensorData-1784812871582-99d9b0abe403477bb2000e2031b94308",
+      "start_ms": 1784785785746,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784786888246,
+      "label": 0,
+      "sid": "sensorData-1784812871582-99d9b0abe403477bb2000e2031b94308",
+      "start_ms": 1784786393246,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784775670460,
+      "label": 0,
+      "sid": "sensorData-1784813273801-159e050987624ca097bcad333aac7e8a",
+      "start_ms": 1784775385460,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784777215460,
+      "label": 0,
+      "sid": "sensorData-1784813273801-159e050987624ca097bcad333aac7e8a",
+      "start_ms": 1784776360460,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784779240460,
+      "label": 1,
+      "sid": "sensorData-1784813273801-159e050987624ca097bcad333aac7e8a",
+      "start_ms": 1784777680460,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784779652960,
+      "label": 0,
+      "sid": "sensorData-1784813273801-159e050987624ca097bcad333aac7e8a",
+      "start_ms": 1784779547960,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784797794781,
+      "label": 0,
+      "sid": "sensorData-1784818477202-18a84b1a63724b43ad7d0e78848032df",
+      "start_ms": 1784797194781,
+      "subject": "HNU21022",
+      "valid": true
+    },
+    {
+      "end_ms": 1784798859781,
+      "label": 0,
+      "sid": "sensorData-1784818477202-18a84b1a63724b43ad7d0e78848032df",
+      "start_ms": 1784798199781,
+      "subject": "HNU21022",
+      "valid": true
+    },
+    {
+      "end_ms": 1784800269781,
+      "label": 0,
+      "sid": "sensorData-1784818477202-18a84b1a63724b43ad7d0e78848032df",
+      "start_ms": 1784799984781,
+      "subject": "HNU21022",
+      "valid": true
+    },
+    {
+      "end_ms": 1784802864781,
+      "label": 0,
+      "sid": "sensorData-1784818477202-18a84b1a63724b43ad7d0e78848032df",
+      "start_ms": 1784802159781,
+      "subject": "HNU21022",
+      "valid": true
+    },
+    {
+      "end_ms": 1784781553168,
+      "label": 0,
+      "sid": "sensorData-1784818992887-99ffd6fce5b442a4b72770c879a0bc4b",
+      "start_ms": 1784780023168,
+      "subject": "HNU21022",
+      "valid": true
+    },
+    {
+      "end_ms": 1784783518168,
+      "label": 0,
+      "sid": "sensorData-1784818992887-99ffd6fce5b442a4b72770c879a0bc4b",
+      "start_ms": 1784783420668,
+      "subject": "HNU21022",
+      "valid": true
+    },
+    {
+      "end_ms": 1784874732329,
+      "label": 0,
+      "sid": "sensorData-1784879335612-9ed873bbfa5e485db123df0b9a832c36",
+      "start_ms": 1784870419829,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784871094829,
+      "label": 0,
+      "sid": "sensorData-1784879335612-9ed873bbfa5e485db123df0b9a832c36",
+      "start_ms": 1784870599829,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784871919829,
+      "label": 0,
+      "sid": "sensorData-1784879335612-9ed873bbfa5e485db123df0b9a832c36",
+      "start_ms": 1784871394829,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784866436958,
+      "label": 0,
+      "sid": "sensorData-1784879634132-9c00dc7e9d5f4c8b9a69417d98d57e8a",
+      "start_ms": 1784866016958,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784868551958,
+      "label": 1,
+      "sid": "sensorData-1784879634132-9c00dc7e9d5f4c8b9a69417d98d57e8a",
+      "start_ms": 1784867351958,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784868971958,
+      "label": 0,
+      "sid": "sensorData-1784879634132-9c00dc7e9d5f4c8b9a69417d98d57e8a",
+      "start_ms": 1784868874458,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784870419458,
+      "label": 0,
+      "sid": "sensorData-1784879634132-9c00dc7e9d5f4c8b9a69417d98d57e8a",
+      "start_ms": 1784869181958,
+      "subject": "HNU21015",
+      "valid": true
+    },
+    {
+      "end_ms": 1784869341412,
+      "label": 0,
+      "sid": "sensorData-1784880790708-6ce3140736194942bd00c25ec2b0134c",
+      "start_ms": 1784868936412,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784869648912,
+      "label": 0,
+      "sid": "sensorData-1784880790708-6ce3140736194942bd00c25ec2b0134c",
+      "start_ms": 1784869543912,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784870076412,
+      "label": 0,
+      "sid": "sensorData-1784880790708-6ce3140736194942bd00c25ec2b0134c",
+      "start_ms": 1784869671412,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784870098912,
+      "label": 0,
+      "sid": "sensorData-1784880790708-6ce3140736194942bd00c25ec2b0134c",
+      "start_ms": 1784870001412,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784871066412,
+      "label": 0,
+      "sid": "sensorData-1784880790708-6ce3140736194942bd00c25ec2b0134c",
+      "start_ms": 1784870526412,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784871696412,
+      "label": 0,
+      "sid": "sensorData-1784880790708-6ce3140736194942bd00c25ec2b0134c",
+      "start_ms": 1784871598912,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784872266412,
+      "label": 0,
+      "sid": "sensorData-1784880790708-6ce3140736194942bd00c25ec2b0134c",
+      "start_ms": 1784872198912,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784872866412,
+      "label": 0,
+      "sid": "sensorData-1784880790708-6ce3140736194942bd00c25ec2b0134c",
+      "start_ms": 1784872798912,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784865313817,
+      "label": 1,
+      "sid": "sensorData-1784882482281-87c2d94a751c4bb6b860893a40238fcc",
+      "start_ms": 1784864443817,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784866348817,
+      "label": 0,
+      "sid": "sensorData-1784882482281-87c2d94a751c4bb6b860893a40238fcc",
+      "start_ms": 1784866078817,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784867113817,
+      "label": 0,
+      "sid": "sensorData-1784882482281-87c2d94a751c4bb6b860893a40238fcc",
+      "start_ms": 1784866536317,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784868583817,
+      "label": 0,
+      "sid": "sensorData-1784882482281-87c2d94a751c4bb6b860893a40238fcc",
+      "start_ms": 1784866648817,
+      "subject": "HNU21024",
+      "valid": true
+    },
+    {
+      "end_ms": 1784869508580,
+      "label": 1,
+      "sid": "sensorData-1784906413835-fcea89864f8c48658ef2460ad51556c4",
+      "start_ms": 1784867843580,
+      "subject": "HNU21022",
+      "valid": false
+    },
+    {
+      "end_ms": 1784870213580,
+      "label": 0,
+      "sid": "sensorData-1784906413835-fcea89864f8c48658ef2460ad51556c4",
+      "start_ms": 1784869823580,
+      "subject": "HNU21022",
+      "valid": false
+    },
+    {
+      "end_ms": 1785117617515,
+      "label": 0,
+      "sid": "sensorData-1785130717729-5847ffe91bcd4a648978efcee15b1ab5",
+      "start_ms": 1785113230015,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1785116875015,
+      "label": 0,
+      "sid": "sensorData-1785130717729-5847ffe91bcd4a648978efcee15b1ab5",
+      "start_ms": 1785116425015,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1785067786445,
+      "label": 0,
+      "sid": "sensorData-1785130940426-34abe6a626434604a134fbf7edd76855",
+      "start_ms": 1785067718945,
+      "subject": "HNU21037",
+      "valid": false
+    },
+    {
+      "end_ms": 1785068971445,
+      "label": 0,
+      "sid": "sensorData-1785130940426-34abe6a626434604a134fbf7edd76855",
+      "start_ms": 1785068656445,
+      "subject": "HNU21037",
+      "valid": false
+    },
+    {
+      "end_ms": 1785069931445,
+      "label": 0,
+      "sid": "sensorData-1785130940426-34abe6a626434604a134fbf7edd76855",
+      "start_ms": 1785069331445,
+      "subject": "HNU21037",
+      "valid": false
+    },
+    {
+      "end_ms": 1785111758945,
+      "label": 0,
+      "sid": "sensorData-1785130940426-34abe6a626434604a134fbf7edd76855",
+      "start_ms": 1785111353945,
+      "subject": "HNU21037",
+      "valid": false
+    },
+    {
+      "end_ms": 1785112703945,
+      "label": 0,
+      "sid": "sensorData-1785130940426-34abe6a626434604a134fbf7edd76855",
+      "start_ms": 1785112133945,
+      "subject": "HNU21037",
+      "valid": false
+    },
+    {
+      "end_ms": 1785113228945,
+      "label": 0,
+      "sid": "sensorData-1785130940426-34abe6a626434604a134fbf7edd76855",
+      "start_ms": 1785113063945,
+      "subject": "HNU21037",
+      "valid": false
+    },
+    {
+      "end_ms": 1785060929408,
+      "label": 1,
+      "sid": "sensorData-1785131466358-f8bd197a13e547e8b238ca20f20917d6",
+      "start_ms": 1785059084408,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1785062924408,
+      "label": 0,
+      "sid": "sensorData-1785131466358-f8bd197a13e547e8b238ca20f20917d6",
+      "start_ms": 1785061529408,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1785045870123,
+      "label": 0,
+      "sid": "sensorData-1785132369333-4321eec69de24a32aa3ea8c3ef67ec1b",
+      "start_ms": 1785045570123,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1785048090123,
+      "label": 0,
+      "sid": "sensorData-1785132369333-4321eec69de24a32aa3ea8c3ef67ec1b",
+      "start_ms": 1785047565123,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1785049702623,
+      "label": 0,
+      "sid": "sensorData-1785132369333-4321eec69de24a32aa3ea8c3ef67ec1b",
+      "start_ms": 1785048352623,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1785039034931,
+      "label": 1,
+      "sid": "sensorData-1785135131382-1db2886a647849f0b8dc6e736de84bc5",
+      "start_ms": 1785036784931,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1785039919931,
+      "label": 0,
+      "sid": "sensorData-1785135131382-1db2886a647849f0b8dc6e736de84bc5",
+      "start_ms": 1785039484931,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1785041029931,
+      "label": 0,
+      "sid": "sensorData-1785135131382-1db2886a647849f0b8dc6e736de84bc5",
+      "start_ms": 1785040279931,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1784981150801,
+      "label": 0,
+      "sid": "sensorData-1785136473214-8d1b706fae064132b32c1a7c756e2d4a",
+      "start_ms": 1784980955801,
+      "subject": "HNU21037",
+      "valid": false
+    },
+    {
+      "end_ms": 1784981803301,
+      "label": 0,
+      "sid": "sensorData-1785136473214-8d1b706fae064132b32c1a7c756e2d4a",
+      "start_ms": 1784981450801,
+      "subject": "HNU21037",
+      "valid": false
+    },
+    {
+      "end_ms": 1784982748301,
+      "label": 0,
+      "sid": "sensorData-1785136473214-8d1b706fae064132b32c1a7c756e2d4a",
+      "start_ms": 1784982583301,
+      "subject": "HNU21037",
+      "valid": false
+    },
+    {
+      "end_ms": 1784983453301,
+      "label": 0,
+      "sid": "sensorData-1785136473214-8d1b706fae064132b32c1a7c756e2d4a",
+      "start_ms": 1784983078301,
+      "subject": "HNU21037",
+      "valid": false
+    },
+    {
+      "end_ms": 1785025925801,
+      "label": 1,
+      "sid": "sensorData-1785136473214-8d1b706fae064132b32c1a7c756e2d4a",
+      "start_ms": 1785025430801,
+      "subject": "HNU21037",
+      "valid": false
+    },
+    {
+      "end_ms": 1785027628301,
+      "label": 0,
+      "sid": "sensorData-1785136473214-8d1b706fae064132b32c1a7c756e2d4a",
+      "start_ms": 1785027200801,
+      "subject": "HNU21037",
+      "valid": false
+    },
+    {
+      "end_ms": 1784973417286,
+      "label": 0,
+      "sid": "sensorData-1785137096144-1d57a687bffd41929d5ae145e2004d62",
+      "start_ms": 1784971932286,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1784974579786,
+      "label": 0,
+      "sid": "sensorData-1785137096144-1d57a687bffd41929d5ae145e2004d62",
+      "start_ms": 1784972637286,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1784974782286,
+      "label": 0,
+      "sid": "sensorData-1785137096144-1d57a687bffd41929d5ae145e2004d62",
+      "start_ms": 1784974594786,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1784974947286,
+      "label": 0,
+      "sid": "sensorData-1785137096144-1d57a687bffd41929d5ae145e2004d62",
+      "start_ms": 1784974879786,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1784976357286,
+      "label": 0,
+      "sid": "sensorData-1785137096144-1d57a687bffd41929d5ae145e2004d62",
+      "start_ms": 1784975104786,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1784953873819,
+      "label": 0,
+      "sid": "sensorData-1785139287622-6aad21cacffb420b9c7e397a3b10df57",
+      "start_ms": 1784953701319,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1784954788819,
+      "label": 0,
+      "sid": "sensorData-1785139287622-6aad21cacffb420b9c7e397a3b10df57",
+      "start_ms": 1784953948819,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1784956071319,
+      "label": 0,
+      "sid": "sensorData-1785139287622-6aad21cacffb420b9c7e397a3b10df57",
+      "start_ms": 1784955231319,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1784957158819,
+      "label": 0,
+      "sid": "sensorData-1785139287622-6aad21cacffb420b9c7e397a3b10df57",
+      "start_ms": 1784956386319,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1784957676319,
+      "label": 0,
+      "sid": "sensorData-1785139287622-6aad21cacffb420b9c7e397a3b10df57",
+      "start_ms": 1784957608819,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1784944886513,
+      "label": 0,
+      "sid": "sensorData-1785140203902-bc688b87b55a4fb9a0d6bc1a55a110d2",
+      "start_ms": 1784944444013,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1784946019013,
+      "label": 0,
+      "sid": "sensorData-1785140203902-bc688b87b55a4fb9a0d6bc1a55a110d2",
+      "start_ms": 1784944909013,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1784946574013,
+      "label": 1,
+      "sid": "sensorData-1785140203902-bc688b87b55a4fb9a0d6bc1a55a110d2",
+      "start_ms": 1784946229013,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1784949206513,
+      "label": 0,
+      "sid": "sensorData-1785140203902-bc688b87b55a4fb9a0d6bc1a55a110d2",
+      "start_ms": 1784946671513,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1784947639013,
+      "label": 0,
+      "sid": "sensorData-1785140203902-bc688b87b55a4fb9a0d6bc1a55a110d2",
+      "start_ms": 1784947174013,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1784949034013,
+      "label": 0,
+      "sid": "sensorData-1785140203902-bc688b87b55a4fb9a0d6bc1a55a110d2",
+      "start_ms": 1784948464013,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1784940293181,
+      "label": 1,
+      "sid": "sensorData-1785140607362-a244e1feaaf947f49429111687887ad3",
+      "start_ms": 1784939453181,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1784944028181,
+      "label": 0,
+      "sid": "sensorData-1785140607362-a244e1feaaf947f49429111687887ad3",
+      "start_ms": 1784940480681,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1784941478181,
+      "label": 0,
+      "sid": "sensorData-1785140607362-a244e1feaaf947f49429111687887ad3",
+      "start_ms": 1784940968181,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1784901998065,
+      "label": 0,
+      "sid": "sensorData-1785140980524-8fe1a404fe1c4eb9bcc6d5c140c46c06",
+      "start_ms": 1784900768065,
+      "subject": "HNU21037",
+      "valid": false
+    },
+    {
+      "end_ms": 1784903663065,
+      "label": 0,
+      "sid": "sensorData-1785140980524-8fe1a404fe1c4eb9bcc6d5c140c46c06",
+      "start_ms": 1784902778065,
+      "subject": "HNU21037",
+      "valid": false
+    },
+    {
+      "end_ms": 1784939453065,
+      "label": 0,
+      "sid": "sensorData-1785140980524-8fe1a404fe1c4eb9bcc6d5c140c46c06",
+      "start_ms": 1784938148065,
+      "subject": "HNU21037",
+      "valid": false
+    },
+    {
+      "end_ms": 1784898170498,
+      "label": 0,
+      "sid": "sensorData-1785141549075-2277f62c0ddc421ba788494af8ad512e",
+      "start_ms": 1784896640498,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1784898905498,
+      "label": 0,
+      "sid": "sensorData-1785141549075-2277f62c0ddc421ba788494af8ad512e",
+      "start_ms": 1784898515498,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1784887150462,
+      "label": 0,
+      "sid": "sensorData-1785142218488-10a366d8516b4418929987b08d975130",
+      "start_ms": 1784887067962,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1784888807962,
+      "label": 0,
+      "sid": "sensorData-1785142218488-10a366d8516b4418929987b08d975130",
+      "start_ms": 1784888177962,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1784890217962,
+      "label": 0,
+      "sid": "sensorData-1785142218488-10a366d8516b4418929987b08d975130",
+      "start_ms": 1784889272962,
+      "subject": "HNU21037",
+      "valid": true
+    },
+    {
+      "end_ms": 1784891012962,
+      "label": 0,
+      "sid": "sensorData-1785142218488-10a366d8516b4418929987b08d975130",
+      "start_ms": 1784890637962,
+      "subject": "HNU21037",
+      "valid": true
+    }
+  ],
+  "micro_threshold_fit_on_train_only": 0.1,
+  "train_candidate_count": 504,
+  "train_prevalence": 0.125,
+  "train_valid_count": 403
+}

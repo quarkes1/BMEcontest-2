@@ -343,6 +343,14 @@ log loss 更差；状态为 `P2_NO_SUPPORTED_BRANCH`，依照 gate **不进入 P
 `outputs/challenger_70/representation_v2/amendment_a1/`。旧checkpoint显式保留
 legacy coverage语义，新checkpoint记录模型配置；不修改旧P2产物、outer或dist。
 
+R0已完成，状态 `R0_COMPLETE_REVIEW_REQUIRED`：16人训练、8人health，各臂2000步。
+有效health候选上Q0/Q1 AP为0.34629/0.40242，但raw-logit BCE为1.18877/2.32075，
+均差于同子群先验基线0.36737；两臂均触发末400步loss下降>10%的收敛告警。
+这支持检查下游事件网络的过拟合，不支持自动延长训练或把单split AP提升当作成功。
+按A1停在审阅点，建议下一轮预注册“相同低容量读出层下随机冻结与SSL冻结表示对照”。
+详见[R0报告](outputs/challenger_70/representation_v2/amendment_a1/report.md)。正式F1仍为
+0.6514285714；此次无新增outer、无dist/release变更。
+
 Installed-artifact hashes, the independent frozen-blend identity check, and
 the formal non-exclusive mechanism legend are recorded in
 [`docs/challenge_e04_validation_addendum.md`](docs/challenge_e04_validation_addendum.md).
