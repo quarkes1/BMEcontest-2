@@ -76,3 +76,4 @@
 - 本次重新计算保护快照，与plan中的 `bf74ba7a008ed8813cd480822ffdb0cdab87318d19a539c180e18b706d485d27` 一致。
 - 独立terra/medium只读审阅确认停止结论可信；指出缺少无效子群/同分母基线，已以 `subgroup_diagnostics.json` 补齐。无重训、无旧结果改写。
 - 执行记录：协议修复与R0入口在 `6e5647e`；此次只补完整证据、报告及README/registry。已批准计划中的告警审阅点优先于继续训练，未自行扩大研究范围。
+- 提交检查发现默认Git换行规范化会改变JSON字节SHA；已在 `.gitattributes` 对本轮JSON禁用转换，并验证所有JSON及注册spec与Git blob逐字节相同。原始plan/checkpoint身份不重算、不修改。
