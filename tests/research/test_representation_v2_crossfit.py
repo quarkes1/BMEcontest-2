@@ -59,7 +59,13 @@ def test_candidate_producer_never_uses_score_truth_for_features():
     config = replace(registered_e03_config(0, workers=1), micro_positive_middle_fraction=None)
     train = {f"person{i}" for i in range(6)}
     score = {"person6", "person7"}
-    left_t, left_v = build_candidate_ledgers(data, config, train, score)
+    audit = {}
+    left_t, left_v = build_candidate_ledgers(data, config, train, score, fit_audit=audit)
+    assert len([k for k in audit if k.endswith('refit')]) == 2
+    assert set(audit['macro_refit']['fit_subjects']) == train
+    assert set(audit['threshold']['fit_subjects']) == {'person0'}
+    from scripts.research.representation_v2.provenance import assert_no_heldout_ancestors
+    assert_no_heldout_ancestors('candidates', score, audit)
     changed = replace(data, train_truths=tuple(truth for truth in data.train_truths if truth.sid != "sid7"))
     right_t, right_v = build_candidate_ledgers(changed, config, train, score)
     assert left_t.fit_subjects == tuple(sorted(train))

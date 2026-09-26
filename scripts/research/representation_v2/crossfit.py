@@ -71,7 +71,7 @@ class CandidateLedger:
 
 
 def build_candidate_ledgers(data: OuterTrainOnlyData, config: object, train_subjects: Iterable[str],
-                            score_subjects: Iterable[str]) -> tuple[CandidateLedger, CandidateLedger]:
+                            score_subjects: Iterable[str], *, fit_audit: dict | None = None) -> tuple[CandidateLedger, CandidateLedger]:
     """Build T OOF and V held-out candidate sets with T-only learned ancestors.
 
     The micro threshold is selected from T truth only. V truth is consulted only
@@ -92,10 +92,16 @@ def build_candidate_ledgers(data: OuterTrainOnlyData, config: object, train_subj
         _runner._validate_binary(labels, "candidate producer training")
         groups = _runner._groups_for(train_batch.windows, t.subject_by_session)[keep]
         t_groups = _runner._groups_for(t_candidate.windows, t.subject_by_session)
-        t_scores = crossfit_predict_proba(x(train_batch)[keep], labels, groups, x(t_candidate), t_groups,
-                                          config.inner_splits, estimator_factory=estimator_factory).probabilities
+        oof = crossfit_predict_proba(x(train_batch)[keep], labels, groups, x(t_candidate), t_groups,
+                                    config.inner_splits, estimator_factory=estimator_factory)
+        t_scores = oof.probabilities
         model = estimator_factory()
         model.fit(x(train_batch)[keep], labels)
+        if fit_audit is not None:
+            name = 'macro' if time_prior else 'micro'
+            for fold in oof.folds:
+                fit_audit[f'{name}_oof{fold.index}'] = {'fit_subjects': list(map(str, fold.train_groups)), 'parents': []}
+            fit_audit[f'{name}_refit'] = {'fit_subjects': sorted(map(str, set(groups))), 'parents': []}
         v_scores = _runner._positive_probability(model, x(v_candidate))
         return (_runner._windows_by_session(t_candidate.windows, t_scores),
                 _runner._windows_by_session(v_candidate.windows, v_scores))
@@ -110,6 +116,11 @@ def build_candidate_ledgers(data: OuterTrainOnlyData, config: object, train_subj
         lambda: _runner._micro_window_estimator(config.seed + 10), time_prior=False)
     selected = _runner.select_micro_candidate_threshold(
         micro_t, t.train_truths, config.micro_threshold_grid, config.micro_candidate)
+    if fit_audit is not None:
+        fit_audit['threshold'] = {
+            'fit_subjects': sorted({str(t.subject_by_session[truth.sid]) for truth in t.train_truths}),
+            'parents': [key for key in fit_audit if key.startswith('micro_oof')]}
+        fit_audit['candidates'] = {'fit_subjects': [], 'parents': list(fit_audit)}
 
     def _ledger(partition: OuterTrainOnlyData, macro: dict, micro: dict, scored_subjects: tuple[str, ...]) -> CandidateLedger:
         candidates = tuple(_runner.union_candidates(

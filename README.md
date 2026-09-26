@@ -351,6 +351,12 @@ R0已完成，状态 `R0_COMPLETE_REVIEW_REQUIRED`：16人训练、8人health，
 详见[R0报告](outputs/challenger_70/representation_v2/amendment_a1/report.md)。正式F1仍为
 0.6514285714；此次无新增outer、无dist/release变更。
 
+用户随后授权自主探索，下一轮按[A2注册](docs/challenge_070_amendment_rv2_a2.md)
+推进：原inner T内部三折，比较coverage/duration、随机冻结表示、candidate-conditioned
+VICReg冻结表示；统一固定正则化线性读出，不训练事件TCN。每折SSL5000步，无参数搜索。
+入口 `python -m scripts.research.representation_v2.explore`；三折probe不能替代事件F1，
+outer与正式发布仍不在本轮授权范围。
+
 Installed-artifact hashes, the independent frozen-blend identity check, and
 the formal non-exclusive mechanism legend are recorded in
 [`docs/challenge_e04_validation_addendum.md`](docs/challenge_e04_validation_addendum.md).
