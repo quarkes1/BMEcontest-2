@@ -378,6 +378,11 @@ raw BCE为0.31308→0.26956，3/3折正向。23名AP有定义的受试者中15�
 见[S1报告](outputs/challenger_70/representation_v2/amendment_a3_target/report.md)。下一方向为
 inner-only的116D基线/随机扩维/FD扩维互补性与事件TP/FP验证；正式F1仍为0.6514285714。
 
+下一轮[S2事件互补性注册](docs/challenge_070_amendment_rv2_a3_events.md)采用更低容量的固定评分融合，
+暂不直接拼接高维特征：116D LR/LGBM基线，以及75%基线+25%随机/FD读出两个对照。
+每个health折内再独立三折OOF选择策略，全部候选生产器与verifier均排除对应验证人。
+入口 `python -m scripts.research.representation_v2.event_probe`；仅inner事件证据，不更新正式成绩或dist。
+
 Installed-artifact hashes, the independent frozen-blend identity check, and
 the formal non-exclusive mechanism legend are recorded in
 [`docs/challenge_e04_validation_addendum.md`](docs/challenge_e04_validation_addendum.md).
