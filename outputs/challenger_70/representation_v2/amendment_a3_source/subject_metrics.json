@@ -1,0 +1,141 @@
+{
+  "evidence_type": "DERIVED SOURCE ONLY DIAGNOSTICS",
+  "source_sha256": "c7a788327c158f545acf148a5543886aee3be09caa0cbf9d7a5433ecb2bdfc06",
+  "rows": [
+    {
+      "participant": 3,
+      "metrics": {
+        "candidate_count": 336,
+        "positive_count": 80,
+        "negative_count": 256,
+        "prevalence": 0.23809523809523808,
+        "average_precision": 0.7123748706453629,
+        "roc_auc": 0.889794921875,
+        "log_loss": 0.37021414054028184,
+        "brier": 0.11229892978577782,
+        "raw_logit_bce": 0.37021414054028184,
+        "positive_below_001": 2,
+        "negative_above_099": 0,
+        "exact_probability_endpoints": 0,
+        "logit_min": -13.284723281860352,
+        "logit_max": 4.9432291984558105
+      }
+    },
+    {
+      "participant": 6,
+      "metrics": {
+        "candidate_count": 340,
+        "positive_count": 84,
+        "negative_count": 256,
+        "prevalence": 0.24705882352941178,
+        "average_precision": 0.8086352307189033,
+        "roc_auc": 0.9507068452380952,
+        "log_loss": 0.24325999498527393,
+        "brier": 0.07700536270629194,
+        "raw_logit_bce": 0.24325999498527387,
+        "positive_below_001": 0,
+        "negative_above_099": 0,
+        "exact_probability_endpoints": 0,
+        "logit_min": -15.976752281188965,
+        "logit_max": 3.805654764175415
+      }
+    },
+    {
+      "participant": 19,
+      "metrics": {
+        "candidate_count": 342,
+        "positive_count": 86,
+        "negative_count": 256,
+        "prevalence": 0.25146198830409355,
+        "average_precision": 0.9402362080449422,
+        "roc_auc": 0.9826035610465116,
+        "log_loss": 0.17618868256855016,
+        "brier": 0.051059365826858244,
+        "raw_logit_bce": 0.17618868256855016,
+        "positive_below_001": 0,
+        "negative_above_099": 0,
+        "exact_probability_endpoints": 0,
+        "logit_min": -14.368782043457031,
+        "logit_max": 5.025624752044678
+      }
+    },
+    {
+      "participant": 23,
+      "metrics": {
+        "candidate_count": 256,
+        "positive_count": 0,
+        "negative_count": 256,
+        "prevalence": 0,
+        "average_precision": null,
+        "roc_auc": null,
+        "log_loss": 0.32012945657332725,
+        "brier": 0.10109239745621013,
+        "raw_logit_bce": 0.3201294565733272,
+        "positive_below_001": 0,
+        "negative_above_099": 0,
+        "exact_probability_endpoints": 0,
+        "logit_min": -12.186647415161133,
+        "logit_max": 3.4742870330810547
+      }
+    },
+    {
+      "participant": 25,
+      "metrics": {
+        "candidate_count": 334,
+        "positive_count": 78,
+        "negative_count": 256,
+        "prevalence": 0.23353293413173654,
+        "average_precision": 0.8752146552148669,
+        "roc_auc": 0.9635917467948718,
+        "log_loss": 0.21557111988633446,
+        "brier": 0.06538140164076009,
+        "raw_logit_bce": 0.21557111988633443,
+        "positive_below_001": 0,
+        "negative_above_099": 0,
+        "exact_probability_endpoints": 0,
+        "logit_min": -14.187198638916016,
+        "logit_max": 4.824369430541992
+      }
+    },
+    {
+      "participant": 27,
+      "metrics": {
+        "candidate_count": 303,
+        "positive_count": 47,
+        "negative_count": 256,
+        "prevalence": 0.1551155115511551,
+        "average_precision": 0.8935154585087397,
+        "roc_auc": 0.9727393617021276,
+        "log_loss": 0.23445309466043374,
+        "brier": 0.07494536819118541,
+        "raw_logit_bce": 0.23445309466043374,
+        "positive_below_001": 0,
+        "negative_above_099": 0,
+        "exact_probability_endpoints": 0,
+        "logit_min": -11.19760513305664,
+        "logit_max": 6.182794094085693
+      }
+    },
+    {
+      "participant": 28,
+      "metrics": {
+        "candidate_count": 363,
+        "positive_count": 107,
+        "negative_count": 256,
+        "prevalence": 0.29476584022038566,
+        "average_precision": 0.9462172036560105,
+        "roc_auc": 0.9695531542056074,
+        "log_loss": 0.2539059203570929,
+        "brier": 0.06767349184716616,
+        "raw_logit_bce": 0.2539059203570929,
+        "positive_below_001": 1,
+        "negative_above_099": 0,
+        "exact_probability_endpoints": 0,
+        "logit_min": -14.977093696594238,
+        "logit_max": 5.984019756317139
+      }
+    }
+  ],
+  "outer_calls": 0,
+  "target_signal_read": false
+}

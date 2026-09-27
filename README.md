@@ -367,6 +367,11 @@ candidate-conditioned SSL的S为0.29587/0.35450，0/3折AP改善，状态
 入口 `python -m scripts.research.representation_v2.unitfree`。目标信号、outer和dist均不参与S0；
 source gate通过后才登记目标域随机/预训练冻结表示的配对比较。
 
+S0源域验证已通过：candidate AP 0.84405、raw BCE 0.25704（采样先验基线0.61827），
+仅为FD源域结果，不是本项目F1。下一步按[S1固定对照](docs/challenge_070_amendment_rv2_a3_target.md)
+在原inner T内部三折比较同一初始随机encoder与FD最终encoder，全部冻结，统一133D线性读出。
+源权重SHA固定并严格核对来源、参与者和完整性；无新神经训练、无outer、无dist变更。
+
 Installed-artifact hashes, the independent frozen-blend identity check, and
 the formal non-exclusive mechanism legend are recorded in
 [`docs/challenge_e04_validation_addendum.md`](docs/challenge_e04_validation_addendum.md).
