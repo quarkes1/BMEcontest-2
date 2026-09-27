@@ -390,6 +390,12 @@ FD融合为65TP/18FP/32FN、F1=0.72222，仅1/3折改善。**这里的0.72不是
 下一方向优先审计训练内评分尺度/策略稳定性，不根据health漏检直接调阈值，也不立即扩大网络。
 完整仓库回归646 passed、5 skipped；无新token缓存、无dist/release变更。
 
+[S3训练内稳定性审计](outputs/challenger_70/representation_v2/amendment_a3_stability/report.md)已完成：
+仅使用12份policy OOF产物，无训练/health读取/新F1。基线与运动支路训练权重及评分尺度不同；
+运动无效时混入训练先验会压低强基线分数。固定策略下阈值降低.05，三个训练内wrapper均未增加TP，
+因此不直接放宽阈值。下一窄假设是“运动无效时保持基线评分”，有效分支维持原融合，并保留随机对照。
+本轮164项相关测试通过；策略祖先图补充认证通过。正式F1与dist仍不变。
+
 Installed-artifact hashes, the independent frozen-blend identity check, and
 the formal non-exclusive mechanism legend are recorded in
 [`docs/challenge_e04_validation_addendum.md`](docs/challenge_e04_validation_addendum.md).

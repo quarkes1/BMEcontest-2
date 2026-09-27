@@ -1,0 +1,11 @@
+{
+  "artifact_bytes_before_summary": 1966863,
+  "frozen_policy_count_replay": true,
+  "health_data_read": false,
+  "input_files": 12,
+  "input_unchanged": true,
+  "outer_calls": 0,
+  "status": "S3_DIAGNOSTIC_COMPLETE",
+  "training_calls": 0,
+  "wall_seconds": 0.8994420999952126
+}

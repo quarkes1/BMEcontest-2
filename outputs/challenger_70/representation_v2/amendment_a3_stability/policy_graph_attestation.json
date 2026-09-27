@@ -1,0 +1,31 @@
+{
+  "validator_code_sha": "f64270af5303598ffed95ee032fe2ed6a22d18b2",
+  "original_audit_code_sha": "234299b90eadecac2766594eb46dd4ca2fda6674",
+  "original_output_sha256": {
+    "fold0_audit.json": "a07ab9214fcb9fe675716403d3875d1dcd96526cfa3a2caebbdcb87da0a1f78b",
+    "fold1_audit.json": "1ac817164e99d6c5a9ef7e42c9548fbb4d53df2ba7e82839f371d8697382fbe4",
+    "fold2_audit.json": "97a516d6aba1ab674bdfa6e87ef9f0087034167561ea519168c3442b3868596e",
+    "plan.json": "482d63724d730f393fc75f623c1739b2f7785785ea39c55c63f398d5048f88f6",
+    "summary.json": "3e87690b19da6450a7da108e05e7ef1c108f67304d44d03135924d2efa674c7a"
+  },
+  "policy_graph_checks": [
+    {
+      "wrapper": 0,
+      "passed": true,
+      "graph_exactly_matches_actual_oof_ancestors": true
+    },
+    {
+      "wrapper": 1,
+      "passed": true,
+      "graph_exactly_matches_actual_oof_ancestors": true
+    },
+    {
+      "wrapper": 2,
+      "passed": true,
+      "graph_exactly_matches_actual_oof_ancestors": true
+    }
+  ],
+  "health_data_read": false,
+  "training_calls": 0,
+  "outer_calls": 0
+}
