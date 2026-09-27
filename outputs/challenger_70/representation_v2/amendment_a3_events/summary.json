@@ -1,0 +1,46 @@
+{
+  "artifact_bytes_before_summary": 12760948,
+  "completed_splits": 12,
+  "copied_checkpoint_bytes": 0,
+  "encoding_seconds": 29.764705999958096,
+  "neural_optimizer_steps": 0,
+  "outer_calls": 0,
+  "passed": false,
+  "persistent_token_cache_bytes": 0,
+  "pooled_health_events": {
+    "b": {
+      "f1": 0.7213114754098361,
+      "fn": 31,
+      "fp": 20,
+      "n_pred": 86,
+      "n_tp": 66,
+      "n_true": 97,
+      "ppv": 0.7674418604651163,
+      "recall": 0.6804123711340206
+    },
+    "f": {
+      "f1": 0.7222222222222222,
+      "fn": 32,
+      "fp": 18,
+      "n_pred": 83,
+      "n_tp": 65,
+      "n_true": 97,
+      "ppv": 0.7831325301204819,
+      "recall": 0.6701030927835051
+    },
+    "r": {
+      "f1": 0.7142857142857143,
+      "fn": 32,
+      "fp": 20,
+      "n_pred": 85,
+      "n_tp": 65,
+      "n_true": 97,
+      "ppv": 0.7647058823529411,
+      "recall": 0.6701030927835051
+    }
+  },
+  "positive_folds": 1,
+  "protected_unchanged": true,
+  "status": "S2_NO_SUPPORTED_FIXED_FUSION",
+  "wall_seconds": 993.6117021999962
+}

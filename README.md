@@ -383,6 +383,13 @@ inner-only的116D基线/随机扩维/FD扩维互补性与事件TP/FP验证；正
 每个health折内再独立三折OOF选择策略，全部候选生产器与verifier均排除对应验证人。
 入口 `python -m scripts.research.representation_v2.event_probe`；仅inner事件证据，不更新正式成绩或dist。
 
+S2已完成，固定25%融合未通过gate：严格三折health基线为66TP/20FP/31FN、F1=0.72131，
+FD融合为65TP/18FP/32FN、F1=0.72222，仅1/3折改善。**这里的0.72不是正式outer F1**，
+正式成绩仍为0.6514285714。候选AP则三折均改善，均值0.78711→0.81136；说明有排序增量，
+但尚未稳定转化为事件收益。详见[S2报告](outputs/challenger_70/representation_v2/amendment_a3_events/report.md)。
+下一方向优先审计训练内评分尺度/策略稳定性，不根据health漏检直接调阈值，也不立即扩大网络。
+完整仓库回归646 passed、5 skipped；无新token缓存、无dist/release变更。
+
 Installed-artifact hashes, the independent frozen-blend identity check, and
 the formal non-exclusive mechanism legend are recorded in
 [`docs/challenge_e04_validation_addendum.md`](docs/challenge_e04_validation_addendum.md).
