@@ -362,6 +362,11 @@ candidate-conditioned SSL的S为0.29587/0.35450，0/3折AP改善，状态
 `R1_NO_SUPPORTED_SSL_BRANCH`。见[A2报告](outputs/challenger_70/representation_v2/amendment_a2/report.md)。
 不扩大此SSL配置；后续独立考虑无量纲FD手势监督预训练，不将其称为物理单位已校准。
 
+自主探索的下一条注册为[A3无量纲迁移](docs/challenge_070_amendment_rv2_a3.md)：
+先仅在FD-I右腕、27/7人源数据划分上训练固定5000步手势encoder，检验source可学习性；
+入口 `python -m scripts.research.representation_v2.unitfree`。目标信号、outer和dist均不参与S0；
+source gate通过后才登记目标域随机/预训练冻结表示的配对比较。
+
 Installed-artifact hashes, the independent frozen-blend identity check, and
 the formal non-exclusive mechanism legend are recorded in
 [`docs/challenge_e04_validation_addendum.md`](docs/challenge_e04_validation_addendum.md).
