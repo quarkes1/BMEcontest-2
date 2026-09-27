@@ -372,6 +372,12 @@ S0源域验证已通过：candidate AP 0.84405、raw BCE 0.25704（采样先验�
 在原inner T内部三折比较同一初始随机encoder与FD最终encoder，全部冻结，统一133D线性读出。
 源权重SHA固定并严格核对来源、参与者和完整性；无新神经训练、无outer、无dist变更。
 
+S1三折已完成并通过gate：R→FD的macro candidate AP为0.38033→0.54050，
+raw BCE为0.31308→0.26956，3/3折正向。23名AP有定义的受试者中15名改善、7名下降、
+1名持平；不是事件F1，也尚未证明与现有verifier互补。耗时约300秒，无新增神经训练或token缓存。
+见[S1报告](outputs/challenger_70/representation_v2/amendment_a3_target/report.md)。下一方向为
+inner-only的116D基线/随机扩维/FD扩维互补性与事件TP/FP验证；正式F1仍为0.6514285714。
+
 Installed-artifact hashes, the independent frozen-blend identity check, and
 the formal non-exclusive mechanism legend are recorded in
 [`docs/challenge_e04_validation_addendum.md`](docs/challenge_e04_validation_addendum.md).
