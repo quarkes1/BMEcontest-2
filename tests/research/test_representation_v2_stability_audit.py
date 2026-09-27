@@ -1,7 +1,7 @@
 from copy import deepcopy
 import numpy as np
 import pytest
-from scripts.research.representation_v2.stability_audit import profile, validate_ledger, allowed_input, sensitivity
+from scripts.research.representation_v2.stability_audit import profile, validate_ledger, allowed_input, sensitivity, validate_policy_graph
 from src.pipeline.event_stack import EventRef,MultiScaleCandidate
 
 
@@ -50,3 +50,20 @@ def test_sensitivity_keeps_unreachable_truth_and_original_tie_policy():
     assert rows[2]['tp']==1 and rows[2]['fp']==0 and rows[2]['fn']==1
     assert rows[-1]['tp']==0 and rows[-1]['fn']==2
     assert all('f1' not in r for r in rows)
+
+
+def test_policy_graph_must_match_actual_score_ancestors_and_exclude_health():
+    ledgers=[]
+    for subject in ['a','b','c']:
+        d=ledger(); d['score']=[subject]; d['train']=sorted({'a','b','c'}-{subject})
+        d['groups']=[subject,subject]; d['graph']['score']['fit_subjects']=d['train']
+        ledgers.append(d)
+    policy={'graph':{'p0_score':{'fit_subjects':['b','c'],'parents':[]},
+                     'p1_score':{'fit_subjects':['a','c'],'parents':[]},
+                     'p2_score':{'fit_subjects':['a','b'],'parents':[]},
+                     'policy':{'fit_subjects':['a','b','c'],'parents':['p0_score','p1_score','p2_score']}}}
+    validate_policy_graph(ledgers,policy)
+    leaked=deepcopy(policy); leaked['graph']['policy']['fit_subjects'].append('h')
+    with pytest.raises(ValueError):validate_policy_graph(ledgers,leaked)
+    inconsistent=deepcopy(policy); inconsistent['graph']['p0_score']['fit_subjects']=['a','c']
+    with pytest.raises(ValueError):validate_policy_graph(ledgers,inconsistent)

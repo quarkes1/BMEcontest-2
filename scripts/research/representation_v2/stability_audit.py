@@ -68,6 +68,24 @@ def restore_candidate(d):
     return MultiScaleCandidate(EventRef(**d['event']),part(d['macro']),part(d['micro']))
 
 
+def validate_policy_graph(ledgers,policy):
+    if len(ledgers)!=3:raise ValueError('three score ledgers required')
+    subjects=set(s for d in ledgers for s in d['score'])
+    excluded=set(s for d in ledgers for s in d['excluded'])
+    if sum(len(set(d['score'])) for d in ledgers)!=len(subjects):raise ValueError('policy score partitions overlap')
+    expected={}
+    for j,d in enumerate(ledgers):
+        validate_ledger(d)
+        if set(d['train'])!=subjects-set(d['score']) or set(d['excluded'])!=excluded:
+            raise ValueError('policy train/validation topology mismatch')
+        for name,node in d['graph'].items():
+            expected[f'p{j}_{name}']={'fit_subjects':node['fit_subjects'],
+                                    'parents':[f'p{j}_{p}' for p in node['parents']]}
+    expected['policy']={'fit_subjects':sorted(subjects),'parents':[f'p{j}_score' for j in range(3)]}
+    assert_no_heldout_ancestors('policy',excluded,policy['graph'])
+    if policy['graph']!=expected:raise ValueError('policy graph differs from actual scoring ancestors')
+
+
 def sensitivity(candidates,scores,groups,truths,policy):
     values=np.asarray(scores)
     admitted=admit_candidates(candidates,values,groups,CandidateAdmissionConfig(**policy['admission']))
@@ -128,6 +146,7 @@ def run(root):
             d=files[f'fold{k}_policy{j}_scores.json']; validate_ledger(d); ledgers.append(d)
             fold_profiles.append({'policy_fold':j,'train_subjects':d['train'],'score_subjects':d['score'],
                                   'prior':{a:d['readouts'][a]['prior'] for a in ('r','f')},**describe(d,policies)})
+        validate_policy_graph(ledgers,policy)
         combined={key:[v for d in ledgers for v in d[key]] for key in ('labels','groups','motion_valid','candidates')}
         if sum(len(set(d['score'])) for d in ledgers)!=len(set(s for d in ledgers for s in d['score'])):
             raise ValueError('policy validation partitions overlap')
