@@ -1,0 +1,55 @@
+{
+  "artifact_bytes_before_summary": 319281,
+  "old_fd_health_events": {
+    "f1": 0.7222222222222222,
+    "fn": 32,
+    "fp": 18,
+    "n_pred": 83,
+    "n_tp": 65,
+    "n_true": 97,
+    "ppv": 0.7831325301204819,
+    "recall": 0.6701030927835051
+  },
+  "optimizer_steps": 0,
+  "outer_calls": 0,
+  "passed": false,
+  "persistent_token_cache_bytes": 0,
+  "pooled_health_events": {
+    "b": {
+      "f1": 0.7213114754098361,
+      "fn": 31,
+      "fp": 20,
+      "n_pred": 86,
+      "n_tp": 66,
+      "n_true": 97,
+      "ppv": 0.7674418604651163,
+      "recall": 0.6804123711340206
+    },
+    "f": {
+      "f1": 0.7219512195121951,
+      "fn": 23,
+      "fp": 34,
+      "n_pred": 108,
+      "n_tp": 74,
+      "n_true": 97,
+      "ppv": 0.6851851851851852,
+      "recall": 0.7628865979381443
+    },
+    "r": {
+      "f1": 0.708994708994709,
+      "fn": 30,
+      "fp": 25,
+      "n_pred": 92,
+      "n_tp": 67,
+      "n_true": 97,
+      "ppv": 0.7282608695652174,
+      "recall": 0.6907216494845361
+    }
+  },
+  "positive_folds": 1,
+  "protected_unchanged": true,
+  "source_unchanged": true,
+  "status": "S4_NO_SUPPORTED_NEUTRAL_FALLBACK",
+  "training_calls": 0,
+  "wall_seconds": 56.98062950000167
+}

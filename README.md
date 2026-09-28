@@ -400,6 +400,12 @@ FD融合为65TP/18FP/32FN、F1=0.72222，仅1/3折改善。**这里的0.72不是
 有效行保持S2评分逐位不变。复用已提交的严格OOF账本，0模型fit；全部三折策略落盘并校验后才读取health。
 入口 `python -m scripts.research.representation_v2.neutral_probe`。仍为重复开发人口评估，不是正式outer。
 
+S4已完成、未通过gate：FD中性回退74TP/34FP/23FN、inner health F1=0.72195；基线66TP/20FP，
+原S2 FD为65TP/18FP。召回增加但FP成本过高，仅1/3折改善；候选AP也从S2 FD的0.81136降至0.76109。
+见[S4报告](outputs/challenger_70/representation_v2/amendment_a3_neutral/report.md)。不推广中性回退；
+下一方向是低容量verifier联合使用冻结FD证据与有效性，停止手调统一概率平均/回退常数。
+本轮0模型fit、约57秒、175项相关测试通过；正式F1仍为0.6514285714，dist不变。
+
 Installed-artifact hashes, the independent frozen-blend identity check, and
 the formal non-exclusive mechanism legend are recorded in
 [`docs/challenge_e04_validation_addendum.md`](docs/challenge_e04_validation_addendum.md).

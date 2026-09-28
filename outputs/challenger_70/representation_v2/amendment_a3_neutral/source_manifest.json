@@ -1,0 +1,23 @@
+{
+  "input_sha256": {
+    "fold0_health_scores.json": "794fef945e625b512bfee8d49b3191624e76ef0f2c00299c834bfd11e3cc559e",
+    "fold0_policies.json": "170c600eb0cd1f5d81d254332e509183df202ce2d38f7409fdbdafb4fa64b19b",
+    "fold0_policy0_scores.json": "709afbef36a9cfe4205583173a7f4f7e299012b55f85c59a6b60d88634cd91d1",
+    "fold0_policy1_scores.json": "d031ec89686d6f78aa97be81caf315b182ee3a7c4ad18030db278ba0aea627f1",
+    "fold0_policy2_scores.json": "acfea3cb24f7d8a2671b86789c33e1600d6d1da35775870a604721c92ed21364",
+    "fold0_report.json": "02ad28ab06abe38962ddbd340d027c20ffedcc9730412c0361feb268720aaedf",
+    "fold1_health_scores.json": "d87dd19fdeaa84e33c895356299ef45ab20964b28bac62ab5819d34427dd7056",
+    "fold1_policies.json": "5b2f9c946a5143fa9bcc1e04cddd82b26fe2e5e5e8c6d356177256d68fc920ca",
+    "fold1_policy0_scores.json": "7671ec484761e6546173321adee76cabf845b4a7c0c92bcec35faee0ea44f2c6",
+    "fold1_policy1_scores.json": "5271a616f1ce3acba3e934ba9b729b560e722d69528c8bbe99db6c6d0eb1e579",
+    "fold1_policy2_scores.json": "bd28d9b24d9c98cca766fd573a15f5c014d5b5ab66d7b717299629de2a8e050f",
+    "fold1_report.json": "49218b84498207938c973d13c1ce4841c89117cb3913aa07fcc13933da65494e",
+    "fold2_health_scores.json": "47af59cc2f5ef5678c4595bc6276d1913b6727954cb610102afd8c1b157eddd8",
+    "fold2_policies.json": "b52078a5bfe8c821e14254dd663646dad153fd6e98efd31b6883da835ae937d5",
+    "fold2_policy0_scores.json": "c56b200216746367eaab7d899c7d2007d9b7e6e2701e499172db4e70b689131e",
+    "fold2_policy1_scores.json": "8eb0fa50bc208a6ae162a0f54a38f28eba9c3000a0113e52efaaf073dc84c34f",
+    "fold2_policy2_scores.json": "2b777fc6aeeca7889ab5dbef54faea310b2c73e805cc90f5aee26b4667511def",
+    "fold2_report.json": "96c697eb0c334f7c7c9573df533fdf41389b4f1b6cb6ee643bb3a1422deb80e3"
+  },
+  "source_commit": "46d7c18ab11da2da025934a73f3c273e68c2aabb"
+}

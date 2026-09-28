@@ -1,0 +1,10 @@
+{
+  "code_sha": "3350a4110a30b0587066b0987fa76eb1890f44f2",
+  "id": "RV2-A3-S4-001",
+  "optimizer_steps": 0,
+  "outer_calls": 0,
+  "protected_digest": "bf74ba7a008ed8813cd480822ffdb0cdab87318d19a539c180e18b706d485d27",
+  "source_commit": "46d7c18ab11da2da025934a73f3c273e68c2aabb",
+  "spec_sha256": "42348031065ebf41f62f2b98cf47f278959526b6f01fe6466e2d992986078c06",
+  "training_calls": 0
+}
