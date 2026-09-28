@@ -396,6 +396,10 @@ FD融合为65TP/18FP/32FN、F1=0.72222，仅1/3折改善。**这里的0.72不是
 因此不直接放宽阈值。下一窄假设是“运动无效时保持基线评分”，有效分支维持原融合，并保留随机对照。
 本轮164项相关测试通过；策略祖先图补充认证通过。正式F1与dist仍不变。
 
+下一轮[S4中性回退对照](docs/challenge_070_amendment_rv2_a3_neutral.md)已注册：无效运动输入直接使用B，
+有效行保持S2评分逐位不变。复用已提交的严格OOF账本，0模型fit；全部三折策略落盘并校验后才读取health。
+入口 `python -m scripts.research.representation_v2.neutral_probe`。仍为重复开发人口评估，不是正式outer。
+
 Installed-artifact hashes, the independent frozen-blend identity check, and
 the formal non-exclusive mechanism legend are recorded in
 [`docs/challenge_e04_validation_addendum.md`](docs/challenge_e04_validation_addendum.md).
