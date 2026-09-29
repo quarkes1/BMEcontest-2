@@ -406,6 +406,11 @@ S4已完成、未通过gate：FD中性回退74TP/34FP/23FN、inner health F1=0.7
 下一方向是低容量verifier联合使用冻结FD证据与有效性，停止手调统一概率平均/回退常数。
 本轮0模型fit、约57秒、175项相关测试通过；正式F1仍为0.6514285714，dist不变。
 
+[S5联合verifier](docs/challenge_070_amendment_rv2_a3_joint.md)已锁定为116D原特征+38D冻结运动表示/质量，
+保留同宽随机encoder对照，不再固定混合两种不同训练目标的概率。全部三折policy先冻结，再计算health；
+B须回放S2候选、评分、policy与完整指标。入口 `python -m scripts.research.representation_v2.joint_probe`。
+目前为实现/验证阶段，尚无S5实验成绩，不改变正式F1或dist。
+
 Installed-artifact hashes, the independent frozen-blend identity check, and
 the formal non-exclusive mechanism legend are recorded in
 [`docs/challenge_e04_validation_addendum.md`](docs/challenge_e04_validation_addendum.md).
