@@ -89,3 +89,17 @@ def test_baseline_replay_rejects_changed_diagnostics(monkeypatch,key):
     if key=='candidate_metrics':changed[key]['b']['ap']=.9
     else:changed[key][0]['events']['b']['n_tp']=2
     with pytest.raises(RuntimeError):jp.baseline_replay('.', 'fold0_report.json',changed)
+
+
+def test_baseline_candidate_tuple_matches_serialized_list_but_not_changed_value(monkeypatch):
+    from dataclasses import asdict
+    from src.pipeline.event_stack import CandidateEvent, EventRef, MultiScaleCandidate
+    event=EventRef('sid',0,10000)
+    candidate=MultiScaleCandidate(event,CandidateEvent(event,(.1,.2),1.,0,0,0,0),None)
+    row={'train':['a'],'score':['b'],'excluded':['c'],'groups':['b'],'labels':[1],
+         'candidates':[asdict(candidate)],'scores':{'b':[.8]}}
+    raw=json.dumps(row).encode()
+    monkeypatch.setattr(jp.subprocess,'check_output',lambda *a,**kw:raw)
+    assert jp.baseline_replay('.','fold0_policy0_scores.json',row)
+    row['candidates'][0]['macro']['probabilities']=(.1,.3)
+    with pytest.raises(RuntimeError):jp.baseline_replay('.','fold0_policy0_scores.json',row)

@@ -23,6 +23,8 @@ SOURCE_COMMIT='46d7c18ab11da2da025934a73f3c273e68c2aabb'
 
 
 def baseline_replay(root,name,evidence):
+    # Dataclass probability tuples become JSON arrays in the sealed ledger.
+    evidence=json.loads(json.dumps(evidence,allow_nan=False))
     path='outputs/challenger_70/representation_v2/amendment_a3_events/'+name
     raw=subprocess.check_output(['git','show',f'{SOURCE_COMMIT}:{path}'],cwd=root)
     old=json.loads(raw)
