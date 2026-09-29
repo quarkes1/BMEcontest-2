@@ -38,5 +38,8 @@ Ruling：采用全candidate mean/std32D而非S1有序128D，以限制新增维�
 Final minor (deferred)：每个health report可附marker SHA；目前完整冻结文件/清单、每次重新验证的代码与最终summary已保存，暂不增加重复字段。不是隔离缺陷。
 
 状态：代码/协议待提交后运行一次；尚无S5成绩。
+（以上为注册时状态；最新执行状态见下。）
 
 首次执行在policy0/0的基线回放停止、0 health读取。原因已用真实CandidateEvent回归测试重现：dataclasses.asdict保留probabilities tuple，而sealed JSON为list。修复仅在比较入口进行无损JSON规范化，不放宽任何数值/候选检查。失败plan/state保留于 `amendment_a3_joint_failed_serialization/`；不作为算法失败，不计新F1。重试仍原配置，无参数搜索；额外一次producer/verifier分区消耗计入预算。
+
+执行完成：`S5_NO_SUPPORTED_JOINT_VERIFIER`。B 66TP/20FP/31FN、F1 .72131148；R 70TP/27FP/27FN、.72164948；F 59TP/13FP/38FN、.69822485。只有1/3折F优于B，不推广。成功执行793.53秒、编码24.83秒，184项相关测试通过；基线完整重放、保护哈希、资源检查通过。详见输出report.md。不启动outer、不改dist。

@@ -1,0 +1,46 @@
+{
+  "completed_splits": 12,
+  "copied_checkpoint_bytes": 0,
+  "encoding_seconds": 24.825722200155724,
+  "neural_optimizer_steps": 0,
+  "outer_calls": 0,
+  "passed": false,
+  "persistent_token_cache_bytes": 0,
+  "policy_marker_sha256": "167b47f78bc0d08b186e27c27d8b8233c8d0ccc387f210746bdd787b372d1742",
+  "pooled_health_events": {
+    "b": {
+      "f1": 0.7213114754098361,
+      "fn": 31,
+      "fp": 20,
+      "n_pred": 86,
+      "n_tp": 66,
+      "n_true": 97,
+      "ppv": 0.7674418604651163,
+      "recall": 0.6804123711340206
+    },
+    "f": {
+      "f1": 0.6982248520710059,
+      "fn": 38,
+      "fp": 13,
+      "n_pred": 72,
+      "n_tp": 59,
+      "n_true": 97,
+      "ppv": 0.8194444444444444,
+      "recall": 0.6082474226804123
+    },
+    "r": {
+      "f1": 0.7216494845360825,
+      "fn": 27,
+      "fp": 27,
+      "n_pred": 97,
+      "n_tp": 70,
+      "n_true": 97,
+      "ppv": 0.7216494845360825,
+      "recall": 0.7216494845360825
+    }
+  },
+  "positive_folds": 1,
+  "protected_unchanged": true,
+  "status": "S5_NO_SUPPORTED_JOINT_VERIFIER",
+  "wall_seconds": 793.5262227000203
+}

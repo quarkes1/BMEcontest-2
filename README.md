@@ -409,7 +409,10 @@ S4已完成、未通过gate：FD中性回退74TP/34FP/23FN、inner health F1=0.7
 [S5联合verifier](docs/challenge_070_amendment_rv2_a3_joint.md)已锁定为116D原特征+38D冻结运动表示/质量，
 保留同宽随机encoder对照，不再固定混合两种不同训练目标的概率。全部三折policy先冻结，再计算health；
 B须回放S2候选、评分、policy与完整指标。入口 `python -m scripts.research.representation_v2.joint_probe`。
-目前为实现/验证阶段，尚无S5实验成绩，不改变正式F1或dist。
+S5已完成且未通过gate：B 66TP/20FP、inner health F1 .72131；随机表示70TP/27FP、.72165；
+FD联合59TP/13FP、.69822，仅1/3折改善。候选AP虽然提高，但没有转化为事件收益，不推广该方案。
+见[S5报告](outputs/challenger_70/representation_v2/amendment_a3_joint/report.md)。成功运行约13.2分钟，
+184项相关测试通过，零新神经训练/持久token缓存。正式F1仍为0.6514285714，dist不变。
 
 Installed-artifact hashes, the independent frozen-blend identity check, and
 the formal non-exclusive mechanism legend are recorded in

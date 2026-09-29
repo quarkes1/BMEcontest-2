@@ -1,0 +1,12 @@
+{
+  "code_sha": "923ef1d18242534d8b176ede0a2e0f2356256dab",
+  "device": "cuda",
+  "id": "RV2-A3-S5-001",
+  "neural_optimizer_steps": 0,
+  "outer_calls": 0,
+  "producer_fits": 120,
+  "protected_digest": "bf74ba7a008ed8813cd480822ffdb0cdab87318d19a539c180e18b706d485d27",
+  "source_checkpoint_sha256": "c6276837b1366117075e7e8a7504e084926cbfc5d80b98b863e442255995efc4",
+  "spec_sha256": "1df1dd299a75f7850f5f4e0f1cf7236608cad05199d06a8104e271609e48fd34",
+  "verifier_fits": 72
+}
