@@ -130,9 +130,24 @@ def split_scores(root,data,config,train,score,excluded,encoders,source_train,sou
     return v,scores,graph,elapsed
 
 
-def run(root):
-    root=Path(root); output=root/'outputs/challenger_70/representation_v2/amendment_a3_joint'
-    if output.exists():raise RuntimeError('S5 attempt exists; do not overwrite')
+def experiment_contract(experiment=None):
+    contract={'id':'RV2-A3-S5-001','label':'S5','output':'amendment_a3_joint',
+              'spec':'challenge_070_amendment_rv2_a3_joint.md','neural_optimizer_steps':0,
+              'max_wall_seconds':10800,'max_work_seconds':3600,'elapsed_field':'encoding_seconds',
+              'pass_status':'S5_SUPPORTS_WIDER_INNER_EVENT_VALIDATION','fail_status':'S5_NO_SUPPORTED_JOINT_VERIFIER'}
+    contract.update(experiment or {})
+    for key in ('output','spec'):
+        if Path(contract[key]).name!=contract[key] or '/' in contract[key] or '\\' in contract[key] or contract[key] in ('.','..'):
+            raise ValueError('experiment paths must be simple local names')
+    if min(contract['max_wall_seconds'],contract['max_work_seconds'])<=0 or contract['neural_optimizer_steps']<0:
+        raise ValueError('invalid experiment budget')
+    return contract
+
+
+def run(root,*,experiment=None):
+    experiment=experiment_contract(experiment);label=experiment['label']
+    root=Path(root); output=root/'outputs/challenger_70/representation_v2'/experiment['output']
+    if output.exists():raise RuntimeError(label+' attempt exists; do not overwrite')
     if subprocess.check_output(['git','status','--porcelain'],cwd=root,text=True).strip():
         raise RuntimeError('commit protocol/code first')
     payload=ep.load_source_artifact(root/'outputs/challenger_70/representation_v2/amendment_a3_source',ep.REGISTERED_SOURCE_SHA)
@@ -145,21 +160,25 @@ def run(root):
         raise RuntimeError('resource reserve insufficient')
     torch.set_num_threads(4)
     if device=='cuda':torch.cuda.reset_peak_memory_stats()
-    plan={'id':'RV2-A3-S5-001','code_sha':subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip(),
-          'spec_sha256':hashlib.sha256((root/'docs/challenge_070_amendment_rv2_a3_joint.md').read_bytes()).hexdigest(),
+    plan={'id':experiment['id'],'code_sha':subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip(),
+          'spec_sha256':hashlib.sha256((root/'docs'/experiment['spec']).read_bytes()).hexdigest(),
           'source_checkpoint_sha256':ep.REGISTERED_SOURCE_SHA,'device':device,'outer_calls':0,
-          'neural_optimizer_steps':0,'producer_fits':120,'verifier_fits':72,
+          'neural_optimizer_steps':experiment['neural_optimizer_steps'],'producer_fits':120,'verifier_fits':72,
           'protected_digest':hashlib.sha256(json.dumps(snapshot,sort_keys=True).encode()).hexdigest()}
+    if 'adaptation_readout_fits' in experiment:
+        plan['adaptation_readout_fits']=experiment['adaptation_readout_fits']
+        plan['max_wall_seconds']=experiment['max_wall_seconds'];plan['max_work_seconds']=experiment['max_work_seconds']
     ep.write_json(output/'plan.json',plan)
     records=[]; elapsed=0.; completed=0
 
     def resource_ok():
         peak=torch.cuda.max_memory_allocated() if device=='cuda' else None
         size=sum(p.stat().st_size for p in output.rglob('*') if p.is_file())
-        return (time.perf_counter()-started<=10800 and elapsed<=3600 and size<=64*1024**2 and
+        return (time.perf_counter()-started<=experiment['max_wall_seconds'] and elapsed<=experiment['max_work_seconds'] and size<=64*1024**2 and
                 shutil.disk_usage(root).free>=20*1024**3 and (peak is None or peak<=.8*free_cuda))
 
     try:
+        splitter=experiment['prepare'](root,payload,output,device) if 'prepare' in experiment else split_scores
         config=ep.registered_e03_config(0,workers=4)
         data=runner.FilesystemDataSource(root).load_outer_train_only(config)
         original_t,original_v=ep.inner_subject_partitions(data,n_splits=4)[0]
@@ -175,8 +194,8 @@ def run(root):
             tdata=ep.slice_outer_train(data,train); pc=[]; pg=[]; ps={a:[] for a in ('b','r','f')}; graph={}
             for inner,(fit,valid) in enumerate(ep.inner_subject_partitions(tdata,n_splits=3)):
                 if not resource_ok():raise RuntimeError('resource budget exceeded')
-                print(f'S5 policy {fold}/{inner}: train {len(fit)}, validation {len(valid)}',flush=True)
-                ledger,scores,g,seconds=split_scores(root,tdata,config,fit,valid,set(health)|set(original_v),
+                print(f'{label} policy {fold}/{inner}: train {len(fit)}, validation {len(valid)}',flush=True)
+                ledger,scores,g,seconds=splitter(root,tdata,config,fit,valid,set(health)|set(original_v),
                     encoders,source_train,source_val,output,f'fold{fold}_policy{inner}',device)
                 elapsed+=seconds; completed+=1; pc.extend(ledger.candidates); pg.extend(ledger.groups)
                 for a in ps:ps[a].extend(scores[a])
@@ -196,8 +215,8 @@ def run(root):
         for fold,(train,health) in enumerate(partitions):
             policies=load_frozen_policies(output,marker_sha)[fold]['policies']
             if not resource_ok():raise RuntimeError('resource budget exceeded')
-            print(f'S5 health {fold}: all policies verified; refitting',flush=True)
-            ledger,scores,graph,seconds=split_scores(root,data,config,train,health,set(original_v),encoders,
+            print(f'{label} health {fold}: all policies verified; refitting',flush=True)
+            ledger,scores,graph,seconds=splitter(root,data,config,train,health,set(original_v),encoders,
                 source_train,source_val,output,f'fold{fold}_health',device)
             elapsed+=seconds; completed+=1
             hdata=ep.slice_outer_train(data,health)
@@ -218,18 +237,18 @@ def run(root):
             record['baseline_source_sha256']=baseline_replay(root,f'fold{fold}_report.json',record)
             ep.write_json(output/f'fold{fold}_report.json',record); records.append(record)
             if not all(record['checks'].values()):raise RuntimeError('health checks failed')
-            print('S5 health counts '+json.dumps(events),flush=True)
+            print(label+' health counts '+json.dumps(events),flush=True)
         gate=ep.event_gate(records)
-        gate['status']='S5_SUPPORTS_WIDER_INNER_EVENT_VALIDATION' if gate['passed'] else 'S5_NO_SUPPORTED_JOINT_VERIFIER'
+        gate['status']=experiment['pass_status'] if gate['passed'] else experiment['fail_status']
         if ep.protected_snapshot(root)!=snapshot:raise RuntimeError('protected release changed')
         if not resource_ok():raise RuntimeError('final resource budget exceeded')
-        gate.update({'wall_seconds':time.perf_counter()-started,'encoding_seconds':elapsed,'completed_splits':completed,
-                     'protected_unchanged':True,'neural_optimizer_steps':0,'persistent_token_cache_bytes':0,
+        gate.update({'wall_seconds':time.perf_counter()-started,experiment['elapsed_field']:elapsed,'completed_splits':completed,
+                     'protected_unchanged':True,'neural_optimizer_steps':experiment['neural_optimizer_steps'],'persistent_token_cache_bytes':0,
                      'copied_checkpoint_bytes':0,'policy_marker_sha256':marker_sha})
         ep.write_json(output/'summary.json',gate); ep.write_json(output/'state.json',{'status':gate['status'],'outer_calls':0})
         print(json.dumps(gate),flush=True)
     except Exception as exc:
-        ep.write_json(output/'state.json',{'status':'S5_INCOMPLETE','completed_splits':completed,
+        ep.write_json(output/'state.json',{'status':label+'_INCOMPLETE','completed_splits':completed,
                                          'completed_health_folds':len(records),'error':str(exc),'outer_calls':0})
         raise
 

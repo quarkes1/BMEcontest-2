@@ -440,3 +440,9 @@ raw BCE亦恶化，部分训练轨迹收敛未决。关闭本配置，不将首�
 下一方向是受控的目标域事件适配/源目标联合监督，以严格nested事件F1和TP/FP作主指标，
 不再仅靠冻结encoder上的池化或固定概率融合追分；更大TCN/Transformer并未被排除。
 本轮全仓回归688 passed、5 skipped（15条既有warnings），发布包隔离运行与接口测试通过。
+
+[S8目标域监督适配](docs/challenge_070_amendment_rv2_a3_adapt.md)已注册：B为原116D，
+R为冻结FD的251D联合verifier，F为相同251D但encoder在当前训练分区内经目标事件BCE+
+FD源手势监督适配。本轮R不是随机encoder；12个partition分别初始化/训练1000步，
+所有policy冻结后才计算health事件F1，基线完整回放S2。入口
+`python -m scripts.research.representation_v2.adapt_probe`；不自动outer或改dist。
