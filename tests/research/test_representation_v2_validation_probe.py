@@ -211,3 +211,21 @@ def test_preflight_manifest_failure_leaves_incomplete_not_ready(tmp_path,monkeyp
     monkeypatch.setattr(vp,'require_clean',lambda root:None)
     with pytest.raises(RuntimeError,match='manifest'):vp.run_event(tmp_path)
     assert json.loads((out/'state.json').read_text())['status']=='S15_INCOMPLETE'
+
+
+@pytest.mark.parametrize('failure',['state','cuda'])
+def test_startup_failure_is_incomplete_even_before_training(tmp_path,monkeypatch,failure):
+    import json
+    from scripts.research.representation_v2 import validation_probe as vp
+    out=tmp_path/vp.OUTPUT
+    vp.ep.write_json(out/'plan.json',{})
+    if failure=='state':(out/'state.json').write_text('{broken',encoding='utf-8')
+    else:vp.ep.write_json(out/'state.json',{'status':'S15_MANIFEST_READY'})
+    monkeypatch.setattr(vp,'require_clean',lambda root:None)
+    monkeypatch.setattr(vp,'load_manifest',lambda root:{})
+    monkeypatch.setattr(vp.ep,'protected_snapshot',lambda root:{})
+    monkeypatch.setattr(vp.torch.cuda,'is_available',lambda:True)
+    def broken_cuda():raise RuntimeError('CUDA startup failure')
+    monkeypatch.setattr(vp.torch.cuda,'mem_get_info',broken_cuda)
+    with pytest.raises((RuntimeError,json.JSONDecodeError)):vp.run_event(tmp_path)
+    assert json.loads((out/'state.json').read_text())['status']=='S15_INCOMPLETE'

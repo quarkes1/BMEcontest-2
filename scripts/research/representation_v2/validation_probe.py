@@ -234,7 +234,14 @@ def run_event(root):
     from scripts.research.representation_v2 import validation_metrics as vm
     root = Path(root)
     output = root/OUTPUT
-    state = json.loads((output/'state.json').read_text())
+    try:
+        state = json.loads((output/'state.json').read_text())
+        if not isinstance(state, dict) or 'status' not in state:
+            raise ValueError('malformed attempt state')
+    except (OSError, ValueError) as exc:
+        if output.is_dir():
+            ep.write_json(output/'state.json', {'status': 'S15_INCOMPLETE', 'error': str(exc), 'outer_calls': 0})
+        raise
     if state['status'] != 'S15_MANIFEST_READY':
         raise RuntimeError('event attempt already started; no overwrite')
     try:
@@ -248,12 +255,9 @@ def run_event(root):
     counts = {'splits': 0, 'producer_fits': 0, 'verifier_fits': 0, 'readout_fits': 0, 'steps': 0}
     records = []
     completed = []
-    snapshot = ep.protected_snapshot(root)
+    snapshot = None
     work = [0., None]
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    free_cuda = torch.cuda.mem_get_info()[0] if device == 'cuda' else None
-    if device == 'cuda':
-        torch.cuda.reset_peak_memory_stats()
+    device, free_cuda = 'cpu', None
     def budget():
         current = 0. if work[1] is None else time.perf_counter()-work[1]
         check_resources(root, output, started, work[0]+current, free_cuda)
@@ -265,6 +269,11 @@ def run_event(root):
         ep.write_json(output/'state.json', {'status': status, 'completed_wrappers': completed,
                       'fit_counts': counts, 'outer_calls': 0, **extra})
     try:
+        snapshot = ep.protected_snapshot(root)
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        free_cuda = torch.cuda.mem_get_info()[0] if device == 'cuda' else None
+        if device == 'cuda':
+            torch.cuda.reset_peak_memory_stats()
         budget()
         if digest(snapshot) != plan['protected_digest']:
             raise RuntimeError('protected release changed since manifest')

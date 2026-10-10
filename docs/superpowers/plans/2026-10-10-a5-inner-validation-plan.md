@@ -237,5 +237,6 @@ spec也用生成manifest时的逐字节hash，不以之后更新的执行状态�
 全部公共接口已在所属Task定义；边界测试对应Review Focus；无未定参数。
 推荐Native：三个候选强共享split逻辑，由一个实现者连续维护接口可降低协调成本。
 计划已获用户审阅通过；按executing-plans原地执行，Tasks 1–4已实现并提交，Task 5进行中。
-48项相关测试通过（2条既有imputer警告）；Luna/medium只读代码审查和全仓回归中，未训练。
+50项相关测试通过（2条既有imputer警告）；Luna/medium只读审查发现的启动失败状态问题
+已补测试RED→GREEN修复；修复后全仓回归中，未训练。
 一次全仓回归包含全部research测试，避免另跑整套research后重复验证；改动后的源码仍需重新验证。
