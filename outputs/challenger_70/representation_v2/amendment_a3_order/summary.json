@@ -1,0 +1,38 @@
+{
+  "artifact_bytes_before_summary": 695381,
+  "copied_checkpoint_bytes": 0,
+  "encoding_and_head_seconds": 67.18882110001869,
+  "macro_metrics": {
+    "f": {
+      "average_precision": 0.4631769843392886,
+      "raw_logit_bce": 0.3701533041579585
+    },
+    "fs": {
+      "average_precision": 0.48405062753771966,
+      "raw_logit_bce": 0.36473555503462823
+    },
+    "l": {
+      "average_precision": 0.5405032663646554,
+      "raw_logit_bce": 0.26956393864841455
+    },
+    "prior": {
+      "average_precision": 0.12253789025885069,
+      "raw_logit_bce": 0.37346664954199316
+    },
+    "r": {
+      "average_precision": 0.35289011078451926,
+      "raw_logit_bce": 0.4576481991571419
+    }
+  },
+  "neural_optimizer_steps": 18000,
+  "outer_calls": 0,
+  "passed": false,
+  "persistent_token_cache_bytes": 0,
+  "positive_folds": {
+    "fs": 1,
+    "l": 1
+  },
+  "protected_unchanged": true,
+  "status": "S7_NO_SUPPORTED_ORDER_READOUT",
+  "wall_seconds": 370.6926303000073
+}

@@ -69,7 +69,7 @@ GPU初始空闲>=1280MiB且峰值<=初始空闲80%。CPU线程4，CUDA可用则�
 
 - [x] Task 1：新增order_probe与回归测试；缺失模块RED→7项GREEN，补充冻结编码回归。测试mask/空输入、
   shuffle保持边际、train-only moments、冻结、可表达顺序、CPU/CUDA容差和gate。
-- [ ] Task 2：接入现有crossfit/source/protection；审查隔离、预算和输出身份；代码/规范先commit。
+- [x] Task 2：接入现有crossfit/source/protection；审查隔离、预算和输出身份；代码/规范先commit。
 - [ ] Task 3：运行三折，记录正负结果，更新README/registry/报告，相关回归后commit。
 
 Pre-flight：TokenBag→编码→normalizer→bins→head接口必须保留真实时间及缺失；
@@ -80,3 +80,10 @@ Review focus：health进入normalizer；shuffle改变coverage；空bag触发cove
 
 Luna/medium独立只读复核：无实质阻塞。既有实际producer图与手工head图结合使用；
 输出上限在fold写完后复核（检测超额而非操作系统硬配额），小型JSON预计远低于16MiB。
+
+执行完成：`S7_NO_SUPPORTED_ORDER_READOUT`。F/FS/L的macro AP为.463177/.484051/.540503，
+F仅1/3折胜过L与FS；F raw BCE .370153，对照L .269564。收敛标记亦未通过，
+不延长训练。370.69秒墙钟、67.19秒编码/head计时、约679KiB证据，无缓存/encoder副本。
+129项相关测试通过，保护快照不变；结果见输出report.md。没有新事件F1，不更新dist。
+下一方向改为受控目标域适配与事件级收益检验，不限制后续模型复杂度。
+最新用户纪律：正式事件F1相对当前发布版提高>.03先请审批，通过后更新dist及接口，再迭代。

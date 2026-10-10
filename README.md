@@ -60,6 +60,11 @@ SHA-256 锚定，位于 `models/event_stack/160afaf81debf1ee/`；指针为
 项目 F1≥0.65 目标与技术/推荐晋级门。**该数字是反复开发后的 nested-CV 开发证据，不是
 独立测试集泛化承诺。**
 
+后续以实际事件F1≥0.70为研究目标，不给模型复杂度设全局硬上限，但必须检查跨人泛化及
+过拟合。正式可比事件F1相对当前发布版提高**超过0.03**时，先提交证据供人工审批，
+批准后再更新`dist/`可执行推理程序、模型和接口文档，随后继续迭代。
+当前首次触发线为>0.6814285714；候选AP、inner F1或GT-aware诊断不作为发布成绩。
+
 ## 3. 泄漏安全评估协议
 
 当前全部正式数字来自**严格 subject-disjoint nested 五折**（`evaluate_event_stack.py`）：
@@ -426,3 +431,11 @@ FD联合59TP/13FP、.69822，仅1/3折改善。候选AP虽然提高，但没有�
 Installed-artifact hashes, the independent frozen-blend identity check, and
 the formal non-exclusive mechanism legend are recorded in
 [`docs/challenge_e04_validation_addendum.md`](docs/challenge_e04_validation_addendum.md).
+
+[S7时间顺序对照](outputs/challenger_70/representation_v2/amendment_a3_order/report.md)已完成，未通过gate。
+冻结同一FD encoder，训练513参数时序读出，并保留随机encoder与打乱token顺序对照。
+三折candidate AP：有序FD .46318、打乱 .48405、原133D线性读出 .54050；有序仅1/3折改善，
+raw BCE亦恶化，部分训练轨迹收敛未决。关闭本配置，不将首折的提升推广为总体结论。
+约6.2分钟、18000个小head优化步、约679KiB证据，零新token缓存、正式F1及dist均不变。
+下一方向是受控的目标域事件适配/源目标联合监督，以严格nested事件F1和TP/FP作主指标，
+不再仅靠冻结encoder上的池化或固定概率融合追分；更大TCN/Transformer并未被排除。
