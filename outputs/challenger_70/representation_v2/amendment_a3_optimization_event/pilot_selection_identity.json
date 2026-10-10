@@ -1,0 +1,9 @@
+{
+  "chosen": "larger_batch",
+  "options": {
+    "batch_size": 32,
+    "clip_norm": 1.0
+  },
+  "pilot_plan_sha256": "5155f3b4cd654301380e27dfdb19dbff1f3b8c23a981465f12dcec007c6e30ab",
+  "selection_sha256": "9b06161702afb2eae4677ac071a862b0bc5380b844fa94269289daa3ddcbd1ff"
+}

@@ -59,8 +59,8 @@ source checkpoint不复制；NO DIST / NO RELEASE / NO PROMOTION。
 
 - [x] 1. TDD：裁剪开关的实际梯度行为、batch/预算边界、预注册选择规则；默认S8不变。
 - [x] 2. 独立审查、代码/规范commit，执行S10，封存选择及证据。
-- [ ] 3. 依选择执行或跳过S11；记录失败而不在health追加配置。
-- [ ] 4. 全仓回归、README/registry、清理新增临时文件、commit。
+- [x] 3. 依选择执行或跳过S11；记录失败而不在health追加配置。
+- [x] 4. 全仓回归、README/registry、清理新增临时文件、commit。
 
 Ruling：自主授权覆盖本有界两配置研究；本文件兼作规范/计划/台账。代价：训练gate可能
 筛掉真正泛化有益的配置，但优先避免在尚未优化好的模型上消耗完整health/outer评估。
@@ -77,3 +77,8 @@ source BCE下降.004561）。固定规则选择larger_batch。无health/outer评
 证据与selection hash先commit，随后S11仅验证batch32/norm1；全仓回归运行中。
 结果封存20f4bc2；Luna独立复核数字与选择规则无阻塞。S11已启动，未出事件结论。
 仅当S11完整失败，后续按gesture_morphology条件后备规范更换表示方式；不在health追参。
+
+S11完成：66TP/16FP/31FN，inner F1 .737430（B .721311/R .741935），2/3折胜B，
+但未胜冻结FD对照，固定gate失败。关闭此优化配置；触发S12条件后备。
+56.01分钟，12分区/12000步，约16.94MiB证据、零token缓存，发布保护不变。
+全仓回归704 passed、5 skipped、15条既有警告，1234.55秒；此证明不覆盖后续S12代码。

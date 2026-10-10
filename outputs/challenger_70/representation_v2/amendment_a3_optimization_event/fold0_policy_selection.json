@@ -1,0 +1,941 @@
+{
+  "baseline_source_sha256": "170c600eb0cd1f5d81d254332e509183df202ce2d38f7409fdbdafb4fa64b19b",
+  "fold": 0,
+  "graph": {
+    "p0_base_verifier": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21008",
+        "HNU21012",
+        "HNU21016",
+        "HNU21017",
+        "HNU21021",
+        "HNU21023",
+        "HNU21031",
+        "HNU21032",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": [
+        "p0_candidates"
+      ]
+    },
+    "p0_candidates": {
+      "fit_subjects": [],
+      "parents": [
+        "p0_macro_oof0",
+        "p0_macro_oof1",
+        "p0_macro_oof2",
+        "p0_macro_oof3",
+        "p0_macro_refit",
+        "p0_micro_oof0",
+        "p0_micro_oof1",
+        "p0_micro_oof2",
+        "p0_micro_oof3",
+        "p0_micro_refit",
+        "p0_threshold"
+      ]
+    },
+    "p0_f_verifier": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21008",
+        "HNU21012",
+        "HNU21016",
+        "HNU21017",
+        "HNU21021",
+        "HNU21023",
+        "HNU21031",
+        "HNU21032",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": [
+        "p0_candidates",
+        "p0_source",
+        "p0_target_adaptation"
+      ]
+    },
+    "p0_macro_oof0": {
+      "fit_subjects": [
+        "HNU21008",
+        "HNU21012",
+        "HNU21016",
+        "HNU21017",
+        "HNU21021",
+        "HNU21023",
+        "HNU21032",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p0_macro_oof1": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21008",
+        "HNU21012",
+        "HNU21017",
+        "HNU21021",
+        "HNU21023",
+        "HNU21031",
+        "HNU21041"
+      ],
+      "parents": []
+    },
+    "p0_macro_oof2": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21012",
+        "HNU21016",
+        "HNU21021",
+        "HNU21023",
+        "HNU21031",
+        "HNU21032",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p0_macro_oof3": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21008",
+        "HNU21016",
+        "HNU21017",
+        "HNU21031",
+        "HNU21032",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p0_macro_refit": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21008",
+        "HNU21012",
+        "HNU21016",
+        "HNU21017",
+        "HNU21021",
+        "HNU21023",
+        "HNU21031",
+        "HNU21032",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p0_micro_oof0": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21008",
+        "HNU21012",
+        "HNU21016",
+        "HNU21021",
+        "HNU21023",
+        "HNU21031",
+        "HNU21032"
+      ],
+      "parents": []
+    },
+    "p0_micro_oof1": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21008",
+        "HNU21012",
+        "HNU21017",
+        "HNU21021",
+        "HNU21023",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p0_micro_oof2": {
+      "fit_subjects": [
+        "HNU21008",
+        "HNU21012",
+        "HNU21016",
+        "HNU21017",
+        "HNU21023",
+        "HNU21031",
+        "HNU21032",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p0_micro_oof3": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21016",
+        "HNU21017",
+        "HNU21021",
+        "HNU21031",
+        "HNU21032",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p0_micro_refit": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21008",
+        "HNU21012",
+        "HNU21016",
+        "HNU21017",
+        "HNU21021",
+        "HNU21023",
+        "HNU21031",
+        "HNU21032",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p0_r_verifier": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21008",
+        "HNU21012",
+        "HNU21016",
+        "HNU21017",
+        "HNU21021",
+        "HNU21023",
+        "HNU21031",
+        "HNU21032",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": [
+        "p0_candidates",
+        "p0_source"
+      ]
+    },
+    "p0_score": {
+      "fit_subjects": [],
+      "parents": [
+        "p0_base_verifier",
+        "p0_r_verifier",
+        "p0_f_verifier"
+      ]
+    },
+    "p0_source": {
+      "fit_subjects": [
+        "FD-R-0",
+        "FD-R-1",
+        "FD-R-10",
+        "FD-R-11",
+        "FD-R-12",
+        "FD-R-13",
+        "FD-R-14",
+        "FD-R-15",
+        "FD-R-16",
+        "FD-R-17",
+        "FD-R-18",
+        "FD-R-2",
+        "FD-R-20",
+        "FD-R-21",
+        "FD-R-22",
+        "FD-R-24",
+        "FD-R-26",
+        "FD-R-29",
+        "FD-R-30",
+        "FD-R-31",
+        "FD-R-32",
+        "FD-R-33",
+        "FD-R-4",
+        "FD-R-5",
+        "FD-R-7",
+        "FD-R-8",
+        "FD-R-9"
+      ],
+      "parents": []
+    },
+    "p0_target_adaptation": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21008",
+        "HNU21012",
+        "HNU21016",
+        "HNU21017",
+        "HNU21021",
+        "HNU21023",
+        "HNU21031",
+        "HNU21032",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": [
+        "p0_source",
+        "p0_candidates"
+      ]
+    },
+    "p0_threshold": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21008",
+        "HNU21012",
+        "HNU21016",
+        "HNU21017",
+        "HNU21021",
+        "HNU21023",
+        "HNU21031",
+        "HNU21032",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": [
+        "p0_micro_oof0",
+        "p0_micro_oof1",
+        "p0_micro_oof2",
+        "p0_micro_oof3"
+      ]
+    },
+    "p1_base_verifier": {
+      "fit_subjects": [
+        "HNU21008",
+        "HNU21014",
+        "HNU21016",
+        "HNU21017",
+        "HNU21026",
+        "HNU21029",
+        "HNU21031",
+        "HNU21032",
+        "HNU21034",
+        "HNU21038",
+        "HNU21041"
+      ],
+      "parents": [
+        "p1_candidates"
+      ]
+    },
+    "p1_candidates": {
+      "fit_subjects": [],
+      "parents": [
+        "p1_macro_oof0",
+        "p1_macro_oof1",
+        "p1_macro_oof2",
+        "p1_macro_oof3",
+        "p1_macro_refit",
+        "p1_micro_oof0",
+        "p1_micro_oof1",
+        "p1_micro_oof2",
+        "p1_micro_oof3",
+        "p1_micro_refit",
+        "p1_threshold"
+      ]
+    },
+    "p1_f_verifier": {
+      "fit_subjects": [
+        "HNU21008",
+        "HNU21014",
+        "HNU21016",
+        "HNU21017",
+        "HNU21026",
+        "HNU21029",
+        "HNU21031",
+        "HNU21032",
+        "HNU21034",
+        "HNU21038",
+        "HNU21041"
+      ],
+      "parents": [
+        "p1_candidates",
+        "p1_source",
+        "p1_target_adaptation"
+      ]
+    },
+    "p1_macro_oof0": {
+      "fit_subjects": [
+        "HNU21008",
+        "HNU21014",
+        "HNU21016",
+        "HNU21017",
+        "HNU21029",
+        "HNU21032",
+        "HNU21034",
+        "HNU21038"
+      ],
+      "parents": []
+    },
+    "p1_macro_oof1": {
+      "fit_subjects": [
+        "HNU21008",
+        "HNU21014",
+        "HNU21017",
+        "HNU21026",
+        "HNU21029",
+        "HNU21031",
+        "HNU21034",
+        "HNU21041"
+      ],
+      "parents": []
+    },
+    "p1_macro_oof2": {
+      "fit_subjects": [
+        "HNU21014",
+        "HNU21016",
+        "HNU21026",
+        "HNU21029",
+        "HNU21031",
+        "HNU21032",
+        "HNU21034",
+        "HNU21038",
+        "HNU21041"
+      ],
+      "parents": []
+    },
+    "p1_macro_oof3": {
+      "fit_subjects": [
+        "HNU21008",
+        "HNU21016",
+        "HNU21017",
+        "HNU21026",
+        "HNU21031",
+        "HNU21032",
+        "HNU21038",
+        "HNU21041"
+      ],
+      "parents": []
+    },
+    "p1_macro_refit": {
+      "fit_subjects": [
+        "HNU21008",
+        "HNU21014",
+        "HNU21016",
+        "HNU21017",
+        "HNU21026",
+        "HNU21029",
+        "HNU21031",
+        "HNU21032",
+        "HNU21034",
+        "HNU21038",
+        "HNU21041"
+      ],
+      "parents": []
+    },
+    "p1_micro_oof0": {
+      "fit_subjects": [
+        "HNU21008",
+        "HNU21014",
+        "HNU21016",
+        "HNU21017",
+        "HNU21029",
+        "HNU21032",
+        "HNU21034",
+        "HNU21038"
+      ],
+      "parents": []
+    },
+    "p1_micro_oof1": {
+      "fit_subjects": [
+        "HNU21008",
+        "HNU21014",
+        "HNU21026",
+        "HNU21029",
+        "HNU21031",
+        "HNU21032",
+        "HNU21034",
+        "HNU21041"
+      ],
+      "parents": []
+    },
+    "p1_micro_oof2": {
+      "fit_subjects": [
+        "HNU21008",
+        "HNU21014",
+        "HNU21016",
+        "HNU21017",
+        "HNU21026",
+        "HNU21031",
+        "HNU21034",
+        "HNU21038",
+        "HNU21041"
+      ],
+      "parents": []
+    },
+    "p1_micro_oof3": {
+      "fit_subjects": [
+        "HNU21016",
+        "HNU21017",
+        "HNU21026",
+        "HNU21029",
+        "HNU21031",
+        "HNU21032",
+        "HNU21038",
+        "HNU21041"
+      ],
+      "parents": []
+    },
+    "p1_micro_refit": {
+      "fit_subjects": [
+        "HNU21008",
+        "HNU21014",
+        "HNU21016",
+        "HNU21017",
+        "HNU21026",
+        "HNU21029",
+        "HNU21031",
+        "HNU21032",
+        "HNU21034",
+        "HNU21038",
+        "HNU21041"
+      ],
+      "parents": []
+    },
+    "p1_r_verifier": {
+      "fit_subjects": [
+        "HNU21008",
+        "HNU21014",
+        "HNU21016",
+        "HNU21017",
+        "HNU21026",
+        "HNU21029",
+        "HNU21031",
+        "HNU21032",
+        "HNU21034",
+        "HNU21038",
+        "HNU21041"
+      ],
+      "parents": [
+        "p1_candidates",
+        "p1_source"
+      ]
+    },
+    "p1_score": {
+      "fit_subjects": [],
+      "parents": [
+        "p1_base_verifier",
+        "p1_r_verifier",
+        "p1_f_verifier"
+      ]
+    },
+    "p1_source": {
+      "fit_subjects": [
+        "FD-R-0",
+        "FD-R-1",
+        "FD-R-10",
+        "FD-R-11",
+        "FD-R-12",
+        "FD-R-13",
+        "FD-R-14",
+        "FD-R-15",
+        "FD-R-16",
+        "FD-R-17",
+        "FD-R-18",
+        "FD-R-2",
+        "FD-R-20",
+        "FD-R-21",
+        "FD-R-22",
+        "FD-R-24",
+        "FD-R-26",
+        "FD-R-29",
+        "FD-R-30",
+        "FD-R-31",
+        "FD-R-32",
+        "FD-R-33",
+        "FD-R-4",
+        "FD-R-5",
+        "FD-R-7",
+        "FD-R-8",
+        "FD-R-9"
+      ],
+      "parents": []
+    },
+    "p1_target_adaptation": {
+      "fit_subjects": [
+        "HNU21008",
+        "HNU21014",
+        "HNU21016",
+        "HNU21017",
+        "HNU21026",
+        "HNU21029",
+        "HNU21031",
+        "HNU21032",
+        "HNU21034",
+        "HNU21038",
+        "HNU21041"
+      ],
+      "parents": [
+        "p1_source",
+        "p1_candidates"
+      ]
+    },
+    "p1_threshold": {
+      "fit_subjects": [
+        "HNU21008",
+        "HNU21014",
+        "HNU21016",
+        "HNU21017",
+        "HNU21026",
+        "HNU21029",
+        "HNU21031",
+        "HNU21032",
+        "HNU21034",
+        "HNU21038",
+        "HNU21041"
+      ],
+      "parents": [
+        "p1_micro_oof0",
+        "p1_micro_oof1",
+        "p1_micro_oof2",
+        "p1_micro_oof3"
+      ]
+    },
+    "p2_base_verifier": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21012",
+        "HNU21014",
+        "HNU21021",
+        "HNU21023",
+        "HNU21026",
+        "HNU21029",
+        "HNU21034",
+        "HNU21038",
+        "HNU212020"
+      ],
+      "parents": [
+        "p2_candidates"
+      ]
+    },
+    "p2_candidates": {
+      "fit_subjects": [],
+      "parents": [
+        "p2_macro_oof0",
+        "p2_macro_oof1",
+        "p2_macro_oof2",
+        "p2_macro_oof3",
+        "p2_macro_refit",
+        "p2_micro_oof0",
+        "p2_micro_oof1",
+        "p2_micro_oof2",
+        "p2_micro_oof3",
+        "p2_micro_refit",
+        "p2_threshold"
+      ]
+    },
+    "p2_f_verifier": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21012",
+        "HNU21014",
+        "HNU21021",
+        "HNU21023",
+        "HNU21026",
+        "HNU21029",
+        "HNU21034",
+        "HNU21038",
+        "HNU212020"
+      ],
+      "parents": [
+        "p2_candidates",
+        "p2_source",
+        "p2_target_adaptation"
+      ]
+    },
+    "p2_macro_oof0": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21012",
+        "HNU21014",
+        "HNU21021",
+        "HNU21023",
+        "HNU21029",
+        "HNU21034",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p2_macro_oof1": {
+      "fit_subjects": [
+        "HNU21012",
+        "HNU21014",
+        "HNU21021",
+        "HNU21023",
+        "HNU21026",
+        "HNU21029",
+        "HNU21034",
+        "HNU21038"
+      ],
+      "parents": []
+    },
+    "p2_macro_oof2": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21014",
+        "HNU21026",
+        "HNU21029",
+        "HNU21034",
+        "HNU21038",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p2_macro_oof3": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21012",
+        "HNU21021",
+        "HNU21023",
+        "HNU21026",
+        "HNU21038",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p2_macro_refit": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21012",
+        "HNU21014",
+        "HNU21021",
+        "HNU21023",
+        "HNU21026",
+        "HNU21029",
+        "HNU21034",
+        "HNU21038",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p2_micro_oof0": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21012",
+        "HNU21014",
+        "HNU21021",
+        "HNU21023",
+        "HNU21029",
+        "HNU21034",
+        "HNU21038"
+      ],
+      "parents": []
+    },
+    "p2_micro_oof1": {
+      "fit_subjects": [
+        "HNU21012",
+        "HNU21014",
+        "HNU21021",
+        "HNU21023",
+        "HNU21026",
+        "HNU21029",
+        "HNU21034",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p2_micro_oof2": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21012",
+        "HNU21026",
+        "HNU21029",
+        "HNU21034",
+        "HNU21038",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p2_micro_oof3": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21014",
+        "HNU21021",
+        "HNU21023",
+        "HNU21026",
+        "HNU21038",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p2_micro_refit": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21012",
+        "HNU21014",
+        "HNU21021",
+        "HNU21023",
+        "HNU21026",
+        "HNU21029",
+        "HNU21034",
+        "HNU21038",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p2_r_verifier": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21012",
+        "HNU21014",
+        "HNU21021",
+        "HNU21023",
+        "HNU21026",
+        "HNU21029",
+        "HNU21034",
+        "HNU21038",
+        "HNU212020"
+      ],
+      "parents": [
+        "p2_candidates",
+        "p2_source"
+      ]
+    },
+    "p2_score": {
+      "fit_subjects": [],
+      "parents": [
+        "p2_base_verifier",
+        "p2_r_verifier",
+        "p2_f_verifier"
+      ]
+    },
+    "p2_source": {
+      "fit_subjects": [
+        "FD-R-0",
+        "FD-R-1",
+        "FD-R-10",
+        "FD-R-11",
+        "FD-R-12",
+        "FD-R-13",
+        "FD-R-14",
+        "FD-R-15",
+        "FD-R-16",
+        "FD-R-17",
+        "FD-R-18",
+        "FD-R-2",
+        "FD-R-20",
+        "FD-R-21",
+        "FD-R-22",
+        "FD-R-24",
+        "FD-R-26",
+        "FD-R-29",
+        "FD-R-30",
+        "FD-R-31",
+        "FD-R-32",
+        "FD-R-33",
+        "FD-R-4",
+        "FD-R-5",
+        "FD-R-7",
+        "FD-R-8",
+        "FD-R-9"
+      ],
+      "parents": []
+    },
+    "p2_target_adaptation": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21012",
+        "HNU21014",
+        "HNU21021",
+        "HNU21023",
+        "HNU21026",
+        "HNU21029",
+        "HNU21034",
+        "HNU21038",
+        "HNU212020"
+      ],
+      "parents": [
+        "p2_source",
+        "p2_candidates"
+      ]
+    },
+    "p2_threshold": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21012",
+        "HNU21014",
+        "HNU21021",
+        "HNU21023",
+        "HNU21026",
+        "HNU21029",
+        "HNU21034",
+        "HNU21038",
+        "HNU212020"
+      ],
+      "parents": [
+        "p2_micro_oof0",
+        "p2_micro_oof1",
+        "p2_micro_oof2",
+        "p2_micro_oof3"
+      ]
+    },
+    "policy": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21008",
+        "HNU21012",
+        "HNU21014",
+        "HNU21016",
+        "HNU21017",
+        "HNU21021",
+        "HNU21023",
+        "HNU21026",
+        "HNU21029",
+        "HNU21031",
+        "HNU21032",
+        "HNU21034",
+        "HNU21038",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": [
+        "p0_score",
+        "p1_score",
+        "p2_score"
+      ]
+    }
+  },
+  "policies": {
+    "b": {
+      "admission": {
+        "max_candidates_per_subject": 8,
+        "nms_iou": 0.3,
+        "threshold": 0.35
+      },
+      "selection_metrics": {
+        "f1": 0.6713286713286714,
+        "n_pred": 78,
+        "n_tp": 48,
+        "n_true": 65,
+        "ppv": 0.6153846153846154,
+        "sensitivity": 0.7384615384615385
+      },
+      "threshold": 0.5639396181364547
+    },
+    "f": {
+      "admission": {
+        "max_candidates_per_subject": 8,
+        "nms_iou": 0.3,
+        "threshold": 0.2
+      },
+      "selection_metrics": {
+        "f1": 0.6608695652173914,
+        "n_pred": 50,
+        "n_tp": 38,
+        "n_true": 65,
+        "ppv": 0.76,
+        "sensitivity": 0.5846153846153846
+      },
+      "threshold": 0.6916900705521514
+    },
+    "r": {
+      "admission": {
+        "max_candidates_per_subject": 8,
+        "nms_iou": 0.3,
+        "threshold": 0.2
+      },
+      "selection_metrics": {
+        "f1": 0.6666666666666665,
+        "n_pred": 52,
+        "n_tp": 39,
+        "n_true": 65,
+        "ppv": 0.75,
+        "sensitivity": 0.6
+      },
+      "threshold": 0.7092894955022175
+    }
+  }
+}

@@ -1,0 +1,963 @@
+{
+  "baseline_source_sha256": "02ad28ab06abe38962ddbd340d027c20ffedcc9730412c0361feb268720aaedf",
+  "candidate_metrics": {
+    "b": {
+      "ap": 0.8755023291441526,
+      "bce": 0.210839961143371
+    },
+    "f": {
+      "ap": 0.8630120765270071,
+      "bce": 0.19776512632861623
+    },
+    "r": {
+      "ap": 0.8673724901856732,
+      "bce": 0.19558750545736042
+    }
+  },
+  "checks": {
+    "integrity": true,
+    "resource": true
+  },
+  "events": {
+    "b": {
+      "f1": 0.8055555555555555,
+      "n_pred": 40,
+      "n_tp": 29,
+      "n_true": 32,
+      "ppv": 0.725,
+      "sensitivity": 0.90625
+    },
+    "f": {
+      "f1": 0.7619047619047619,
+      "n_pred": 31,
+      "n_tp": 24,
+      "n_true": 32,
+      "ppv": 0.7741935483870968,
+      "sensitivity": 0.75
+    },
+    "r": {
+      "f1": 0.7936507936507936,
+      "n_pred": 31,
+      "n_tp": 25,
+      "n_true": 32,
+      "ppv": 0.8064516129032258,
+      "sensitivity": 0.78125
+    }
+  },
+  "fold": 0,
+  "outer_calls": 0,
+  "predictions": {
+    "b": [
+      {
+        "end_ms": 1784541279590,
+        "sid": "sensorData-1784557876964-97236e0d0dda409f90e8088c128caa77",
+        "start_ms": 1784539929590
+      },
+      {
+        "end_ms": 1784544309883,
+        "sid": "sensorData-1784562356253-23edff73a65e4e9583c963c5a6ee26dd",
+        "start_ms": 1784542524883
+      },
+      {
+        "end_ms": 1784545502383,
+        "sid": "sensorData-1784562356253-23edff73a65e4e9583c963c5a6ee26dd",
+        "start_ms": 1784545179883
+      },
+      {
+        "end_ms": 1784542580359,
+        "sid": "sensorData-1784567665729-5d3c6ed918484df7b5eb7726ff647beb",
+        "start_ms": 1784542100359
+      },
+      {
+        "end_ms": 1784628241213,
+        "sid": "sensorData-1784640571451-e264b5ee5adf4d50ae753bc39dc3dcad",
+        "start_ms": 1784626096213
+      },
+      {
+        "end_ms": 1784605634413,
+        "sid": "sensorData-1784641518041-31967ca1d994490c90b03f88d9ba57ed",
+        "start_ms": 1784602056913
+      },
+      {
+        "end_ms": 1784605491913,
+        "sid": "sensorData-1784641518041-31967ca1d994490c90b03f88d9ba57ed",
+        "start_ms": 1784604621913
+      },
+      {
+        "end_ms": 1784633817203,
+        "sid": "sensorData-1784647263099-beadab420ca04857b743d1deb554f1d4",
+        "start_ms": 1784633359703
+      },
+      {
+        "end_ms": 1784635602203,
+        "sid": "sensorData-1784647263099-beadab420ca04857b743d1deb554f1d4",
+        "start_ms": 1784635317203
+      },
+      {
+        "end_ms": 1784636539703,
+        "sid": "sensorData-1784647263099-beadab420ca04857b743d1deb554f1d4",
+        "start_ms": 1784636014703
+      },
+      {
+        "end_ms": 1784626433617,
+        "sid": "sensorData-1784648175447-fa8f54edb75b42949e3e059d476899e7",
+        "start_ms": 1784625428617
+      },
+      {
+        "end_ms": 1784608849465,
+        "sid": "sensorData-1784648905124-287c59380f584fef8364189dadb39fdc",
+        "start_ms": 1784607814465
+      },
+      {
+        "end_ms": 1784629756587,
+        "sid": "sensorData-1784654301283-eab1138256c14136aec116bcc5c5400a",
+        "start_ms": 1784628736587
+      },
+      {
+        "end_ms": 1784716273833,
+        "sid": "sensorData-1784727895335-1d34fbbcbb05480fbd6d18dfc1ad5631",
+        "start_ms": 1784715208833
+      },
+      {
+        "end_ms": 1784694836318,
+        "sid": "sensorData-1784729012073-46c2028b7ab941bc8cef52c90c6e6a68",
+        "start_ms": 1784693951318
+      },
+      {
+        "end_ms": 1784718333568,
+        "sid": "sensorData-1784730509247-4d91b6fa36324de78c9bb59c4041467b",
+        "start_ms": 1784717853568
+      },
+      {
+        "end_ms": 1784714735180,
+        "sid": "sensorData-1784731216032-d567df6ba7734b6b87195b5f35b17de0",
+        "start_ms": 1784713265180
+      },
+      {
+        "end_ms": 1784691969318,
+        "sid": "sensorData-1784732185290-b24eceacb4b54078b26a626a833c2529",
+        "start_ms": 1784690934318
+      },
+      {
+        "end_ms": 1784713415718,
+        "sid": "sensorData-1784734330913-e9a36d505321421994b62511882d6f50",
+        "start_ms": 1784711525718
+      },
+      {
+        "end_ms": 1784715305718,
+        "sid": "sensorData-1784734330913-e9a36d505321421994b62511882d6f50",
+        "start_ms": 1784714465718
+      },
+      {
+        "end_ms": 1784691244621,
+        "sid": "sensorData-1784736831890-65da5e071b7f45e19907f9eebd1e1fe3",
+        "start_ms": 1784690584621
+      },
+      {
+        "end_ms": 1784692969621,
+        "sid": "sensorData-1784736831890-65da5e071b7f45e19907f9eebd1e1fe3",
+        "start_ms": 1784692474621
+      },
+      {
+        "end_ms": 1784779277837,
+        "sid": "sensorData-1784793259633-430434ae1ca14879ae85e6421958cd77",
+        "start_ms": 1784778992837
+      },
+      {
+        "end_ms": 1784692194885,
+        "sid": "sensorData-1784793754770-4037b9b85a804e14ba9e99642ebda922",
+        "start_ms": 1784691444885
+      },
+      {
+        "end_ms": 1784779354066,
+        "sid": "sensorData-1784794865251-a0d8e49fb5ff4d438b7ecdf7689593a7",
+        "start_ms": 1784777089066
+      },
+      {
+        "end_ms": 1784783256860,
+        "sid": "sensorData-1784795055470-8ed34013b2e040d48e62382b6f66bc6c",
+        "start_ms": 1784781501860
+      },
+      {
+        "end_ms": 1784776605932,
+        "sid": "sensorData-1784801556759-9ff0f6b2c13e4c458d2f43b6b1c5980c",
+        "start_ms": 1784776110932
+      },
+      {
+        "end_ms": 1784778210932,
+        "sid": "sensorData-1784801556759-9ff0f6b2c13e4c458d2f43b6b1c5980c",
+        "start_ms": 1784777700932
+      },
+      {
+        "end_ms": 1784802847269,
+        "sid": "sensorData-1784808852096-f968ee73cba5454ba3891c5d7769d6c7",
+        "start_ms": 1784801977269
+      },
+      {
+        "end_ms": 1784805952269,
+        "sid": "sensorData-1784808852096-f968ee73cba5454ba3891c5d7769d6c7",
+        "start_ms": 1784804557269
+      },
+      {
+        "end_ms": 1784779240460,
+        "sid": "sensorData-1784813273801-159e050987624ca097bcad333aac7e8a",
+        "start_ms": 1784777680460
+      },
+      {
+        "end_ms": 1784781553168,
+        "sid": "sensorData-1784818992887-99ffd6fce5b442a4b72770c879a0bc4b",
+        "start_ms": 1784780023168
+      },
+      {
+        "end_ms": 1784868551958,
+        "sid": "sensorData-1784879634132-9c00dc7e9d5f4c8b9a69417d98d57e8a",
+        "start_ms": 1784867351958
+      },
+      {
+        "end_ms": 1784865313817,
+        "sid": "sensorData-1784882482281-87c2d94a751c4bb6b860893a40238fcc",
+        "start_ms": 1784864443817
+      },
+      {
+        "end_ms": 1784869508580,
+        "sid": "sensorData-1784906413835-fcea89864f8c48658ef2460ad51556c4",
+        "start_ms": 1784867843580
+      },
+      {
+        "end_ms": 1785060929408,
+        "sid": "sensorData-1785131466358-f8bd197a13e547e8b238ca20f20917d6",
+        "start_ms": 1785059084408
+      },
+      {
+        "end_ms": 1785039034931,
+        "sid": "sensorData-1785135131382-1db2886a647849f0b8dc6e736de84bc5",
+        "start_ms": 1785036784931
+      },
+      {
+        "end_ms": 1784974579786,
+        "sid": "sensorData-1785137096144-1d57a687bffd41929d5ae145e2004d62",
+        "start_ms": 1784972637286
+      },
+      {
+        "end_ms": 1784946574013,
+        "sid": "sensorData-1785140203902-bc688b87b55a4fb9a0d6bc1a55a110d2",
+        "start_ms": 1784946229013
+      },
+      {
+        "end_ms": 1784888807962,
+        "sid": "sensorData-1785142218488-10a366d8516b4418929987b08d975130",
+        "start_ms": 1784888177962
+      }
+    ],
+    "f": [
+      {
+        "end_ms": 1784541279590,
+        "sid": "sensorData-1784557876964-97236e0d0dda409f90e8088c128caa77",
+        "start_ms": 1784539929590
+      },
+      {
+        "end_ms": 1784544309883,
+        "sid": "sensorData-1784562356253-23edff73a65e4e9583c963c5a6ee26dd",
+        "start_ms": 1784542524883
+      },
+      {
+        "end_ms": 1784545502383,
+        "sid": "sensorData-1784562356253-23edff73a65e4e9583c963c5a6ee26dd",
+        "start_ms": 1784545179883
+      },
+      {
+        "end_ms": 1784542580359,
+        "sid": "sensorData-1784567665729-5d3c6ed918484df7b5eb7726ff647beb",
+        "start_ms": 1784542100359
+      },
+      {
+        "end_ms": 1784628241213,
+        "sid": "sensorData-1784640571451-e264b5ee5adf4d50ae753bc39dc3dcad",
+        "start_ms": 1784626096213
+      },
+      {
+        "end_ms": 1784605634413,
+        "sid": "sensorData-1784641518041-31967ca1d994490c90b03f88d9ba57ed",
+        "start_ms": 1784602056913
+      },
+      {
+        "end_ms": 1784605491913,
+        "sid": "sensorData-1784641518041-31967ca1d994490c90b03f88d9ba57ed",
+        "start_ms": 1784604621913
+      },
+      {
+        "end_ms": 1784605532097,
+        "sid": "sensorData-1784643716053-b9bf48fe4dfd415b992e003ccdeac4a2",
+        "start_ms": 1784604692097
+      },
+      {
+        "end_ms": 1784635167203,
+        "sid": "sensorData-1784647263099-beadab420ca04857b743d1deb554f1d4",
+        "start_ms": 1784634934703
+      },
+      {
+        "end_ms": 1784635602203,
+        "sid": "sensorData-1784647263099-beadab420ca04857b743d1deb554f1d4",
+        "start_ms": 1784635317203
+      },
+      {
+        "end_ms": 1784636539703,
+        "sid": "sensorData-1784647263099-beadab420ca04857b743d1deb554f1d4",
+        "start_ms": 1784636014703
+      },
+      {
+        "end_ms": 1784626433617,
+        "sid": "sensorData-1784648175447-fa8f54edb75b42949e3e059d476899e7",
+        "start_ms": 1784625428617
+      },
+      {
+        "end_ms": 1784608849465,
+        "sid": "sensorData-1784648905124-287c59380f584fef8364189dadb39fdc",
+        "start_ms": 1784607814465
+      },
+      {
+        "end_ms": 1784629756587,
+        "sid": "sensorData-1784654301283-eab1138256c14136aec116bcc5c5400a",
+        "start_ms": 1784628736587
+      },
+      {
+        "end_ms": 1784694836318,
+        "sid": "sensorData-1784729012073-46c2028b7ab941bc8cef52c90c6e6a68",
+        "start_ms": 1784693951318
+      },
+      {
+        "end_ms": 1784718333568,
+        "sid": "sensorData-1784730509247-4d91b6fa36324de78c9bb59c4041467b",
+        "start_ms": 1784717853568
+      },
+      {
+        "end_ms": 1784691969318,
+        "sid": "sensorData-1784732185290-b24eceacb4b54078b26a626a833c2529",
+        "start_ms": 1784690934318
+      },
+      {
+        "end_ms": 1784713415718,
+        "sid": "sensorData-1784734330913-e9a36d505321421994b62511882d6f50",
+        "start_ms": 1784711525718
+      },
+      {
+        "end_ms": 1784715305718,
+        "sid": "sensorData-1784734330913-e9a36d505321421994b62511882d6f50",
+        "start_ms": 1784714465718
+      },
+      {
+        "end_ms": 1784692969621,
+        "sid": "sensorData-1784736831890-65da5e071b7f45e19907f9eebd1e1fe3",
+        "start_ms": 1784692474621
+      },
+      {
+        "end_ms": 1784779277837,
+        "sid": "sensorData-1784793259633-430434ae1ca14879ae85e6421958cd77",
+        "start_ms": 1784778992837
+      },
+      {
+        "end_ms": 1784778210932,
+        "sid": "sensorData-1784801556759-9ff0f6b2c13e4c458d2f43b6b1c5980c",
+        "start_ms": 1784777700932
+      },
+      {
+        "end_ms": 1784802847269,
+        "sid": "sensorData-1784808852096-f968ee73cba5454ba3891c5d7769d6c7",
+        "start_ms": 1784801977269
+      },
+      {
+        "end_ms": 1784779240460,
+        "sid": "sensorData-1784813273801-159e050987624ca097bcad333aac7e8a",
+        "start_ms": 1784777680460
+      },
+      {
+        "end_ms": 1784868551958,
+        "sid": "sensorData-1784879634132-9c00dc7e9d5f4c8b9a69417d98d57e8a",
+        "start_ms": 1784867351958
+      },
+      {
+        "end_ms": 1784865313817,
+        "sid": "sensorData-1784882482281-87c2d94a751c4bb6b860893a40238fcc",
+        "start_ms": 1784864443817
+      },
+      {
+        "end_ms": 1785060929408,
+        "sid": "sensorData-1785131466358-f8bd197a13e547e8b238ca20f20917d6",
+        "start_ms": 1785059084408
+      },
+      {
+        "end_ms": 1785039034931,
+        "sid": "sensorData-1785135131382-1db2886a647849f0b8dc6e736de84bc5",
+        "start_ms": 1785036784931
+      },
+      {
+        "end_ms": 1784974579786,
+        "sid": "sensorData-1785137096144-1d57a687bffd41929d5ae145e2004d62",
+        "start_ms": 1784972637286
+      },
+      {
+        "end_ms": 1784946574013,
+        "sid": "sensorData-1785140203902-bc688b87b55a4fb9a0d6bc1a55a110d2",
+        "start_ms": 1784946229013
+      },
+      {
+        "end_ms": 1784888807962,
+        "sid": "sensorData-1785142218488-10a366d8516b4418929987b08d975130",
+        "start_ms": 1784888177962
+      }
+    ],
+    "r": [
+      {
+        "end_ms": 1784541279590,
+        "sid": "sensorData-1784557876964-97236e0d0dda409f90e8088c128caa77",
+        "start_ms": 1784539929590
+      },
+      {
+        "end_ms": 1784544309883,
+        "sid": "sensorData-1784562356253-23edff73a65e4e9583c963c5a6ee26dd",
+        "start_ms": 1784542524883
+      },
+      {
+        "end_ms": 1784545502383,
+        "sid": "sensorData-1784562356253-23edff73a65e4e9583c963c5a6ee26dd",
+        "start_ms": 1784545179883
+      },
+      {
+        "end_ms": 1784542580359,
+        "sid": "sensorData-1784567665729-5d3c6ed918484df7b5eb7726ff647beb",
+        "start_ms": 1784542100359
+      },
+      {
+        "end_ms": 1784628241213,
+        "sid": "sensorData-1784640571451-e264b5ee5adf4d50ae753bc39dc3dcad",
+        "start_ms": 1784626096213
+      },
+      {
+        "end_ms": 1784605634413,
+        "sid": "sensorData-1784641518041-31967ca1d994490c90b03f88d9ba57ed",
+        "start_ms": 1784602056913
+      },
+      {
+        "end_ms": 1784605491913,
+        "sid": "sensorData-1784641518041-31967ca1d994490c90b03f88d9ba57ed",
+        "start_ms": 1784604621913
+      },
+      {
+        "end_ms": 1784605532097,
+        "sid": "sensorData-1784643716053-b9bf48fe4dfd415b992e003ccdeac4a2",
+        "start_ms": 1784604692097
+      },
+      {
+        "end_ms": 1784635602203,
+        "sid": "sensorData-1784647263099-beadab420ca04857b743d1deb554f1d4",
+        "start_ms": 1784635317203
+      },
+      {
+        "end_ms": 1784636539703,
+        "sid": "sensorData-1784647263099-beadab420ca04857b743d1deb554f1d4",
+        "start_ms": 1784636014703
+      },
+      {
+        "end_ms": 1784626433617,
+        "sid": "sensorData-1784648175447-fa8f54edb75b42949e3e059d476899e7",
+        "start_ms": 1784625428617
+      },
+      {
+        "end_ms": 1784608849465,
+        "sid": "sensorData-1784648905124-287c59380f584fef8364189dadb39fdc",
+        "start_ms": 1784607814465
+      },
+      {
+        "end_ms": 1784629756587,
+        "sid": "sensorData-1784654301283-eab1138256c14136aec116bcc5c5400a",
+        "start_ms": 1784628736587
+      },
+      {
+        "end_ms": 1784694836318,
+        "sid": "sensorData-1784729012073-46c2028b7ab941bc8cef52c90c6e6a68",
+        "start_ms": 1784693951318
+      },
+      {
+        "end_ms": 1784718333568,
+        "sid": "sensorData-1784730509247-4d91b6fa36324de78c9bb59c4041467b",
+        "start_ms": 1784717853568
+      },
+      {
+        "end_ms": 1784714735180,
+        "sid": "sensorData-1784731216032-d567df6ba7734b6b87195b5f35b17de0",
+        "start_ms": 1784713265180
+      },
+      {
+        "end_ms": 1784691969318,
+        "sid": "sensorData-1784732185290-b24eceacb4b54078b26a626a833c2529",
+        "start_ms": 1784690934318
+      },
+      {
+        "end_ms": 1784713415718,
+        "sid": "sensorData-1784734330913-e9a36d505321421994b62511882d6f50",
+        "start_ms": 1784711525718
+      },
+      {
+        "end_ms": 1784715305718,
+        "sid": "sensorData-1784734330913-e9a36d505321421994b62511882d6f50",
+        "start_ms": 1784714465718
+      },
+      {
+        "end_ms": 1784692969621,
+        "sid": "sensorData-1784736831890-65da5e071b7f45e19907f9eebd1e1fe3",
+        "start_ms": 1784692474621
+      },
+      {
+        "end_ms": 1784779277837,
+        "sid": "sensorData-1784793259633-430434ae1ca14879ae85e6421958cd77",
+        "start_ms": 1784778992837
+      },
+      {
+        "end_ms": 1784778210932,
+        "sid": "sensorData-1784801556759-9ff0f6b2c13e4c458d2f43b6b1c5980c",
+        "start_ms": 1784777700932
+      },
+      {
+        "end_ms": 1784802847269,
+        "sid": "sensorData-1784808852096-f968ee73cba5454ba3891c5d7769d6c7",
+        "start_ms": 1784801977269
+      },
+      {
+        "end_ms": 1784779240460,
+        "sid": "sensorData-1784813273801-159e050987624ca097bcad333aac7e8a",
+        "start_ms": 1784777680460
+      },
+      {
+        "end_ms": 1784868551958,
+        "sid": "sensorData-1784879634132-9c00dc7e9d5f4c8b9a69417d98d57e8a",
+        "start_ms": 1784867351958
+      },
+      {
+        "end_ms": 1784865313817,
+        "sid": "sensorData-1784882482281-87c2d94a751c4bb6b860893a40238fcc",
+        "start_ms": 1784864443817
+      },
+      {
+        "end_ms": 1785060929408,
+        "sid": "sensorData-1785131466358-f8bd197a13e547e8b238ca20f20917d6",
+        "start_ms": 1785059084408
+      },
+      {
+        "end_ms": 1785039034931,
+        "sid": "sensorData-1785135131382-1db2886a647849f0b8dc6e736de84bc5",
+        "start_ms": 1785036784931
+      },
+      {
+        "end_ms": 1784974579786,
+        "sid": "sensorData-1785137096144-1d57a687bffd41929d5ae145e2004d62",
+        "start_ms": 1784972637286
+      },
+      {
+        "end_ms": 1784946574013,
+        "sid": "sensorData-1785140203902-bc688b87b55a4fb9a0d6bc1a55a110d2",
+        "start_ms": 1784946229013
+      },
+      {
+        "end_ms": 1784888807962,
+        "sid": "sensorData-1785142218488-10a366d8516b4418929987b08d975130",
+        "start_ms": 1784888177962
+      }
+    ]
+  },
+  "subject_events": [
+    {
+      "events": {
+        "b": {
+          "f1": 0.923076923076923,
+          "n_pred": 7,
+          "n_tp": 6,
+          "n_true": 6,
+          "ppv": 0.8571428571428571,
+          "sensitivity": 1.0
+        },
+        "f": {
+          "f1": 0.8333333333333334,
+          "n_pred": 6,
+          "n_tp": 5,
+          "n_true": 6,
+          "ppv": 0.8333333333333334,
+          "sensitivity": 0.8333333333333334
+        },
+        "r": {
+          "f1": 0.923076923076923,
+          "n_pred": 7,
+          "n_tp": 6,
+          "n_true": 6,
+          "ppv": 0.8571428571428571,
+          "sensitivity": 1.0
+        }
+      },
+      "subject": "HNU21002"
+    },
+    {
+      "events": {
+        "b": {
+          "f1": 0.6666666666666666,
+          "n_pred": 1,
+          "n_tp": 1,
+          "n_true": 2,
+          "ppv": 1.0,
+          "sensitivity": 0.5
+        },
+        "f": {
+          "f1": 0.6666666666666666,
+          "n_pred": 1,
+          "n_tp": 1,
+          "n_true": 2,
+          "ppv": 1.0,
+          "sensitivity": 0.5
+        },
+        "r": {
+          "f1": 0.6666666666666666,
+          "n_pred": 1,
+          "n_tp": 1,
+          "n_true": 2,
+          "ppv": 1.0,
+          "sensitivity": 0.5
+        }
+      },
+      "subject": "HNU21003"
+    },
+    {
+      "events": {
+        "b": {
+          "f1": 0.7692307692307693,
+          "n_pred": 8,
+          "n_tp": 5,
+          "n_true": 5,
+          "ppv": 0.625,
+          "sensitivity": 1.0
+        },
+        "f": {
+          "f1": 0.6666666666666666,
+          "n_pred": 7,
+          "n_tp": 4,
+          "n_true": 5,
+          "ppv": 0.5714285714285714,
+          "sensitivity": 0.8
+        },
+        "r": {
+          "f1": 0.7272727272727272,
+          "n_pred": 6,
+          "n_tp": 4,
+          "n_true": 5,
+          "ppv": 0.6666666666666666,
+          "sensitivity": 0.8
+        }
+      },
+      "subject": "HNU21006"
+    },
+    {
+      "events": {
+        "b": {
+          "f1": 0.7692307692307693,
+          "n_pred": 8,
+          "n_tp": 5,
+          "n_true": 5,
+          "ppv": 0.625,
+          "sensitivity": 1.0
+        },
+        "f": {
+          "f1": 0.9090909090909091,
+          "n_pred": 6,
+          "n_tp": 5,
+          "n_true": 5,
+          "ppv": 0.8333333333333334,
+          "sensitivity": 1.0
+        },
+        "r": {
+          "f1": 0.9090909090909091,
+          "n_pred": 6,
+          "n_tp": 5,
+          "n_true": 5,
+          "ppv": 0.8333333333333334,
+          "sensitivity": 1.0
+        }
+      },
+      "subject": "HNU21011"
+    },
+    {
+      "events": {
+        "b": {
+          "f1": 1.0,
+          "n_pred": 5,
+          "n_tp": 5,
+          "n_true": 5,
+          "ppv": 1.0,
+          "sensitivity": 1.0
+        },
+        "f": {
+          "f1": 0.888888888888889,
+          "n_pred": 4,
+          "n_tp": 4,
+          "n_true": 5,
+          "ppv": 1.0,
+          "sensitivity": 0.8
+        },
+        "r": {
+          "f1": 0.888888888888889,
+          "n_pred": 4,
+          "n_tp": 4,
+          "n_true": 5,
+          "ppv": 1.0,
+          "sensitivity": 0.8
+        }
+      },
+      "subject": "HNU21015"
+    },
+    {
+      "events": {
+        "b": {
+          "f1": 0.6666666666666666,
+          "n_pred": 2,
+          "n_tp": 1,
+          "n_true": 1,
+          "ppv": 0.5,
+          "sensitivity": 1.0
+        },
+        "f": {
+          "f1": 0.0,
+          "n_pred": 0,
+          "n_tp": 0,
+          "n_true": 1,
+          "ppv": 0.0,
+          "sensitivity": 0.0
+        },
+        "r": {
+          "f1": 0.0,
+          "n_pred": 0,
+          "n_tp": 0,
+          "n_true": 1,
+          "ppv": 0.0,
+          "sensitivity": 0.0
+        }
+      },
+      "subject": "HNU21022"
+    },
+    {
+      "events": {
+        "b": {
+          "f1": 0.8571428571428571,
+          "n_pred": 4,
+          "n_tp": 3,
+          "n_true": 3,
+          "ppv": 0.75,
+          "sensitivity": 1.0
+        },
+        "f": {
+          "f1": 0.8,
+          "n_pred": 2,
+          "n_tp": 2,
+          "n_true": 3,
+          "ppv": 1.0,
+          "sensitivity": 0.6666666666666666
+        },
+        "r": {
+          "f1": 0.8,
+          "n_pred": 2,
+          "n_tp": 2,
+          "n_true": 3,
+          "ppv": 1.0,
+          "sensitivity": 0.6666666666666666
+        }
+      },
+      "subject": "HNU21024"
+    },
+    {
+      "events": {
+        "b": {
+          "f1": 0.6,
+          "n_pred": 5,
+          "n_tp": 3,
+          "n_true": 5,
+          "ppv": 0.6,
+          "sensitivity": 0.6
+        },
+        "f": {
+          "f1": 0.6,
+          "n_pred": 5,
+          "n_tp": 3,
+          "n_true": 5,
+          "ppv": 0.6,
+          "sensitivity": 0.6
+        },
+        "r": {
+          "f1": 0.6,
+          "n_pred": 5,
+          "n_tp": 3,
+          "n_true": 5,
+          "ppv": 0.6,
+          "sensitivity": 0.6
+        }
+      },
+      "subject": "HNU21037"
+    }
+  ],
+  "truths": [
+    {
+      "end_ms": 1784541170000,
+      "sid": "sensorData-1784557876964-97236e0d0dda409f90e8088c128caa77",
+      "start_ms": 1784540134000
+    },
+    {
+      "end_ms": 1784545437000,
+      "sid": "sensorData-1784562356253-23edff73a65e4e9583c963c5a6ee26dd",
+      "start_ms": 1784545028000
+    },
+    {
+      "end_ms": 1784542647000,
+      "sid": "sensorData-1784567665729-5d3c6ed918484df7b5eb7726ff647beb",
+      "start_ms": 1784541835000
+    },
+    {
+      "end_ms": 1784628113000,
+      "sid": "sensorData-1784640571451-e264b5ee5adf4d50ae753bc39dc3dcad",
+      "start_ms": 1784626753000
+    },
+    {
+      "end_ms": 1784605615000,
+      "sid": "sensorData-1784641518041-31967ca1d994490c90b03f88d9ba57ed",
+      "start_ms": 1784604882000
+    },
+    {
+      "end_ms": 1784605649000,
+      "sid": "sensorData-1784643716053-b9bf48fe4dfd415b992e003ccdeac4a2",
+      "start_ms": 1784604882000
+    },
+    {
+      "end_ms": 1784635581000,
+      "sid": "sensorData-1784647263099-beadab420ca04857b743d1deb554f1d4",
+      "start_ms": 1784635127000
+    },
+    {
+      "end_ms": 1784626550000,
+      "sid": "sensorData-1784648175447-fa8f54edb75b42949e3e059d476899e7",
+      "start_ms": 1784625644000
+    },
+    {
+      "end_ms": 1784608992000,
+      "sid": "sensorData-1784648905124-287c59380f584fef8364189dadb39fdc",
+      "start_ms": 1784607594000
+    },
+    {
+      "end_ms": 1784629869000,
+      "sid": "sensorData-1784654301283-eab1138256c14136aec116bcc5c5400a",
+      "start_ms": 1784628431000
+    },
+    {
+      "end_ms": 1784716193000,
+      "sid": "sensorData-1784727895335-1d34fbbcbb05480fbd6d18dfc1ad5631",
+      "start_ms": 1784715363000
+    },
+    {
+      "end_ms": 1784694947000,
+      "sid": "sensorData-1784729012073-46c2028b7ab941bc8cef52c90c6e6a68",
+      "start_ms": 1784694054000
+    },
+    {
+      "end_ms": 1784718454000,
+      "sid": "sensorData-1784730509247-4d91b6fa36324de78c9bb59c4041467b",
+      "start_ms": 1784717608000
+    },
+    {
+      "end_ms": 1784714768000,
+      "sid": "sensorData-1784731216032-d567df6ba7734b6b87195b5f35b17de0",
+      "start_ms": 1784713455000
+    },
+    {
+      "end_ms": 1784691840000,
+      "sid": "sensorData-1784732185290-b24eceacb4b54078b26a626a833c2529",
+      "start_ms": 1784690643000
+    },
+    {
+      "end_ms": 1784715386000,
+      "sid": "sensorData-1784734330913-e9a36d505321421994b62511882d6f50",
+      "start_ms": 1784714211000
+    },
+    {
+      "end_ms": 1784693074000,
+      "sid": "sensorData-1784736831890-65da5e071b7f45e19907f9eebd1e1fe3",
+      "start_ms": 1784692216000
+    },
+    {
+      "end_ms": 1784779399000,
+      "sid": "sensorData-1784793259633-430434ae1ca14879ae85e6421958cd77",
+      "start_ms": 1784778699000
+    },
+    {
+      "end_ms": 1784692310000,
+      "sid": "sensorData-1784793754770-4037b9b85a804e14ba9e99642ebda922",
+      "start_ms": 1784691644000
+    },
+    {
+      "end_ms": 1784779468000,
+      "sid": "sensorData-1784794865251-a0d8e49fb5ff4d438b7ecdf7689593a7",
+      "start_ms": 1784778700000
+    },
+    {
+      "end_ms": 1784783243000,
+      "sid": "sensorData-1784795055470-8ed34013b2e040d48e62382b6f66bc6c",
+      "start_ms": 1784781242000
+    },
+    {
+      "end_ms": 1784778169000,
+      "sid": "sensorData-1784801556759-9ff0f6b2c13e4c458d2f43b6b1c5980c",
+      "start_ms": 1784777437000
+    },
+    {
+      "end_ms": 1784802959000,
+      "sid": "sensorData-1784808852096-f968ee73cba5454ba3891c5d7769d6c7",
+      "start_ms": 1784802107000
+    },
+    {
+      "end_ms": 1784778988000,
+      "sid": "sensorData-1784813273801-159e050987624ca097bcad333aac7e8a",
+      "start_ms": 1784778495000
+    },
+    {
+      "end_ms": 1784868667000,
+      "sid": "sensorData-1784879634132-9c00dc7e9d5f4c8b9a69417d98d57e8a",
+      "start_ms": 1784867692000
+    },
+    {
+      "end_ms": 1784865420000,
+      "sid": "sensorData-1784882482281-87c2d94a751c4bb6b860893a40238fcc",
+      "start_ms": 1784864706000
+    },
+    {
+      "end_ms": 1784869281000,
+      "sid": "sensorData-1784906413835-fcea89864f8c48658ef2460ad51556c4",
+      "start_ms": 1784867545000
+    },
+    {
+      "end_ms": 1785061054000,
+      "sid": "sensorData-1785131466358-f8bd197a13e547e8b238ca20f20917d6",
+      "start_ms": 1785059873000
+    },
+    {
+      "end_ms": 1785039211000,
+      "sid": "sensorData-1785135131382-1db2886a647849f0b8dc6e736de84bc5",
+      "start_ms": 1785036938000
+    },
+    {
+      "end_ms": 1785026098000,
+      "sid": "sensorData-1785136473214-8d1b706fae064132b32c1a7c756e2d4a",
+      "start_ms": 1785025738000
+    },
+    {
+      "end_ms": 1784946559000,
+      "sid": "sensorData-1785140203902-bc688b87b55a4fb9a0d6bc1a55a110d2",
+      "start_ms": 1784946289000
+    },
+    {
+      "end_ms": 1784940333000,
+      "sid": "sensorData-1785140607362-a244e1feaaf947f49429111687887ad3",
+      "start_ms": 1784940060000
+    }
+  ]
+}

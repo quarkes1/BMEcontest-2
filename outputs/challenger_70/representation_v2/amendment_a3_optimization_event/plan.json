@@ -1,0 +1,15 @@
+{
+  "adaptation_readout_fits": 12,
+  "code_sha": "20f4bc220fcf1354e652a91b0b367e295e20019f",
+  "device": "cuda",
+  "id": "RV2-A3-S11-001",
+  "max_wall_seconds": 21600,
+  "max_work_seconds": 10800,
+  "neural_optimizer_steps": 12000,
+  "outer_calls": 0,
+  "producer_fits": 120,
+  "protected_digest": "bf74ba7a008ed8813cd480822ffdb0cdab87318d19a539c180e18b706d485d27",
+  "source_checkpoint_sha256": "c6276837b1366117075e7e8a7504e084926cbfc5d80b98b863e442255995efc4",
+  "spec_sha256": "5ee4e6cc4178e46cf2c03469a576724104fdc13cb968e0ac92b61bea29519e28",
+  "verifier_fits": 72
+}

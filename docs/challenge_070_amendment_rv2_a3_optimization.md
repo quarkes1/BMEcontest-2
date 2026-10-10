@@ -49,7 +49,7 @@ Ruling：自主授权覆盖有边界诊断及后续研究实现，不覆盖发�
 - [x] 1. TDD：train-only OOF ledger等价与隔离；固定readout评分；target梯度可达encoder；
   梯度方向/零范数行为；独立审查后预注册commit。
 - [x] 2. 执行审计，核验完整性；根据证据选择下一条单因素或新时序路线，不在health追参。
-- [ ] 3. 回归、README/registry与证据封存、临时文件清理、commit。
+- [x] 3. 回归、README/registry与证据封存、临时文件清理、commit。
 
 实施：空score路径先RED（empty subject错误）再GREEN；缺失audit模块RED→三项核心GREEN。
 139项表示研究相关测试通过，4条既有imputer提示。Luna/medium只读审查无实质阻塞。
@@ -60,3 +60,5 @@ Ruling：自主授权覆盖有边界诊断及后续研究实现，不覆盖发�
 target梯度有限非零；4个诊断target batch全negative，不用于断言positive/source因果。
 发布保护/输入hash不变。决定预注册两个有界train-only优化单因素对照；不直接进outer。
 全仓回归在下一阶段代码冻结后统一执行，本项台账保留pending，避免声称已完成。
+后续验证：S9/S10代码冻结后全仓704 passed、5 skipped、15既有警告，1234.55秒；
+本轮生成的optimization_audit/optimization_probe字节码缓存按明确路径清理，可重建。

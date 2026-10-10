@@ -1,0 +1,53 @@
+{
+  "persistent_token_cache_bytes": 0,
+  "source_plan_sha256": "d01e63129d230fca1d1ab1d1c6c5739d3a41a1b1f2a333316a0215f7850f2f4f",
+  "source_raw_files": {
+    "FDdatasets/doi-10.48804-CN8VBB/v1.0/FD-I/X_R.pkl": {
+      "bytes": 2783616991,
+      "sha256": "c6f554b5923bc3c9a71338951150f33eb00c9b4859455e6f03969534bc9dbfe6"
+    },
+    "FDdatasets/doi-10.48804-CN8VBB/v1.0/FD-I/Y_R.pkl": {
+      "bytes": 231969715,
+      "sha256": "e0d2dcc459f04aea122f1d36150dd94051a114637661912110c5f58fcc6db532"
+    }
+  },
+  "source_train": [
+    0,
+    1,
+    2,
+    4,
+    5,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    20,
+    21,
+    22,
+    24,
+    26,
+    29,
+    30,
+    31,
+    32,
+    33
+  ],
+  "source_validation": [
+    3,
+    6,
+    19,
+    23,
+    25,
+    27,
+    28
+  ],
+  "train_token_count": 8847
+}

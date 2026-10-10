@@ -470,6 +470,9 @@ S10固定11人train，只比较无裁剪batch4与norm1裁剪batch32，各1000步
 S11仅验证唯一封存配置，沿用完整nested事件门槛，不将训练改善当作发布F1。
 S10完成：无裁剪改善.00839未过门槛；batch32改善.01963、9/11人不劣，source BCE未恶化。
 因此只允许batch32/norm1进入S11。见[S10报告](outputs/challenger_70/representation_v2/amendment_a3_optimizer_controls/report.md)。
-S11完整nested事件验证已启动，尚无新事件结果。若完整运行且gate失败，转向已设计的
+S11完整nested事件验证完成：B/R/F inner F1 .72131/.74194/.73743；F为66TP/16FP，
+虽比B少4FP且2/3折胜B，未胜冻结FD对照，因此gate失败，关闭此适配配置。
+见[S11报告](outputs/challenger_70/representation_v2/amendment_a3_optimization_event/report.md)。
+全仓704 passed、5 skipped；正式发布仍.6514285714。现在转向已设计的
 [S12冻结手势时序形态](docs/challenge_070_amendment_rv2_a3_gesture_morphology.md)，
-不继续向同一适配配置追加参数；S12目前仅为条件后备设计，未实现/运行。
+不继续向同一适配配置追加参数；S12启动条件已满足，尚未运行。

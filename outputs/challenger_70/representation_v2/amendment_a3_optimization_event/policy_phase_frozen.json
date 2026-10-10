@@ -1,0 +1,13 @@
+{
+  "folds": [
+    0,
+    1,
+    2
+  ],
+  "health_files_read": 0,
+  "policy_file_sha256": {
+    "fold0_policy_selection.json": "873dbbfb9f1cd893e580499197af4b625d670d2304a149d42a249b4da2913bf2",
+    "fold1_policy_selection.json": "76e42ae534da8d3941b2ad05ab6ee5a6749bd5d5d71204c1edbc39b9bc1bbcc8",
+    "fold2_policy_selection.json": "04e4dbcfdb0b9d0c548c44d151fb221f3699db9b63dbeef4b0c4f3761f020d93"
+  }
+}
