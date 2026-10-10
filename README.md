@@ -510,5 +510,6 @@ S14已完成：R/F/D source AP .76428/.69747/.85144，raw BCE .27218/.29392/.226
 下一阶段拟先验证已有收益，见[A5扩大inner验证设计](docs/challenge_070_amendment_a5_inner_validation_design.md)。
 固定比较116D研究对照、冻结FD251D和S11适配FD251D，在原T24上采用两组预定三折划分；
 这是扩大划分而非新增独立人群，原V7/outer继续隔离。分别记录收益、划分稳定性和错误互补，
-不再将“适配未胜冻结对照”等同于“相对baseline毫无收益”。目前仅设计待审阅，未实现或训练，
+不再将“适配未胜冻结对照”等同于“相对baseline毫无收益”。设计已获审阅通过，
+[实施计划](docs/superpowers/plans/2026-10-10-a5-inner-validation-plan.md)待审阅，尚未实现或训练，
 不修改旧实验结论，不启动融合/新架构，不更新dist，也不产生新正式F1。
