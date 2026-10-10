@@ -87,3 +87,29 @@ def test_adaptation_reports_requested_batch_and_rejects_invalid_sampling_budget(
     assert report['sampled_target_candidate_examples']==64 and report['batch_size']==32 and report['clip_norm'] is None
     with pytest.raises(ValueError,match='batch'):
         ap.adapt_encoder(e,h,bs,y,g,bank,train_subjects={'a','b'},seed=2,device='cpu',steps=1,batch_size=0)
+
+
+def test_resource_callback_stops_before_any_training_and_preserves_default_result():
+    e=MotionBranch().token_encoder;h=torch.nn.Linear(16,1)
+    bs=tuple(bag(i) for i in range(8));y=np.array([0,1]*4);g=np.array(['a']*4+['b']*4)
+    rng=np.random.default_rng(3)
+    bank={'values':rng.normal(size=(8,6,125)).astype(np.float32),'labels':y,'groups':np.array([0]*4+[1]*4)}
+    args=dict(train_subjects={'a','b'},seed=2,device='cpu',steps=2)
+    def stop():raise RuntimeError('registered budget exceeded')
+    with pytest.raises(RuntimeError,match='budget'):
+        ap.adapt_encoder(e,h,bs,y,g,bank,**args,resource_check=stop)
+    first,_=ap.adapt_encoder(e,h,bs,y,g,bank,**args)
+    checks=[]
+    second,_=ap.adapt_encoder(e,h,bs,y,g,bank,**args,resource_check=lambda:checks.append(1))
+    assert len(checks)==2
+    for k,v in first.state_dict().items():torch.testing.assert_close(v,second.state_dict()[k],atol=0,rtol=0)
+
+
+def test_explicit_replay_does_not_disable_legacy_guard(monkeypatch):
+    def legacy(*args):raise RuntimeError('sealed baseline differs')
+    monkeypatch.setattr(ap.jp,'baseline_replay',legacy)
+    with pytest.raises(RuntimeError,match='baseline differs'):
+        ap.record_replay('.', 'old_scores.json', {})
+    row={}
+    ap.record_replay('.', 'new_scores.json', row, replay=lambda *args:'new-proof')
+    assert row=={'baseline_validation_sha256':'new-proof'}

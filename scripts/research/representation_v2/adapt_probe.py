@@ -67,7 +67,8 @@ def control_gradient_norm(parameters,clip_norm):
     return norm
 
 
-def adapt_encoder(initial,source_head,bags,y,groups,bank,*,train_subjects,seed,device,steps=1000,batch_size=4,clip_norm=1.):
+def adapt_encoder(initial,source_head,bags,y,groups,bank,*,train_subjects,seed,device,steps=1000,batch_size=4,clip_norm=1.,resource_check=None):
+    if resource_check is not None:resource_check()
     groups=np.asarray(groups);y=np.asarray(y)
     if len(bags)!=len(y) or len(groups)!=len(y) or set(map(str,groups))-set(train_subjects):
         raise ValueError('training subject ownership mismatch')
@@ -122,6 +123,7 @@ def adapt_encoder(initial,source_head,bags,y,groups,bank,*,train_subjects,seed,d
         opt.zero_grad(set_to_none=True);loss.backward()
         grad=control_gradient_norm(list(encoder.parameters())+list(head.parameters()),clip_norm)
         opt.step();target_losses.append(float(target_loss.detach()));source_losses.append(float(source_loss.detach()))
+        if resource_check is not None and (step%100==0 or step==steps):resource_check()
         if step%100==0 or step==steps:
             history.append({'step':step,'target_bce':float(np.mean(target_losses)),'source_bce':float(np.mean(source_losses)),
                             'last_gradient_norm':float(grad)});target_losses=[];source_losses=[]
@@ -149,7 +151,14 @@ def source_training_bank(root,payload,output):
     return bank,head
 
 
-def prepare(root,payload,output,device,*,adaptation_options=None):
+def record_replay(root,name,evidence,*,replay=None):
+    if replay is None:
+        evidence['baseline_source_sha256']=jp.baseline_replay(root,name,evidence)
+    else:
+        evidence['baseline_validation_sha256']=replay(root,name,evidence)
+
+
+def prepare(root,payload,output,device,*,adaptation_options=None,replay=None,resource_check=None):
     options=dict(adaptation_options or {})
     if set(options)-{'batch_size','clip_norm'}:raise ValueError('unsupported registered adaptation option')
     bank,head=source_training_bank(root,payload,output)
@@ -164,7 +173,7 @@ def prepare(root,payload,output,device,*,adaptation_options=None):
         vb=ep.unitfree_bags(ep.load_candidate_bags(root,v.candidates,config=ep.PreprocessConfig(gravity_align=False)))
         if device=='cuda':torch.cuda.synchronize()
         then=time.perf_counter()
-        adapted,report=adapt_encoder(encoders['f'],head,tb,t.labels,t.groups,bank,train_subjects=set(train),seed=20261011,device=device,**options)
+        adapted,report=adapt_encoder(encoders['f'],head,tb,t.labels,t.groups,bank,train_subjects=set(train),seed=20261011,device=device,resource_check=resource_check,**options)
         graph['target_adaptation']={'fit_subjects':report['fit_subjects'],'parents':['source','candidates']}
         for arm,encoder in [('r',encoders['f']),('f',adapted)]:
             tx=np.asarray([pool_joint_ordered(z,b) for z,b in zip(encode_tokens(encoder,tb,device),tb)])
@@ -182,7 +191,7 @@ def prepare(root,payload,output,device,*,adaptation_options=None):
                   'feature_widths':{'b':116,'r':251,'f':251},'adaptation_and_encoding_seconds':seconds,
                   'source_checkpoint_sha256':ep.REGISTERED_SOURCE_SHA,'arm_semantics':{'b':'incumbent','r':'frozen FD','f':'adapted FD'}}
         if options:evidence['optimizer_controls']=options
-        evidence['baseline_source_sha256']=jp.baseline_replay(root,prefix+'_scores.json',evidence)
+        record_replay(root,prefix+'_scores.json',evidence,replay=replay)
         ep.write_json(output/(prefix+'_scores.json'),evidence);ep.write_json(output/(prefix+'_adaptation.json'),report)
         del tb,vb,adapted,tx,vx;gc.collect()
         return v,scores,graph,seconds
