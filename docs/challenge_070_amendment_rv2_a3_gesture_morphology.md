@@ -1,6 +1,6 @@
 # A3-S12 — 条件后备：冻结手势证据的时序形态
 
-状态：S11已完整失败，进入实现；**尚未运行S12**。只在S11完整运行且事件gate失败后启动；
+状态：**S12完整完成，固定gate失败，关闭24D schema**。实现32a886f。只在S11完整运行且事件gate失败后启动；
 S11 incomplete时先处理工程原因，不将未完成冒充算法失败。S11通过则暂缓本路线，
 优先执行该配置的更广inner验证。不能按S11某一折漏检病例改本schema。
 
@@ -100,12 +100,12 @@ CUDA peak≤初始空闲80%。这只是单实验停止条件，不是用户硬�
 - [x] 2. TDD：固定24D顺序/常量/单token/全无效；阈值等号、gap/invalid断run、
   lag2完整链、乱序拒绝、无GT输入；source head冻结及CPU/CUDA allclose。
 - [x] 3. 实现研究入口，独立Luna medium审查；相关测试与diff检查后commit预注册实现。
-- [ ] 4. 单次严格nested运行；报告事件/逐人/覆盖/资源，不据中途health改配置。
-- [ ] 5. 全仓回归、README/registry更新；清理本轮产生的临时/可重建缓存，commit。
-- [ ] 6. 通过→更广inner注册；失败→关闭本schema并自主设计更强感受野/多尺度路线。
+- [x] 4. 单次严格nested运行；报告事件/逐人/覆盖/资源，不据中途health改配置。
+- [x] 5. 全仓回归、README/registry更新；清理本轮产生的临时/可重建缓存，commit。
+- [x] 6. 通过→更广inner注册；失败→关闭本schema并自主设计更强感受野/多尺度路线。
 
 预检：24D+116D=140D；R保持251D；所有概率阈值固定，不依赖event policy。
-本计划不存在source/target新训练或early stopping依赖。尚无S12实验结果。
+本计划不存在source/target新训练或early stopping依赖。结果见本文件末尾。
 
 设计审查：Luna/medium只读审核未发现重大问题。实施必须专测三臂不同feature width、
 R/F两臂source27祖先以及全NaN形态列的train-only imputation，不能为拼接方便统一填0。
@@ -123,3 +123,14 @@ tiny fixture显式改为10秒decoder几何（测试数据只有10秒窗），实
 Minor（暂缓）：S11 state.outer_calls未单独重复检查；已对state逐字节commit绑定，
 且summary outer_calls检查为0，不影响本固定输入有效性。
 入口 `python -m scripts.research.representation_v2.gesture_probe`。
+
+结果：B/R/F inner F1 .721311/.741935/.723404；F68TP/23FP，相对B+2TP/+3FP，
+仅+.002093，未达+.015且未胜R；即使2/3折胜B也不通过完整gate。
+24人F较B改善6、恶化5、持平13；median .708333但p10 .12未改善低尾。
+全部12分区完成，0新神经步；wall920.13s，encoding/scoring19.55s；输出约11.68MiB，
+无持久token缓存或checkpoint复制，protected unchanged。报告与registry保存负结果。
+下一设计转向完整动作感受野，不再调本schema。全仓回归721 passed、5 skipped、
+31条既有/预期警告，无失败，1207.41s；本轮相关pyc在测试后清理，不删除复现证据。
+独立Luna/medium复算gate、逐人指标、12份B/R封存重放身份、policy hash及祖先隔离，
+未发现结果完整性阻塞。后备设计见`challenge_070_amendment_rv2_a3_receptive_field.md`；
+仅登记，不将尚未实施的S13算作本次测试覆盖。

@@ -475,6 +475,18 @@ S11完整nested事件验证完成：B/R/F inner F1 .72131/.74194/.73743；F为66
 见[S11报告](outputs/challenger_70/representation_v2/amendment_a3_optimization_event/report.md)。
 全仓704 passed、5 skipped；正式发布仍.6514285714。现在转向已设计的
 [S12冻结手势时序形态](docs/challenge_070_amendment_rv2_a3_gesture_morphology.md)，
-不继续向同一适配配置追加参数；S12启动条件已满足，尚未运行。
+不继续向同一适配配置追加参数；S12现已完整完成。
 S12实现已完成：固定24D手势形态+116D基线，独立140D verifier，对照冻结FD251D。
-17项新增测试、162项相关研究测试通过；接下来单次nested验证，不预先声称事件收益。
+S12结果：B/R/F inner F1 .72131/.74194/.72340，F68TP/23FP，比B+2TP/+3FP；
+未达+.015且未胜R，因此关闭24D schema，不追加阈值搜索。
+见[S12报告](outputs/challenger_70/representation_v2/amendment_a3_gesture_morphology/report.md)。
+17项新增测试、162项相关研究测试通过；本次全仓回归721 passed、5 skipped、
+31条既有/预期警告，无失败（1207.41s）。正式发布与dist均未改动。
+
+后备路线的[外部预训练模型核查](docs/challenge_070_external_pretrained_review.md)已整理：
+HARNET/LIMU-BERT-X等需先通过输入单位、采样合同、域差异与许可门，再注册实验；
+当前未下载新权重，也不将公开HAR成绩当作本项目事件F1。
+
+下一路线已登记为[S13完整动作感受野源域研究](docs/challenge_070_amendment_rv2_a3_receptive_field.md)：
+固定输入与16D输出，只比较更强126544参数/129点感受野encoder的源域学习。
+目前仅设计登记，尚未实施或训练；通过源域门后也须重新注册目标迁移验证。
