@@ -512,6 +512,7 @@ S14已完成：R/F/D source AP .76428/.69747/.85144，raw BCE .27218/.29392/.226
 这是扩大划分而非新增独立人群，原V7/outer继续隔离。分别记录收益、划分稳定性和错误互补，
 不再将“适配未胜冻结对照”等同于“相对baseline毫无收益”。设计已获审阅通过，
 [实施计划](docs/superpowers/plans/2026-10-10-a5-inner-validation-plan.md)已获审阅通过，代码已实现，
-50项相关测试通过；Luna/medium审查发现的启动异常状态问题已修复，训练前全仓回归中，
-尚未启动训练。
+50项相关测试通过；Luna/medium审查发现的启动异常状态问题已修复。执行顺序为全仓回归
+成功→锁定并提交manifest→固定三臂训练；任一步失败均停止，不更换划分或配置。
+运行状态以`outputs/challenger_70/representation_v2/amendment_a5_validation/state.json`为准。
 不修改旧实验结论，不启动融合/新架构，不更新dist，也不产生新正式F1。
