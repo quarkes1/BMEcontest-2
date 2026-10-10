@@ -446,3 +446,11 @@ R为冻结FD的251D联合verifier，F为相同251D但encoder在当前训练分�
 FD源手势监督适配。本轮R不是随机encoder；12个partition分别初始化/训练1000步，
 所有policy冻结后才计算health事件F1，基线完整回放S2。入口
 `python -m scripts.research.representation_v2.adapt_probe`；不自动outer或改dist。
+
+S8已完成、未通过gate：B 66TP/20FP、inner health F1 .72131；冻结FD 69TP/20FP、.74194；
+适配FD 67TP/20FP、.72826。适配未优于冻结对照，且仅1/3折胜B；冻结对照的pooled改善
+亦仅来自1/3折，不事后更换主臂推广。两种FD臂短餐均11/22（B 9/22），但逐人F1的10分位数
+从B .35333降至 .12，泛化稳定性仍不足。见[S8完整报告](outputs/challenger_70/representation_v2/amendment_a3_adapt/report.md)。
+12次独立适配、12000步，约24.2分钟，约17MiB证据、无新token缓存；全仓694 passed、5 skipped。
+下一步先做train-only优化/任务耦合审计，不据重复health手调source权重或继续冻结概率融合追分。
+正式F1仍 .6514285714，dist/release不变；正式可比提升>.03时提请审批后才更新可执行发布包。

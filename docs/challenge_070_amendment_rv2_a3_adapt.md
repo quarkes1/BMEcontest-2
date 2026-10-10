@@ -68,7 +68,7 @@ Ruling：本文件兼作计划/台账，沿用研究目录，不另建重复文�
   训练subject约束、251D质量/缺失、真实verifier及gate。
 - [x] 2. S5 engine增加显式变体hook，默认S5行为不变；actual fit graph、baseline完整回放、
   全policy冻结屏障保留；独立Luna/medium审查，预注册commit。
-- [ ] 3. 执行一轮strict nested事件对照；相关及全仓回归，封存正负结果、清理临时文件、commit。
+- [x] 3. 执行一轮strict nested事件对照；相关及全仓回归，封存结果、清理并提交。
 
 Pre-flight：可微池化→原133D scaler一致；source梯度可流过冻结head但不更新head；
 适配weights每partition重新从source初始化；F训练encoder不能给其他policy-val生成OOF。
@@ -76,3 +76,14 @@ Pre-flight：可微池化→原133D scaler一致；source梯度可流过冻结he
 实施记录：缺失adapt模块RED→核心4项GREEN；缺失engine contract行为RED→GREEN，
 补充CUDA真实训练2步后共6项通过。Luna/medium独立只读复核无实质阻塞；
 实际适配fit_subjects仅包含有有效运动输入的train人，源训练身份在report单独记录。
+
+执行结果：12 split/12000步完成，1453.73秒；`S8_NO_SUPPORTED_TARGET_ADAPTATION`。
+inner health B/F/R分别 .721311/.728261/.741935，F仅1/3折胜B且未胜R；不进入outer或发布。
+R的+.020624仅为探索性对照信号，亦仅1/3折胜B，不事后替换注册主臂。
+12次训练11次末100步target BCE高于首100步，下一阶段优先train-only优化审计。
+135项相关测试通过，全仓694 passed、5 skipped、15既有warnings，1355.82秒。
+保护快照不变，0新token缓存，结果见对应输出report及summary。
+最终Luna/medium独立结果复核无Critical/Important，重算事件/短餐/逐人/候选/轨迹均一致；
+root另行复验12评分账本、3策略、3完整报告、freeze与注册规格hash，均通过。
+审阅者未重复全仓测试，采用root本次694 passed的直接执行证据，避免无必要重复22分钟回归。
+仅清理本轮adapt模块与测试的两份可重建pyc，无tmp残留；保留约17MiB必要复核证据。

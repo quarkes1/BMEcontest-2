@@ -1,0 +1,46 @@
+{
+  "adaptation_and_encoding_seconds": 446.9059546999051,
+  "completed_splits": 12,
+  "copied_checkpoint_bytes": 0,
+  "neural_optimizer_steps": 12000,
+  "outer_calls": 0,
+  "passed": false,
+  "persistent_token_cache_bytes": 0,
+  "policy_marker_sha256": "fad2ccf1b12d798fb381aa9934dadb8649e54aa75eac35f8dde6ac62b0f561e1",
+  "pooled_health_events": {
+    "b": {
+      "f1": 0.7213114754098361,
+      "fn": 31,
+      "fp": 20,
+      "n_pred": 86,
+      "n_tp": 66,
+      "n_true": 97,
+      "ppv": 0.7674418604651163,
+      "recall": 0.6804123711340206
+    },
+    "f": {
+      "f1": 0.7282608695652174,
+      "fn": 30,
+      "fp": 20,
+      "n_pred": 87,
+      "n_tp": 67,
+      "n_true": 97,
+      "ppv": 0.7701149425287356,
+      "recall": 0.6907216494845361
+    },
+    "r": {
+      "f1": 0.7419354838709677,
+      "fn": 28,
+      "fp": 20,
+      "n_pred": 89,
+      "n_tp": 69,
+      "n_true": 97,
+      "ppv": 0.7752808988764045,
+      "recall": 0.711340206185567
+    }
+  },
+  "positive_folds": 1,
+  "protected_unchanged": true,
+  "status": "S8_NO_SUPPORTED_TARGET_ADAPTATION",
+  "wall_seconds": 1453.7296773999988
+}
