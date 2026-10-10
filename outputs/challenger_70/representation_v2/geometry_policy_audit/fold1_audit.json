@@ -1,0 +1,263 @@
+{
+  "baseline": {
+    "end_mae_ms": 114471.55263157895,
+    "exact_boundary_pairs": 0,
+    "fn": 28,
+    "fp": 7,
+    "start_mae_ms": 306040.1842105263,
+    "tp": 38,
+    "unmatched_fp_total_duration_s": 10695.0
+  },
+  "baseline_common_gt": {
+    "end_mae_ms": 114471.55263157895,
+    "exact_boundary_pairs": 0,
+    "fn": 28,
+    "fp": 7,
+    "start_mae_ms": 306040.1842105263,
+    "tp": 38,
+    "unmatched_fp_total_duration_s": 10695.0
+  },
+  "baseline_strict": {
+    "end_mae_ms": 114471.55263157895,
+    "exact_boundary_pairs": 0,
+    "fn": 28,
+    "fp": 7,
+    "start_mae_ms": 306040.1842105263,
+    "tp": 38,
+    "unmatched_fp_total_duration_s": 10695.0
+  },
+  "candidate_count": 564,
+  "changed_examples": [
+    {
+      "clipped": {
+        "end_ms": 1784555341528,
+        "sid": "sensorData-1784566716252-3fa846d1177846659678e58795f9027c",
+        "start_ms": 1784554869028
+      },
+      "original": {
+        "end_ms": 1784556219028,
+        "sid": "sensorData-1784566716252-3fa846d1177846659678e58795f9027c",
+        "start_ms": 1784554869028
+      },
+      "raw_index": 178
+    },
+    {
+      "clipped": {
+        "end_ms": 1784628622569,
+        "sid": "sensorData-1784640098080-a30e6e9ad9614c0a98d6274dfb370b29",
+        "start_ms": 1784627055069
+      },
+      "original": {
+        "end_ms": 1784629027569,
+        "sid": "sensorData-1784640098080-a30e6e9ad9614c0a98d6274dfb370b29",
+        "start_ms": 1784626402569
+      },
+      "raw_index": 198
+    },
+    {
+      "clipped": {
+        "end_ms": 1784625886117,
+        "sid": "sensorData-1784648175447-fa8f54edb75b42949e3e059d476899e7",
+        "start_ms": 1784625593617
+      },
+      "original": {
+        "end_ms": 1784626433617,
+        "sid": "sensorData-1784648175447-fa8f54edb75b42949e3e059d476899e7",
+        "start_ms": 1784625428617
+      },
+      "raw_index": 221
+    },
+    {
+      "clipped": {
+        "end_ms": 1784715734358,
+        "sid": "sensorData-1784732991403-0c69d9f379724d569503b7ecb4c704bd",
+        "start_ms": 1784714759358
+      },
+      "original": {
+        "end_ms": 1784715734358,
+        "sid": "sensorData-1784732991403-0c69d9f379724d569503b7ecb4c704bd",
+        "start_ms": 1784714699358
+      },
+      "raw_index": 245
+    },
+    {
+      "clipped": {
+        "end_ms": 1784696562081,
+        "sid": "sensorData-1784734073566-2e48cff9450a48cb89c3906b24ace89d",
+        "start_ms": 1784695827081
+      },
+      "original": {
+        "end_ms": 1784696562081,
+        "sid": "sensorData-1784734073566-2e48cff9450a48cb89c3906b24ace89d",
+        "start_ms": 1784695782081
+      },
+      "raw_index": 249
+    },
+    {
+      "clipped": {
+        "end_ms": 1784721004458,
+        "sid": "sensorData-1784734127402-c3b933d043e4421aa5ddd3c7d09f830d",
+        "start_ms": 1784719954458
+      },
+      "original": {
+        "end_ms": 1784721004458,
+        "sid": "sensorData-1784734127402-c3b933d043e4421aa5ddd3c7d09f830d",
+        "start_ms": 1784719774458
+      },
+      "raw_index": 255
+    },
+    {
+      "clipped": {
+        "end_ms": 1784779182162,
+        "sid": "sensorData-1784807646419-b23e7d280802471aa62b46ed4288f02f",
+        "start_ms": 1784778522162
+      },
+      "original": {
+        "end_ms": 1784779182162,
+        "sid": "sensorData-1784807646419-b23e7d280802471aa62b46ed4288f02f",
+        "start_ms": 1784778162162
+      },
+      "raw_index": 295
+    },
+    {
+      "clipped": {
+        "end_ms": 1784999969855,
+        "sid": "sensorData-1785079462038-2c80b49496b04a89aff11d4ac02c69c6",
+        "start_ms": 1784999062355
+      },
+      "original": {
+        "end_ms": 1784999969855,
+        "sid": "sensorData-1785079462038-2c80b49496b04a89aff11d4ac02c69c6",
+        "start_ms": 1784998619855
+      },
+      "raw_index": 525
+    },
+    {
+      "clipped": {
+        "end_ms": 1785060929408,
+        "sid": "sensorData-1785131466358-f8bd197a13e547e8b238ca20f20917d6",
+        "start_ms": 1785059264408
+      },
+      "original": {
+        "end_ms": 1785060929408,
+        "sid": "sensorData-1785131466358-f8bd197a13e547e8b238ca20f20917d6",
+        "start_ms": 1785059099408
+      },
+      "raw_index": 343
+    },
+    {
+      "clipped": {
+        "end_ms": 1785038374931,
+        "sid": "sensorData-1785135131382-1db2886a647849f0b8dc6e736de84bc5",
+        "start_ms": 1785036934931
+      },
+      "original": {
+        "end_ms": 1785038374931,
+        "sid": "sensorData-1785135131382-1db2886a647849f0b8dc6e736de84bc5",
+        "start_ms": 1785036799931
+      },
+      "raw_index": 349
+    }
+  ],
+  "changed_intervals": 10,
+  "clipped": {
+    "end_mae_ms": 139537.34210526315,
+    "exact_boundary_pairs": 0,
+    "fn": 28,
+    "fp": 7,
+    "start_mae_ms": 271303.34210526315,
+    "tp": 38,
+    "unmatched_fp_total_duration_s": 9817.5
+  },
+  "clipped_common_gt": {
+    "end_mae_ms": 139537.34210526315,
+    "exact_boundary_pairs": 0,
+    "fn": 28,
+    "fp": 7,
+    "start_mae_ms": 271303.34210526315,
+    "tp": 38,
+    "unmatched_fp_total_duration_s": 9817.5
+  },
+  "clipped_strict": {
+    "end_mae_ms": 139537.34210526315,
+    "exact_boundary_pairs": 0,
+    "fn": 28,
+    "fp": 7,
+    "start_mae_ms": 271303.34210526315,
+    "tp": 38,
+    "unmatched_fp_total_duration_s": 9817.5
+  },
+  "common_matched_gt": 38,
+  "diagnostic_only": true,
+  "dual_candidate_count": 117,
+  "gained_gt": [],
+  "health_data_read": false,
+  "lost_gt": [],
+  "matched_gt_gained": 0,
+  "matched_gt_lost": 0,
+  "original_policy": {
+    "admission": {
+      "max_candidates_per_subject": 8,
+      "nms_iou": 0.3,
+      "threshold": 0.2
+    },
+    "selection_metrics": {
+      "f1": 0.6846846846846847,
+      "n_pred": 45,
+      "n_tp": 38,
+      "n_true": 66,
+      "ppv": 0.8444444444444444,
+      "sensitivity": 0.5757575757575758
+    },
+    "threshold": 0.7325692750216726
+  },
+  "raw_candidate_exact_boundary_pairs": 0,
+  "selected_raw_indices": [
+    6,
+    178,
+    181,
+    198,
+    10,
+    12,
+    15,
+    211,
+    20,
+    221,
+    39,
+    415,
+    424,
+    432,
+    48,
+    65,
+    80,
+    245,
+    88,
+    249,
+    255,
+    447,
+    258,
+    262,
+    455,
+    278,
+    459,
+    119,
+    295,
+    129,
+    477,
+    484,
+    135,
+    163,
+    169,
+    492,
+    497,
+    510,
+    511,
+    516,
+    525,
+    343,
+    349,
+    535,
+    554
+  ],
+  "wrapper": 1
+}

@@ -1,0 +1,17 @@
+{
+  "artifact_bytes_before_summary": 16214,
+  "changed_intervals": 17,
+  "diagnostic_only": true,
+  "event_counts_unchanged_all_wrappers": true,
+  "exploratory": true,
+  "health_data_read": false,
+  "input_unchanged": true,
+  "matched_gt_gained_occurrences": 0,
+  "matched_gt_lost_occurrences": 0,
+  "model_fits": 0,
+  "note": "Repeated policy populations; occurrences are not independent unique GT. No new F1 headline.",
+  "outer_calls": 0,
+  "status": "S6_GEOMETRY_DIAGNOSTIC_COMPLETE",
+  "strict_boundary_counts_unchanged_all_wrappers": true,
+  "wall_seconds": 0.606137700000545
+}

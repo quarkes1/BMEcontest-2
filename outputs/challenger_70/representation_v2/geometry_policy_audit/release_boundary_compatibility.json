@@ -1,0 +1,16 @@
+{
+  "diagnostic_only": true,
+  "exact_quarter_matches": 0,
+  "fold_tp_counts": {
+    "0": 16,
+    "1": 30,
+    "2": 15,
+    "3": 25,
+    "4": 28
+  },
+  "frozen_predictions_tp_unchanged_under_strict_rule": true,
+  "matched_predictions": 114,
+  "minimum_matched_iou": 0.2604783149166265,
+  "scope": "Existing final predictions only; does not prove unchanged training labels or selected policies.",
+  "source_sha256": "e963fd43964c948f05f11c199923469200d4ab1eda433b473fdb5a405809cc41"
+}

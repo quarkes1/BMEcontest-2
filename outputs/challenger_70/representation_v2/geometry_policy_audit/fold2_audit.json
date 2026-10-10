@@ -1,0 +1,174 @@
+{
+  "baseline": {
+    "end_mae_ms": 142886.56,
+    "exact_boundary_pairs": 0,
+    "fn": 13,
+    "fp": 10,
+    "start_mae_ms": 384509.4,
+    "tp": 50,
+    "unmatched_fp_total_duration_s": 9352.5
+  },
+  "baseline_common_gt": {
+    "end_mae_ms": 142886.56,
+    "exact_boundary_pairs": 0,
+    "fn": 13,
+    "fp": 10,
+    "start_mae_ms": 384509.4,
+    "tp": 50,
+    "unmatched_fp_total_duration_s": 9352.5
+  },
+  "baseline_strict": {
+    "end_mae_ms": 142886.56,
+    "exact_boundary_pairs": 0,
+    "fn": 13,
+    "fp": 10,
+    "start_mae_ms": 384509.4,
+    "tp": 50,
+    "unmatched_fp_total_duration_s": 9352.5
+  },
+  "candidate_count": 527,
+  "changed_examples": [
+    {
+      "clipped": {
+        "end_ms": 1784691939318,
+        "sid": "sensorData-1784732185290-b24eceacb4b54078b26a626a833c2529",
+        "start_ms": 1784690934318
+      },
+      "original": {
+        "end_ms": 1784691954318,
+        "sid": "sensorData-1784732185290-b24eceacb4b54078b26a626a833c2529",
+        "start_ms": 1784690934318
+      },
+      "raw_index": 44
+    },
+    {
+      "clipped": {
+        "end_ms": 1785405076193,
+        "sid": "sensorData-1785417036164-bb6ae9a6321d46a58f9d18aa55000d0c",
+        "start_ms": 1785403021193
+      },
+      "original": {
+        "end_ms": 1785405076193,
+        "sid": "sensorData-1785417036164-bb6ae9a6321d46a58f9d18aa55000d0c",
+        "start_ms": 1785402991193
+      },
+      "raw_index": 309
+    }
+  ],
+  "changed_intervals": 2,
+  "clipped": {
+    "end_mae_ms": 142586.56,
+    "exact_boundary_pairs": 0,
+    "fn": 13,
+    "fp": 10,
+    "start_mae_ms": 383909.4,
+    "tp": 50,
+    "unmatched_fp_total_duration_s": 9352.5
+  },
+  "clipped_common_gt": {
+    "end_mae_ms": 142586.56,
+    "exact_boundary_pairs": 0,
+    "fn": 13,
+    "fp": 10,
+    "start_mae_ms": 383909.4,
+    "tp": 50,
+    "unmatched_fp_total_duration_s": 9352.5
+  },
+  "clipped_strict": {
+    "end_mae_ms": 142586.56,
+    "exact_boundary_pairs": 0,
+    "fn": 13,
+    "fp": 10,
+    "start_mae_ms": 383909.4,
+    "tp": 50,
+    "unmatched_fp_total_duration_s": 9352.5
+  },
+  "common_matched_gt": 50,
+  "diagnostic_only": true,
+  "dual_candidate_count": 139,
+  "gained_gt": [],
+  "health_data_read": false,
+  "lost_gt": [],
+  "matched_gt_gained": 0,
+  "matched_gt_lost": 0,
+  "original_policy": {
+    "admission": {
+      "max_candidates_per_subject": 6,
+      "nms_iou": 0.3,
+      "threshold": 0.5
+    },
+    "selection_metrics": {
+      "f1": 0.8130081300813008,
+      "n_pred": 60,
+      "n_tp": 50,
+      "n_true": 63,
+      "ppv": 0.8333333333333334,
+      "sensitivity": 0.7936507936507936
+    },
+    "threshold": 0.6819166145296718
+  },
+  "raw_candidate_exact_boundary_pairs": 0,
+  "selected_raw_indices": [
+    1,
+    157,
+    158,
+    159,
+    165,
+    343,
+    15,
+    21,
+    25,
+    176,
+    179,
+    187,
+    346,
+    348,
+    355,
+    197,
+    33,
+    218,
+    44,
+    221,
+    229,
+    231,
+    236,
+    247,
+    54,
+    59,
+    255,
+    392,
+    403,
+    405,
+    273,
+    419,
+    425,
+    436,
+    442,
+    448,
+    295,
+    453,
+    454,
+    70,
+    80,
+    92,
+    104,
+    106,
+    117,
+    464,
+    468,
+    483,
+    493,
+    128,
+    136,
+    142,
+    298,
+    300,
+    503,
+    510,
+    309,
+    326,
+    331,
+    335
+  ],
+  "wrapper": 2
+}

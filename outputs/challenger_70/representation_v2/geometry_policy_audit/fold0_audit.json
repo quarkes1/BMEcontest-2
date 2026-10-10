@@ -1,0 +1,231 @@
+{
+  "baseline": {
+    "end_mae_ms": 154215.79166666666,
+    "exact_boundary_pairs": 0,
+    "fn": 17,
+    "fp": 30,
+    "start_mae_ms": 292731.3333333333,
+    "tp": 48,
+    "unmatched_fp_total_duration_s": 39502.5
+  },
+  "baseline_common_gt": {
+    "end_mae_ms": 154215.79166666666,
+    "exact_boundary_pairs": 0,
+    "fn": 17,
+    "fp": 30,
+    "start_mae_ms": 292731.3333333333,
+    "tp": 48,
+    "unmatched_fp_total_duration_s": 39502.5
+  },
+  "baseline_strict": {
+    "end_mae_ms": 154215.79166666666,
+    "exact_boundary_pairs": 0,
+    "fn": 17,
+    "fp": 30,
+    "start_mae_ms": 292731.3333333333,
+    "tp": 48,
+    "unmatched_fp_total_duration_s": 39502.5
+  },
+  "candidate_count": 526,
+  "changed_examples": [
+    {
+      "clipped": {
+        "end_ms": 1784803326730,
+        "sid": "sensorData-1784809174380-773081b4763f4d4191d031d355b61938",
+        "start_ms": 1784802764230
+      },
+      "original": {
+        "end_ms": 1784803326730,
+        "sid": "sensorData-1784809174380-773081b4763f4d4191d031d355b61938",
+        "start_ms": 1784802741730
+      },
+      "raw_index": 392
+    },
+    {
+      "clipped": {
+        "end_ms": 1785066720003,
+        "sid": "sensorData-1785077669166-e95a309ce40d4cfc8a63c6c316dbda49",
+        "start_ms": 1785065580003
+      },
+      "original": {
+        "end_ms": 1785066780003,
+        "sid": "sensorData-1785077669166-e95a309ce40d4cfc8a63c6c316dbda49",
+        "start_ms": 1785065580003
+      },
+      "raw_index": 458
+    },
+    {
+      "clipped": {
+        "end_ms": 1785000029855,
+        "sid": "sensorData-1785079462038-2c80b49496b04a89aff11d4ac02c69c6",
+        "start_ms": 1784999062355
+      },
+      "original": {
+        "end_ms": 1785000029855,
+        "sid": "sensorData-1785079462038-2c80b49496b04a89aff11d4ac02c69c6",
+        "start_ms": 1784998634855
+      },
+      "raw_index": 469
+    },
+    {
+      "clipped": {
+        "end_ms": 1785404191193,
+        "sid": "sensorData-1785417036164-bb6ae9a6321d46a58f9d18aa55000d0c",
+        "start_ms": 1785403036193
+      },
+      "original": {
+        "end_ms": 1785404191193,
+        "sid": "sensorData-1785417036164-bb6ae9a6321d46a58f9d18aa55000d0c",
+        "start_ms": 1785402976193
+      },
+      "raw_index": 141
+    },
+    {
+      "clipped": {
+        "end_ms": 1785653173288,
+        "sid": "sensorData-1785672919238-ba5839e062ee452c816726d72e42c281",
+        "start_ms": 1785650743288
+      },
+      "original": {
+        "end_ms": 1785653173288,
+        "sid": "sensorData-1785672919238-ba5839e062ee452c816726d72e42c281",
+        "start_ms": 1785650563288
+      },
+      "raw_index": 169
+    }
+  ],
+  "changed_intervals": 5,
+  "clipped": {
+    "end_mae_ms": 155465.79166666666,
+    "exact_boundary_pairs": 0,
+    "fn": 17,
+    "fp": 30,
+    "start_mae_ms": 297887.5833333333,
+    "tp": 48,
+    "unmatched_fp_total_duration_s": 39420.0
+  },
+  "clipped_common_gt": {
+    "end_mae_ms": 155465.79166666666,
+    "exact_boundary_pairs": 0,
+    "fn": 17,
+    "fp": 30,
+    "start_mae_ms": 297887.5833333333,
+    "tp": 48,
+    "unmatched_fp_total_duration_s": 39420.0
+  },
+  "clipped_strict": {
+    "end_mae_ms": 155465.79166666666,
+    "exact_boundary_pairs": 0,
+    "fn": 17,
+    "fp": 30,
+    "start_mae_ms": 297887.5833333333,
+    "tp": 48,
+    "unmatched_fp_total_duration_s": 39420.0
+  },
+  "common_matched_gt": 48,
+  "diagnostic_only": true,
+  "dual_candidate_count": 143,
+  "gained_gt": [],
+  "health_data_read": false,
+  "lost_gt": [],
+  "matched_gt_gained": 0,
+  "matched_gt_lost": 0,
+  "original_policy": {
+    "admission": {
+      "max_candidates_per_subject": 8,
+      "nms_iou": 0.3,
+      "threshold": 0.35
+    },
+    "selection_metrics": {
+      "f1": 0.6713286713286714,
+      "n_pred": 78,
+      "n_tp": 48,
+      "n_true": 65,
+      "ppv": 0.6153846153846154,
+      "sensitivity": 0.7384615384615385
+    },
+    "threshold": 0.5639396181364547
+  },
+  "raw_candidate_exact_boundary_pairs": 0,
+  "selected_raw_indices": [
+    328,
+    331,
+    337,
+    179,
+    180,
+    185,
+    342,
+    343,
+    344,
+    1,
+    203,
+    356,
+    361,
+    363,
+    210,
+    213,
+    216,
+    7,
+    9,
+    10,
+    219,
+    221,
+    223,
+    371,
+    379,
+    243,
+    385,
+    261,
+    263,
+    392,
+    397,
+    276,
+    15,
+    404,
+    411,
+    417,
+    29,
+    32,
+    37,
+    311,
+    426,
+    427,
+    433,
+    436,
+    438,
+    45,
+    441,
+    444,
+    67,
+    448,
+    81,
+    450,
+    451,
+    452,
+    83,
+    458,
+    86,
+    96,
+    469,
+    100,
+    479,
+    106,
+    108,
+    114,
+    119,
+    493,
+    124,
+    133,
+    503,
+    507,
+    512,
+    138,
+    141,
+    142,
+    156,
+    160,
+    163,
+    169
+  ],
+  "wrapper": 0
+}

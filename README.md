@@ -21,9 +21,12 @@
   有效采样 ~2Hz）多源数据，无感识别进食行为。
 - **挑战**：进食动作与喝水、打电话等日常动作高度相似；惯用手（IMU 主导）与非惯用手
   （动作弱，依赖上下文/生理信号）两种佩戴场景检测原理不同。
-- **评估（Resources/试题.txt 锁定）**：预测 Episode 与 GT Episode `IoU ≥ 0.25` 判 TP；
+- **赛题评估（Resources/试题.txt）**：预测 Episode 与 GT Episode `IoU > 0.25` 判 TP；
   sensitivity = TP/真实事件数、PPV = TP/预测事件数、F1 = 2·S·P/(S+P)；次要指标为正确
   匹配事件的起止时间 MAE。组委会在独立测试集上评分。
+- **历史实现差异**：当前发布评估器使用 `≥0.25`。2026-10-10核对封存的114个TP匹配，
+  最小IoU为0.2604783、无恰好0.25的命中；因此这些冻结预测的发布计数不受严格比较影响。
+  训练标签/阈值选择等路径的全面更正仍需版本化核查，不能从此推出重训后策略完全相同。
 - **目标**：官方全局口径 F1 最大化；全程真实时间戳（包级恢复 + 缺口切段），杜绝时间轴
   类评估伪影；估计口径只使用可评估（eligible）餐集合。
 
@@ -413,6 +416,12 @@ S5已完成且未通过gate：B 66TP/20FP、inner health F1 .72131；随机表�
 FD联合59TP/13FP、.69822，仅1/3折改善。候选AP虽然提高，但没有转化为事件收益，不推广该方案。
 见[S5报告](outputs/challenger_70/representation_v2/amendment_a3_joint/report.md)。成功运行约13.2分钟，
 184项相关测试通过，零新神经训练/持久token缓存。正式F1仍为0.6514285714，dist不变。
+
+[S6队友方案启发的几何诊断](outputs/challenger_70/representation_v2/geometry_policy_audit/report.md)已完成：
+冻结S2基线分数与策略，仅在policy OOF将双来源最终区间裁到宏/微支持交集。17个区间改变，
+三个wrapper均无TP/FP变化、无GT救回/丢失，MAE无一致改善；关闭这一裁边方案，未运行health。
+52项相关测试通过、约16KiB证据、无模型训练/新缓存。对方后期实验分支尚未公开，234与153个GT
+口径仍待对齐；评分分布差异不能单独证明OOF/refit校准失效。
 
 Installed-artifact hashes, the independent frozen-blend identity check, and
 the formal non-exclusive mechanism legend are recorded in
