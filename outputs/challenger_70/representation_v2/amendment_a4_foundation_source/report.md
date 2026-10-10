@@ -76,8 +76,11 @@ interpret them as a fair encoder speed benchmark. Wall includes preparation.
 
 27 new tests and211 related representation tests pass. Independent Luna/medium
 review found one Important preflight-status issue, fixed via2 RED→GREEN tests;
-no remaining Critical/Important/Minor findings. Full regression is running;
-final result will be added before sealing the stage.
+no remaining Critical/Important/Minor findings. Post-fix full regression:
+**770 passed,5 skipped,31 existing/expected warnings**,1029.36s,exit0
+(torch CPU2; pytest -q -p no:cacheprovider). The pre-fix interrupted run does not
+count as verification. Rebuildable research bytecode and all three own32MiB
+test placeholders removed; scientific evidence retained. Stage is sealed.
 
 Validation-row metrics, checkpoint identity and fixed gate were independently
 recomputed after execution; all agree. No new source/target result was used to

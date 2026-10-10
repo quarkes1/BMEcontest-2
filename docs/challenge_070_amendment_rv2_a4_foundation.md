@@ -86,7 +86,7 @@ subject metrics, summary/state/report. No raw copies or token banks. Download on
 files; no full clone/cache. Fixed snapshots of upstream code are reference text only, never executed.
 - [x] Run module once, verify source fingerprints, population, baseline frozen-logit replay and output
   artifact identities. Review implementation+evidence, fix important findings with RED→GREEN.
-- [ ] Update README and registry (outer_f1/event_f1 null), clear only this stage's rebuildable pyc/tmp,
+- [x] Update README and registry (outer_f1/event_f1 null), clear only this stage's rebuildable pyc/tmp,
   commit results and verify clean tree. Preserve small frozen weights/negative evidence for reproduction.
 
 Ruling: use existing approved research workspace and combined spec/plan/ledger; no extra data copies.
@@ -124,6 +124,12 @@ preceded this formatting-policy correction; no experiment code or scores changed
 Independent no-fit serialized-PCA/scaler/LR replay on2274 val tokens: R/F/D max logit
 errors6.79e-6/3.06e-6/1.82e-6 within fixed1e-4 tolerance. All7 upstream snapshots
 match manifest and committed bytes. No additional metrics/gate choices or target raw reads.
+Final verification: post-fix full repository770 passed,5 skipped,31 existing/expected warnings,
+1029.36s,exit0 (torch CPU2; pytest -q -p no:cacheprovider). Initial pre-fix interrupted suite is
+not counted as evidence. Results7ab6cc1, source replay414af5f, sensor metadata reviewf7108b5.
+Cleaned rebuildable representation research bytecode and all three own32MiB resource-test
+placeholder files; no raw/cache/model evidence deletion. Registered outer/event F1 remain null.
+Stage sealed as complete negative; no target experiment is authorized by the failed gate.
 
 ## Primary provenance
 

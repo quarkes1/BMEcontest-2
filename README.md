@@ -503,4 +503,6 @@ S13已完成：source-val AP .84304（S0 .84405）、raw BCE .50416（S0 .25704�
 S14已完成：R/F/D source AP .76428/.69747/.85144，raw BCE .27218/.29392/.22677。
 固定预训练臂不及随机与FD对照，完整gate失败，关闭此桥接，不进入目标probe。
 见[S14报告](outputs/challenger_70/representation_v2/amendment_a4_foundation_source/report.md)。
-27项新增、211项相关研究测试通过；全仓回归进行中。正式F1与dist仍未改动。
+27项新增、211项相关研究测试通过；修复后全仓770 passed、5 skipped、31条既有/预期警告，
+无失败（1029.36s）。已清理研究pyc与本轮约96MiB测试临时占位文件，无持久token缓存；
+正式F1仍.6514285714，dist/release未改动。下一假设为源域负样本覆盖不足，尚未注册训练。
