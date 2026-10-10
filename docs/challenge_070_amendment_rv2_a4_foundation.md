@@ -84,7 +84,7 @@ Output `outputs/challenger_70/representation_v2/amendment_a4_foundation_source/`
 plan, upstream LICENSE/code/config provenance, one checkpoint, three readouts/PCA, validation,
 subject metrics, summary/state/report. No raw copies or token banks. Download only explicit small
 files; no full clone/cache. Fixed snapshots of upstream code are reference text only, never executed.
-- [ ] Run module once, verify source fingerprints, population, baseline frozen-logit replay and output
+- [x] Run module once, verify source fingerprints, population, baseline frozen-logit replay and output
   artifact identities. Review implementation+evidence, fix important findings with RED→GREEN.
 - [ ] Update README and registry (outer_f1/event_f1 null), clear only this stage's rebuildable pyc/tmp,
   commit results and verify clean tree. Preserve small frozen weights/negative evidence for reproduction.
@@ -112,6 +112,10 @@ target/release authority is explicitly out of scope, no target evaluation or dis
 Ruling: overlap fixed source-only evaluation with post-fix full regression for efficiency; no code
 changes while these run, and stage cannot be sealed until regression succeeds. If an integrity/test
 failure emerges, preserve evidence and investigate rather than promote. No release risk is accepted.
+Task3 execution: code12c33d0, complete negative. R/F/D AP .76428/.69747/.85144;
+raw BCE .27218/.29392/.22677. All checks pass,0 neural steps,3 LR fits,29.26wall s,
+peak CUDA约36.1MiB,output<1MiB,token cache0. Independent metric/gate/checkpoint replay agrees;
+S0 max logit replay diff1.91e-6 within fixed tolerance. Full regression still pending; do not seal yet.
 
 ## Primary provenance
 

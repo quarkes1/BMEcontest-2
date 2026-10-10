@@ -1,0 +1,80 @@
+{
+  "checks": {
+    "finite": true,
+    "frozen": true,
+    "isolation": true,
+    "protected": true,
+    "resource": true
+  },
+  "encoder_parameters": 44352,
+  "metrics": {
+    "d": {
+      "average_precision": 0.8514425741510597,
+      "brier": 0.06851871424716245,
+      "candidate_count": 2274,
+      "exact_probability_endpoints": 0,
+      "log_loss": 0.22677433730866275,
+      "logit_max": 5.0912604331970215,
+      "logit_min": -15.75534439086914,
+      "negative_above_099": 0,
+      "negative_count": 1792,
+      "positive_below_001": 4,
+      "positive_count": 482,
+      "prevalence": 0.2119613016710642,
+      "raw_logit_bce": 0.22677433730866275,
+      "roc_auc": 0.9531782565204505
+    },
+    "f": {
+      "average_precision": 0.6974671878645149,
+      "brier": 0.09289542642481222,
+      "candidate_count": 2274,
+      "exact_probability_endpoints": 0,
+      "log_loss": 0.2939240971964678,
+      "logit_max": 3.790123224258423,
+      "logit_min": -15.241610527038574,
+      "negative_above_099": 0,
+      "negative_count": 1792,
+      "positive_below_001": 5,
+      "positive_count": 482,
+      "prevalence": 0.2119613016710642,
+      "raw_logit_bce": 0.2939240971964677,
+      "roc_auc": 0.9175496443390634
+    },
+    "r": {
+      "average_precision": 0.7642776703790902,
+      "brier": 0.08571309081099174,
+      "candidate_count": 2274,
+      "exact_probability_endpoints": 0,
+      "log_loss": 0.2721772810697966,
+      "logit_max": 4.056999206542969,
+      "logit_min": -12.611804008483887,
+      "negative_above_099": 0,
+      "negative_count": 1792,
+      "positive_below_001": 3,
+      "positive_count": 482,
+      "prevalence": 0.2119613016710642,
+      "raw_logit_bce": 0.27217728106979666,
+      "roc_auc": 0.9288550774303498
+    }
+  },
+  "neural_optimizer_steps": 0,
+  "outer_calls": 0,
+  "passed": false,
+  "peak_cuda_bytes": 37880832,
+  "persistent_token_cache_bytes": 0,
+  "protected_unchanged": true,
+  "readout_fits": 3,
+  "state_sha256": {
+    "d": "106e113d724b3483810a98e4a4c3046c319ee128728b8d793f4bfb0172f7a5f7",
+    "f": "d29bbd4ee46f361278e8517498318846c02dd6b4997d539a95214d79c29def8c",
+    "r": "7f67eb3f7ad32ea9fee69d7c0a6c99c1634caf10d140caa10c0eafa8df3a7f4d"
+  },
+  "status": "S14_NO_SUPPORTED_FOUNDATION_TRANSFER",
+  "target_signal_read": false,
+  "timing_seconds": {
+    "d": 0.036612800002330914,
+    "f": 1.2127154000045266,
+    "r": 1.304822400008561
+  },
+  "wall_seconds": 29.260058899992146
+}

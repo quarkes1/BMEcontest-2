@@ -500,3 +500,7 @@ S13已完成：source-val AP .84304（S0 .84405）、raw BCE .50416（S0 .25704�
 固定LIMU-BERT-X的unit-free桥接，与同架构随机表示、冻结FD表示做源域线性读出比较。
 只用train子窗口拟合32D PCA后固定池化，不训练encoder，不读取新目标raw或跑outer。
 未知物理单位与工业预训练主体身份限制均明确披露；源域结果不等于event F1。
+S14已完成：R/F/D source AP .76428/.69747/.85144，raw BCE .27218/.29392/.22677。
+固定预训练臂不及随机与FD对照，完整gate失败，关闭此桥接，不进入目标probe。
+见[S14报告](outputs/challenger_70/representation_v2/amendment_a4_foundation_source/report.md)。
+27项新增、211项相关研究测试通过；全仓回归进行中。正式F1与dist仍未改动。

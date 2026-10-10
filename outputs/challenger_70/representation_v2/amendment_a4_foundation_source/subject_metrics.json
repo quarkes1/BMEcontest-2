@@ -1,0 +1,373 @@
+[
+  {
+    "metrics": {
+      "d": {
+        "average_precision": 0.7376665420202674,
+        "brier": 0.1138990350826274,
+        "candidate_count": 336,
+        "exact_probability_endpoints": 0,
+        "log_loss": 0.3847596428139437,
+        "logit_max": 3.736915111541748,
+        "logit_min": -14.156631469726562,
+        "negative_above_099": 0,
+        "negative_count": 256,
+        "positive_below_001": 3,
+        "positive_count": 80,
+        "prevalence": 0.23809523809523808,
+        "raw_logit_bce": 0.3847596428139437,
+        "roc_auc": 0.89697265625
+      },
+      "f": {
+        "average_precision": 0.7624689126072912,
+        "brier": 0.10383869792122954,
+        "candidate_count": 336,
+        "exact_probability_endpoints": 0,
+        "log_loss": 0.3254287838737646,
+        "logit_max": 2.2010724544525146,
+        "logit_min": -10.27859115600586,
+        "negative_above_099": 0,
+        "negative_count": 256,
+        "positive_below_001": 1,
+        "positive_count": 80,
+        "prevalence": 0.23809523809523808,
+        "raw_logit_bce": 0.3254287838737646,
+        "roc_auc": 0.9197265625
+      },
+      "r": {
+        "average_precision": 0.7666582221118631,
+        "brier": 0.10469184292083683,
+        "candidate_count": 336,
+        "exact_probability_endpoints": 0,
+        "log_loss": 0.3376842475944602,
+        "logit_max": 2.808638572692871,
+        "logit_min": -10.647050857543945,
+        "negative_above_099": 0,
+        "negative_count": 256,
+        "positive_below_001": 2,
+        "positive_count": 80,
+        "prevalence": 0.23809523809523808,
+        "raw_logit_bce": 0.3376842475944602,
+        "roc_auc": 0.916796875
+      }
+    },
+    "participant": 3
+  },
+  {
+    "metrics": {
+      "d": {
+        "average_precision": 0.8193651802867128,
+        "brier": 0.09078380273658979,
+        "candidate_count": 340,
+        "exact_probability_endpoints": 0,
+        "log_loss": 0.2707316978306801,
+        "logit_max": 2.7602686882019043,
+        "logit_min": -15.560312271118164,
+        "negative_above_099": 0,
+        "negative_count": 256,
+        "positive_below_001": 0,
+        "positive_count": 84,
+        "prevalence": 0.24705882352941178,
+        "raw_logit_bce": 0.2707316978306801,
+        "roc_auc": 0.9540085565476191
+      },
+      "f": {
+        "average_precision": 0.782909132219843,
+        "brier": 0.09207330615904644,
+        "candidate_count": 340,
+        "exact_probability_endpoints": 0,
+        "log_loss": 0.28426336605623065,
+        "logit_max": 2.269150495529175,
+        "logit_min": -11.805270195007324,
+        "negative_above_099": 0,
+        "negative_count": 256,
+        "positive_below_001": 1,
+        "positive_count": 84,
+        "prevalence": 0.24705882352941178,
+        "raw_logit_bce": 0.2842633660562306,
+        "roc_auc": 0.9433128720238095
+      },
+      "r": {
+        "average_precision": 0.7846960854816138,
+        "brier": 0.09555435632528043,
+        "candidate_count": 340,
+        "exact_probability_endpoints": 0,
+        "log_loss": 0.28414161464944404,
+        "logit_max": 3.355696201324463,
+        "logit_min": -9.47070598602295,
+        "negative_above_099": 0,
+        "negative_count": 256,
+        "positive_below_001": 0,
+        "positive_count": 84,
+        "prevalence": 0.24705882352941178,
+        "raw_logit_bce": 0.28414161464944404,
+        "roc_auc": 0.9491722470238095
+      }
+    },
+    "participant": 6
+  },
+  {
+    "metrics": {
+      "d": {
+        "average_precision": 0.9412866726912715,
+        "brier": 0.04709747709615893,
+        "candidate_count": 342,
+        "exact_probability_endpoints": 0,
+        "log_loss": 0.15687591620985447,
+        "logit_max": 3.6428728103637695,
+        "logit_min": -14.712543487548828,
+        "negative_above_099": 0,
+        "negative_count": 256,
+        "positive_below_001": 0,
+        "positive_count": 86,
+        "prevalence": 0.25146198830409355,
+        "raw_logit_bce": 0.15687591620985444,
+        "roc_auc": 0.9830123546511628
+      },
+      "f": {
+        "average_precision": 0.8087785848214115,
+        "brier": 0.08017851653021454,
+        "candidate_count": 342,
+        "exact_probability_endpoints": 0,
+        "log_loss": 0.2525591518437509,
+        "logit_max": 3.4648005962371826,
+        "logit_min": -15.241610527038574,
+        "negative_above_099": 0,
+        "negative_count": 256,
+        "positive_below_001": 0,
+        "positive_count": 86,
+        "prevalence": 0.25146198830409355,
+        "raw_logit_bce": 0.2525591518437509,
+        "roc_auc": 0.9504905523255813
+      },
+      "r": {
+        "average_precision": 0.9097366915922889,
+        "brier": 0.06294403216774933,
+        "candidate_count": 342,
+        "exact_probability_endpoints": 0,
+        "log_loss": 0.20384571238270158,
+        "logit_max": 3.808279037475586,
+        "logit_min": -11.165802001953125,
+        "negative_above_099": 0,
+        "negative_count": 256,
+        "positive_below_001": 0,
+        "positive_count": 86,
+        "prevalence": 0.25146198830409355,
+        "raw_logit_bce": 0.20384571238270158,
+        "roc_auc": 0.9690679505813953
+      }
+    },
+    "participant": 19
+  },
+  {
+    "metrics": {
+      "d": {
+        "average_precision": null,
+        "brier": 0.052477048012045384,
+        "candidate_count": 256,
+        "exact_probability_endpoints": 0,
+        "log_loss": 0.1603785629806871,
+        "logit_max": 2.3082518577575684,
+        "logit_min": -12.531408309936523,
+        "negative_above_099": 0,
+        "negative_count": 256,
+        "positive_below_001": 0,
+        "positive_count": 0,
+        "prevalence": 0.0,
+        "raw_logit_bce": 0.1603785629806871,
+        "roc_auc": null
+      },
+      "f": {
+        "average_precision": null,
+        "brier": 0.06482784590026702,
+        "candidate_count": 256,
+        "exact_probability_endpoints": 0,
+        "log_loss": 0.2084987206006333,
+        "logit_max": 2.5152251720428467,
+        "logit_min": -12.761350631713867,
+        "negative_above_099": 0,
+        "negative_count": 256,
+        "positive_below_001": 0,
+        "positive_count": 0,
+        "prevalence": 0.0,
+        "raw_logit_bce": 0.2084987206006333,
+        "roc_auc": null
+      },
+      "r": {
+        "average_precision": null,
+        "brier": 0.05792003475657174,
+        "candidate_count": 256,
+        "exact_probability_endpoints": 0,
+        "log_loss": 0.19135835030937903,
+        "logit_max": 2.3609471321105957,
+        "logit_min": -10.848663330078125,
+        "negative_above_099": 0,
+        "negative_count": 256,
+        "positive_below_001": 0,
+        "positive_count": 0,
+        "prevalence": 0.0,
+        "raw_logit_bce": 0.19135835030937903,
+        "roc_auc": null
+      }
+    },
+    "participant": 23
+  },
+  {
+    "metrics": {
+      "d": {
+        "average_precision": 0.8823728983656827,
+        "brier": 0.06949185177776723,
+        "candidate_count": 334,
+        "exact_probability_endpoints": 0,
+        "log_loss": 0.2187637336455137,
+        "logit_max": 3.618213653564453,
+        "logit_min": -15.154228210449219,
+        "negative_above_099": 0,
+        "negative_count": 256,
+        "positive_below_001": 0,
+        "positive_count": 78,
+        "prevalence": 0.23353293413173654,
+        "raw_logit_bce": 0.21876373364551377,
+        "roc_auc": 0.9661458333333333
+      },
+      "f": {
+        "average_precision": 0.7870564514486161,
+        "brier": 0.08732913713769769,
+        "candidate_count": 334,
+        "exact_probability_endpoints": 0,
+        "log_loss": 0.2749446133830092,
+        "logit_max": 3.212290048599243,
+        "logit_min": -14.402969360351562,
+        "negative_above_099": 0,
+        "negative_count": 256,
+        "positive_below_001": 0,
+        "positive_count": 78,
+        "prevalence": 0.23353293413173654,
+        "raw_logit_bce": 0.2749446133830092,
+        "roc_auc": 0.933994391025641
+      },
+      "r": {
+        "average_precision": 0.7179390652767157,
+        "brier": 0.10054892422396762,
+        "candidate_count": 334,
+        "exact_probability_endpoints": 0,
+        "log_loss": 0.3090900658344232,
+        "logit_max": 3.8200531005859375,
+        "logit_min": -12.611804008483887,
+        "negative_above_099": 0,
+        "negative_count": 256,
+        "positive_below_001": 0,
+        "positive_count": 78,
+        "prevalence": 0.23353293413173654,
+        "raw_logit_bce": 0.30909006583442317,
+        "roc_auc": 0.9167167467948718
+      }
+    },
+    "participant": 25
+  },
+  {
+    "metrics": {
+      "d": {
+        "average_precision": 0.8948018045017911,
+        "brier": 0.04652830783626376,
+        "candidate_count": 303,
+        "exact_probability_endpoints": 0,
+        "log_loss": 0.1549648047307362,
+        "logit_max": 5.0912604331970215,
+        "logit_min": -14.184144973754883,
+        "negative_above_099": 0,
+        "negative_count": 256,
+        "positive_below_001": 0,
+        "positive_count": 47,
+        "prevalence": 0.1551155115511551,
+        "raw_logit_bce": 0.1549648047307362,
+        "roc_auc": 0.9729886968085106
+      },
+      "f": {
+        "average_precision": 0.6067113718696804,
+        "brier": 0.09461094872391407,
+        "candidate_count": 303,
+        "exact_probability_endpoints": 0,
+        "log_loss": 0.3041114995656486,
+        "logit_max": 3.785813093185425,
+        "logit_min": -10.824518203735352,
+        "negative_above_099": 0,
+        "negative_count": 256,
+        "positive_below_001": 0,
+        "positive_count": 47,
+        "prevalence": 0.1551155115511551,
+        "raw_logit_bce": 0.3041114995656486,
+        "roc_auc": 0.9183843085106382
+      },
+      "r": {
+        "average_precision": 0.7844929143289545,
+        "brier": 0.06758282888408643,
+        "candidate_count": 303,
+        "exact_probability_endpoints": 0,
+        "log_loss": 0.23009359505341567,
+        "logit_max": 3.4915990829467773,
+        "logit_min": -9.67547607421875,
+        "negative_above_099": 0,
+        "negative_count": 256,
+        "positive_below_001": 0,
+        "positive_count": 47,
+        "prevalence": 0.1551155115511551,
+        "raw_logit_bce": 0.23009359505341562,
+        "roc_auc": 0.9606050531914894
+      }
+    },
+    "participant": 27
+  },
+  {
+    "metrics": {
+      "d": {
+        "average_precision": 0.9468925674446371,
+        "brier": 0.054614794087360675,
+        "candidate_count": 363,
+        "exact_probability_endpoints": 0,
+        "log_loss": 0.21935792687091443,
+        "logit_max": 5.018275737762451,
+        "logit_min": -15.75534439086914,
+        "negative_above_099": 0,
+        "negative_count": 256,
+        "positive_below_001": 1,
+        "positive_count": 107,
+        "prevalence": 0.29476584022038566,
+        "raw_logit_bce": 0.21935792687091446,
+        "roc_auc": 0.9700642523364487
+      },
+      "f": {
+        "average_precision": 0.7559100286138554,
+        "brier": 0.11900121934786598,
+        "candidate_count": 363,
+        "exact_probability_endpoints": 0,
+        "log_loss": 0.38198786099565524,
+        "logit_max": 3.790123224258423,
+        "logit_min": -13.497575759887695,
+        "negative_above_099": 0,
+        "negative_count": 256,
+        "positive_below_001": 3,
+        "positive_count": 107,
+        "prevalence": 0.29476584022038566,
+        "raw_logit_bce": 0.38198786099565524,
+        "roc_auc": 0.892413843457944
+      },
+      "r": {
+        "average_precision": 0.8458256913770563,
+        "brier": 0.10146364294893297,
+        "candidate_count": 363,
+        "exact_probability_endpoints": 0,
+        "log_loss": 0.32287511949366565,
+        "logit_max": 4.056999206542969,
+        "logit_min": -8.724837303161621,
+        "negative_above_099": 0,
+        "negative_count": 256,
+        "positive_below_001": 1,
+        "positive_count": 107,
+        "prevalence": 0.29476584022038566,
+        "raw_logit_bce": 0.32287511949366565,
+        "roc_auc": 0.9222400700934579
+      }
+    },
+    "participant": 28
+  }
+]

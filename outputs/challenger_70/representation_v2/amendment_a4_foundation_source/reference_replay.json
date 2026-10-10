@@ -1,0 +1,5 @@
+{
+  "max_absolute_logit_difference": 1.9073486328125e-06,
+  "population_identity_equal": true,
+  "source_checkpoint_sha256": "c6276837b1366117075e7e8a7504e084926cbfc5d80b98b863e442255995efc4"
+}

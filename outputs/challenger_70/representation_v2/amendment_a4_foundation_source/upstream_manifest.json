@@ -1,0 +1,30 @@
+{
+  "LICENSE": {
+    "bytes": 1068,
+    "sha256": "7705a272eb1a80eb1bed6c9fe45feb9e6dbb9bbffd199fbc6bd5bdb8edf775e4"
+  },
+  "README.md": {
+    "bytes": 8140,
+    "sha256": "34d2cbb96b1d8e2e02d0337ce2e96b9de9d34df21e2a147b0f1b223c2cc51f08"
+  },
+  "config.py": {
+    "bytes": 6589,
+    "sha256": "1634949639e104928332069c6e4610fa6820926b70fe7e0b6a44cf03fb0a6634"
+  },
+  "config/limu_bert.json": {
+    "bytes": 1989,
+    "sha256": "3d82c385e51b8bcaac5d49c4585137b5d207a910fcf19123b6936141c5c01ccb"
+  },
+  "dataset/data_config.json": {
+    "bytes": 1714,
+    "sha256": "df34163f8b3675647833f07b0670f9f1f1ec65c2e68a339d248bc10b040ea896"
+  },
+  "models.py": {
+    "bytes": 22924,
+    "sha256": "2f845f7fb7172740404222dde46b2da40ff96cc100bac0a8fb937e0ac1c29b88"
+  },
+  "weights/limu_bert_x.pt": {
+    "bytes": 226783,
+    "sha256": "65697e7017020f36429a221382253f1fc370fdfd493cfb71667f95846c18516c"
+  }
+}
