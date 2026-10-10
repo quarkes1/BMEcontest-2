@@ -71,21 +71,23 @@ class CandidateLedger:
 
 
 def build_candidate_ledgers(data: OuterTrainOnlyData, config: object, train_subjects: Iterable[str],
-                            score_subjects: Iterable[str], *, fit_audit: dict | None = None) -> tuple[CandidateLedger, CandidateLedger]:
-    """Build T OOF and V held-out candidate sets with T-only learned ancestors.
+                            score_subjects: Iterable[str], *, fit_audit: dict | None = None) -> tuple[CandidateLedger, CandidateLedger | None]:
+    """Build T OOF and optional V candidates with T-only learned ancestors.
 
     The micro threshold is selected from T truth only. V truth is consulted only
     after candidate generation, for probe metrics/labels.
+    Empty score_subjects builds only T OOF, without V reads or final refits.
     """
     train = tuple(sorted(set(train_subjects)))
     score = tuple(sorted(set(score_subjects)))
     if set(train) & set(score):
         raise ValueError("candidate producer train/score subject overlap")
-    t, v = slice_outer_train(data, train), slice_outer_train(data, score)
-    if t.micro_window_train is None or t.micro_candidate_train is None or v.micro_candidate_train is None:
+    t = slice_outer_train(data, train)
+    v = slice_outer_train(data, score) if score else None
+    if t.micro_window_train is None or t.micro_candidate_train is None or (v is not None and v.micro_candidate_train is None):
         raise ValueError("registered candidate producer requires micro path")
 
-    def _fit_and_score(train_batch: WindowBatch, t_candidate: WindowBatch, v_candidate: WindowBatch,
+    def _fit_and_score(train_batch: WindowBatch, t_candidate: WindowBatch, v_candidate: WindowBatch | None,
                        keep: np.ndarray, estimator_factory, *, time_prior: bool):
         x = lambda batch: _runner._with_time_prior(batch.features, batch.windows) if time_prior else batch.features
         labels = np.asarray(train_batch.labels[keep], dtype=np.int8)
@@ -95,23 +97,26 @@ def build_candidate_ledgers(data: OuterTrainOnlyData, config: object, train_subj
         oof = crossfit_predict_proba(x(train_batch)[keep], labels, groups, x(t_candidate), t_groups,
                                     config.inner_splits, estimator_factory=estimator_factory)
         t_scores = oof.probabilities
-        model = estimator_factory()
-        model.fit(x(train_batch)[keep], labels)
         if fit_audit is not None:
             name = 'macro' if time_prior else 'micro'
             for fold in oof.folds:
                 fit_audit[f'{name}_oof{fold.index}'] = {'fit_subjects': list(map(str, fold.train_groups)), 'parents': []}
+        if v_candidate is None:
+            return _runner._windows_by_session(t_candidate.windows, t_scores), None
+        model = estimator_factory()
+        model.fit(x(train_batch)[keep], labels)
+        if fit_audit is not None:
             fit_audit[f'{name}_refit'] = {'fit_subjects': sorted(map(str, set(groups))), 'parents': []}
         v_scores = _runner._positive_probability(model, x(v_candidate))
         return (_runner._windows_by_session(t_candidate.windows, t_scores),
                 _runner._windows_by_session(v_candidate.windows, v_scores))
 
     macro_t, macro_v = _fit_and_score(
-        t.window_train, t.candidate_train, v.candidate_train,
+        t.window_train, t.candidate_train, v.candidate_train if v is not None else None,
         np.asarray(t.window_train.labels) >= 0,
         lambda: _runner._window_estimator(config.seed), time_prior=True)
     micro_t, micro_v = _fit_and_score(
-        t.micro_window_train, t.micro_candidate_train, v.micro_candidate_train,
+        t.micro_window_train, t.micro_candidate_train, v.micro_candidate_train if v is not None else None,
         _runner._micro_training_keep(t.micro_window_train, t.train_truths, config.micro_positive_middle_fraction),
         lambda: _runner._micro_window_estimator(config.seed + 10), time_prior=False)
     selected = _runner.select_micro_candidate_threshold(
@@ -136,4 +141,4 @@ def build_candidate_ledgers(data: OuterTrainOnlyData, config: object, train_subj
         groups = _runner._groups_for([candidate.event for candidate in candidates], partition.subject_by_session)
         return CandidateLedger(candidates, features, labels, groups, float(selected.threshold), train, scored_subjects)
 
-    return _ledger(t, macro_t, micro_t, train), _ledger(v, macro_v, micro_v, score)
+    return _ledger(t, macro_t, micro_t, train), _ledger(v, macro_v, micro_v, score) if v is not None else None

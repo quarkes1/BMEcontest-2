@@ -454,3 +454,7 @@ S8已完成、未通过gate：B 66TP/20FP、inner health F1 .72131；冻结FD 69
 12次独立适配、12000步，约24.2分钟，约17MiB证据、无新token缓存；全仓694 passed、5 skipped。
 下一步先做train-only优化/任务耦合审计，不据重复health手调source权重或继续冻结概率融合追分。
 正式F1仍 .6514285714，dist/release不变；正式可比提升>.03时提请审批后才更新可执行发布包。
+
+[S9训练侧优化审计](docs/challenge_070_amendment_rv2_a3_optimization.md)固定S8首个policy训练分区，
+只生成train OOF候选，重放初始readout，比较固定训练集的encoder/head初始与最终组合及梯度。
+不训练新encoder、不生成health评分或新事件F1；用于决定适配是否值得继续，或转向新的时序路线。

@@ -74,3 +74,19 @@ def test_candidate_producer_never_uses_score_truth_for_features():
     assert left_v.candidates == right_v.candidates
     np.testing.assert_array_equal(left_v.features, right_v.features)
     assert left_v.micro_threshold == right_v.micro_threshold
+
+
+def test_training_only_ledger_matches_oof_without_validation_refit():
+    data = _data()
+    config = replace(registered_e03_config(0, workers=1), micro_positive_middle_fraction=None)
+    train = {f'person{i}' for i in range(6)}
+    reference, _ = build_candidate_ledgers(data, config, train, {'person6', 'person7'})
+    audit = {}
+    actual, validation = build_candidate_ledgers(data, config, train, (), fit_audit=audit)
+    assert validation is None
+    assert not any(name.endswith('refit') for name in audit)
+    assert actual.candidates == reference.candidates
+    np.testing.assert_array_equal(actual.features, reference.features)
+    np.testing.assert_array_equal(actual.labels, reference.labels)
+    assert actual.micro_threshold == reference.micro_threshold
+    assert all(set(node['fit_subjects']) <= train for node in audit.values())
