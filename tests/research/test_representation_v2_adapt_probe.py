@@ -67,3 +67,23 @@ def test_engine_variant_sets_work_budget_and_rejects_unsafe_output():
     assert variant['max_wall_seconds']==21600 and variant['neural_optimizer_steps']==12000
     with pytest.raises(ValueError):ap.jp.experiment_contract({'output':'../release'})
     with pytest.raises(ValueError):ap.jp.experiment_contract({'max_work_seconds':-1})
+
+
+def test_gradient_control_none_preserves_gradient_and_norm_one_clips():
+    p=torch.nn.Parameter(torch.zeros(2));p.grad=torch.tensor([3.,4.])
+    assert float(ap.control_gradient_norm([p],None))==5.
+    torch.testing.assert_close(p.grad,torch.tensor([3.,4.]),atol=0,rtol=0)
+    assert float(ap.control_gradient_norm([p],1.))==5.
+    torch.testing.assert_close(p.grad,torch.tensor([.6,.8]),atol=1e-6,rtol=0)
+    with pytest.raises(ValueError):ap.control_gradient_norm([p],0.)
+
+
+def test_adaptation_reports_requested_batch_and_rejects_invalid_sampling_budget():
+    e=MotionBranch().token_encoder;h=torch.nn.Linear(16,1)
+    bs=tuple(bag(i) for i in range(8));y=np.array([0,1]*4);g=np.array(['a']*4+['b']*4)
+    rng=np.random.default_rng(3)
+    bank={'values':rng.normal(size=(8,6,125)).astype(np.float32),'labels':y,'groups':np.array([0]*4+[1]*4)}
+    _,report=ap.adapt_encoder(e,h,bs,y,g,bank,train_subjects={'a','b'},seed=2,device='cpu',steps=2,batch_size=32,clip_norm=None)
+    assert report['sampled_target_candidate_examples']==64 and report['batch_size']==32 and report['clip_norm'] is None
+    with pytest.raises(ValueError,match='batch'):
+        ap.adapt_encoder(e,h,bs,y,g,bank,train_subjects={'a','b'},seed=2,device='cpu',steps=1,batch_size=0)

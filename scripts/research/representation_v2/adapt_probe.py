@@ -59,11 +59,21 @@ def ordered_joint_probabilities(x,y,v,*,seed):
     return result
 
 
-def adapt_encoder(initial,source_head,bags,y,groups,bank,*,train_subjects,seed,device,steps=1000):
+def control_gradient_norm(parameters,clip_norm):
+    if clip_norm is not None and (not np.isfinite(clip_norm) or clip_norm<=0):
+        raise ValueError('positive finite clip norm or None required')
+    norm=nn.utils.clip_grad_norm_(parameters,float('inf') if clip_norm is None else clip_norm)
+    if not torch.isfinite(norm):raise RuntimeError('nonfinite adaptation gradient')
+    return norm
+
+
+def adapt_encoder(initial,source_head,bags,y,groups,bank,*,train_subjects,seed,device,steps=1000,batch_size=4,clip_norm=1.):
     groups=np.asarray(groups);y=np.asarray(y)
     if len(bags)!=len(y) or len(groups)!=len(y) or set(map(str,groups))-set(train_subjects):
         raise ValueError('training subject ownership mismatch')
     if steps<1:raise ValueError('positive training budget required')
+    if not isinstance(batch_size,int) or isinstance(batch_size,bool) or batch_size<1:raise ValueError('positive integer batch size required')
+    if clip_norm is not None and (not np.isfinite(clip_norm) or clip_norm<=0):raise ValueError('positive finite clip norm or None required')
     valid=np.array([b.token_mask.any() for b in bags]);keep=np.flatnonzero(valid)
     if not len(keep) or set(y[valid].tolist())!={0,1}:raise ValueError('valid target rows need both classes')
     initial=deepcopy(initial).to(device).requires_grad_(False).eval()
@@ -90,7 +100,7 @@ def adapt_encoder(initial,source_head,bags,y,groups,bank,*,train_subjects,seed,d
     history=[];target_losses=[];source_losses=[];started=time.perf_counter()
     for step in range(1,steps+1):
         if time.perf_counter()-started>1800:raise TimeoutError('partition adaptation budget exceeded')
-        chosen=[rng.choice(members[s]) for s in rng.integers(len(owners),size=4)]
+        chosen=[rng.choice(members[s]) for s in rng.integers(len(owners),size=batch_size)]
         pooled=[]
         for i in chosen:
             b=bags[i];idx=np.flatnonzero(b.token_mask)
@@ -110,20 +120,20 @@ def adapt_encoder(initial,source_head,bags,y,groups,bank,*,train_subjects,seed,d
         loss=target_loss+.25*source_loss
         if not torch.isfinite(loss):raise RuntimeError('nonfinite adaptation loss')
         opt.zero_grad(set_to_none=True);loss.backward()
-        grad=nn.utils.clip_grad_norm_(list(encoder.parameters())+list(head.parameters()),1.)
-        if not torch.isfinite(grad):raise RuntimeError('nonfinite adaptation gradient')
+        grad=control_gradient_norm(list(encoder.parameters())+list(head.parameters()),clip_norm)
         opt.step();target_losses.append(float(target_loss.detach()));source_losses.append(float(source_loss.detach()))
         if step%100==0 or step==steps:
             history.append({'step':step,'target_bce':float(np.mean(target_losses)),'source_bce':float(np.mean(source_losses)),
                             'last_gradient_norm':float(grad)});target_losses=[];source_losses=[]
-    report={'steps':steps,'fit_subjects':sorted(map(str,owners)),'history':history,'initial_readout':readout_payload(fitted),
+    report={'steps':steps,'batch_size':batch_size,'clip_norm':clip_norm,'sampled_target_candidate_examples':steps*batch_size,
+            'fit_subjects':sorted(map(str,owners)),'history':history,'initial_readout':readout_payload(fitted),
             'final_target_head':{k:v.detach().cpu().tolist() for k,v in head.state_dict().items()},
             'encoder':{k:v.detach().cpu().tolist() for k,v in encoder.state_dict().items()},
             'source_train_ids':sorted(map(int,source_owners)),'wall_seconds':time.perf_counter()-started}
     return encoder.requires_grad_(False).eval(),report
 
 
-def prepare(root,payload,output,device):
+def source_training_bank(root,payload,output):
     source_dir=root/'outputs/challenger_70/representation_v2/amendment_a3_source'
     source_plan=json.loads((source_dir/'plan.json').read_text())
     for relative,identity in source_plan['source_files'].items():
@@ -136,6 +146,13 @@ def prepare(root,payload,output,device):
     ep.write_json(output/'source_bank_identity.json',{'source_plan_sha256':hashlib.sha256((source_dir/'plan.json').read_bytes()).hexdigest(),
                   'source_train':ids,'source_validation':payload['provenance']['source_validation'],'train_token_count':len(bank['labels']),
                   'source_raw_files':source_plan['source_files'],'persistent_token_cache_bytes':0})
+    return bank,head
+
+
+def prepare(root,payload,output,device,*,adaptation_options=None):
+    options=dict(adaptation_options or {})
+    if set(options)-{'batch_size','clip_norm'}:raise ValueError('unsupported registered adaptation option')
+    bank,head=source_training_bank(root,payload,output)
 
     def split(root,data,config,train,score,excluded,encoders,source_train,source_val,output,prefix,device):
         if set(train)&(set(score)|set(excluded)) or set(score)&set(excluded):raise ValueError('split subject overlap')
@@ -147,7 +164,7 @@ def prepare(root,payload,output,device):
         vb=ep.unitfree_bags(ep.load_candidate_bags(root,v.candidates,config=ep.PreprocessConfig(gravity_align=False)))
         if device=='cuda':torch.cuda.synchronize()
         then=time.perf_counter()
-        adapted,report=adapt_encoder(encoders['f'],head,tb,t.labels,t.groups,bank,train_subjects=set(train),seed=20261011,device=device)
+        adapted,report=adapt_encoder(encoders['f'],head,tb,t.labels,t.groups,bank,train_subjects=set(train),seed=20261011,device=device,**options)
         graph['target_adaptation']={'fit_subjects':report['fit_subjects'],'parents':['source','candidates']}
         for arm,encoder in [('r',encoders['f']),('f',adapted)]:
             tx=np.asarray([pool_joint_ordered(z,b) for z,b in zip(encode_tokens(encoder,tb,device),tb)])
@@ -164,6 +181,7 @@ def prepare(root,payload,output,device):
                   'motion_valid':[bool(b.token_mask.any()) for b in vb], 'scores':{a:p.tolist() for a,p in scores.items()},
                   'feature_widths':{'b':116,'r':251,'f':251},'adaptation_and_encoding_seconds':seconds,
                   'source_checkpoint_sha256':ep.REGISTERED_SOURCE_SHA,'arm_semantics':{'b':'incumbent','r':'frozen FD','f':'adapted FD'}}
+        if options:evidence['optimizer_controls']=options
         evidence['baseline_source_sha256']=jp.baseline_replay(root,prefix+'_scores.json',evidence)
         ep.write_json(output/(prefix+'_scores.json'),evidence);ep.write_json(output/(prefix+'_adaptation.json'),report)
         del tb,vb,adapted,tx,vx;gc.collect()

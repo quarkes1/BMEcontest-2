@@ -462,3 +462,9 @@ S9实测完成：固定train BCE .22184→.26143，AP .76437→.74873，仅3/11�
 梯度可达encoder，不能归因为断图。四组梯度诊断全negative，不能证明source损害positive。
 见[S9报告](outputs/challenger_70/representation_v2/amendment_a3_optimization/report.md)。
 下一步先在train-only比较取消裁剪/扩大batch两个单因素，失败则停止该修复路线。
+
+[S10/S11优化对照规范](docs/challenge_070_amendment_rv2_a3_optimizer_controls.md)：
+S10固定11人train，只比较无裁剪batch4与norm1裁剪batch32，各1000步；
+训练BCE降低≥.01、至少6/11人不劣、固定source BCE上升≤.03才允许进入S11。
+固定优先选择通过的无裁剪臂，否则选择通过的大batch臂；两者失败则转向新时序表示。
+S11仅验证唯一封存配置，沿用完整nested事件门槛，不将训练改善当作发布F1。
