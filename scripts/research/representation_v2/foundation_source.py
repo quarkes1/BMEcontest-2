@@ -181,6 +181,18 @@ def check_budget(output,*,wall_seconds,peak_cuda,free_cuda):
     if free_cuda is not None and peak_cuda>.8*free_cuda:raise RuntimeError('S14 VRAM budget exceeded')
 
 
+def check_preflight_resources(output,*,source_bytes,available_ram,free_cuda):
+    try:
+        if 2*source_bytes>.8*available_ram:raise RuntimeError('source decode RAM reserve insufficient')
+        if free_cuda is not None and free_cuda<1280*1024**2:raise RuntimeError('S14 GPU reserve insufficient')
+        if shutil.disk_usage(Path(output).parent).free<20*1024**3:
+            raise RuntimeError('S14 disk reserve insufficient')
+    except Exception as exc:
+        u.write_json(Path(output)/'state.json',{'status':'S14_INCOMPLETE','phase':'preflight',
+                                             'error':str(exc),'outer_calls':0})
+        raise
+
+
 def _state_digest(model):
     digest=hashlib.sha256()
     for k,v in model.state_dict().items():
@@ -205,12 +217,10 @@ def run(root):
         path=root/name;actual={'bytes':path.stat().st_size,'sha256':u._file_sha(path)}
         if actual!=expected:raise RuntimeError('source file fingerprint drift')
         sourcefiles[name]=actual
-    if 2*sum(v['bytes'] for v in sourcefiles.values())>.8*u.available_memory_bytes():
-        raise RuntimeError('source decode RAM reserve insufficient')
     device='cuda' if torch.cuda.is_available() else 'cpu'
     free_cuda=torch.cuda.mem_get_info()[0] if device=='cuda' else None
-    if shutil.disk_usage(root).free<20*1024**3 or (free_cuda is not None and free_cuda<1280*1024**2):
-        raise RuntimeError('S14 preflight resource reserve insufficient')
+    check_preflight_resources(out,source_bytes=sum(v['bytes'] for v in sourcefiles.values()),
+                              available_ram=u.available_memory_bytes(),free_cuda=free_cuda)
     torch.set_num_threads(4)
     if device=='cuda':torch.cuda.reset_peak_memory_stats()
     code_sha=subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()

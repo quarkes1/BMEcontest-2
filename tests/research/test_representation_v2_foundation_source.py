@@ -161,3 +161,13 @@ def test_resource_guard_enforces_wall_and_output_limits(tmp_path):
     with pytest.raises(TimeoutError):m.check_budget(tmp_path,wall_seconds=7201,peak_cuda=0,free_cuda=None)
     (tmp_path/'too_big').write_bytes(b'x'*(32*1024**2+1))
     with pytest.raises(RuntimeError):m.check_budget(tmp_path,wall_seconds=0,peak_cuda=0,free_cuda=None)
+
+
+@pytest.mark.parametrize('source_bytes,ram,free_cuda',[(1000,100,None),(0,10**12,1)])
+def test_preflight_resource_failure_records_incomplete(tmp_path,source_bytes,ram,free_cuda):
+    import json
+    output=tmp_path/'attempt'
+    with pytest.raises(RuntimeError):m.check_preflight_resources(output,source_bytes=source_bytes,
+                                                               available_ram=ram,free_cuda=free_cuda)
+    assert json.loads((output/'state.json').read_text())['status']=='S14_INCOMPLETE'
+    assert not (output/'summary.json').exists()

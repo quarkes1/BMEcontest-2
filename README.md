@@ -495,3 +495,8 @@ S13已完成：source-val AP .84304（S0 .84405）、raw BCE .50416（S0 .25704�
 见[S13报告](outputs/challenger_70/representation_v2/amendment_a3_wide_source/report.md)。
 22项新增测试、184项表示研究测试通过；本次全仓回归743 passed、5 skipped、
 31条既有/预期警告，无失败（1079.33s）。证据已归档，无新token缓存；正式F1仍.6514285714。
+
+[S14外部预训练源域探针](docs/challenge_070_amendment_rv2_a4_foundation.md)已预注册并实现：
+固定LIMU-BERT-X的unit-free桥接，与同架构随机表示、冻结FD表示做源域线性读出比较。
+只用train子窗口拟合32D PCA后固定池化，不训练encoder，不读取新目标raw或跑outer。
+未知物理单位与工业预训练主体身份限制均明确披露；源域结果不等于event F1。

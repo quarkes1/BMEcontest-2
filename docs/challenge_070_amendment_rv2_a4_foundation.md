@@ -102,6 +102,16 @@ urllib, do not install new dependencies. All native paths now resolved through r
 Task2 evidence:9 missing-function failures RED, then25 passed (6.04s). Real PCA/LR validation
 perturbation leaves all fitted payloads bit-identical; full regression and independent review follow
 before sealing. Checkbox marks implementation/related-test completion, not a claim of full-suite proof.
+Final review: independent Luna/medium found one Important issue (resource preflight failures lacked
+INCOMPLETE state), no Critical/Minor. Fixed in one pass: two RAM/GPU failure tests RED→GREEN;
+all resource preflight rejection paths now preserve phase/error state, no summary. Existing attempt
+and dirty-tree invocations remain refused without modifying an existing output. Initial full suite
+was stopped before scores because it predated this fix; post-fix whole-suite regression runs afresh.
+Declined-to-judge rulings: runtime scores/replay/report remain Task3, validated after execution;
+target/release authority is explicitly out of scope, no target evaluation or dist change is allowed.
+Ruling: overlap fixed source-only evaluation with post-fix full regression for efficiency; no code
+changes while these run, and stage cannot be sealed until regression succeeds. If an integrity/test
+failure emerges, preserve evidence and investigate rather than promote. No release risk is accepted.
 
 ## Primary provenance
 
