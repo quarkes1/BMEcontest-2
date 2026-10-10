@@ -1,7 +1,7 @@
 # A3-S13 — 完整5秒动作感受野：源域先行设计
 
-状态：`IMPLEMENTED_READY_FOR_SINGLE_RUN`。用户要求继续下一阶段；未训练、
-未读取新目标health。用户自主探索授权覆盖设计与后续有界研究；不请求重复
+状态：`S13_NO_SUPPORTED_WIDE_SOURCE`，完整5000步、固定gate失败。未读取新目标
+health。用户自主探索授权覆盖设计与后续有界研究；不请求重复
 批准。正式outer和dist审批门保持不变。本文件先锁定研究设计，实施前补具体TDD计划。
 
 ## 为什么换这个问题
@@ -112,7 +112,7 @@ S13新schema独立，不影响任何旧运行。各任务接口如下：
   将S0 plan/population/validation通过git show绑定29a625e，复核source fingerprint、
   split/population与validation的participant/start/label；复算S0冻结logits验证输入合同。
   所有最终输出完成后校验保护/资源，再给出完成状态。独立Luna/medium只读审查。
-- [ ] Task4：相关研究测试、diff检查、代码/规范commit；随后单次运行S13与全仓回归。
+- [x] Task4：相关研究测试、diff检查、代码/规范commit；随后单次运行S13与全仓回归。
   实验CLI无可调训练参数，不按中途source-val选择终点。
 - [ ] Task5：复算source gate/逐人指标、更新README/registry/report，清理本轮pyc/tmp；
   结果commit并核对clean tree。通过只登记下一目标probe，失败关闭固定架构/预算。
@@ -135,3 +135,8 @@ Task1/2/3证据：模块不存在RED→14项GREEN；reference/run缺失RED→17�
 最终22项新增测试通过，相关表示研究184 passed、20条既有/预期缺失列警告，12.99s。
 本次未修改任何旧源模型、预处理函数或生产文件。代码提交后才单次训练；全仓回归
 以本次新代码另跑，不冒用S12的721项证明。
+Task4运行完成：d9ea415固定实现，AP .843043未达.854048，BCE .504164超过.277044；
+全部完整性/资源检查通过。训练65.88s、wall92.44s、CUDA peak约101MiB；
+验证2274行身份与旧logits精确重放（max diff0），抽样计数也与S0一致。
+AP6个有效participant为3改善3恶化，BCE7/7恶化。关闭此配方，无目标probe或新event F1。
+Task4全仓回归已启动但仍在运行，Task5完成之前必须补实际测试结论。

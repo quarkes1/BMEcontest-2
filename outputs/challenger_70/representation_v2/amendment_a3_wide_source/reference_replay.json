@@ -1,0 +1,8 @@
+{
+  "atol": 1e-05,
+  "max_absolute_logit_difference": 0.0,
+  "population_and_identity_equal": true,
+  "rtol": 1e-05,
+  "source_checkpoint_sha256": "c6276837b1366117075e7e8a7504e084926cbfc5d80b98b863e442255995efc4",
+  "validation_tokens": 2274
+}

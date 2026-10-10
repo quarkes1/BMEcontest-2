@@ -1,0 +1,89 @@
+{
+  "architecture": {
+    "channels": 64,
+    "dilations": [
+      1,
+      2,
+      4,
+      8,
+      16
+    ],
+    "embedding_dim": 16,
+    "samples": 125
+  },
+  "batch_size": 128,
+  "code_sha": "d9ea4153b0d0a7d6ec89eb1d1e665176326240f3",
+  "device": "cuda",
+  "encoder_parameters": 126544,
+  "head_parameters": 17,
+  "id": "RV2-A3-S13-001",
+  "max_training_seconds": 7200,
+  "max_wall_seconds": 14400,
+  "outer_calls": 0,
+  "protected_digest": "bf74ba7a008ed8813cd480822ffdb0cdab87318d19a539c180e18b706d485d27",
+  "receptive_field_samples": 129,
+  "reference_commit": "29a625e",
+  "reference_sha256": {
+    "plan": "d01e63129d230fca1d1ab1d1c6c5739d3a41a1b1f2a333316a0215f7850f2f4f",
+    "population": "1c1824045e642c3d9ad4b8c83be1022434540f6c67e0a3e10855706119aaa9bd",
+    "summary": "dd43da59cc0cf28857c9c4700d4631e5828290927b4eb41a3a2158cf9cd16867",
+    "validation": "c7a788327c158f545acf148a5543886aee3be09caa0cbf9d7a5433ecb2bdfc06"
+  },
+  "seed": 20260926,
+  "source_checkpoint_sha256": "c6276837b1366117075e7e8a7504e084926cbfc5d80b98b863e442255995efc4",
+  "source_files": {
+    "FDdatasets/doi-10.48804-CN8VBB/v1.0/FD-I/X_R.pkl": {
+      "bytes": 2783616991,
+      "sha256": "c6f554b5923bc3c9a71338951150f33eb00c9b4859455e6f03969534bc9dbfe6"
+    },
+    "FDdatasets/doi-10.48804-CN8VBB/v1.0/FD-I/Y_R.pkl": {
+      "bytes": 231969715,
+      "sha256": "e0d2dcc459f04aea122f1d36150dd94051a114637661912110c5f58fcc6db532"
+    }
+  },
+  "source_helper_sha256": {
+    "scripts/research/representation_v2/fd_source.py": "bf3d6b4415787f160ffcb2875d6ec28b4fa9593975a7acce60743251f171515b",
+    "scripts/research/representation_v2/unitfree.py": "b6c35ce5beed90d0890060aa25dbec2e2197a2bcb903c268d2607dd324c44ff8"
+  },
+  "source_train": [
+    0,
+    1,
+    2,
+    4,
+    5,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    20,
+    21,
+    22,
+    24,
+    26,
+    29,
+    30,
+    31,
+    32,
+    33
+  ],
+  "source_validation": [
+    3,
+    6,
+    19,
+    23,
+    25,
+    27,
+    28
+  ],
+  "spec_sha256": "1a0fab41f05dae066a4a4c2c751db98332d561ba7e26bae6bec0387c9c7ab62b",
+  "steps": 5000,
+  "target_signal_read": false
+}

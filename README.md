@@ -489,5 +489,8 @@ HARNET/LIMU-BERT-X等需先通过输入单位、采样合同、域差异与许�
 
 下一路线已登记为[S13完整动作感受野源域研究](docs/challenge_070_amendment_rv2_a3_receptive_field.md)：
 固定输入与16D输出，只比较更强126544参数/129点感受野encoder的源域学习。
-实现已完成，22项新增测试、184项表示研究测试通过；接下来固定5000步源域验证及
-全仓回归，不将源域AP当事件F1。通过源域门后也须重新注册目标迁移验证。
+S13已完成：source-val AP .84304（S0 .84405）、raw BCE .50416（S0 .25704）；
+未过固定源域gate，关闭此架构/预算，不进入目标事件验证。
+训练末段loss .04666与验证BCE的分离提示过拟合/过度自信，而非容量不足已被解决。
+见[S13报告](outputs/challenger_70/representation_v2/amendment_a3_wide_source/report.md)。
+22项新增测试、184项表示研究测试通过；本次全仓回归仍在运行。
