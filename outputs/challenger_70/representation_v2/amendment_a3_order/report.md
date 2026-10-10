@@ -56,9 +56,16 @@ FD仍比随机encoder有候选信息，但本次非线性时序读出没有稳�
 CUDA执行，CPU线程4；总墙钟370.69秒，编码+head计时67.19秒（同步墙钟，非精确GPU kernel时间）。
 峰值CUDA分配38,749,184 bytes，summary前证据695,381 bytes；零持久token缓存、零encoder副本。
 保护快照前后完全相同，outer_calls=0。Luna/medium独立复核无实质阻塞。
-129项表示研究相关回归通过（4条已有全缺失列imputer warning）；全仓回归另行记录最终结果。
+129项表示研究相关回归通过（4条已有全缺失列imputer warning）。全仓回归
+`python -c "import torch,pytest; torch.set_num_threads(2); raise SystemExit(pytest.main(['-q','-p','no:cacheprovider']))"`
+完成：688 passed、5 skipped、15 warnings，1067.94秒；警告为已有integration标记未注册、
+常量信号entropy除法、全缺失列imputer，没有测试失败。两个辅助测试列表命令的PowerShell
+通配符/提前关闭管道错误不属于该完整回归，已记录命令经验；没有因它们修改算法。
 预注册规格hash以plan所锚定commit版本为准，规范文件后续台账追加不是重新注册。
 
 用户发布纪律：正式可比事件F1较当前发布版提高超过.03时提请人工审批，批准后才更新dist的
 可执行推理程序、模型与接口文档，然后继续迭代。当前首次触发线>0.6814285714，
 candidate AP/inner F1/GT-aware诊断均不替代该成绩。
+
+清理：删除仅本轮新增的order_probe及其测试的两份可重建`.pyc`，未删除历史研究证据或必要缓存。
+代码和证据分别提交于97023fe、9c85d78；最终文档验证另行commit。Luna/medium结果复核无实质错误。

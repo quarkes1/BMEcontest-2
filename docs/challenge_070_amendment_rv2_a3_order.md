@@ -70,7 +70,7 @@ GPU初始空闲>=1280MiB且峰值<=初始空闲80%。CPU线程4，CUDA可用则�
 - [x] Task 1：新增order_probe与回归测试；缺失模块RED→7项GREEN，补充冻结编码回归。测试mask/空输入、
   shuffle保持边际、train-only moments、冻结、可表达顺序、CPU/CUDA容差和gate。
 - [x] Task 2：接入现有crossfit/source/protection；审查隔离、预算和输出身份；代码/规范先commit。
-- [ ] Task 3：运行三折，记录正负结果，更新README/registry/报告，相关回归后commit。
+- [x] Task 3：运行三折，记录正负结果，更新README/registry/报告，相关回归后commit。
 
 Pre-flight：TokenBag→编码→normalizer→bins→head接口必须保留真实时间及缺失；
 F原始embedding另供L，不错误使用标准化后的embedding冒充S1。
@@ -87,3 +87,7 @@ F仅1/3折胜过L与FS；F raw BCE .370153，对照L .269564。收敛标记亦�
 129项相关测试通过，保护快照不变；结果见输出report.md。没有新事件F1，不更新dist。
 下一方向改为受控目标域适配与事件级收益检验，不限制后续模型复杂度。
 最新用户纪律：正式事件F1相对当前发布版提高>.03先请审批，通过后更新dist及接口，再迭代。
+
+Final verification：全仓688 passed、5 skipped、15条既有warnings，1067.94秒。
+Luna/medium二次只读核对结果与文档一致，无实质错误。清理本轮两份可重建pyc，
+无临时脚本/持久token缓存。研究分支保留，不合并、不发布；实验固定版本以97023fe为准。
