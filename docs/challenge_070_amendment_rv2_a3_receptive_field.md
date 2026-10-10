@@ -114,7 +114,7 @@ S13新schema独立，不影响任何旧运行。各任务接口如下：
   所有最终输出完成后校验保护/资源，再给出完成状态。独立Luna/medium只读审查。
 - [x] Task4：相关研究测试、diff检查、代码/规范commit；随后单次运行S13与全仓回归。
   实验CLI无可调训练参数，不按中途source-val选择终点。
-- [ ] Task5：复算source gate/逐人指标、更新README/registry/report，清理本轮pyc/tmp；
+- [x] Task5：复算source gate/逐人指标、更新README/registry/report，清理本轮pyc/tmp；
   结果commit并核对clean tree。通过只登记下一目标probe，失败关闭固定架构/预算。
 
 Pre-flight：Task1模型16D与Task2 head16→1一致；Task2训练函数允许tiny测试预算，
@@ -139,4 +139,9 @@ Task4运行完成：d9ea415固定实现，AP .843043未达.854048，BCE .504164�
 全部完整性/资源检查通过。训练65.88s、wall92.44s、CUDA peak约101MiB；
 验证2274行身份与旧logits精确重放（max diff0），抽样计数也与S0一致。
 AP6个有效participant为3改善3恶化，BCE7/7恶化。关闭此配方，无目标probe或新event F1。
-Task4全仓回归已启动但仍在运行，Task5完成之前必须补实际测试结论。
+Task4全仓回归完成：743 passed、5 skipped、31条既有/预期警告，1079.33s，exit0。
+执行方式为bme Python中torch.set_num_threads(2)，pytest -q -p no:cacheprovider。
+Task5：独立复核checkpoint SHA/schema、全部33条registry JSON、outer/event F1字段null、
+5000实际步数、target_signal_read=false与全部完整性检查；无tmp、持久token缓存0。
+结果已提交91487c5；本条验证记录与本轮可重建pyc清理另行提交，最终核对clean tree。
+正式F1仍.6514285714，dist/release/生产算法无改动。

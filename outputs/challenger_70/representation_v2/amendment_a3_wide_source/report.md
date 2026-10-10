@@ -56,8 +56,10 @@ One small final artifact retains initial random and final trained weights;
 no duplicate raw source, token cache or temporary checkpoint remains.
 
 22 new tests and184 related representation tests passed before training.
-Full repository regression is running; its final result will be appended to
-the spec/README before this stage is declared sealed.
+Full repository regression: **743 passed,5 skipped,31 existing/expected warnings**,
+1079.33s,exit0. Run with bme Python,torch.set_num_threads(2),
+pytest -q -p no:cacheprovider. Artifact SHA/schema and all33 registry JSON rows
+independently validated. This stage is sealed; no temporary token cache remains.
 
 ## Decision
 
