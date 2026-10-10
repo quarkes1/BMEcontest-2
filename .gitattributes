@@ -5,3 +5,6 @@ dist/event_stack/** -text
 *.bat -text -eol
 # R0 audit JSON carries byte-level SHA identities; preserve recorded line endings.
 outputs/challenger_70/representation_v2/amendment_a1/*.json -text -eol whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+# Exact third-party source snapshots are byte-bound by upstream_manifest.json.
+# Preserve upstream formatting; do not apply our whitespace policy to verbatim copies.
+outputs/challenger_70/representation_v2/amendment_a4_foundation_source/upstream/** -text -eol -whitespace

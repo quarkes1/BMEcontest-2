@@ -116,6 +116,11 @@ Task3 execution: code12c33d0, complete negative. R/F/D AP .76428/.69747/.85144;
 raw BCE .27218/.29392/.22677. All checks pass,0 neural steps,3 LR fits,29.26wall s,
 peak CUDA约36.1MiB,output<1MiB,token cache0. Independent metric/gate/checkpoint replay agrees;
 S0 max logit replay diff1.91e-6 within fixed tolerance. Full regression still pending; do not seal yet.
+Ruling: preserve verbatim upstream text/SHA under a narrowly scoped .gitattributes rule (-text/-eol/
+-whitespace); upstream Markdown hard-break spaces and EOF blank lines are not reformatted. Our
+own files retain normal whitespace checks. Cost if wrong: reference-byte drift; independently check
+working and committed snapshots against upstream_manifest before final seal. Result commit7ab6cc1
+preceded this formatting-policy correction; no experiment code or scores changed.
 
 ## Primary provenance
 
