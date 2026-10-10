@@ -234,12 +234,16 @@ def run_event(root):
     from scripts.research.representation_v2 import validation_metrics as vm
     root = Path(root)
     output = root/OUTPUT
-    require_clean(root)
-    manifest = load_manifest(root)
-    plan = json.loads((output/'plan.json').read_text())
     state = json.loads((output/'state.json').read_text())
     if state['status'] != 'S15_MANIFEST_READY':
         raise RuntimeError('event attempt already started; no overwrite')
+    try:
+        require_clean(root)
+        manifest = load_manifest(root)
+        plan = json.loads((output/'plan.json').read_text())
+    except Exception as exc:
+        ep.write_json(output/'state.json', {'status': 'S15_INCOMPLETE', 'error': str(exc), 'outer_calls': 0})
+        raise
     started = time.perf_counter()
     counts = {'splits': 0, 'producer_fits': 0, 'verifier_fits': 0, 'readout_fits': 0, 'steps': 0}
     records = []
