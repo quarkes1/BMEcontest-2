@@ -1,0 +1,51 @@
+{
+  "code_sha": "dc92cd0322645dea9d5455ade128777262290afa",
+  "device": "cuda",
+  "encoder_steps": 0,
+  "excluded_subjects": [
+    "HNU 21013",
+    "HNU21002",
+    "HNU21003",
+    "HNU21004",
+    "HNU21006",
+    "HNU21011",
+    "HNU21014",
+    "HNU21015",
+    "HNU21019",
+    "HNU21022",
+    "HNU21024",
+    "HNU21025",
+    "HNU21026",
+    "HNU21029",
+    "HNU21034",
+    "HNU21036",
+    "HNU21037",
+    "HNU21038",
+    "HNU21040",
+    "hnu21033"
+  ],
+  "health_files_read": 0,
+  "id": "RV2-A3-S9-001",
+  "inputs": {
+    "fold0_policy0_adaptation.json": "d88902d7c78b3d805aef03d83d90b1b48d8d5dcd989cceba13b5928d04371b3f",
+    "fold0_policy0_scores.json": "f7b8324702012e0e8fab27dbe9438e15765cf03b57945edf7c95062b8c11e37b"
+  },
+  "outer_calls": 0,
+  "producer_fits": 8,
+  "readout_replay_fits": 1,
+  "spec_sha256": "eab752a438879e9a1c34c28db5648b2ddd0e803202f1b2ccf093d10110eef6fe",
+  "train_subjects": [
+    "HNU21005",
+    "HNU21008",
+    "HNU21012",
+    "HNU21016",
+    "HNU21017",
+    "HNU21021",
+    "HNU21023",
+    "HNU21031",
+    "HNU21032",
+    "HNU21041",
+    "HNU212020"
+  ],
+  "verifier_fits": 0
+}

@@ -1,0 +1,12 @@
+{
+  "encoder_steps": 0,
+  "health_files_read": 0,
+  "outer_calls": 0,
+  "persistent_token_cache_bytes": 0,
+  "producer_fits": 8,
+  "protected_unchanged": true,
+  "readout_replay_fits": 1,
+  "status": "S9_TRAIN_ONLY_AUDIT_COMPLETE",
+  "verifier_fits": 0,
+  "wall_seconds": 66.3385245000245
+}

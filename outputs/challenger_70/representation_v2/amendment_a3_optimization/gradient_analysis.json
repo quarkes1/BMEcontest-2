@@ -1,0 +1,151 @@
+{
+  "batches": [
+    {
+      "batch": 0,
+      "states": {
+        "final": {
+          "cosine": -0.20193845934058743,
+          "source_norm": 1.5651061012323482,
+          "target_norm": 0.5881237410190314,
+          "weighted_source_to_target": 0.6652962599845557
+        },
+        "initial": {
+          "cosine": -0.13015800369528274,
+          "source_norm": 1.4205732216604414,
+          "target_norm": 3.582900810208896,
+          "weighted_source_to_target": 0.09912172405197124
+        }
+      },
+      "target_labels": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target_subjects": [
+        "HNU21021",
+        "HNU21023",
+        "HNU21041",
+        "HNU21017"
+      ]
+    },
+    {
+      "batch": 1,
+      "states": {
+        "final": {
+          "cosine": -0.23780177985135534,
+          "source_norm": 1.1087012412054562,
+          "target_norm": 1.8827030543259289,
+          "weighted_source_to_target": 0.14722200065724234
+        },
+        "initial": {
+          "cosine": -0.09387764681863782,
+          "source_norm": 0.9847525106845824,
+          "target_norm": 4.953407561059627,
+          "weighted_source_to_target": 0.04970076147307397
+        }
+      },
+      "target_labels": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target_subjects": [
+        "HNU21031",
+        "HNU212020",
+        "HNU21012",
+        "HNU21021"
+      ]
+    },
+    {
+      "batch": 2,
+      "states": {
+        "final": {
+          "cosine": 0.32123612326663353,
+          "source_norm": 1.8916617832876865,
+          "target_norm": 11.20732675391687,
+          "weighted_source_to_target": 0.042196989184476265
+        },
+        "initial": {
+          "cosine": 0.30248673666036235,
+          "source_norm": 1.6874778294631125,
+          "target_norm": 13.153092051057962,
+          "weighted_source_to_target": 0.032073785823755814
+        }
+      },
+      "target_labels": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target_subjects": [
+        "HNU21016",
+        "HNU21005",
+        "HNU21032",
+        "HNU21031"
+      ]
+    },
+    {
+      "batch": 3,
+      "states": {
+        "final": {
+          "cosine": -0.2820665495665405,
+          "source_norm": 1.4057660789060396,
+          "target_norm": 3.827935356453815,
+          "weighted_source_to_target": 0.0918096798928402
+        },
+        "initial": {
+          "cosine": -0.1611909635043761,
+          "source_norm": 1.2342864182540743,
+          "target_norm": 10.73432236507738,
+          "weighted_source_to_target": 0.02874625841007097
+        }
+      },
+      "target_labels": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "target_subjects": [
+        "HNU21031",
+        "HNU21041",
+        "HNU21012",
+        "HNU21005"
+      ]
+    }
+  ],
+  "note": "four fixed stochastic batches; diagnostic not causal proof",
+  "optimizer_steps": 0,
+  "source_train": [
+    0,
+    1,
+    2,
+    4,
+    5,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    20,
+    21,
+    22,
+    24,
+    26,
+    29,
+    30,
+    31,
+    32,
+    33
+  ]
+}

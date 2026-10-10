@@ -1,0 +1,227 @@
+{
+  "encoder_relative_l2_drift": 0.005941605195403099,
+  "initial_readout_replayed": true,
+  "invalid_candidates": 72,
+  "metrics": {
+    "final_encoder_final_head": {
+      "subject_bce": {
+        "HNU21005": 0.4400206731531499,
+        "HNU21008": 0.2032249666497657,
+        "HNU21012": 0.2904273017417788,
+        "HNU21016": 0.27361701556212514,
+        "HNU21017": 0.31108249645695907,
+        "HNU21021": 0.3410598847878692,
+        "HNU21023": 0.2534368443824365,
+        "HNU21031": 0.2604552054503642,
+        "HNU21032": 0.2197069653427659,
+        "HNU21041": 0.035485742620744755,
+        "HNU212020": 0.2471921460434873
+      },
+      "subject_weighted_ap": 0.7487304983454149,
+      "subject_weighted_bce": 0.26142811292649515
+    },
+    "final_encoder_initial_head": {
+      "subject_bce": {
+        "HNU21005": 0.46909490127530507,
+        "HNU21008": 0.22563414560136974,
+        "HNU21012": 0.2836426484005132,
+        "HNU21016": 0.2639707159758512,
+        "HNU21017": 0.3030845342557829,
+        "HNU21021": 0.3763419746981334,
+        "HNU21023": 0.2674470660493108,
+        "HNU21031": 0.2947715288892556,
+        "HNU21032": 0.2639261757346449,
+        "HNU21041": 0.057750752229616654,
+        "HNU212020": 0.3023925982146936
+      },
+      "subject_weighted_ap": 0.7627932594580197,
+      "subject_weighted_bce": 0.28255064012040704
+    },
+    "initial_encoder_final_head": {
+      "subject_bce": {
+        "HNU21005": 0.34114673741767676,
+        "HNU21008": 0.2165442034788219,
+        "HNU21012": 0.23004652875172832,
+        "HNU21016": 0.2206522995509248,
+        "HNU21017": 0.278320466871022,
+        "HNU21021": 0.21407850370037093,
+        "HNU21023": 0.2532609487198358,
+        "HNU21031": 0.2748378747976211,
+        "HNU21032": 0.1753663414555046,
+        "HNU21041": 0.04829062928906192,
+        "HNU212020": 0.24192366486712044
+      },
+      "subject_weighted_ap": 0.7500272933887461,
+      "subject_weighted_bce": 0.22676983626360803
+    },
+    "initial_encoder_initial_head": {
+      "subject_bce": {
+        "HNU21005": 0.343809775864208,
+        "HNU21008": 0.2128633897690445,
+        "HNU21012": 0.21873032851555466,
+        "HNU21016": 0.20794010059752943,
+        "HNU21017": 0.2533743301272128,
+        "HNU21021": 0.2362461055470195,
+        "HNU21023": 0.23108229439453692,
+        "HNU21031": 0.2643215484189404,
+        "HNU21032": 0.17814402065082252,
+        "HNU21041": 0.05440167142781093,
+        "HNU212020": 0.2393112392926135
+      },
+      "subject_weighted_ap": 0.7643663462834168,
+      "subject_weighted_bce": 0.2218386186004812
+    }
+  },
+  "positive_candidates": 41,
+  "producer_graph": {
+    "candidates": {
+      "fit_subjects": [],
+      "parents": [
+        "macro_oof0",
+        "macro_oof1",
+        "macro_oof2",
+        "macro_oof3",
+        "micro_oof0",
+        "micro_oof1",
+        "micro_oof2",
+        "micro_oof3",
+        "threshold"
+      ]
+    },
+    "macro_oof0": {
+      "fit_subjects": [
+        "HNU21008",
+        "HNU21012",
+        "HNU21016",
+        "HNU21017",
+        "HNU21021",
+        "HNU21023",
+        "HNU21032",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "macro_oof1": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21008",
+        "HNU21012",
+        "HNU21017",
+        "HNU21021",
+        "HNU21023",
+        "HNU21031",
+        "HNU21041"
+      ],
+      "parents": []
+    },
+    "macro_oof2": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21012",
+        "HNU21016",
+        "HNU21021",
+        "HNU21023",
+        "HNU21031",
+        "HNU21032",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "macro_oof3": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21008",
+        "HNU21016",
+        "HNU21017",
+        "HNU21031",
+        "HNU21032",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "micro_oof0": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21008",
+        "HNU21012",
+        "HNU21016",
+        "HNU21021",
+        "HNU21023",
+        "HNU21031",
+        "HNU21032"
+      ],
+      "parents": []
+    },
+    "micro_oof1": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21008",
+        "HNU21012",
+        "HNU21017",
+        "HNU21021",
+        "HNU21023",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "micro_oof2": {
+      "fit_subjects": [
+        "HNU21008",
+        "HNU21012",
+        "HNU21016",
+        "HNU21017",
+        "HNU21023",
+        "HNU21031",
+        "HNU21032",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "micro_oof3": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21016",
+        "HNU21017",
+        "HNU21021",
+        "HNU21031",
+        "HNU21032",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "threshold": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21008",
+        "HNU21012",
+        "HNU21016",
+        "HNU21017",
+        "HNU21021",
+        "HNU21023",
+        "HNU21031",
+        "HNU21032",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": [
+        "micro_oof0",
+        "micro_oof1",
+        "micro_oof2",
+        "micro_oof3"
+      ]
+    }
+  },
+  "standardized_latent_absolute_drift_quantiles": [
+    0.4438030466599169,
+    0.9902002945159227,
+    1.6841306503154228,
+    3.6210053243012905
+  ],
+  "subject_count": 11,
+  "valid_candidates": 272
+}

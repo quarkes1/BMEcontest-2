@@ -458,3 +458,7 @@ S8已完成、未通过gate：B 66TP/20FP、inner health F1 .72131；冻结FD 69
 [S9训练侧优化审计](docs/challenge_070_amendment_rv2_a3_optimization.md)固定S8首个policy训练分区，
 只生成train OOF候选，重放初始readout，比较固定训练集的encoder/head初始与最终组合及梯度。
 不训练新encoder、不生成health评分或新事件F1；用于决定适配是否值得继续，或转向新的时序路线。
+S9实测完成：固定train BCE .22184→.26143，AP .76437→.74873，仅3/11人BCE改善；
+梯度可达encoder，不能归因为断图。四组梯度诊断全negative，不能证明source损害positive。
+见[S9报告](outputs/challenger_70/representation_v2/amendment_a3_optimization/report.md)。
+下一步先在train-only比较取消裁剪/扩大batch两个单因素，失败则停止该修复路线。
