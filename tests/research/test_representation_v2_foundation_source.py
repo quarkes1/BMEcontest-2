@@ -100,3 +100,64 @@ def test_gate_rejects_bad_improvement(arm,key,value):
 def test_gate_requires_complete_integrity_checks():
     c=checks();del c['isolation']
     assert not m.foundation_gate(metrics(),c)['passed']
+
+
+def tiny_bank():
+    rng=np.random.default_rng(77); z=rng.normal(size=(48,5,72))
+    groups=np.repeat(np.arange(4),12); y=np.tile(np.arange(12)%2,4)
+    z[:,:,0]+=y[:,None]*.8
+    return z,y,groups
+
+
+def test_projection_readout_excludes_validation_statistics():
+    z,y,g=tiny_bank()
+    a=m.fit_source_probe(z,y,g,(0,1,2),(3,),project=True)
+    changed=z.copy();changed[g==3]*=100
+    b=m.fit_source_probe(changed,y,g,(0,1,2),(3,),project=True)
+    assert a['payload']==b['payload']
+    assert a['payload']['pca']['fit_rows']==180
+    assert a['payload']['pca']['components'] and len(a['payload']['pca']['components'])==32
+    assert a['payload']['feature_width']==96 and a['logits'].shape==(12,)
+    assert np.isfinite(a['logits']).all()
+    assert not np.allclose(a['logits'],b['logits'])
+
+
+def test_fd_readout_remains_sixteen_dimensional():
+    z,y,g=tiny_bank();x=z.mean(1)[:,:16]
+    result=m.fit_source_probe(x,y,g,(0,1,2),(3,),project=False)
+    assert result['payload']['feature_width']==16 and result['payload']['pca'] is None
+
+
+@pytest.mark.parametrize('train,val',[((0,1,2),(2,3)),((0,1),(3,)),((0,1,1,2),(3,))])
+def test_probe_rejects_invalid_subject_partitions(train,val):
+    z,y,g=tiny_bank()
+    with pytest.raises(ValueError):m.fit_source_probe(z,y,g,train,val,project=True)
+
+
+def test_download_rejects_large_or_wrong_bytes():
+    import io
+    opened=lambda *args,**kwargs:io.BytesIO(b'abc')
+    assert m.fetch_public('LICENSE',max_bytes=4,opener=opened)==b'abc'
+    with pytest.raises(ValueError):m.fetch_public('LICENSE',max_bytes=2,opener=opened)
+    with pytest.raises(ValueError):m.fetch_public('LICENSE',max_bytes=4,expected_sha='0'*64,opener=opened)
+    with pytest.raises(ValueError):m.fetch_public('../unknown',opener=opened)
+
+
+def test_run_never_overwrites_previous_attempt(tmp_path):
+    (tmp_path/m.OUTPUT).mkdir(parents=True)
+    with pytest.raises(RuntimeError,match='exists'):m.run(tmp_path)
+
+
+def test_encoder_extraction_is_frozen_and_temporally_aligned():
+    torch.manual_seed(3);model=m.LimuEncoder().eval().requires_grad_(False)
+    before={k:v.clone() for k,v in model.state_dict().items()}
+    z=np.random.default_rng(1).normal(size=(3,6,125)).astype(np.float32)
+    encoded=m.encode_limu(model,z,device='cpu',chunk=2)
+    assert encoded.shape==(3,5,72) and np.isfinite(encoded).all()
+    for k,v in before.items():torch.testing.assert_close(v,model.state_dict()[k],atol=0,rtol=0)
+
+
+def test_resource_guard_enforces_wall_and_output_limits(tmp_path):
+    with pytest.raises(TimeoutError):m.check_budget(tmp_path,wall_seconds=7201,peak_cuda=0,free_cuda=None)
+    (tmp_path/'too_big').write_bytes(b'x'*(32*1024**2+1))
+    with pytest.raises(RuntimeError):m.check_budget(tmp_path,wall_seconds=0,peak_cuda=0,free_cuda=None)

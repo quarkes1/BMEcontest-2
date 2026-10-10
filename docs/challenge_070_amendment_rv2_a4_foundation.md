@@ -72,9 +72,9 @@ Same files. Consumes Task1 plus S0 source/reference; produces
 `fit_source_probe(embeddings,labels,groups,train,validation,project)` with serialized PCA/readout+logits;
 `run(root)` fixed CLI. Fit probe validates complete disjoint partitions; validation changes cannot
 change fitted PCA or readout. Encoder states identical before/after encode.
-- [ ] Test real tiny probe, val perturbation invariance, invalid partitions/shapes and output preservation;
+- [x] Test real tiny probe, val perturbation invariance, invalid partitions/shapes and output preservation;
   no-overwrite before network/data, bounded download bytes/SHA, post-step/resource checks.
-- [ ] Observe missing-functions RED; implement to GREEN. Run all representation research tests and
+- [x] Observe missing-functions RED; implement to GREEN. Run all representation research tests and
   full `pytest -q -p no:cacheprovider` with torch CPU2; no new code during full regression. Commit
   before single source run. Expected finite outputs, identity replay and gate evaluated once.
 
@@ -99,6 +99,9 @@ Task1 evidence: missing module RED, then16 passed (3.88s), including real CUDA p
 functional graph. Metadata-only checkpoint inspection happened in memory before registration;
 no source/target scores were read. Runtime dependency discovery found requests absent: use stdlib
 urllib, do not install new dependencies. All native paths now resolved through rg inventory.
+Task2 evidence:9 missing-function failures RED, then25 passed (6.04s). Real PCA/LR validation
+perturbation leaves all fitted payloads bit-identical; full regression and independent review follow
+before sealing. Checkbox marks implementation/related-test completion, not a claim of full-suite proof.
 
 ## Primary provenance
 
