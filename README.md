@@ -476,3 +476,5 @@ S11完整nested事件验证完成：B/R/F inner F1 .72131/.74194/.73743；F为66
 全仓704 passed、5 skipped；正式发布仍.6514285714。现在转向已设计的
 [S12冻结手势时序形态](docs/challenge_070_amendment_rv2_a3_gesture_morphology.md)，
 不继续向同一适配配置追加参数；S12启动条件已满足，尚未运行。
+S12实现已完成：固定24D手势形态+116D基线，独立140D verifier，对照冻结FD251D。
+17项新增测试、162项相关研究测试通过；接下来单次nested验证，不预先声称事件收益。

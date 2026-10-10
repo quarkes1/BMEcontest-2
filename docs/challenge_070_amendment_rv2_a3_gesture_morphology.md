@@ -1,6 +1,6 @@
 # A3-S12 — 条件后备：冻结手势证据的时序形态
 
-状态：设计/计划，**尚未实现或运行**。只在S11完整运行且事件gate失败后启动；
+状态：S11已完整失败，进入实现；**尚未运行S12**。只在S11完整运行且事件gate失败后启动；
 S11 incomplete时先处理工程原因，不将未完成冒充算法失败。S11通过则暂缓本路线，
 优先执行该配置的更广inner验证。不能按S11某一折漏检病例改本schema。
 
@@ -96,10 +96,10 @@ CUDA peak≤初始空闲80%。这只是单实验停止条件，不是用户硬�
 
 执行计划：
 
-- [ ] 1. 确认S11正式完成且gate失败，记录S12启动依据；不读取GT病例设计规则。
-- [ ] 2. TDD：固定24D顺序/常量/单token/全无效；阈值等号、gap/invalid断run、
+- [x] 1. 确认S11正式完成且gate失败，记录S12启动依据；不读取GT病例设计规则。
+- [x] 2. TDD：固定24D顺序/常量/单token/全无效；阈值等号、gap/invalid断run、
   lag2完整链、乱序拒绝、无GT输入；source head冻结及CPU/CUDA allclose。
-- [ ] 3. 实现研究入口，独立Luna medium审查；相关测试与diff检查后commit预注册实现。
+- [x] 3. 实现研究入口，独立Luna medium审查；相关测试与diff检查后commit预注册实现。
 - [ ] 4. 单次严格nested运行；报告事件/逐人/覆盖/资源，不据中途health改配置。
 - [ ] 5. 全仓回归、README/registry更新；清理本轮产生的临时/可重建缓存，commit。
 - [ ] 6. 通过→更广inner注册；失败→关闭本schema并自主设计更强感受野/多尺度路线。
@@ -109,3 +109,17 @@ CUDA peak≤初始空闲80%。这只是单实验停止条件，不是用户硬�
 
 设计审查：Luna/medium只读审核未发现重大问题。实施必须专测三臂不同feature width、
 R/F两臂source27祖先以及全NaN形态列的train-only imputation，不能为拼接方便统一填0。
+
+启动依据：S11封存3053f66，12分区完整，F .737430未胜R .741935；不以部分门槛通过放行。
+实现直接复用prepare callback，无需改动joint引擎；原有S5/S8/S11路径不变。
+除B精确重放外，R也逐分区绑定S8封存8206cc6账本与评分（rtol1e-6/atol1e-7固定数值容差），
+防止参照臂实现漂移。S11 summary/state须与封存commit逐字节一致且完整失败方可启动。
+
+实施验证：模块/冻结参照replay缺失RED→GREEN；17项S12测试通过，含真实tiny
+crossfit+三臂verifier、score GT改变不影响评分、CPU/CUDA一致性及source权重/梯度不变。
+tiny fixture显式改为10秒decoder几何（测试数据只有10秒窗），实际实验仍用原登记配置。
+相关表示研究162 passed、20条预期/既有imputer提示；全仓回归将以本次代码重新执行，
+不冒用S9/S10的704项证明。Luna/medium整体只读审查无阻塞。
+Minor（暂缓）：S11 state.outer_calls未单独重复检查；已对state逐字节commit绑定，
+且summary outer_calls检查为0，不影响本固定输入有效性。
+入口 `python -m scripts.research.representation_v2.gesture_probe`。
