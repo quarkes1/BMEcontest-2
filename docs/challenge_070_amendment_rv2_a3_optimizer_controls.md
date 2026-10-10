@@ -75,3 +75,5 @@ S10：代码973698a，343.63秒，2000步完整执行。初始BCE .221839；无�
 （改善.008390，未过.01门槛）；batch32 .202209（改善.019629，9/11人不劣，
 source BCE下降.004561）。固定规则选择larger_batch。无health/outer评分。
 证据与selection hash先commit，随后S11仅验证batch32/norm1；全仓回归运行中。
+结果封存20f4bc2；Luna独立复核数字与选择规则无阻塞。S11已启动，未出事件结论。
+仅当S11完整失败，后续按gesture_morphology条件后备规范更换表示方式；不在health追参。
