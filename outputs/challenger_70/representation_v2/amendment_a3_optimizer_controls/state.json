@@ -1,0 +1,12 @@
+{
+  "chosen": "larger_batch",
+  "health_files_read": 0,
+  "neural_optimizer_steps": 2000,
+  "outer_calls": 0,
+  "peak_cuda_allocated_bytes": 1488131584,
+  "persistent_token_cache_bytes": 0,
+  "protected_unchanged": true,
+  "resource_ok": true,
+  "status": "S10_OPTIMIZER_SELECTED",
+  "wall_seconds": 343.62518299999647
+}

@@ -1,0 +1,211 @@
+{
+  "arms": {
+    "larger_batch": {
+      "metrics": {
+        "subject_bce": {
+          "HNU21005": 0.3345507408438647,
+          "HNU21008": 0.17888941789018373,
+          "HNU21012": 0.22500756891863705,
+          "HNU21016": 0.19850935230553604,
+          "HNU21017": 0.26753274261104276,
+          "HNU21021": 0.2073782890635696,
+          "HNU21023": 0.19532723411777464,
+          "HNU21031": 0.21746023118751726,
+          "HNU21032": 0.15381322741050965,
+          "HNU21041": 0.03968365358795426,
+          "HNU212020": 0.2061496163920332
+        },
+        "subject_weighted_ap": 0.7829630473909972,
+        "subject_weighted_bce": 0.20220927948442025
+      },
+      "sampled_target_candidate_examples": 32000,
+      "source_bce": 0.2190833204340496,
+      "wall_seconds": 216.84015410000575
+    },
+    "unclipped": {
+      "metrics": {
+        "subject_bce": {
+          "HNU21005": 0.33640839876840434,
+          "HNU21008": 0.20066646293747295,
+          "HNU21012": 0.22002415326307903,
+          "HNU21016": 0.20855840026547998,
+          "HNU21017": 0.25879507388500955,
+          "HNU21021": 0.22488922361650818,
+          "HNU21023": 0.21855449840930566,
+          "HNU21031": 0.2445777843161531,
+          "HNU21032": 0.16769387326741403,
+          "HNU21041": 0.04652865808156668,
+          "HNU212020": 0.22123843835271423
+        },
+        "subject_weighted_ap": 0.7730297126158672,
+        "subject_weighted_bce": 0.21344863319664617
+      },
+      "sampled_target_candidate_examples": 4000,
+      "source_bce": 0.22125666723454118,
+      "wall_seconds": 35.02787100002752
+    }
+  },
+  "initial": {
+    "subject_bce": {
+      "HNU21005": 0.343809775864208,
+      "HNU21008": 0.2128633897690445,
+      "HNU21012": 0.21873032851555466,
+      "HNU21016": 0.20794010059752943,
+      "HNU21017": 0.2533743301272128,
+      "HNU21021": 0.2362461055470195,
+      "HNU21023": 0.23108229439453692,
+      "HNU21031": 0.2643215484189404,
+      "HNU21032": 0.17814402065082252,
+      "HNU21041": 0.05440167142781093,
+      "HNU212020": 0.2393112392926135
+    },
+    "subject_weighted_ap": 0.7643663462834168,
+    "subject_weighted_bce": 0.2218386186004812
+  },
+  "initial_source_bce": 0.2236444525596045,
+  "invalid_candidates": 72,
+  "producer_graph": {
+    "candidates": {
+      "fit_subjects": [],
+      "parents": [
+        "macro_oof0",
+        "macro_oof1",
+        "macro_oof2",
+        "macro_oof3",
+        "micro_oof0",
+        "micro_oof1",
+        "micro_oof2",
+        "micro_oof3",
+        "threshold"
+      ]
+    },
+    "macro_oof0": {
+      "fit_subjects": [
+        "HNU21008",
+        "HNU21012",
+        "HNU21016",
+        "HNU21017",
+        "HNU21021",
+        "HNU21023",
+        "HNU21032",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "macro_oof1": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21008",
+        "HNU21012",
+        "HNU21017",
+        "HNU21021",
+        "HNU21023",
+        "HNU21031",
+        "HNU21041"
+      ],
+      "parents": []
+    },
+    "macro_oof2": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21012",
+        "HNU21016",
+        "HNU21021",
+        "HNU21023",
+        "HNU21031",
+        "HNU21032",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "macro_oof3": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21008",
+        "HNU21016",
+        "HNU21017",
+        "HNU21031",
+        "HNU21032",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "micro_oof0": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21008",
+        "HNU21012",
+        "HNU21016",
+        "HNU21021",
+        "HNU21023",
+        "HNU21031",
+        "HNU21032"
+      ],
+      "parents": []
+    },
+    "micro_oof1": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21008",
+        "HNU21012",
+        "HNU21017",
+        "HNU21021",
+        "HNU21023",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "micro_oof2": {
+      "fit_subjects": [
+        "HNU21008",
+        "HNU21012",
+        "HNU21016",
+        "HNU21017",
+        "HNU21023",
+        "HNU21031",
+        "HNU21032",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "micro_oof3": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21016",
+        "HNU21017",
+        "HNU21021",
+        "HNU21031",
+        "HNU21032",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "threshold": {
+      "fit_subjects": [
+        "HNU21005",
+        "HNU21008",
+        "HNU21012",
+        "HNU21016",
+        "HNU21017",
+        "HNU21021",
+        "HNU21023",
+        "HNU21031",
+        "HNU21032",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": [
+        "micro_oof0",
+        "micro_oof1",
+        "micro_oof2",
+        "micro_oof3"
+      ]
+    }
+  },
+  "valid_candidates": 272
+}

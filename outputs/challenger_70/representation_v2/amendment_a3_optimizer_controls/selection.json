@@ -1,0 +1,28 @@
+{
+  "chosen": "larger_batch",
+  "comparison_sha256": "a6a143a54947f15c7e3f5462332e37e1046140fc4382c55868e27a5e3342d3a2",
+  "diagnostics": {
+    "larger_batch": {
+      "bce_improvement": 0.019629339116060962,
+      "nonworse_subjects": 9,
+      "source_bce_rise": -0.004561132125554895
+    },
+    "unclipped": {
+      "bce_improvement": 0.008389985403835037,
+      "nonworse_subjects": 8,
+      "source_bce_rise": -0.002387785325063313
+    }
+  },
+  "eligible": {
+    "larger_batch": true,
+    "unclipped": false
+  },
+  "health_files_read": 0,
+  "id": "RV2-A3-S10-001",
+  "model_file_sha256": {
+    "larger_batch_adaptation.json": "03a005ef8008985356772cc38f5123f7808fc53743f5ea3acbb1c881faf7e114",
+    "unclipped_adaptation.json": "4880e5a81af2e2f9620f0e5f0c412366a8cbce847b8a9f631bfdf872ab19bc0a"
+  },
+  "outer_calls": 0,
+  "plan_sha256": "5155f3b4cd654301380e27dfdb19dbff1f3b8c23a981465f12dcec007c6e30ab"
+}

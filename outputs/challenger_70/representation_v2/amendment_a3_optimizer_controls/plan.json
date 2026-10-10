@@ -1,0 +1,39 @@
+{
+  "code_sha": "973698acff35167c29d2864839818dd50baa94ac",
+  "device": "cuda",
+  "encoder_optimizer_steps": 2000,
+  "event_verifier_fits": 0,
+  "health_files_read": 0,
+  "id": "RV2-A3-S10-001",
+  "options": {
+    "larger_batch": {
+      "batch_size": 32,
+      "clip_norm": 1.0
+    },
+    "unclipped": {
+      "batch_size": 4,
+      "clip_norm": null
+    }
+  },
+  "outer_calls": 0,
+  "producer_fits": 8,
+  "readout_fits": 2,
+  "seed": 20261011,
+  "source_checkpoint_sha256": "c6276837b1366117075e7e8a7504e084926cbfc5d80b98b863e442255995efc4",
+  "source_weight": 0.25,
+  "spec_sha256": "d1328930d0e11b4f94a85fc3f31d027c1af1a782315f16c5cf4eea1b84b3f4ef",
+  "steps_per_arm": 1000,
+  "train_subjects": [
+    "HNU21005",
+    "HNU21008",
+    "HNU21012",
+    "HNU21016",
+    "HNU21017",
+    "HNU21021",
+    "HNU21023",
+    "HNU21031",
+    "HNU21032",
+    "HNU21041",
+    "HNU212020"
+  ]
+}

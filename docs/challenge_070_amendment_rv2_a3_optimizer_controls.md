@@ -58,7 +58,7 @@ source checkpoint不复制；NO DIST / NO RELEASE / NO PROMOTION。
 正式可比F1较发布版提高>.03时请求人工审批；inner/train/诊断均不触发dist更新。
 
 - [x] 1. TDD：裁剪开关的实际梯度行为、batch/预算边界、预注册选择规则；默认S8不变。
-- [ ] 2. 独立审查、代码/规范commit，执行S10，封存选择及证据。
+- [x] 2. 独立审查、代码/规范commit，执行S10，封存选择及证据。
 - [ ] 3. 依选择执行或跳过S11；记录失败而不在health追加配置。
 - [ ] 4. 全仓回归、README/registry、清理新增临时文件、commit。
 
@@ -70,3 +70,8 @@ Ruling：自主授权覆盖本有界两配置研究；本文件兼作规范/计�
 source遗忘与逐人门槛，以及incomplete/比较文件hash篡改拒绝。全仓回归仍待运行。
 Luna/medium独立只读审查无阻塞。Minor记录：显存仅pilot总峰值，不做两臂独立归因；
 source指标按每人实际存在的类别均衡，不额外假定每人都有两类；沿用固定FD27 bank。
+
+S10：代码973698a，343.63秒，2000步完整执行。初始BCE .221839；无裁剪 .213449
+（改善.008390，未过.01门槛）；batch32 .202209（改善.019629，9/11人不劣，
+source BCE下降.004561）。固定规则选择larger_batch。无health/outer评分。
+证据与selection hash先commit，随后S11仅验证batch32/norm1；全仓回归运行中。

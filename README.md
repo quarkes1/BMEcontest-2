@@ -468,3 +468,5 @@ S10固定11人train，只比较无裁剪batch4与norm1裁剪batch32，各1000步
 训练BCE降低≥.01、至少6/11人不劣、固定source BCE上升≤.03才允许进入S11。
 固定优先选择通过的无裁剪臂，否则选择通过的大batch臂；两者失败则转向新时序表示。
 S11仅验证唯一封存配置，沿用完整nested事件门槛，不将训练改善当作发布F1。
+S10完成：无裁剪改善.00839未过门槛；batch32改善.01963、9/11人不劣，source BCE未恶化。
+因此只允许batch32/norm1进入S11。见[S10报告](outputs/challenger_70/representation_v2/amendment_a3_optimizer_controls/report.md)。
