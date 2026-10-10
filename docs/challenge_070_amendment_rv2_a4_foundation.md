@@ -121,6 +121,9 @@ Ruling: preserve verbatim upstream text/SHA under a narrowly scoped .gitattribut
 own files retain normal whitespace checks. Cost if wrong: reference-byte drift; independently check
 working and committed snapshots against upstream_manifest before final seal. Result commit7ab6cc1
 preceded this formatting-policy correction; no experiment code or scores changed.
+Independent no-fit serialized-PCA/scaler/LR replay on2274 val tokens: R/F/D max logit
+errors6.79e-6/3.06e-6/1.82e-6 within fixed1e-4 tolerance. All7 upstream snapshots
+match manifest and committed bytes. No additional metrics/gate choices or target raw reads.
 
 ## Primary provenance
 

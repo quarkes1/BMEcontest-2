@@ -82,6 +82,11 @@ final result will be added before sealing the stage.
 Validation-row metrics, checkpoint identity and fixed gate were independently
 recomputed after execution; all agree. No new source/target result was used to
 change the registered experiment. No temporary checkpoint or persistent bank.
+An independent no-fit replay reconstructed PCA/scaler/LR predictions from saved
+JSON on all2274 held-out source tokens. R/F/D maximum absolute logit errors are
+6.7862e-6/3.0640e-6/1.8193e-6, within the replay's fixed atol/rtol1e-4. All seven
+upstream files match their manifest SHA/size and committed blobs byte-for-byte;
+path-scoped Git attributes preserve original formatting, not reformatting it.
 
 ## Next direction, not another registered experiment
 
