@@ -520,7 +520,8 @@ A5已有收益扩大验证见[A5设计](docs/challenge_070_amendment_a5_inner_va
 书面设计已获审阅通过，[T0/T1实施计划](docs/superpowers/plans/2026-10-12-a6-transformer-t0-t1-plan.md)
 已获审阅通过，T0/T1代码已实现，39项新增针对性测试通过，尚未开始真实训练。
 全仓基线799 passed、5 skipped、31 warnings；Luna/medium独立审查发现的提前raw读取与
-活动计算预算遗漏已按RED→GREEN修复，正在进行完成后代码的全仓回归。
+活动计算预算遗漏已按RED→GREEN修复；完成后全仓回归838 passed、5 skipped、31 warnings，
+无失败（1033.50s），全部表示研究测试279 passed。即将锁定实验manifest并启动严格inner四臂实验。
 路线为冻结FD局部表示→候选时序复核→全天定位与候选联合，
 分别处理漏候选和难负例；FD连续序列扩充单独归因。已核实本地FD压缩包仅含逐点手势X/Y，
 未找到独立餐段边界；FD-II餐外0不能作为可靠负例，不能直接混入餐段训练。

@@ -1,6 +1,6 @@
 # Amendment A6 — 双任务层级 Transformer 与 FD 序列扩充设计
 
-日期：2026-10-12。状态：书面设计与T0/T1实施计划均已获用户审阅通过；T0/T1代码实现及39项新增测试完成，独立审查两项Important已修复；训练前完整回归正在执行，未启动真实训练。
+日期：2026-10-12。状态：书面设计与T0/T1实施计划均已获用户审阅通过；39项新增测试及全仓回归（838 passed、5 skipped）完成，独立审查两项Important已修复；准备锁定manifest并运行严格inner四臂实验，暂无新成绩。
 
 下一步：[T0/T1实施计划](superpowers/plans/2026-10-12-a6-transformer-t0-t1-plan.md)。
 
