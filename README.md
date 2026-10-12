@@ -544,9 +544,14 @@ A5已有收益扩大验证见[A5设计](docs/challenge_070_amendment_a5_inner_va
 [V7协议](docs/challenge_070_amendment_a6_v7_validation.md)已预注册；入口和13项针对性测试完成，
 全部表示研究测试292 passed。Luna/medium审查的元数据访问边界已澄清，登记前发现的
 index/特征表session覆盖差异已修复，限定原特征表890个session。修复后全仓回归851 passed、
-5 skipped、31 warnings（1145.64s），真实T24 refit已启动，尚无V7成绩。
+5 skipped、31 warnings（1145.64s），T24 refit及V7验证已完成。
 复用已提交的T24主体OOF证据选择policy，仅新增10次producer、2次base、2次时序拟合（2000步）。
 新增SubsetSource在eligible-truth/raw-array读取前过滤受试者；共享特征表及元数据仍物理整表加载，
 V7文件size/mtime可做完整性审计，但冻结前不加载其raw数组。旧加载器可能读取过V7时间戳/mask，
 加上该人群曾参与早期CV，V7不属于全新独立队列；不得把结果包装成正式outer成绩。
-不运行outer、不自动推广。A6原始设计/实施计划作为已锁定实验合同保持原文，不追改其历史状态段。
+V7完整7人/33个GT结果：incumbent F1 **.745763**（22/4/11），TCN **.689655**（20/5/13），
+Transformer **.724138**（21/4/12）。TCN相对基线-.056108，主检验未通过；Transformer也低于基线。
+三臂短餐均4/10；候选可达32/33。TCN为0人改善/2人下降/5人持平，Transformer为0/1/6。
+T24的增益未在V7复现，不扩大outer、不更新dist、不自动更换主检验或重调V7阈值。
+详见[V7报告](outputs/challenger_70/representation_v2/amendment_a6_transformer/v7/report.md)。
+A6原始设计/实施计划作为已锁定实验合同保持原文，不追改其历史状态段。
