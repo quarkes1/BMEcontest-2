@@ -555,3 +555,16 @@ Transformer **.724138**（21/4/12）。TCN相对基线-.056108，主检验未通
 T24的增益未在V7复现，不扩大outer、不更新dist、不自动更换主检验或重调V7阈值。
 详见[V7报告](outputs/challenger_70/representation_v2/amendment_a6_transformer/v7/report.md)。
 A6原始设计/实施计划作为已锁定实验合同保持原文，不追改其历史状态段。
+
+### A6 冻结 checkpoint 归因诊断
+
+用户批准后，将三个旧T24 checkpoint与最终refit对同一批223个V7候选评分；
+只读取已有token、保留各自训练侧归一化，不训练、不调阈值、不解码新事件或生成新F1。
+旧TCN对有效真候选的平均motion概率为.488–.736、旧Transformer为.502–.661，
+最终refit仅.266/.260；七名受试者的真候选平均分均下降。负候选分数也同步降低，
+说明应优先检查最终拟合稳定性和概率迁移，而非简单认定V7受试者无法识别。
+最终refit分数重算与封存证据误差≤4.48e-8；检查未发现推理重构失配。
+训练人数/组成、种子和样本暴露仍相互混杂，不能把根因直接定为某个坏种子。
+下一步建议在严格训练侧OOF做固定多种子对照；不得用V7挑旧checkpoint或把跨wrapper平均伪装成OOF。
+详见[冻结诊断报告](outputs/challenger_70/representation_v2/amendment_a6_transformer/checkpoint_audit/report.md)。
+本次正式F1及dist/release保持不变，尚未启动新模型训练。
