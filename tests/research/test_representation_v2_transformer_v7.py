@@ -125,3 +125,21 @@ def test_v7_budget_counts_active_training_before_completion(tmp_path):
     resources.row['neural_seconds']=7199.
     with pytest.raises(RuntimeError, match='V7 resource'):
         resources.check(active_neural_seconds=2.)
+
+
+@pytest.mark.parametrize('tamper',[False,True])
+def test_partial_or_tampered_freeze_is_rejected_before_model_deserialization(tmp_path,monkeypatch,tamper):
+    from scripts.research.representation_v2.transformer import v7_probe
+    from scripts.research.representation_v2.transformer.v7_contract import OUTPUT,seal
+    output=tmp_path/OUTPUT; output.mkdir(parents=True)
+    names=list(v7_probe.FROZEN_FILES) if tamper else ['models.joblib']
+    for name in names: (output/name).write_bytes(b'local trusted evidence')
+    seal(output,names)
+    if tamper: (output/'models.joblib').write_bytes(b'altered model')
+    def forbidden(*args,**kwargs):
+        raise AssertionError('deserialization/raw runtime reached before integrity gate')
+    monkeypatch.setattr(v7_probe.joblib,'load',forbidden)
+    monkeypatch.setattr(v7_probe.torch,'load',forbidden)
+    monkeypatch.setattr(v7_probe,'_runtime',forbidden)
+    with pytest.raises(ValueError,match='changed|incomplete'):
+        v7_probe.run_evaluate(tmp_path)
