@@ -543,7 +543,8 @@ A5已有收益扩大验证见[A5设计](docs/challenge_070_amendment_a5_inner_va
 正式F1仍.6514285714，dist/release不变；用户已批准冻结TCN主检验、Transformer次要对照的V7验证。
 [V7协议](docs/challenge_070_amendment_a6_v7_validation.md)已预注册；入口和13项针对性测试完成，
 全部表示研究测试292 passed。Luna/medium审查的元数据访问边界已澄清，登记前发现的
-index/特征表session覆盖差异已修复，限定原特征表890个session。修复后全仓回归中，真实refit尚未启动。
+index/特征表session覆盖差异已修复，限定原特征表890个session。修复后全仓回归851 passed、
+5 skipped、31 warnings（1145.64s），真实T24 refit已启动，尚无V7成绩。
 复用已提交的T24主体OOF证据选择policy，仅新增10次producer、2次base、2次时序拟合（2000步）。
 新增SubsetSource在eligible-truth/raw-array读取前过滤受试者；共享特征表及元数据仍物理整表加载，
 V7文件size/mtime可做完整性审计，但冻结前不加载其raw数组。旧加载器可能读取过V7时间戳/mask，
