@@ -2,7 +2,7 @@
   "base_fits": 2,
   "cpu_seconds": 17.46068939997349,
   "device": "cuda",
-  "encoding_seconds": 237.083984100027,
+  "encoding_seconds": 375.21249390003504,
   "fits": [
     {
       "arm": "c",
@@ -182,8 +182,8 @@
     }
   ],
   "neural_fits": 2,
-  "neural_seconds": 227.76728390000062,
-  "peak_cuda_bytes": 232148992,
+  "neural_seconds": 231.66272510006092,
+  "peak_cuda_bytes": 327957504,
   "producer_fits": 10,
   "started_epoch": 1791806613.0004969,
   "steps": 2000

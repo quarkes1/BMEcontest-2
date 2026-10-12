@@ -1,0 +1,523 @@
+{
+  "candidate_recall": {
+    "n_reachable": 32,
+    "n_true": 33,
+    "recall": 0.9696969696969697
+  },
+  "development_validation": true,
+  "dist_changed": false,
+  "events": {
+    "b": {
+      "f1": 0.7457627118644068,
+      "fn": 11,
+      "fp": 4,
+      "n_pred": 26,
+      "n_tp": 22,
+      "n_true": 33,
+      "ppv": 0.8461538461538461,
+      "sensitivity": 0.6666666666666666
+    },
+    "c": {
+      "f1": 0.689655172413793,
+      "fn": 13,
+      "fp": 5,
+      "n_pred": 25,
+      "n_tp": 20,
+      "n_true": 33,
+      "ppv": 0.8,
+      "sensitivity": 0.6060606060606061
+    },
+    "t": {
+      "f1": 0.7241379310344828,
+      "fn": 12,
+      "fp": 4,
+      "n_pred": 25,
+      "n_tp": 21,
+      "n_true": 33,
+      "ppv": 0.84,
+      "sensitivity": 0.6363636363636364
+    }
+  },
+  "gate": {
+    "delta_f1": -0.05610753945061375,
+    "passed": false,
+    "primary": "c",
+    "release_authorized": false,
+    "secondary_delta": -0.02162478082992403
+  },
+  "outer_calls": 0,
+  "pristine_test": false,
+  "score_sha256": "e67f3e96773b93a9ac6266772988e520974f13c62b4ebe1c27ac9227fdd79552",
+  "short_events": {
+    "b": {
+      "n_tp": 4,
+      "n_true": 10,
+      "recall": 0.4
+    },
+    "c": {
+      "n_tp": 4,
+      "n_true": 10,
+      "recall": 0.4
+    },
+    "t": {
+      "n_tp": 4,
+      "n_true": 10,
+      "recall": 0.4
+    }
+  },
+  "subject_diagnostics": {
+    "b": {
+      "improved": 0,
+      "iqr": [
+        0.6190476190476191,
+        0.8035714285714285
+      ],
+      "median": 0.6666666666666666,
+      "no_gt_fp": 0,
+      "no_gt_subjects": 0,
+      "p10": 0.5428571428571429,
+      "tied": 7,
+      "worsened": 0
+    },
+    "c": {
+      "improved": 0,
+      "iqr": [
+        0.5584415584415585,
+        0.7916666666666666
+      ],
+      "median": 0.6666666666666665,
+      "no_gt_fp": 0,
+      "no_gt_subjects": 0,
+      "p10": 0.5272727272727272,
+      "tied": 5,
+      "worsened": 2
+    },
+    "t": {
+      "improved": 0,
+      "iqr": [
+        0.5584415584415585,
+        0.8035714285714285
+      ],
+      "median": 0.6666666666666665,
+      "no_gt_fp": 0,
+      "no_gt_subjects": 0,
+      "p10": 0.5272727272727272,
+      "tied": 6,
+      "worsened": 1
+    }
+  },
+  "subject_events": [
+    {
+      "events": {
+        "b": {
+          "f1": 0.5,
+          "fn": 2,
+          "fp": 0,
+          "n_pred": 1,
+          "n_tp": 1,
+          "n_true": 3,
+          "ppv": 1.0,
+          "sensitivity": 0.3333333333333333
+        },
+        "c": {
+          "f1": 0.5,
+          "fn": 2,
+          "fp": 0,
+          "n_pred": 1,
+          "n_tp": 1,
+          "n_true": 3,
+          "ppv": 1.0,
+          "sensitivity": 0.3333333333333333
+        },
+        "t": {
+          "f1": 0.5,
+          "fn": 2,
+          "fp": 0,
+          "n_pred": 1,
+          "n_tp": 1,
+          "n_true": 3,
+          "ppv": 1.0,
+          "sensitivity": 0.3333333333333333
+        }
+      },
+      "subject": "HNU 21013"
+    },
+    {
+      "events": {
+        "b": {
+          "f1": 0.6666666666666665,
+          "fn": 2,
+          "fp": 1,
+          "n_pred": 4,
+          "n_tp": 3,
+          "n_true": 5,
+          "ppv": 0.75,
+          "sensitivity": 0.6
+        },
+        "c": {
+          "f1": 0.6666666666666665,
+          "fn": 2,
+          "fp": 1,
+          "n_pred": 4,
+          "n_tp": 3,
+          "n_true": 5,
+          "ppv": 0.75,
+          "sensitivity": 0.6
+        },
+        "t": {
+          "f1": 0.6666666666666665,
+          "fn": 2,
+          "fp": 1,
+          "n_pred": 4,
+          "n_tp": 3,
+          "n_true": 5,
+          "ppv": 0.75,
+          "sensitivity": 0.6
+        }
+      },
+      "subject": "HNU21004"
+    },
+    {
+      "events": {
+        "b": {
+          "f1": 0.7499999999999999,
+          "fn": 0,
+          "fp": 2,
+          "n_pred": 5,
+          "n_tp": 3,
+          "n_true": 3,
+          "ppv": 0.6,
+          "sensitivity": 1.0
+        },
+        "c": {
+          "f1": 0.7499999999999999,
+          "fn": 0,
+          "fp": 2,
+          "n_pred": 5,
+          "n_tp": 3,
+          "n_true": 3,
+          "ppv": 0.6,
+          "sensitivity": 1.0
+        },
+        "t": {
+          "f1": 0.7499999999999999,
+          "fn": 0,
+          "fp": 2,
+          "n_pred": 5,
+          "n_tp": 3,
+          "n_true": 3,
+          "ppv": 0.6,
+          "sensitivity": 1.0
+        }
+      },
+      "subject": "HNU21019"
+    },
+    {
+      "events": {
+        "b": {
+          "f1": 0.6666666666666666,
+          "fn": 4,
+          "fp": 0,
+          "n_pred": 4,
+          "n_tp": 4,
+          "n_true": 8,
+          "ppv": 1.0,
+          "sensitivity": 0.5
+        },
+        "c": {
+          "f1": 0.5454545454545454,
+          "fn": 5,
+          "fp": 0,
+          "n_pred": 3,
+          "n_tp": 3,
+          "n_true": 8,
+          "ppv": 1.0,
+          "sensitivity": 0.375
+        },
+        "t": {
+          "f1": 0.5454545454545454,
+          "fn": 5,
+          "fp": 0,
+          "n_pred": 3,
+          "n_tp": 3,
+          "n_true": 8,
+          "ppv": 1.0,
+          "sensitivity": 0.375
+        }
+      },
+      "subject": "HNU21025"
+    },
+    {
+      "events": {
+        "b": {
+          "f1": 1.0,
+          "fn": 0,
+          "fp": 0,
+          "n_pred": 6,
+          "n_tp": 6,
+          "n_true": 6,
+          "ppv": 1.0,
+          "sensitivity": 1.0
+        },
+        "c": {
+          "f1": 0.8333333333333334,
+          "fn": 1,
+          "fp": 1,
+          "n_pred": 6,
+          "n_tp": 5,
+          "n_true": 6,
+          "ppv": 0.8333333333333334,
+          "sensitivity": 0.8333333333333334
+        },
+        "t": {
+          "f1": 1.0,
+          "fn": 0,
+          "fp": 0,
+          "n_pred": 6,
+          "n_tp": 6,
+          "n_true": 6,
+          "ppv": 1.0,
+          "sensitivity": 1.0
+        }
+      },
+      "subject": "HNU21036"
+    },
+    {
+      "events": {
+        "b": {
+          "f1": 0.8571428571428571,
+          "fn": 0,
+          "fp": 1,
+          "n_pred": 4,
+          "n_tp": 3,
+          "n_true": 3,
+          "ppv": 0.75,
+          "sensitivity": 1.0
+        },
+        "c": {
+          "f1": 0.8571428571428571,
+          "fn": 0,
+          "fp": 1,
+          "n_pred": 4,
+          "n_tp": 3,
+          "n_true": 3,
+          "ppv": 0.75,
+          "sensitivity": 1.0
+        },
+        "t": {
+          "f1": 0.8571428571428571,
+          "fn": 0,
+          "fp": 1,
+          "n_pred": 4,
+          "n_tp": 3,
+          "n_true": 3,
+          "ppv": 0.75,
+          "sensitivity": 1.0
+        }
+      },
+      "subject": "HNU21040"
+    },
+    {
+      "events": {
+        "b": {
+          "f1": 0.5714285714285715,
+          "fn": 3,
+          "fp": 0,
+          "n_pred": 2,
+          "n_tp": 2,
+          "n_true": 5,
+          "ppv": 1.0,
+          "sensitivity": 0.4
+        },
+        "c": {
+          "f1": 0.5714285714285715,
+          "fn": 3,
+          "fp": 0,
+          "n_pred": 2,
+          "n_tp": 2,
+          "n_true": 5,
+          "ppv": 1.0,
+          "sensitivity": 0.4
+        },
+        "t": {
+          "f1": 0.5714285714285715,
+          "fn": 3,
+          "fp": 0,
+          "n_pred": 2,
+          "n_tp": 2,
+          "n_true": 5,
+          "ppv": 1.0,
+          "sensitivity": 0.4
+        }
+      },
+      "subject": "hnu21033"
+    }
+  ],
+  "truths": [
+    {
+      "end_ms": 1784541863000,
+      "sid": "sensorData-1784554980507-f48962ad96554b55900e93e73672e803",
+      "start_ms": 1784540803000
+    },
+    {
+      "end_ms": 1784606643000,
+      "sid": "sensorData-1784621315934-6713b6b00f8c428bb5f3258b3f2ecfb6",
+      "start_ms": 1784605564000
+    },
+    {
+      "end_ms": 1784628334000,
+      "sid": "sensorData-1784643469291-933a091aaeb94fbd887c811bcec7ac81",
+      "start_ms": 1784627999000
+    },
+    {
+      "end_ms": 1784627355000,
+      "sid": "sensorData-1784650948547-494d2b5ba270487b8c81c5a11e3d0ebb",
+      "start_ms": 1784626841000
+    },
+    {
+      "end_ms": 1784693677000,
+      "sid": "sensorData-1784721590109-7e3dee60f2fe4c8092ace0c036ecdcff",
+      "start_ms": 1784693069000
+    },
+    {
+      "end_ms": 1784714513000,
+      "sid": "sensorData-1784731312539-2d78553a55dd48adb9e20475b2eb0094",
+      "start_ms": 1784713334000
+    },
+    {
+      "end_ms": 1784605683000,
+      "sid": "sensorData-1784733412679-2e3486657dfe4531b4cda60f66ad84aa",
+      "start_ms": 1784604099000
+    },
+    {
+      "end_ms": 1784692572000,
+      "sid": "sensorData-1784735320868-5743ebfdc5ca4032b754df5234b74e98",
+      "start_ms": 1784692198000
+    },
+    {
+      "end_ms": 1784779232000,
+      "sid": "sensorData-1784791472059-de710b9dbe2e4976a76f1917a82f1ab8",
+      "start_ms": 1784778667000
+    },
+    {
+      "end_ms": 1784802350000,
+      "sid": "sensorData-1784818067554-29a26449621a4eb9807a915859339258",
+      "start_ms": 1784801501000
+    },
+    {
+      "end_ms": 1784800959000,
+      "sid": "sensorData-1784818440105-61a9347979eb4c2dbf41d58eb2166963",
+      "start_ms": 1784799804000
+    },
+    {
+      "end_ms": 1784779237000,
+      "sid": "sensorData-1784820575374-147e7ec0f4dd4155bf09f2ee6c846fd0",
+      "start_ms": 1784778498000
+    },
+    {
+      "end_ms": 1784798953000,
+      "sid": "sensorData-1784822733657-ab5a397c8cfc46a0b252d77864a7cfd2",
+      "start_ms": 1784798316000
+    },
+    {
+      "end_ms": 1784783270000,
+      "sid": "sensorData-1784824410478-e571f0892f5b4a7298a61129f5f7d3db",
+      "start_ms": 1784782786000
+    },
+    {
+      "end_ms": 1784729805000,
+      "sid": "sensorData-1784824810371-456c2e5236864a7998b39f3e36907044",
+      "start_ms": 1784728999000
+    },
+    {
+      "end_ms": 1784888074000,
+      "sid": "sensorData-1784905438456-381abafb17ff4592bed6b2e04daee652",
+      "start_ms": 1784887807000
+    },
+    {
+      "end_ms": 1784886832000,
+      "sid": "sensorData-1784905438456-381abafb17ff4592bed6b2e04daee652",
+      "start_ms": 1784886529000
+    },
+    {
+      "end_ms": 1784864253000,
+      "sid": "sensorData-1784906707431-831cd8ca31d44432b9e685b1287196ac",
+      "start_ms": 1784863466000
+    },
+    {
+      "end_ms": 1784953063000,
+      "sid": "sensorData-1784954089623-f05f91701eac4526803d6ceab4a1ac4e",
+      "start_ms": 1784952642000
+    },
+    {
+      "end_ms": 1784974657000,
+      "sid": "sensorData-1784988382122-a24e1035c04f46508012f07a5cd76afc",
+      "start_ms": 1784972339000
+    },
+    {
+      "end_ms": 1784953545000,
+      "sid": "sensorData-1784989626254-205dda0bcf3f4a5ea811de10331eef93",
+      "start_ms": 1784951620000
+    },
+    {
+      "end_ms": 1785065703000,
+      "sid": "sensorData-1785073070123-55f0936da57a447b92fd0abf8bd48fb8",
+      "start_ms": 1785063171000
+    },
+    {
+      "end_ms": 1785042562000,
+      "sid": "sensorData-1785074498390-0cc1ee3f97b34634b0f447e64f9f74ea",
+      "start_ms": 1785040645000
+    },
+    {
+      "end_ms": 1785037698000,
+      "sid": "sensorData-1785076898418-8b383aa0b5c24832a2580ca36ad336ba",
+      "start_ms": 1785037309000
+    },
+    {
+      "end_ms": 1785127191000,
+      "sid": "sensorData-1785140457422-7bb65896fd59462795646ec6ec772dad",
+      "start_ms": 1785124433000
+    },
+    {
+      "end_ms": 1785113106000,
+      "sid": "sensorData-1785141124073-8b336f6e00944acd8ff270828330da73",
+      "start_ms": 1785112621000
+    },
+    {
+      "end_ms": 1785151791000,
+      "sid": "sensorData-1785161510809-d9999a2a04de4774a438821592e3bafe",
+      "start_ms": 1785150875000
+    },
+    {
+      "end_ms": 1785123667000,
+      "sid": "sensorData-1785162716328-3d28b907ae19428c8caedf99962f8d24",
+      "start_ms": 1785123055000
+    },
+    {
+      "end_ms": 1785210506061,
+      "sid": "sensorData-1785231332589-8d5c96322be341f48352c494d9a8f1f1",
+      "start_ms": 1785209734758
+    },
+    {
+      "end_ms": 1785167367305,
+      "sid": "sensorData-1785231598407-b6e9467e8a824e94b68d6168c96e5f4d",
+      "start_ms": 1785166500823
+    },
+    {
+      "end_ms": 1785247604519,
+      "sid": "sensorData-1785254417625-d9df25e684aa4379beab3c2abf57761a",
+      "start_ms": 1785245662343
+    },
+    {
+      "end_ms": 1785329950097,
+      "sid": "sensorData-1785392590219-f94fab9838a34d18810d65cc17e67a56",
+      "start_ms": 1785329191129
+    },
+    {
+      "end_ms": 1785310517744,
+      "sid": "sensorData-1785392590219-f94fab9838a34d18810d65cc17e67a56",
+      "start_ms": 1785309320800
+    }
+  ]
+}
