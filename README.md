@@ -518,13 +518,27 @@ A5已有收益扩大验证见[A5设计](docs/challenge_070_amendment_a5_inner_va
 
 新的架构设计见[A6双任务Transformer与FD序列扩充](docs/challenge_070_amendment_a6_transformer_design.md)，
 书面设计已获审阅通过，[T0/T1实施计划](docs/superpowers/plans/2026-10-12-a6-transformer-t0-t1-plan.md)
-已获审阅通过，T0/T1代码已实现，39项新增针对性测试通过，严格inner四臂实验正在运行。
+已获审阅通过，T0/T1代码及严格inner四臂实验已完成，39项新增针对性测试通过。
 全仓基线799 passed、5 skipped、31 warnings；Luna/medium独立审查发现的提前raw读取与
 活动计算预算遗漏已按RED→GREEN修复；完成后全仓回归838 passed、5 skipped、31 warnings，
 无失败（1033.50s），全部表示研究测试279 passed。manifest与不读取raw内容的T0审计已提交锁定，
-正在运行policy阶段的pooling/TCN/Transformer配对对照；全部policy冻结并提交后才开始health验证。
+全部policy冻结并提交后才开始health验证；完整三wrapper/24名受试者、97个GT的结果如下。
+
+| 对照 | inner event F1 | TP/FP/FN | 相对基线 |
+| --- | --- | --- | --- |
+| incumbent | .721311 | 66/20/31 | — |
+| pooling | .739583 | 71/24/26 | +.018272 |
+| TCN | .763819 | 76/26/21 | +.042508 |
+| Transformer | .760417 | 73/22/24 | +.039105 |
+
+三新增臂均3/3 wrapper非下降并通过扩大验证gate；TCN短餐recall从9/22提高到13/22，
+24名受试者中9名提高、2名下降、13名持平。Transformer为12/22，10名提高、4名下降、10名持平。
+这些是反复用于开发的T24结果，不能声称正式突破.70，也不能认定attention优于TCN。
+详见[A6 T1报告](outputs/challenger_70/representation_v2/amendment_a6_transformer/t1/report.md)
+及[执行收口记录](outputs/challenger_70/representation_v2/amendment_a6_transformer/t1/closeout.md)。
 路线为冻结FD局部表示→候选时序复核→全天定位与候选联合，
 分别处理漏候选和难负例；FD连续序列扩充单独归因。已核实本地FD压缩包仅含逐点手势X/Y，
 未找到独立餐段边界；FD-II餐外0不能作为可靠负例，不能直接混入餐段训练。
 用户已确认目标与FD-I来自独立受试者群体；匿名ID本身无法独立证明跨数据身份，证据中保留此限制。
-正式F1仍.6514285714，dist/release不变；本轮尚无新的完整F1，不运行outer、不自动推广。
+正式F1仍.6514285714，dist/release不变；下一阶段建议冻结TCN配置做V7验证，具体协议须预注册，
+本轮不运行outer、不自动推广。A6原始设计/实施计划作为已锁定实验合同保持原文，不追改其历史状态段。
