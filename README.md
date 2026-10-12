@@ -568,3 +568,5 @@ A6原始设计/实施计划作为已锁定实验合同保持原文，不追改�
 下一步建议在严格训练侧OOF做固定多种子对照；不得用V7挑旧checkpoint或把跨wrapper平均伪装成OOF。
 详见[冻结诊断报告](outputs/challenger_70/representation_v2/amendment_a6_transformer/checkpoint_audit/report.md)。
 本次正式F1及dist/release保持不变，尚未启动新模型训练。
+新增测试6 passed，表示研究回归298 passed，全仓回归857 passed、5 skipped（31项已知/预期warnings）；
+Luna/medium独立只读审查未发现Critical/Important问题。必要诊断证据约1.4MiB，无新token缓存。

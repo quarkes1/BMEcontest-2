@@ -60,7 +60,7 @@ Transformer 最终融合 AP=.765548，高于此前基础候选 AP=.7365；因此
 
 ## 实现与验证记录
 
-- 代码提交 `a5829c0` 在真实诊断推理前完成；六项新增测试先观察缺失实现导致的 RED，再观察 GREEN（6 passed）。表示研究回归 298 passed、20 项已知/预期 warnings；全仓回归仍在运行，尚不声称通过。
+- 代码提交 `a5829c0` 在真实诊断推理前完成；六项新增测试先观察缺失实现导致的 RED，再观察 GREEN（6 passed）。表示研究回归 298 passed、20 项已知/预期 warnings；全仓回归 **857 passed、5 skipped、31 warnings，1027.26s**，退出码0。warnings 为已有的 mark 注册、常量信号统计及缺失特征 imputation 提示；不声称无 warnings。完整回归使用 `python -m pytest -q -p no:cacheprovider`，进程线程环境 OMP/MKL/OPENBLAS 均设4。
 - Luna / medium 独立只读审查：未发现 Critical/Important 缺陷。Minor 为未使用 import；测试覆盖缺口为未用合成全流程覆盖 run 的全部门禁；本次真实完整运行、封存分数复现及结束哈希复核提供了实际路径证据，但不等于覆盖所有错误分支。审查未判断泛化/因果结论。
 - 真实诊断 COMPLETE，8 次已冻结模型推理，training_fits=0、outer_calls=0；模型推理与评分汇总阶段约4.55秒，不包含入口导入/预检耗时。未新增 token 缓存。
 - 源输入/cache/model/code SHA、正式发布保护快照、scores.json SHA 均经独立只读复核通过。所有新输出只在 checkpoint_audit 子目录，不覆盖 T1/V7 封存结果。
