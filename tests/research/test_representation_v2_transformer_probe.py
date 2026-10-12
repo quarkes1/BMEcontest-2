@@ -64,3 +64,13 @@ def test_runtime_config_accepts_json_tuple_roundtrip_but_not_changed_values():
     recorded['seed']+=1
     with pytest.raises(RuntimeError,match='config changed'):
         validate_runtime_config(config,recorded)
+
+
+@pytest.mark.parametrize('kind',['neural','encoding'])
+def test_current_work_is_counted_before_cumulative_limit(tmp_path,kind):
+    from scripts.research.representation_v2.transformer.probe import Resources
+    resources=Resources(tmp_path,tmp_path,new=True)
+    limit=12*3600 if kind=='neural' else 2*3600
+    resources.row[kind+'_seconds']=limit-1
+    with pytest.raises(RuntimeError,match='resource budget'):
+        resources.check(**{'active_'+kind+'_seconds':2.})

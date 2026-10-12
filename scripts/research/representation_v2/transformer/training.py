@@ -90,11 +90,12 @@ def fit_head(arm,train_sequences,labels,groups,*,seed,device,steps=1000,resource
             'parameters':sum(p.numel() for p in model.parameters()),'device':device}
 
 
-def predict_head(fitted,sequences):
+def predict_head(fitted,sequences,*,resource_callback=None):
     result=[]; model=fitted['model']; device=fitted['device']
     model.eval()
     with torch.inference_mode():
         for left in range(0,len(sequences),16):
+            if resource_callback: resource_callback()
             batch=pack_sequences(sequences[left:left+16],fitted['center'],fitted['scale'],device)
             result.extend(torch.sigmoid(model(batch)).cpu().tolist())
     p=np.asarray(result,dtype=np.float64)

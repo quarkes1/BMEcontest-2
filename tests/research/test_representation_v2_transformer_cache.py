@@ -77,3 +77,12 @@ def test_cache_quota_failure_leaves_no_partial_files(tmp_path):
         load_or_encode(root=tmp_path,sid='s',allowed_sids={'s'},encoder=encoder,device='cpu',
                        cache_root=tmp_path/'derived',metadata=meta,quota_bytes=1)
     assert not list((tmp_path/'derived').iterdir())
+
+
+def test_t0_audit_never_reads_raw_bytes(tmp_path,monkeypatch):
+    from scripts.research.representation_v2.transformer import cache
+    raw_fixture(tmp_path)
+    def forbidden_read(*args,**kwargs): raise AssertionError('T0 read raw bytes')
+    monkeypatch.setattr(cache,'file_hash',forbidden_read)
+    result=cache.audit_data(tmp_path,{'identities':{'t24':['person']},'subject_by_session':{'s':'person'}})
+    assert result['total_raw_bytes']>0 and result['raw_bytes_read'] is False

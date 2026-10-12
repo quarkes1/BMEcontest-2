@@ -174,11 +174,11 @@ class Resources:
         if self.device=='cuda': torch.cuda.reset_peak_memory_stats()
         self.check()
 
-    def check(self):
+    def check(self,*,active_neural_seconds=0.,active_encoding_seconds=0.):
         size=sum(p.stat().st_size for p in self.output.rglob('*') if p.is_file() and 'tokens' not in p.parts)
         token_size=sum(p.stat().st_size for p in (self.output/'tokens').glob('*') if p.is_file())
-        if (time.time()-self.row['started_epoch']>36*3600 or self.row['neural_seconds']>12*3600
-                or self.row['encoding_seconds']>2*3600 or self.row['cpu_seconds']>12*3600
+        if (time.time()-self.row['started_epoch']>36*3600 or self.row['neural_seconds']+active_neural_seconds>12*3600
+                or self.row['encoding_seconds']+active_encoding_seconds>2*3600 or self.row['cpu_seconds']>12*3600
                 or size>256*1024**2 or token_size>2*1024**3 or shutil.disk_usage(self.root).free<20*1024**3):
             raise RuntimeError('registered resource budget exceeded')
         if self.free_cuda is not None and torch.cuda.max_memory_allocated()>.8*self.free_cuda:
@@ -211,18 +211,29 @@ def sequences_for(root,ledger,manifest,encoder,resources):
     allowed_subjects=set(ledger.score_subjects)
     allowed_sids={s for s,owner in manifest['subject_by_session'].items() if owner in allowed_subjects}
     sessions={}; sequences=[]; started=time.perf_counter()
+    hash_path=resources.output/'raw_checksums.json'
+    raw_hashes=read_json(hash_path) if hash_path.exists() else {}
     for candidate,subject in zip(ledger.candidates,ledger.groups):
+        resources.check(active_encoding_seconds=time.perf_counter()-started)
         event=candidate.event; sid=event.sid
         if subject not in allowed_subjects or sid not in allowed_sids: raise ValueError('sequence subject not allowed')
         if sid not in sessions:
+            raw_path=Path(root)/'cache/sessions'/f'{sid}.npz'
+            stat=raw_path.stat()
+            if stat.st_size!=audit[sid]['bytes'] or stat.st_mtime_ns!=audit[sid]['mtime_ns']:
+                raise RuntimeError('raw metadata changed since audit')
+            if sid not in raw_hashes:
+                raw_hashes[sid]=file_hash(raw_path)
+                write_json(hash_path,raw_hashes)
             bounds=manifest['session_bounds_by_sid'][sid]
-            meta={'schema':'a6-token-v1','raw_sha256':audit[sid]['sha256'],
+            meta={'schema':'a6-token-v1','raw_sha256':raw_hashes[sid],
                   'encoder_sha256':encoder_hash(encoder),'normalization':'unitfree',
                   'fit_subjects':manifest['identities']['source_train'],'source_checkpoint':SOURCE_SHA,
                   'start_ms':int(bounds[0]),'end_ms':int(bounds[1]),'sid':sid,
                   'preprocessing':{'sampling_hz':25,'token_ms':5000,'max_gap_ms':200,'min_coverage':.8,'gravity_align':False}}
             sessions[sid]=load_or_encode(root=root,sid=sid,allowed_sids=allowed_sids,encoder=encoder,
-                    device=resources.device,cache_root=resources.output/'tokens',metadata=meta)
+                    device=resources.device,cache_root=resources.output/'tokens',metadata=meta,
+                    resource_callback=lambda:resources.check(active_encoding_seconds=time.perf_counter()-started))
         tokens=sessions[sid]; chunks=[]
         for chunk in candidate_chunks(tokens,event.start_ms,event.end_ms):
             idx=chunk.token_indices
@@ -248,9 +259,13 @@ def split_scores(root,data,config,train,score,excluded,manifest,encoder,resource
     scores={'b':base}; heads={}; components={}
     for arm in ('p','c','t'):
         print(f'A6 {prefix} arm={arm} train={len(t.labels)} score={len(v.labels)}',flush=True)
+        started_neural=time.perf_counter()
         fitted=fit_head(arm,train_sequences,t.labels,t.groups,seed=20261012+split_id,
-                        device=resources.device,resource_callback=resources.check)
-        motion=predict_head(fitted,score_sequences); components[arm]=motion.tolist()
+                        device=resources.device,
+                        resource_callback=lambda:resources.check(active_neural_seconds=time.perf_counter()-started_neural))
+        motion=predict_head(fitted,score_sequences,
+                           resource_callback=lambda:resources.check(active_neural_seconds=time.perf_counter()-started_neural))
+        components[arm]=motion.tolist()
         scores[arm]=fuse_scores(base,motion,valid)
         sampling=fitted['sampling_sha256']
         if heads and sampling!=next(iter(heads.values()))['sampling_sha256']:
@@ -261,7 +276,7 @@ def split_scores(root,data,config,train,score,excluded,manifest,encoder,resource
                     'center':torch.tensor(fitted['center']),'scale':torch.tensor(fitted['scale']),
                     'provenance':summary},resources.output/f'{prefix}_{arm}.pt')
         resources.row['neural_fits']+=1; resources.row['steps']+=fitted['steps']
-        resources.row['neural_seconds']+=fitted['elapsed_seconds']
+        resources.row['neural_seconds']+=time.perf_counter()-started_neural
         resources.row['fits'].append({'split':prefix,'arm':arm,**summary})
         graph[arm]={'fit_subjects':list(train),'parents':['source','candidates']}
         resources.check(); resources.save(); del fitted; gc.collect()

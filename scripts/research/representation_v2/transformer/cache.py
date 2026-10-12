@@ -36,8 +36,9 @@ def _require_sid(sid,allowed_sids):
         raise ValueError('invalid session identifier')
 
 
-def encode_session(root,sid,allowed_sids,encoder,device):
+def encode_session(root,sid,allowed_sids,encoder,device,*,resource_callback=None):
     _require_sid(sid,allowed_sids)
+    if resource_callback: resource_callback()
     if encoder.training or any(p.requires_grad for p in encoder.parameters()):
         raise ValueError('encoder must be frozen and in eval mode')
     before=encoder_hash(encoder)
@@ -58,6 +59,7 @@ def encode_session(root,sid,allowed_sids,encoder,device):
     encoder=encoder.to(device)
     with torch.inference_mode():
         for left in range(0,n,360):
+            if resource_callback: resource_callback()
             right=min(n,left+360); count=right-left
             grid=starts[left:right,None]+np.arange(125,dtype=np.int64)[None,:]*40
             values=np.zeros((count,6,125),np.float32); mask=np.zeros((count,125),bool)
@@ -87,8 +89,9 @@ def encode_session(root,sid,allowed_sids,encoder,device):
 
 
 def load_or_encode(*,root,sid,allowed_sids,encoder,device,cache_root,metadata,
-                   quota_bytes=T1Config().cache_bytes):
+                   quota_bytes=T1Config().cache_bytes,resource_callback=None):
     _require_sid(sid,allowed_sids)
+    if resource_callback: resource_callback()
     if metadata.get('sid')!=sid or metadata.get('encoder_sha256')!=encoder_hash(encoder):
         raise ValueError('cache encoder/session identity mismatch')
     raw_path=Path(root)/'cache/sessions'/f'{sid}.npz'
@@ -104,7 +107,7 @@ def load_or_encode(*,root,sid,allowed_sids,encoder,device,cache_root,metadata,
         with np.load(path,allow_pickle=False) as data:
             return SessionTokens(sid,*(data[k] for k in ('center_ms','span_id','coverage','valid','embeddings')),
                                  int(data['start_ms']),int(data['end_ms']))
-    tokens=encode_session(root,sid,allowed_sids,encoder,device)
+    tokens=encode_session(root,sid,allowed_sids,encoder,device,resource_callback=resource_callback)
     temporary=path.with_name(path.name+'.tmp'); temp_header=header.with_name(header.name+'.tmp')
     installed=False
     try:
@@ -133,6 +136,7 @@ def audit_data(root,manifest):
         if subject not in allowed: raise ValueError('audit session outside T24')
         _require_sid(sid,{sid})
         path=Path(root)/'cache/sessions'/f'{sid}.npz'
-        rows.append({'sid':sid,'subject':subject,'bytes':path.stat().st_size,'sha256':file_hash(path)})
+        stat=path.stat()
+        rows.append({'sid':sid,'subject':subject,'bytes':stat.st_size,'mtime_ns':stat.st_mtime_ns})
     return {'sessions':rows,'total_raw_bytes':sum(r['bytes'] for r in rows),
-            'raw_arrays_decoded':False,'source_training_started':False,'outer_calls':0}
+            'raw_arrays_decoded':False,'raw_bytes_read':False,'source_training_started':False,'outer_calls':0}
