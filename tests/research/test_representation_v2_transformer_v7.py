@@ -51,6 +51,16 @@ def test_subset_filter_removes_heldout_before_eligibility_processing(tmp_path, m
     np.testing.assert_array_equal(macro.labels,[1])
 
 
+def test_registration_sessions_come_from_canonical_feature_tables_not_entire_index(tmp_path):
+    from scripts.research.representation_v2.transformer.v7_models import canonical_session_ids
+    import json
+    directory=tmp_path/'cache/slide'; directory.mkdir(parents=True)
+    for role,sid in [('train','train'),('meal_train','meal'),('no_meal_train','negative')]:
+        np.savez(directory/f'fold0_{role}.npz',wid=np.array([json.dumps([sid,0,10000])]))
+    # A missing raw session not in any feature table must not be added from the index.
+    assert canonical_session_ids(tmp_path)=={'train','meal','negative'}
+
+
 def test_primary_gate_cannot_be_replaced_by_better_secondary():
     from scripts.research.representation_v2.transformer.v7_contract import primary_gate
     result=primary_gate({'b':{'f1':.70}, 'c':{'f1':.705}, 't':{'f1':.80}})

@@ -23,7 +23,7 @@ from .probe import (Resources, load_registration, phase, read_json, require_clea
 from .reporting import metrics
 from .training import fit_head, predict_head, fuse_scores
 from .v7_contract import ARMS, ID, OUTPUT, primary_gate, seal, validate_oof, verify_seal
-from .v7_models import SubsetSource, base_probability, fit_producers_and_base, score_ledger
+from .v7_models import SubsetSource, base_probability, canonical_session_ids, fit_producers_and_base, score_ledger
 
 T1='outputs/challenger_70/representation_v2/amendment_a6_transformer/t1'
 SPEC='docs/challenge_070_amendment_a6_v7_validation.md'
@@ -77,7 +77,10 @@ def run_register(root):
     from src.data import manifests
     index=manifests.load_sensor_index()
     subjects=set(ids['t24'])|set(ids['v7'])
-    rows=[r for _,r in index.iterrows() if str(r['externalid']) in subjects]
+    canonical=canonical_session_ids(root)
+    rows=[r for _,r in index.iterrows() if str(r['externalid']) in subjects and str(r['session_id']) in canonical]
+    if {str(r['session_id']) for r in rows}!=canonical:
+        raise ValueError('canonical train coverage contains unknown or unauthorized sessions')
     manifest={**original,'id':ID,'primary':'c','secondary':'t',
         'subject_by_session':{str(r['session_id']):str(r['externalid']) for r in rows},
         'session_bounds_by_sid':{str(r['session_id']):[int(r['timeStamp.startTime']),int(r['timeStamp.endTime'])] for r in rows},
@@ -89,7 +92,9 @@ def run_register(root):
     validate_oof([read_json(root/n) for n in oof_names],set(ids['t24']),set(ids['source_train']),
                  set(ids['v7'])|set(ids['outer'])|set(ids['source_val']))
     tracked=subprocess.check_output(['git','ls-files','scripts','src'],cwd=root,text=True).splitlines()
-    names=[n for n in tracked if n.endswith('.py')]+[SPEC]+oof_names+[f'{T1}/manifest.json',f'{T1}/registered_plan.json']
+    features=[f'cache/{folder}/fold0_{role}.npz' for folder in ('slide','micro15')
+              for role in ('train','meal_train','no_meal_train')]
+    names=[n for n in tracked if n.endswith('.py')]+[SPEC]+oof_names+[f'{T1}/manifest.json',f'{T1}/registered_plan.json']+features
     output.mkdir(parents=True)
     try:
         write_json(output/'manifest.json',manifest)

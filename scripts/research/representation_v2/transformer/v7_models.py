@@ -1,8 +1,21 @@
 """Authorized train-only loading and persisted candidate producer inference."""
+import json
+from pathlib import Path
+
 import numpy as np
 
 from .. import event_probe as ep
 from ..crossfit import CandidateLedger, _slice_batch
+
+
+def canonical_session_ids(root):
+    """Match the incumbent outer-train role coverage without decoding sessions."""
+    result=set()
+    for role in ('train','meal_train','no_meal_train'):
+        with np.load(Path(root)/'cache/slide'/f'fold0_{role}.npz',allow_pickle=True) as arrays:
+            result.update(str(json.loads(str(w))[0]) for w in arrays['wid'])
+    if not result: raise ValueError('canonical session coverage is empty')
+    return result
 
 
 class SubsetSource(ep.runner.FilesystemDataSource):
