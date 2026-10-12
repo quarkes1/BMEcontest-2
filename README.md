@@ -517,7 +517,8 @@ A5已有收益扩大验证见[A5设计](docs/challenge_070_amendment_a5_inner_va
 用户要求先讨论Transformer，故A5保持暂停，代码保留，不记为算法失败，不自动恢复。
 
 新的架构设计见[A6双任务Transformer与FD序列扩充](docs/challenge_070_amendment_a6_transformer_design.md)，
-书面设计待审阅，尚未实现或训练。路线为冻结FD局部表示→候选时序复核→全天定位与候选联合，
+书面设计已获审阅通过，[T0/T1实施计划](docs/superpowers/plans/2026-10-12-a6-transformer-t0-t1-plan.md)
+待审阅，尚未实现或训练。路线为冻结FD局部表示→候选时序复核→全天定位与候选联合，
 分别处理漏候选和难负例；FD连续序列扩充单独归因。已核实本地FD压缩包仅含逐点手势X/Y，
 未找到独立餐段边界；FD-II餐外0不能作为可靠负例，不能直接混入餐段训练。
-正式F1仍.6514285714，dist/release不变；下一步是审阅A6设计，再编写实施计划。
+正式F1仍.6514285714，dist/release不变；下一步是确认T0/T1计划，执行四臂严格inner对照。
