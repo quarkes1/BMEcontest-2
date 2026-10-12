@@ -1,0 +1,54 @@
+{
+  "policies": {
+    "b": {
+      "admission": {
+        "max_candidates_per_subject": 6,
+        "nms_iou": 0.3,
+        "threshold": 0.2
+      },
+      "selection_metrics": {
+        "f1": 0.7373737373737373,
+        "n_pred": 101,
+        "n_tp": 73,
+        "n_true": 97,
+        "ppv": 0.7227722772277227,
+        "sensitivity": 0.7525773195876289
+      },
+      "threshold": 0.5691298948782294
+    },
+    "c": {
+      "admission": {
+        "max_candidates_per_subject": 6,
+        "nms_iou": 0.3,
+        "threshold": 0.35
+      },
+      "selection_metrics": {
+        "f1": 0.7715736040609137,
+        "n_pred": 100,
+        "n_tp": 76,
+        "n_true": 97,
+        "ppv": 0.76,
+        "sensitivity": 0.7835051546391752
+      },
+      "threshold": 0.5457667378980453
+    },
+    "t": {
+      "admission": {
+        "max_candidates_per_subject": 6,
+        "nms_iou": 0.3,
+        "threshold": 0.35
+      },
+      "selection_metrics": {
+        "f1": 0.7724867724867726,
+        "n_pred": 92,
+        "n_tp": 73,
+        "n_true": 97,
+        "ppv": 0.7934782608695652,
+        "sensitivity": 0.7525773195876289
+      },
+      "threshold": 0.5492887753406543
+    }
+  },
+  "primary": "c",
+  "selection_population": "T24 reused subject-OOF"
+}
