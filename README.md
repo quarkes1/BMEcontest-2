@@ -507,12 +507,17 @@ S14已完成：R/F/D source AP .76428/.69747/.85144，raw BCE .27218/.29392/.226
 无失败（1029.36s）。已清理研究pyc与本轮约96MiB测试临时占位文件，无持久token缓存；
 正式F1仍.6514285714，dist/release未改动。源域负样本覆盖不足保留为未验证假设，暂不启动。
 
-下一阶段拟先验证已有收益，见[A5扩大inner验证设计](docs/challenge_070_amendment_a5_inner_validation_design.md)。
+A5已有收益扩大验证见[A5设计](docs/challenge_070_amendment_a5_inner_validation_design.md)。
 固定比较116D研究对照、冻结FD251D和S11适配FD251D，在原T24上采用两组预定三折划分；
 这是扩大划分而非新增独立人群，原V7/outer继续隔离。分别记录收益、划分稳定性和错误互补，
 不再将“适配未胜冻结对照”等同于“相对baseline毫无收益”。设计已获审阅通过，
 [实施计划](docs/superpowers/plans/2026-10-10-a5-inner-validation-plan.md)已获审阅通过，代码已实现，
-50项相关测试通过；Luna/medium审查发现的启动异常状态问题已修复。执行顺序为全仓回归
-成功→锁定并提交manifest→固定三臂训练；任一步失败均停止，不更换划分或配置。
-运行状态以`outputs/challenger_70/representation_v2/amendment_a5_validation/state.json`为准。
-不修改旧实验结论，不启动融合/新架构，不更新dist，也不产生新正式F1。
+50项相关测试通过；Luna/medium审查发现的启动异常状态问题已修复。
+截至2026-10-12，全仓回归在中途停止，没有完整通过记录；manifest与三臂训练尚未启动。
+用户要求先讨论Transformer，故A5保持暂停，代码保留，不记为算法失败，不自动恢复。
+
+新的架构设计见[A6双任务Transformer与FD序列扩充](docs/challenge_070_amendment_a6_transformer_design.md)，
+书面设计待审阅，尚未实现或训练。路线为冻结FD局部表示→候选时序复核→全天定位与候选联合，
+分别处理漏候选和难负例；FD连续序列扩充单独归因。已核实本地FD压缩包仅含逐点手势X/Y，
+未找到独立餐段边界；FD-II餐外0不能作为可靠负例，不能直接混入餐段训练。
+正式F1仍.6514285714，dist/release不变；下一步是审阅A6设计，再编写实施计划。
