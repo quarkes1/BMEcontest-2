@@ -1,0 +1,70 @@
+{
+  "outer_calls": 0,
+  "policies": {
+    "b": {
+      "admission": {
+        "max_candidates_per_subject": 8,
+        "nms_iou": 0.3,
+        "threshold": 0.2
+      },
+      "selection_metrics": {
+        "f1": 0.6846846846846847,
+        "n_pred": 45,
+        "n_tp": 38,
+        "n_true": 66,
+        "ppv": 0.8444444444444444,
+        "sensitivity": 0.5757575757575758
+      },
+      "threshold": 0.7325692750216726
+    },
+    "c": {
+      "admission": {
+        "max_candidates_per_subject": 8,
+        "nms_iou": 0.3,
+        "threshold": 0.2
+      },
+      "selection_metrics": {
+        "f1": 0.7000000000000001,
+        "n_pred": 54,
+        "n_tp": 42,
+        "n_true": 66,
+        "ppv": 0.7777777777777778,
+        "sensitivity": 0.6363636363636364
+      },
+      "threshold": 0.5431660226480926
+    },
+    "p": {
+      "admission": {
+        "max_candidates_per_subject": 8,
+        "nms_iou": 0.3,
+        "threshold": 0.2
+      },
+      "selection_metrics": {
+        "f1": 0.6949152542372881,
+        "n_pred": 52,
+        "n_tp": 41,
+        "n_true": 66,
+        "ppv": 0.7884615384615384,
+        "sensitivity": 0.6212121212121212
+      },
+      "threshold": 0.5943542508961277
+    },
+    "t": {
+      "admission": {
+        "max_candidates_per_subject": 8,
+        "nms_iou": 0.3,
+        "threshold": 0.2
+      },
+      "selection_metrics": {
+        "f1": 0.688,
+        "n_pred": 59,
+        "n_tp": 43,
+        "n_true": 66,
+        "ppv": 0.7288135593220338,
+        "sensitivity": 0.6515151515151515
+      },
+      "threshold": 0.5338546880459052
+    }
+  },
+  "wrapper": 1
+}
