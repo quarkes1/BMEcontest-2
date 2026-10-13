@@ -571,7 +571,7 @@ A6原始设计/实施计划作为已锁定实验合同保持原文，不追改�
 新增测试6 passed，表示研究回归298 passed，全仓回归857 passed、5 skipped（31项已知/预期warnings）；
 Luna/medium独立只读审查未发现Critical/Important问题。必要诊断证据约1.4MiB，无新token缓存。
 
-### A6 固定三种子对照（已批准，准备登记训练）
+### A6 固定三种子对照（已登记，policy阶段运行中）
 
 [三种子实验合同](docs/challenge_070_amendment_a6_seed_ensemble.md)锁定原T24嵌套划分、
 原种子及+100000/+200000两个种子。仅在同一训练分区内等权平均，不选最佳种子，
@@ -579,4 +579,5 @@ Luna/medium独立只读审查未发现Critical/Important问题。必要诊断证
 原候选和基础评分必须先复现，缓存只读复用。V7/outer不重新评分，dist/release不变。
 实现及审查修复共11项新增测试RED→GREEN；表示研究309 passed，全仓868 passed、5 skipped，
 31项已知/预期warnings。Luna/medium审查的缓存哈希锚定、OOF覆盖与次要对照汇总问题已修复，
-准备登记后启动真实训练。策略搜索空间/选择流程不变，集成数值策略仅在训练侧OOF选定后冻结。
+登记已提交（56b225a），policy阶段真实训练已启动，尚无新事件F1。
+策略搜索空间/选择流程不变，集成数值策略仅在训练侧OOF选定后冻结。
