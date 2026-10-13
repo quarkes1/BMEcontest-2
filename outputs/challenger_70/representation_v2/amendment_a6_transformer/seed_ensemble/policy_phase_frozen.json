@@ -1,0 +1,9 @@
+{
+  "files": {
+    "wrapper0_policies.json": "f547605ba9fedc7eae099f20a7d3ca7b95e6cbdadd3a01801a30ee87f5763120",
+    "wrapper1_policies.json": "c1f74b05cb5ac097e860e000116904074dbe153b26b26328c50afe077ff9d10b",
+    "wrapper2_policies.json": "dbb9d4563009fed9b7f4ea906561932c8f78fa34356a28be5ed04c1f6e88da0c"
+  },
+  "health_files_read": 0,
+  "outer_calls": 0
+}
