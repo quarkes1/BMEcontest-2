@@ -29,6 +29,36 @@ SPEC = 'docs/challenge_070_amendment_a6_seed_ensemble.md'
 EXPECTED = {'producer_fits': 120, 'base_fits': 24, 'neural_fits': 48, 'steps': 48000}
 
 
+def cache_snapshot(directory):
+    directory = Path(directory)
+    headers = {p.stem for p in directory.glob('*.json')}
+    arrays = {p.stem for p in directory.glob('*.npz')}
+    if not headers or headers != arrays:
+        raise ValueError('empty or partial source token cache')
+    return {f'{stem}{suffix}': file_hash(directory/f'{stem}{suffix}')
+            for stem in sorted(headers) for suffix in ('.json', '.npz')}
+
+
+def policy_coverage(partitions, expected):
+    seen = set()
+    if len(partitions) != 3:
+        raise ValueError('three OOF partitions required')
+    for values in partitions:
+        subjects = set(values)
+        if not subjects or subjects & seen or subjects-set(expected):
+            raise ValueError('policy OOF overlap or unknown subject')
+        seen.update(subjects)
+    if seen != set(expected):
+        raise ValueError('policy OOF subject coverage differs')
+
+
+def wrapper_directions(records, originals):
+    if len(records) != 3 or len(originals) != 3:
+        raise ValueError('three paired wrappers required')
+    return {a: [r['events'][a]['f1'] >= o['events'][a]['f1']-1e-12
+                for r, o in zip(records, originals)] for a in ('c', 't')}
+
+
 def seeds_for(split_id):
     if not isinstance(split_id, int) or not 0 <= split_id < 12:
         raise ValueError('unknown registered partition')
@@ -126,6 +156,8 @@ class FrozenSequences:
 def registered(root):
     output = Path(root)/OUTPUT; registry = read_json(output/'registry.json')
     verify_registered_files(root, registry)
+    if cache_snapshot(Path(root)/T1/'tokens') != registry['token_cache']:
+        raise ValueError('registered source token inventory changed')
     if digest(ep.protected_snapshot(root)) != registry['protected_digest']:
         raise ValueError('protected release changed')
     return read_json(output/'manifest.json')
@@ -148,10 +180,12 @@ def run_register(root):
         require_committed(root, root/name)
     features = [f'cache/{folder}/fold0_{role}.npz' for folder in ('slide', 'micro15')
                 for role in ('train', 'meal_train', 'no_meal_train')]
+    token_cache = cache_snapshot(root/T1/'tokens')
     output.mkdir(parents=True)
     write_json(output/'manifest.json', manifest)
-    names += features+[f'{OUTPUT}/manifest.json']
+    names += features+[f'{OUTPUT}/manifest.json']+[f'{T1}/tokens/{name}' for name in token_cache]
     write_json(output/'registry.json', {'id': 'RV2-A6-SEED-001', 'expected_fits': EXPECTED,
+        'token_cache': token_cache,
         'code_files': {n: file_hash(root/n) for n in names}, 'protected_digest': digest(ep.protected_snapshot(root)),
         'code_sha': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()})
     write_json(output/'state.json', {'status': 'REGISTERED', 'outer_calls': 0})
@@ -246,6 +280,7 @@ def run_policy(root):
         with threadpool_limits(limits=4):
             for wrapper in manifest['wrappers']:
                 k = wrapper['id']; candidates = []; groups = []; scores = {a: [] for a in ('c', 't')}
+                policy_coverage([part['score'] for part in wrapper['policy_splits']], wrapper['train'])
                 partition = ep.slice_outer_train(data, wrapper['train'])
                 for j, part in enumerate(wrapper['policy_splits']):
                     ledger, values = split(root, partition, config, part['train'], part['score'], protected|set(wrapper['health']),
@@ -253,6 +288,8 @@ def run_policy(root):
                     candidates.extend(ledger.candidates); groups.extend(ledger.groups)
                     for arm in scores:
                         scores[arm].extend(values[arm])
+                if set(groups) != set(wrapper['train']):
+                    raise ValueError('policy candidate subject coverage differs')
                 original = read_json(root/T1/f'wrapper{k}_policies.json')['policies']
                 policies = {a: original[a] for a in ('b', 'p')}
                 policies.update({a: ep.choose_policy(candidates, np.asarray(scores[a]), groups, partition.train_truths, config)
@@ -283,17 +320,35 @@ def run_health(root):
         result = summarize(records)
         singles = [read_json(root/T1/f'wrapper{k}_health.json') for k in range(3)]
         original = read_json(root/T1/'summary.json')
-        nonworse = [r['events']['c']['f1'] >= s['events']['c']['f1']-1e-12 for r, s in zip(records, singles)]
-        result['gate'] = ensemble_gate(result['events']['b']['f1'], original['events']['c']['f1'], result['events']['c']['f1'], nonworse)
+        directions = wrapper_directions(records, singles)
+        result['wrapper_directions_vs_single'] = directions
+        result['gate'] = ensemble_gate(result['events']['b']['f1'], original['events']['c']['f1'], result['events']['c']['f1'], directions['c'])
+        result['secondary'] = {'arm': 't', 'nonworse_wrappers_vs_single': sum(directions['t']),
+            'delta_vs_single': result['events']['t']['f1']-original['events']['t']['f1'],
+            'delta_vs_incumbent': result['events']['t']['f1']-result['events']['b']['f1']}
+        result['health_seed_diagnostics'] = {str(k): read_json(output/f'wrapper{k}_health_scores.json')['diagnostics'] for k in range(3)}
         result['single_model_events'] = original['events']; result['resources'] = resources.row
         write_json(output/'records.json', records); write_json(output/'summary.json', result)
         lines = ['# A6 fixed three-seed ensemble', '', 'T24 nested development evidence only. No V7/outer/dist/release change.', '',
                  '| Arm | F1 | TP | FP | FN |', '| --- | ---: | ---: | ---: | ---: |']
         for arm, values in result['events'].items():
             lines.append(f"| {arm} | {values['f1']:.6f} | {values['n_tp']} | {values['fp']} | {values['fn']} |")
+        for arm in ('c', 't'):
+            values = original['events'][arm]
+            lines.append(f"| single_{arm} | {values['f1']:.6f} | {values['n_tp']} | {values['fp']} | {values['fn']} |")
         lines += ['', f"Primary TCN gate: {result['gate']}", '',
+                  f"Secondary Transformer: {result['secondary']}",
+                  f"Wrapper directions versus single: {directions}", '',
                   'b/p are unchanged original controls; c/t are within-partition three-seed probability means.',
                   'This does not isolate train-size/composition effects or establish pristine generalization.']
+        lines += ['', '## Health candidate / seed diagnostics', '',
+                  '| Wrapper | Arm | AP | BCE | Valid mean seed std | True motion mean | Negative motion mean |',
+                  '| --- | --- | ---: | ---: | ---: | ---: | ---: |']
+        for k in range(3):
+            for arm in ('c', 't'):
+                diag = result['health_seed_diagnostics'][str(k)][arm]; p = diag['ensemble_profile']
+                lines.append(f"| {k} | {arm} | {p['candidate_ap']:.6f} | {p['candidate_bce']:.6f} | "
+                    f"{diag['valid_mean_seed_std']:.6f} | {p['positive_motion']['mean']:.6f} | {p['negative_motion']['mean']:.6f} |")
         (output/'report.md').write_text('\n'.join(lines)+'\n', encoding='utf-8')
 
 

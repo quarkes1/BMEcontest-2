@@ -26,3 +26,5 @@ T24已经反复开发使用；本轮不是独立测试。三种子平均改变�
 代码集中在`scripts/research/representation_v2/transformer/seed_ensemble.py`，测试在`tests/research/test_representation_v2_transformer_seed_ensemble.py`，输出在`outputs/challenger_70/representation_v2/amendment_a6_transformer/seed_ensemble/`。无根目录脚本、无新外部依赖；更新README，保留必要模型与分数证据，及时提交。
 
 实施顺序：测试RED → 实现/GREEN → 独立审查/全仓回归 → 登记提交 → policy训练与冻结提交 → health训练/报告 → 验证保护快照、预算、清理临时文件并提交。具体运行状态以输出state.json和本节后续记录为准。
+
+实施记录：首8项测试RED→GREEN；Luna/medium审查发现ignored token缓存需登记锚定、policy OOF覆盖需显式校验、Transformer逐折方向需汇总。三项回归测试先观察RED后修复。修复前全仓回归主动中止，不记为通过；真实训练尚未开始。登记将原缓存每份header及NPZ SHA与完整文件清单一并固化，阶段前后检查修改、增加和删除。

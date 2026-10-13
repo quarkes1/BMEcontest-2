@@ -44,3 +44,33 @@ def test_primary_gate_does_not_accept_secondary_or_single_regression():
     assert m.ensemble_gate(.72, .76, .77, [True, True, False])['passed']
     assert not m.ensemble_gate(.72, .76, .75, [True, True, True])['passed']
     assert not m.ensemble_gate(.72, .76, .77, [True, False, False])['passed']
+
+
+def test_cache_snapshot_anchors_both_header_and_arrays_and_rejects_partial(tmp_path):
+    m = mod()
+    (tmp_path/'x.json').write_bytes(b'header')
+    (tmp_path/'x.npz').write_bytes(b'array')
+    snapshot = m.cache_snapshot(tmp_path)
+    assert set(snapshot) == {'x.json', 'x.npz'}
+    (tmp_path/'x.npz').write_bytes(b'changed')
+    assert snapshot['x.npz'] != m.cache_snapshot(tmp_path)['x.npz']
+    (tmp_path/'orphan.json').write_bytes(b'partial')
+    with pytest.raises(ValueError):
+        m.cache_snapshot(tmp_path)
+
+
+def test_policy_partitions_cover_subjects_once():
+    m = mod()
+    m.policy_coverage([['a'], ['b'], ['c']], {'a', 'b', 'c'})
+    for parts in ([['a'], ['b']], [['a'], ['a', 'b'], ['c']]):
+        with pytest.raises(ValueError):
+            m.policy_coverage(parts, {'a', 'b', 'c'})
+
+
+def test_wrapper_directions_report_both_arms():
+    m = mod()
+    original = [{'events': {'c': {'f1': .7}, 't': {'f1': .8}}}]*3
+    new = [{'events': {'c': {'f1': .71}, 't': {'f1': .79}}},
+           {'events': {'c': {'f1': .70}, 't': {'f1': .82}}},
+           {'events': {'c': {'f1': .69}, 't': {'f1': .80}}}]
+    assert m.wrapper_directions(new, original) == {'c': [True, True, False], 't': [False, True, True]}
