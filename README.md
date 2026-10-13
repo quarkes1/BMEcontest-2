@@ -570,3 +570,11 @@ A6原始设计/实施计划作为已锁定实验合同保持原文，不追改�
 本次正式F1及dist/release保持不变，尚未启动新模型训练。
 新增测试6 passed，表示研究回归298 passed，全仓回归857 passed、5 skipped（31项已知/预期warnings）；
 Luna/medium独立只读审查未发现Critical/Important问题。必要诊断证据约1.4MiB，无新token缓存。
+
+### A6 固定三种子对照（已批准，准备验证）
+
+[三种子实验合同](docs/challenge_070_amendment_a6_seed_ensemble.md)锁定原T24嵌套划分、
+原种子及+100000/+200000两个种子。仅在同一训练分区内等权平均，不选最佳种子，
+保留单模型对照；TCN主检验、Transformer次要对照。新增48次神经拟合/48000步，
+原候选和基础评分必须先复现，缓存只读复用。V7/outer不重新评分，dist/release不变。
+实现已观察8项新增测试RED→GREEN；完整回归与独立审查完成前不启动真实训练。
