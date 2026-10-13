@@ -10,6 +10,7 @@
 - 每个分区重建训练OOF候选与held-out候选，重建基础分数；held-out候选顺序/标签/主体与原T1证据完全一致，基础概率及原checkpoint时序分数在atol1e-6/rtol1e-5内复现才训练新增种子。原checkpoint训练主体与当前训练主体必须完全一致。训练归一化重新计算并核对原checkpoint，不能复用其他分区统计量。
 - 从原T1已验证token缓存只读构建序列，校验source encoder、原raw checksum、元数据与NPZ SHA；缺失或不匹配即停止，不偷偷重新编码，不新增token缓存。持久派生缓存总限额沿用2GiB，新增证据/模型限256MiB，磁盘保留20GiB。
 - policy阶段完成全部9个split后，分别对ensemble c/t使用原choose_policy/grid；b/p复用原对应policy。所有wrapper policy提交冻结后，才运行三个health split。每个health模型的所有训练成员排除该health人。各单种子分数只作稳定性诊断，不单独择优解码。
+- “不改threshold/cap”指选择算法与搜索空间不变，不是把原单模型的数值策略强加给不同分数尺度的集成。新策略仅由训练侧OOF选择并冻结；本轮估计同流程下的集成收益，不是固定旧策略的纯分数反事实。
 - 实际新增拟合总数：120 producer、24 base、48 neural、48000 optimizer steps。CPU线程4，优先CUDA；神经阶段累计2h、CPU1h、序列读取/组织1h、实验墙钟4h，每头20min。总耗时不包含实施和全仓回归。不得通过改batch/步数/种子绕过失败。
 - CLI分register/policy/health三阶段；登记代码、输入、spec及保护快照并提交后训练，policy与health间必须提交。已有attempt不覆盖；异常标记INCOMPLETE，不自动重试或更换配置。
 
