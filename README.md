@@ -571,7 +571,7 @@ A6原始设计/实施计划作为已锁定实验合同保持原文，不追改�
 新增测试6 passed，表示研究回归298 passed，全仓回归857 passed、5 skipped（31项已知/预期warnings）；
 Luna/medium独立只读审查未发现Critical/Important问题。必要诊断证据约1.4MiB，无新token缓存。
 
-### A6 固定三种子对照（已登记，policy阶段运行中）
+### A6 固定三种子对照（已完成，未通过推进门槛）
 
 [三种子实验合同](docs/challenge_070_amendment_a6_seed_ensemble.md)锁定原T24嵌套划分、
 原种子及+100000/+200000两个种子。仅在同一训练分区内等权平均，不选最佳种子，
@@ -579,5 +579,23 @@ Luna/medium独立只读审查未发现Critical/Important问题。必要诊断证
 原候选和基础评分必须先复现，缓存只读复用。V7/outer不重新评分，dist/release不变。
 实现及审查修复共11项新增测试RED→GREEN；表示研究309 passed，全仓868 passed、5 skipped，
 31项已知/预期warnings。Luna/medium审查的缓存哈希锚定、OOF覆盖与次要对照汇总问题已修复，
-登记已提交（56b225a），policy阶段真实训练已启动，尚无新事件F1。
+登记已提交（56b225a），policy冻结提交e5a8226后完成health，结果提交294b59a。
 策略搜索空间/选择流程不变，集成数值策略仅在训练侧OOF选定后冻结。
+
+| T24开发对照 | event F1 | TP/FP/FN |
+| --- | ---: | --- |
+| incumbent | .721311 | 66/20/31 |
+| 原单TCN | .763819 | 76/26/21 |
+| 三种子TCN | .760870 | 70/17/27 |
+| 原单Transformer | .760417 | 73/22/24 |
+| 三种子Transformer | .752688 | 70/19/27 |
+
+TCN集成相对原单模型减少9个FP，但损失6个TP，F1下降.002950；Transformer下降.007728。
+两者均仅1/3 wrapper相对原单模型非下降，主检验失败，不扩大V7/outer验证。
+结果不支持直接用概率平均解决最终refit失配，但不能据此排除种子波动；
+训练人数/组成、固定步数下样本暴露、分数尺度与policy迁移仍需分开归因。
+优先考虑下一份训练侧限定设计来检验这些因素，不在本轮追调融合权重或阈值。
+完整性复核通过：120/24/48次producer/base/neural拟合、48000步，CUDA神经拟合累计约16.90分钟；
+证据与模型22.45MiB，无新增token缓存。正式F1仍.6514285714，dist/release不变。
+详见[集成报告](outputs/challenger_70/representation_v2/amendment_a6_transformer/seed_ensemble/report.md)
+及[执行记录](outputs/challenger_70/representation_v2/amendment_a6_transformer/seed_ensemble_execution.md)。

@@ -13,4 +13,13 @@
 
 Entrypoint: `D:/Anaconda3/envs/bme/python.exe -m scripts.research.representation_v2.transformer.seed_ensemble --root D:/BMEtest --stage register|policy|health`.
 
-Training is running. Execution state after registration is authoritative in `seed_ensemble/state.json`; completion cannot be inferred from training loss or partial step logs.
+## Completed closeout (2026-10-13)
+
+The preceding bullets retain chronological startup evidence. Training is now complete: policy evidence committed as `e5a8226`, health evidence as `294b59a`; worker log ends with both stages successful. State is COMPLETE, outer_calls=0.
+
+- Fresh read-only `registered(root)` verification passed after completion: registered code/spec/input hashes, exact token inventory and protected release snapshot unchanged. Exact fit/step totals independently asserted:120 producer,24 base,48 neural,48000 steps.
+- CUDA neural fitting cumulative1013.824s (16.90min); CPU fitting125.254s; sequence organization33.351s. These are component times, not total experiment wall time. Peak recorded CUDA allocation322216448 bytes. Output evidence/models22.45MiB; no new token cache. Retain registered checkpoints and evidence for reproducibility; no disposable new dataset/cache to remove.
+- T24 incumbent F1 .721311 (66/20/31); original single TCN .763819 (76/26/21), ensemble TCN .760870 (70/17/27); original single Transformer .760417 (73/22/24), ensemble Transformer .752688 (70/19/27).
+- Primary gate FAILED: ensemble TCN exceeds incumbent by .039558 but trails original single by .002950, with only1/3 wrappers non-worse (requires2/3). Secondary Transformer also trails original single by .007728 and is non-worse in only1/3 wrappers. No substitution of secondary for primary, no V7/outer evaluation, no promotion.
+- Interpretation: probability averaging reduces false positives but sacrifices true events; it did not retain the original single-model event gain. This is evidence against adopting this fixed ensemble as the repair, not proof that seed variation is irrelevant or that the V7 cause is isolated. Training size/composition, sample exposure under fixed steps, and probability/policy transfer remain confounded. Any follow-up should be separately registered and confined to training-side evidence; no post-hoc policy tuning in this attempt.
+- Formal release F1 remains .6514285714; dist/release unchanged. README updated; original registered protocol intentionally preserved as the historical contract.
