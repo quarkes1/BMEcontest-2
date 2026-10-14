@@ -64,3 +64,19 @@ def test_gate_needs_ppg_increment_over_quality():
     p = dict(f1=.75, n_tp=70, fp=18)
     assert gate(base, dict(f1=.74), p, [True, True, False])['passed']
     assert not gate(base, dict(f1=.749), p, [True]*3)['passed']
+
+
+def test_short_event_matching_import_and_counts():
+    from scripts.research.representation_v2.ppg_fusion.probe import short_recall
+    from src.pipeline.event_stack import EventRef
+    e = EventRef(sid='s', start_ms=0, end_ms=599999)
+    assert short_recall([e], [e]) == {'gt': 1, 'detected': 1}
+    e = EventRef(sid='s', start_ms=0, end_ms=600000)
+    assert short_recall([e], [e]) == {'gt': 0, 'detected': 0}
+
+
+def test_resource_gate_covers_post_write_size():
+    from scripts.research.representation_v2.ppg_fusion.cache import resource_gate
+    resource_gate(10, 2**20, 2**20, 30*2**30)
+    with pytest.raises(RuntimeError):
+        resource_gate(10, 2**20, 129*2**20, 30*2**30)

@@ -55,6 +55,13 @@ def deserialize(rows):
     return [MultiScaleCandidate(event=EventRef(**r['event']), macro=stream(r['macro']), micro=stream(r['micro'])) for r in rows]
 
 
+def short_recall(predictions, truths):
+    from ..validation_metrics import matched_indices
+    _, matched = matched_indices(predictions, truths)
+    return dict(gt=sum(t.end_ms-t.start_ms < 600000 for t in truths),
+                detected=sum(truths[i].end_ms-truths[i].start_ms < 600000 for i in matched))
+
+
 def load_runtime(root, manifest):
     from .. import event_probe as ep
     from ..transformer.v7_models import SubsetSource
@@ -154,7 +161,6 @@ def worker(root, wrapper, phase):
         policies = read_json(out/f'wrapper{k}_policies.json')['policies']
         truths = ep.slice_outer_train(data, wrapper['health']).train_truths
         record = dict(wrapper=k, events={}, predictions={}, subject_events={}, short_recall={}, outer_calls=0)
-        from src.pipeline.validation_metrics import matched_indices
         for a in scores:
             predictions = ep.decode_policy(ledger.candidates, scores[a], ledger.groups, policies[a])
             record['predictions'][a] = [asdict(p) for p in predictions]
@@ -162,9 +168,7 @@ def worker(root, wrapper, phase):
             record['subject_events'][a] = {s: asdict(ep.compute_event_metrics(
                 [p for p in predictions if owners[p.sid] == s], [t for t in truths if owners[t.sid] == s]))
                 for s in wrapper['health']}
-            short = [t for t in truths if t.end_ms-t.start_ms <= 600000]
-            _, matched = matched_indices(predictions, short)
-            record['short_recall'][a] = dict(gt=len(short), detected=len(matched))
+            record['short_recall'][a] = short_recall(predictions, truths)
         reference = read_json(root/T1/f'wrapper{k}_health.json')
         if record['predictions']['b'] != reference['predictions']['b']:
             raise RuntimeError('frozen baseline decoded events differ')

@@ -15,10 +15,15 @@ from ..ppg.contract import T1, OUTPUT as P0, SCHEMA, read_json, file_hash, build
 from ..ppg.candidate import aggregate_candidate
 from ..ppg.window import extract_file
 
-OUTPUT = Path('outputs/challenger_70/representation_v2/amendment_a7_ppg_fusion')
+OUTPUT = Path('outputs/challenger_70/representation_v2/amendment_a7_ppg_fusion/attempt_02')
 SPEC = 'docs/challenge_070_amendment_a7_p1_ppg_fusion.md'
 COLUMNS = ['start_ms', 'end_ms', 'valid', 'pair_pass', 'motion', 'frequency', 'rms3_dc', 'rms5_dc',
            'peak3', 'peak5', 'concentration3', 'concentration5', 'implied_hz', 'packet_span_ms']
+
+
+def resource_gate(elapsed, rss, size, free):
+    if elapsed > 1800 or rss > 16*2**30 or size > 128*2**20 or free < 20*2**30:
+        raise RuntimeError('PPG complete-cache budget exceeded')
 
 
 def complete_cache(counts, retained):
@@ -146,8 +151,7 @@ def build_cache(root):
                     rss = owned_rss([os.getpid()]+[p.pid for p in multiprocessing.active_children()])
                     res['peak_rss_bytes'] = max(res['peak_rss_bytes'], rss)
                     res['elapsed_seconds'] = now-started
-                    if now-started > 1800 or rss > 16*2**30 or output_size(out) > 128*2**20 or shutil.disk_usage(root).free < 20*2**30:
-                        raise RuntimeError('PPG complete-cache budget exceeded')
+                    resource_gate(now-started, rss, output_size(out), shutil.disk_usage(root).free)
                     write_json(out/'cache_resources.json', res); last_check = now
                 done, _ = wait(pending, timeout=.1, return_when=FIRST_COMPLETED)
                 for future in done:
@@ -170,4 +174,5 @@ def build_cache(root):
         write_json(out/'file_stats.json', stats)
         res['elapsed_seconds'] = time.perf_counter()-started; res['windows'] = len(windows)
         write_json(out/'cache_resources.json', res)
+        resource_gate(time.perf_counter()-started, owned_rss([os.getpid()]), output_size(out), shutil.disk_usage(root).free)
         write_json(out/'cache_seal.json', {n: file_hash(out/n) for n in ('windows.npz', 'file_stats.json', 'cache_resources.json')})
