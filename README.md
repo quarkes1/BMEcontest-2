@@ -21,6 +21,8 @@
   多源数据。2026-10-13 T24抽样发现PPG每个约602ms时间戳含15个不同向量，不能将包率~1.66Hz
   当作波形采样率；约25Hz/列的包内序列假设尚待导出协议核实，详见[佩戴侧与PPG探查](outputs/challenger_70/representation_v2/hand_ppg_audit/report.md)。
   [下载脚本与组内解析核查](docs/PPG字段与下载解析证据.md)进一步支持25Hz包内序列，并找到PPG3/PPG5绿光映射声明；尚不等同于厂家协议确认。
+  2026-10-14完成24人完整文件波形探查：3405个窗口中双路谱峰一致率77.39%，低/高运动组为84.07%/70.65%；
+  原始包内行序的连续性明显优于倒序。仅支持进一步质量门控研究，不代表HR准确性或F1提升；详见[波形报告](outputs/challenger_70/representation_v2/hand_ppg_audit/waveform_report.md)。
 - **挑战**：进食动作与喝水、打电话等日常动作高度相似；惯用手（IMU 主导）与非惯用手
   （动作弱，依赖上下文/生理信号）两种佩戴场景检测原理不同。
 - **赛题评估（Resources/试题.txt）**：预测 Episode 与 GT Episode `IoU > 0.25` 判 TP；
