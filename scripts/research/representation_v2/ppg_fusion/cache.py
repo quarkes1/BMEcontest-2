@@ -15,7 +15,8 @@ from ..ppg.contract import T1, OUTPUT as P0, SCHEMA, read_json, file_hash, build
 from ..ppg.candidate import aggregate_candidate
 from ..ppg.window import extract_file
 
-OUTPUT = Path('outputs/challenger_70/representation_v2/amendment_a7_ppg_fusion/attempt_02')
+OUTPUT = Path('outputs/challenger_70/representation_v2/amendment_a7_ppg_fusion/attempt_03')
+PREVIOUS_CACHE = OUTPUT.parent/'attempt_02'
 SPEC = 'docs/challenge_070_amendment_a7_p1_ppg_fusion.md'
 COLUMNS = ['start_ms', 'end_ms', 'valid', 'pair_pass', 'motion', 'frequency', 'rms3_dc', 'rms5_dc',
            'peak3', 'peak5', 'concentration3', 'concentration5', 'implied_hz', 'packet_span_ms']
@@ -99,6 +100,17 @@ def register(root):
     paths += [(Path('cache/sessions')/f'{sid}.npz').as_posix() for sid in manifest['subject_by_session']]
     paths += ['cache/splits/fold0.json']
     paths += [p.relative_to(root).as_posix() for p in (INDEX_CSV, MEALS_CSV, BLACKLIST_FILE) if p.exists()]
+    previous = root/PREVIOUS_CACHE
+    old_registry = read_json(previous/'registry.json')
+    old_inventory = read_json(previous/'inventory.json')
+    verify_hashes(previous, read_json(previous/'cache_seal.json'))
+    if old_registry['schema'] != SCHEMA or read_json(previous/'cache_resources.json')['completed_files'] != 696:
+        raise RuntimeError('previous complete cache identity differs')
+    # A model-stage failure cannot invalidate deterministic signal extraction;
+    # verify its causal parser code and every raw checksum before reuse.
+    verify_hashes(root, {p: h for p, h in old_registry['files'].items()
+                        if p.startswith('scripts/research/representation_v2/ppg/')})
+    paths += [(PREVIOUS_CACHE/n).as_posix() for n in ('windows.npz', 'file_stats.json', 'cache_resources.json', 'cache_seal.json')]
     hashes = {p: file_hash(root/p) for p in paths}
     create_output(out); write_json(out/'state.json', dict(status='REGISTERING', outer_calls=0))
     started = time.perf_counter()
@@ -115,10 +127,13 @@ def register(root):
                 print(f'P1 hash {i+1}/696', flush=True)
         if reused != 165:
             raise ValueError('registered full-cache reuse count differs')
+        old_raw = {f['sid']: f['sha256'] for f in old_inventory['files']}
+        if {f['sid']: f['sha256'] for f in inv['files']} != old_raw:
+            raise RuntimeError('previous complete cache raw identity differs')
         write_json(out/'inventory.json', inv)
         write_json(out/'registry.json', dict(files=hashes, schema=SCHEMA, manifest=manifest,
             inventory_sha256=file_hash(out/'inventory.json'), protected_index=protected_snapshot(root),
-            reuse_files=reused, raw_hash_bytes=sum(f['bytes'] for f in inv['files']),
+            reuse_files=reused, previous_complete_cache=PREVIOUS_CACHE.as_posix(), raw_hash_bytes=sum(f['bytes'] for f in inv['files']),
             raw_hash_seconds=time.perf_counter()-started))
         write_json(out/'state.json', dict(status='REGISTERED', outer_calls=0))
     except BaseException as exc:
@@ -132,6 +147,20 @@ def build_cache(root):
     reg, inv = registration(root)
     for name in ('registry.json', 'inventory.json', 'state.json'):
         require_committed(root, out/name)
+    if reg.get('previous_complete_cache'):
+        import shutil
+        previous = root/reg['previous_complete_cache']
+        with stage(out, 'REGISTERED', 'CACHE_SEALED'):
+            verify_hashes(previous, read_json(previous/'cache_seal.json'))
+            for name in ('windows.npz', 'file_stats.json'):
+                shutil.copyfile(previous/name, out/name)
+            resources = {**read_json(previous/'cache_resources.json'), 'reused_complete_cache': True,
+                         'previous_extraction_bytes': read_json(previous/'cache_resources.json')['extracted_bytes'],
+                         'extracted_bytes': 0, 'elapsed_seconds': 0, 'reuse_source': reg['previous_complete_cache']}
+            write_json(out/'cache_resources.json', resources)
+            resource_gate(0, owned_rss([os.getpid()]), output_size(out), shutil.disk_usage(root).free)
+            write_json(out/'cache_seal.json', {n: file_hash(out/n) for n in ('windows.npz', 'file_stats.json', 'cache_resources.json')})
+        return
     old = read_windows(root/P0/'window_stats.npz')
     windows, stats, started = [], [], time.perf_counter()
     res = dict(completed_files=0, reused_files=0, extracted_bytes=0, peak_rss_bytes=0, outer_calls=0)

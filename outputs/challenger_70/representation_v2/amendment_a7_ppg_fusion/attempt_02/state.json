@@ -1,4 +1,5 @@
 {
+  "error": "RuntimeError('candidate producer configuration differs')",
   "outer_calls": 0,
-  "status": "CACHE_SEALED"
+  "status": "INCOMPLETE"
 }

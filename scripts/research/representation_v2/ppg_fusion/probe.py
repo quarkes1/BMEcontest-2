@@ -66,13 +66,17 @@ def load_runtime(root, manifest):
     from .. import event_probe as ep
     from ..transformer.v7_models import SubsetSource
     config = ep.registered_e03_config(0, workers=4)
-    if asdict(config) != manifest['config']:
+    if not same_config(asdict(config), manifest['config']):
         raise RuntimeError('candidate producer configuration differs')
     allowed = {sid for sid, owner in manifest['subject_by_session'].items() if owner in manifest['identities']['t24']}
     data = SubsetSource(root, allowed).load_outer_train_only(config)
     if data.subject_by_session != manifest['subject_by_session']:
         raise RuntimeError('filtered T24 ownership differs')
     return data, config
+
+
+def same_config(current, registered):
+    return json.dumps(current, sort_keys=True, allow_nan=False) == json.dumps(registered, sort_keys=True, allow_nan=False)
 
 
 def split_scores(root, data, config, train, score, excluded, windows, owners, prefix):

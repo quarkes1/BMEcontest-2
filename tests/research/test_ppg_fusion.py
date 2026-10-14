@@ -80,3 +80,9 @@ def test_resource_gate_covers_post_write_size():
     resource_gate(10, 2**20, 2**20, 30*2**30)
     with pytest.raises(RuntimeError):
         resource_gate(10, 2**20, 129*2**20, 30*2**30)
+
+
+def test_config_tuple_json_equivalence_without_parameter_change():
+    from scripts.research.representation_v2.ppg_fusion.probe import same_config
+    assert same_config({'grid': (.2, .35)}, {'grid': [.2, .35]})
+    assert not same_config({'grid': (.2, .35)}, {'grid': [.2, .4]})
