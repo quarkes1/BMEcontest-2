@@ -1,0 +1,38 @@
+{
+  "outer_calls": 0,
+  "policies": {
+    "b": {
+      "admission": {
+        "max_candidates_per_subject": 6,
+        "nms_iou": 0.3,
+        "threshold": 0.5
+      },
+      "selection_metrics": {
+        "f1": 0.8130081300813008,
+        "n_pred": 60,
+        "n_tp": 50,
+        "n_true": 63,
+        "ppv": 0.8333333333333334,
+        "sensitivity": 0.7936507936507936
+      },
+      "threshold": 0.6819166145296718
+    },
+    "w": {
+      "admission": {
+        "max_candidates_per_subject": 5,
+        "nms_iou": 0.3,
+        "threshold": 0.35
+      },
+      "selection_metrics": {
+        "f1": 0.8103448275862069,
+        "n_pred": 53,
+        "n_tp": 47,
+        "n_true": 63,
+        "ppv": 0.8867924528301887,
+        "sensitivity": 0.746031746031746
+      },
+      "threshold": 0.725282916687112
+    }
+  },
+  "wrapper": 2
+}
