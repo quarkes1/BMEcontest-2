@@ -68,7 +68,9 @@ def extract_file(path, sid, chunksize=100000):
     with path.open('rb') as handle:
         hashing = HashReader(handle)
         with io.BufferedReader(hashing) as stream:
-            reader = pd.read_csv(stream, usecols=COLUMNS, dtype=np.float64, chunksize=chunksize)
+            header = stream.peek(8192).split(b'\n', 1)[0]
+            delimiter = '\t' if b'\t' in header else ','
+            reader = pd.read_csv(stream, sep=delimiter, usecols=COLUMNS, dtype=np.float64, chunksize=chunksize)
 
             def chunks():
                 for frame in reader:

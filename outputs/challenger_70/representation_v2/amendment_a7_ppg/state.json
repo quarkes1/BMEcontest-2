@@ -1,5 +1,6 @@
 {
+  "error": "ValueError(\"Usecols do not match columns, columns expected but not found: ['PPG5', 'ACC_Z', 'ACC_Y', 'PPG3', 'ACC_TIME', 'PPG_TIME', 'ACC_X']\")",
   "outer_calls": 0,
-  "status": "REGISTERED",
+  "status": "INCOMPLETE",
   "training_fits": 0
 }
