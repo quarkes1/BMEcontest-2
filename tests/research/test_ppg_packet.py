@@ -12,6 +12,8 @@ def test_chunk_boundary_and_identical_samples():
     p = list(iter_packets([x[:7], x[7:]]))
     assert len(p) == 1 and p[0]['valid']
     assert p[0]['values'].shape == (15, 2)
+    p = list(iter_packets([x[:7], np.zeros((30, 3)), x[7:]]))
+    assert len(p) == 1 and p[0]['valid']
 
 
 @pytest.mark.parametrize('gap,broken', [(449, True), (450, False), (750, False), (751, True), (-1, True)])

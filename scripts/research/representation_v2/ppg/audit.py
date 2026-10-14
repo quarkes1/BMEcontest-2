@@ -233,7 +233,8 @@ def extract(root):
                    'rms3_dc', 'rms5_dc', 'peak3', 'peak5', 'concentration3', 'concentration5',
                    'implied_hz', 'packet_span_ms']
         np.savez_compressed(output/'window_stats.npz', sid=np.asarray([w['sid'] for w in windows]),
-                            columns=np.asarray(columns), values=np.asarray([[w[c] for c in columns] for w in windows]))
+                            columns=np.asarray(columns), values=np.asarray(
+                                [[w[c] for c in columns] for w in windows], dtype=float).reshape(-1, len(columns)))
         write_json(output/'file_stats.json', sorted(file_stats, key=lambda f: f['sid']))
         monitor(force=True)
         seal_names = ['candidate_features.npz', 'window_stats.npz', 'file_stats.json', 'resources.json']

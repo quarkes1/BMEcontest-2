@@ -24,7 +24,7 @@
   2026-10-14完成24人完整文件波形探查：3405个窗口中双路谱峰一致率77.39%，低/高运动组为84.07%/70.65%；
   原始包内行序的连续性明显优于倒序。仅支持进一步质量门控研究，不代表HR准确性或F1提升；详见[波形报告](outputs/challenger_70/representation_v2/hand_ppg_audit/waveform_report.md)。
   该面板仅覆盖1/97个T24餐和24/794个候选，不能外推进食识别效果。[A7候选级PPG研究设计](docs/challenge_070_amendment_a7_ppg.md)
-  已通过设计审阅：先覆盖/条件证据审计，后考虑IMU与质量对照及PPG增量对照；[P0实施计划](docs/superpowers/plans/2026-10-14-a7-ppg-p0-plan.md)待审阅，未启动提取或新分类训练。
+  已通过设计与实施计划审阅：[P0审计](docs/superpowers/plans/2026-10-14-a7-ppg-p0-plan.md)代码和39项专项测试已完成，正在准备注册与提取；后续以质量/运动对照核验PPG增量价值。
 - **挑战**：进食动作与喝水、打电话等日常动作高度相似；惯用手（IMU 主导）与非惯用手
   （动作弱，依赖上下文/生理信号）两种佩戴场景检测原理不同。
 - **赛题评估（Resources/试题.txt）**：预测 Episode 与 GT Episode `IoU > 0.25` 判 TP；
