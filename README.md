@@ -26,7 +26,9 @@
   该面板仅覆盖1/97个T24餐和24/794个候选，不能外推进食识别效果。[A7候选级PPG研究设计](docs/challenge_070_amendment_a7_ppg.md)
   [P0候选级审计](outputs/challenger_70/representation_v2/amendment_a7_ppg/attempt_03/interpretation.md)已完成：227文件、2034唯一候选，85.38秒、峰值内存1.09GiB；41项专项测试通过。
   794个health候选中340个至少一维PPG差值可用；三分区总体频率差值方向一致，但相同IMU分数箱内样本不足。
-  [P1固定融合](outputs/challenger_70/representation_v2/amendment_a7_ppg_fusion/attempt_03/interpretation.md)已完成且失败：同T24对照B=.72131、Q=.70408、P=.68421；未进入V7/outer或dist。正式模型仍为0.65143；后续检验低维、B先验锚定的残差形式。
+  [P1固定融合](outputs/challenger_70/representation_v2/amendment_a7_ppg_fusion/attempt_03/interpretation.md)已完成且失败：同T24对照B=.72131、Q=.70408、P=.68421。
+  [P2冻结先验残差](outputs/challenger_70/representation_v2/amendment_a7_ppg_residual/attempt_02/interpretation.md)亦失败：B=.72131、Q=.70930、P=.71264；P减少5FP但丢4TP、没有新增GT，171.74秒、峰值RSS3.61GiB。
+  61项PPG专项测试通过。固定PPG代理路线收束，转向全天时序定位；未进入V7/outer或dist，正式模型仍为0.65143。
 - **挑战**：进食动作与喝水、打电话等日常动作高度相似；惯用手（IMU 主导）与非惯用手
   （动作弱，依赖上下文/生理信号）两种佩戴场景检测原理不同。
 - **赛题评估（Resources/试题.txt）**：预测 Episode 与 GT Episode `IoU > 0.25` 判 TP；
@@ -69,8 +71,9 @@ SHA-256 锚定，位于 `models/event_stack/160afaf81debf1ee/`；指针为
 独立测试集泛化承诺。**
 
 后续以实际事件F1≥0.70为研究目标，不给模型复杂度设全局硬上限，但必须检查跨人泛化及
-过拟合。正式可比事件F1相对当前发布版提高**超过0.03**时，先提交证据供人工审批，
-批准后再更新`dist/`可执行推理程序、模型和接口文档，随后继续迭代。
+过拟合。2026-10-14用户明确授权自主推进，在新的明确指令前不再请求计划审批。
+正式可比F1提升确认后更新`dist/`可执行推理程序、模型和接口文档，并验证前端接入；
+超过0.03的增益属于关键节点，须明确报告证据，不能以inner/diagnostic成绩替代。
 当前首次触发线为>0.6814285714；候选AP、inner F1或GT-aware诊断不作为发布成绩。
 
 ## 3. 泄漏安全评估协议
