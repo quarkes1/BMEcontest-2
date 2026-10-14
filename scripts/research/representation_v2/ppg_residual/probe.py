@@ -17,8 +17,20 @@ from ..ppg_fusion.cache import OUTPUT as SOURCE, registration as source_registra
 from ..ppg_fusion.probe import load_runtime, deserialize, short_recall, gate
 from .model import fit, predict
 
-OUTPUT = Path('outputs/challenger_70/representation_v2/amendment_a7_ppg_residual')
+OUTPUT = Path('outputs/challenger_70/representation_v2/amendment_a7_ppg_residual/attempt_02')
 SPEC = 'docs/challenge_070_amendment_a7_p2_prior_residual.md'
+
+
+def seal_policy(out):
+    names = [f'wrapper{k}_policies.json' for k in range(3)] + ['policy_resources.json']
+    write_json(out/'policy_seal.json', {name: file_hash(out/name) for name in names})
+
+
+def gt_migration(predictions, truths):
+    from ..validation_metrics import matched_indices
+    hits = {a: matched_indices(ps, truths)[1] for a, ps in predictions.items()}
+    return {a: dict(matched_indices=sorted(h), gained_indices=sorted(h-hits['b']),
+                    lost_indices=sorted(hits['b']-h)) for a, h in hits.items()}
 
 
 def register(root):
@@ -112,7 +124,9 @@ def fit_split(root, data, config, train, score, excluded, windows, owners, prefi
 def worker(root, wrapper, phase):
     root = Path(root); out = root/OUTPUT
     if phase == 'health':
-        require_committed(root, out/'policy_seal.json'); verify_hashes(out, read_json(out/'policy_seal.json'))
+        require_committed(root, out/'policy_seal.json')
+        require_committed(root, out/'policy_resources.json')
+        verify_hashes(out, read_json(out/'policy_seal.json'))
     from threadpoolctl import threadpool_limits
     from .. import event_probe as ep
     from dataclasses import asdict
@@ -140,14 +154,19 @@ def worker(root, wrapper, phase):
                                                      windows, owners, f'wrapper{k}_health')
         truths = ep.slice_outer_train(data, wrapper['health']).train_truths
         policies = read_json(out/f'wrapper{k}_policies.json')['policies']
-        result = dict(wrapper=k, events={}, predictions={}, subject_events={}, short_recall={}, models=models, outer_calls=0)
+        result = dict(wrapper=k, events={}, predictions={}, subject_events={}, short_recall={}, models=models,
+                      truths=[asdict(t) for t in truths], outer_calls=0)
+        predictions = {}
         for a in ('b', 'q', 'p'):
             ps = ep.decode_policy(candidates, scores[a], groups, policies[a])
+            predictions[a] = ps
             result['events'][a] = asdict(ep.compute_event_metrics(ps, truths))
             result['predictions'][a] = [asdict(p) for p in ps]
             result['short_recall'][a] = short_recall(ps, truths)
             result['subject_events'][a] = {s: asdict(ep.compute_event_metrics(
                 [p for p in ps if owners[p.sid] == s], [t for t in truths if owners[t.sid] == s])) for s in wrapper['health']}
+        result['gt_migration'] = gt_migration(predictions, truths)
+        result['availability'] = read_json(out/f'wrapper{k}_health_scores.json')['eligibility']
         if result['predictions']['b'] != read_json(root/T1/f'wrapper{k}_health.json')['predictions']['b']:
             raise RuntimeError('residual B decoded predictions differ')
         write_json(out/f'wrapper{k}_health.json', result)
@@ -160,7 +179,9 @@ def execute(root, phase):
     for n in ('registry.json', 'state.json'):
         require_committed(root, out/n)
     if phase == 'health':
-        require_committed(root, out/'policy_seal.json'); verify_hashes(out, read_json(out/'policy_seal.json'))
+        require_committed(root, out/'policy_seal.json')
+        require_committed(root, out/'policy_resources.json')
+        verify_hashes(out, read_json(out/'policy_seal.json'))
     expected, success = ('REGISTERED', 'POLICIES_FROZEN') if phase == 'policy' else ('POLICIES_FROZEN', 'HEALTH_COMPLETE')
     prior_time = read_json(out/'policy_resources.json')['elapsed_seconds'] if phase == 'health' else 0
     start = time.perf_counter(); res = dict(phase=phase, completed_wrappers=0, peak_rss_bytes=0, outer_calls=0)
@@ -188,25 +209,43 @@ def execute(root, phase):
             raise
         finally:
             pool.shutdown(wait=True, cancel_futures=True)
-        if phase == 'policy':
-            write_json(out/'policy_seal.json', {f'wrapper{k}_policies.json': file_hash(out/f'wrapper{k}_policies.json') for k in range(3)})
-        else:
+        if phase == 'health':
             records.sort(key=lambda r: r['wrapper'])
             metrics = {a: ep.counts_metrics([r['events'][a] for r in records]) for a in ('b', 'q', 'p')}
             if (metrics['b']['n_tp'], metrics['b']['fp'], metrics['b']['fn']) != (66, 20, 31):
                 raise RuntimeError('original residual baseline differs')
             verdict = gate(metrics['b'], metrics['q'], metrics['p'],
                            [r['events']['p']['f1'] >= r['events']['b']['f1'] for r in records])
-            write_json(out/'result.json', dict(metrics=metrics, gate=verdict, records=records))
+            subjects = {s: {a: r['subject_events'][a][s]['f1'] for a in ('b', 'q', 'p')}
+                        for r in records for s in r['subject_events']['b']}
+            diagnostics = {}
+            for a in ('b', 'q', 'p'):
+                values = [s[a] for s in subjects.values()]
+                delta = [s[a]-s['b'] for s in subjects.values()]
+                diagnostics[a] = dict(median=float(np.median(values)), iqr=np.percentile(values, [25, 75]).tolist(),
+                                      p10=float(np.percentile(values, 10)), improved=sum(d > 0 for d in delta),
+                                      worsened=sum(d < 0 for d in delta), tied=sum(d == 0 for d in delta))
+            migration = {a: {key: sum(len(r['gt_migration'][a][key+'_indices']) for r in records)
+                             for key in ('gained', 'lost', 'matched')} for a in ('b', 'q', 'p')}
+            availability = dict(eligible=sum(sum(r['availability']) for r in records),
+                                total=sum(len(r['availability']) for r in records))
+            write_json(out/'result.json', dict(metrics=metrics, gate=verdict, records=records,
+                                               gt_migration=migration, subject_diagnostics=diagnostics, availability=availability))
             text = '# A7 P2 冻结先验残差结果\n\nT24开发证据，政策固定；outer_calls=0。\n\n|arm|F1|TP|FP|FN|\n|---|---:|---:|---:|---:|\n'
             for a, m in metrics.items():
                 text += f'|{a}|{m["f1"]:.6f}|{m["n_tp"]}|{m["fp"]}|{m["fn"]}|\n'
+            text += '\n## GT迁移与可用性\n\n'+str(migration)+'\n\n'+str(availability)+'\n'
+            for row in records:
+                text += f'\nWrapper {row["wrapper"]}: '+str(row['gt_migration'])+'\n'
+            text += '\n## 逐人诊断\n\n'+str(diagnostics)+'\n'
             text += '\nGate: '+str(verdict)+'\n\n正式F1仍.6514285714，未变更dist。\n'
             (out/'report.md').write_text(text, encoding='utf-8')
         res['elapsed_seconds'] = time.perf_counter()-start
         write_json(out/f'{phase}_resources.json', res)
         if output_size(out) > 64*2**20 or prior_time+res['elapsed_seconds'] > 21600:
             raise RuntimeError('residual post-write budget exceeded')
+        if phase == 'policy':
+            seal_policy(out)
 
 
 def main():

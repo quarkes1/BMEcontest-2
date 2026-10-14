@@ -31,3 +31,5 @@ P1可用正候选50个中40个评分被新131维模型压低；P丢4餐/救3餐�
 预计36个子折：360 producer拟合、72 base拟合、最多24 residual优化；无需最终重训base。三个wrapper并行，每数值库4线程，LightGBM沿用既有单线程。总拟合墙钟<=6h/RSS<=32GiB，输出<=64MiB，磁盘余量>=20GiB。
 
 代码`scripts/research/representation_v2/ppg_residual/`；单测loss梯度、logit prior零修正、全缺失精确回退、OOF祖先隔离、median仅train拟合、clip边界、B政策不变、固定gate。register→policy→提交→health，注册只校验和复用已有完整缓存。报告B/Q/P事件指标、GT迁移、逐人/短餐、可用比例、系数/支持数/拟合数/资源；更新README并提交。不根据开发F1直接改dist。
+
+执行前审查补充：policy最终资源记录与三份固定政策一起封存并提交，health先校验该预算哈希；truth与一对一匹配GT得失写入报告。初始注册未启动拟合，以INCOMPLETE保留；修正执行位于attempt_02，科学参数没有变化。

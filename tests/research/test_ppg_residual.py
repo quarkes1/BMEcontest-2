@@ -65,3 +65,29 @@ def test_health_gate_before_any_data(tmp_path):
     from scripts.research.representation_v2.ppg_residual import probe
     with pytest.raises(RuntimeError, match='committed'):
         probe.worker(tmp_path, {}, 'health')
+
+
+def test_policy_seal_covers_final_resource_budget(tmp_path):
+    from scripts.research.representation_v2.ppg_residual.probe import seal_policy
+    from scripts.research.representation_v2.ppg.audit import write_json, verify_hashes
+    from scripts.research.representation_v2.ppg.contract import read_json
+    for k in range(3):
+        write_json(tmp_path/f'wrapper{k}_policies.json', {'fixed': True})
+    write_json(tmp_path/'policy_resources.json', {'elapsed_seconds': 123})
+    seal_policy(tmp_path)
+    seal = read_json(tmp_path/'policy_seal.json')
+    assert 'policy_resources.json' in seal
+    verify_hashes(tmp_path, seal)
+    write_json(tmp_path/'policy_resources.json', {'elapsed_seconds': 0})
+    with pytest.raises(RuntimeError):
+        verify_hashes(tmp_path, seal)
+
+
+def test_gt_migration_tracks_one_to_one_gain_and_loss():
+    from scripts.research.representation_v2.ppg_residual.probe import gt_migration
+    from src.pipeline.event_stack import EventRef
+    truths = [EventRef('s', 0, 1000), EventRef('s', 2000, 3000)]
+    row = gt_migration({'b': [truths[0]], 'q': [truths[0]], 'p': [truths[1], truths[1]]}, truths)
+    assert row['p']['gained_indices'] == [1]
+    assert row['p']['lost_indices'] == [0]
+    assert row['p']['matched_indices'] == [1]
