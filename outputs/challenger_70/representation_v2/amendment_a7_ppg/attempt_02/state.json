@@ -1,5 +1,6 @@
 {
+  "error": "ValueError(\"could not convert string to float: 'ACC_TIME'\")",
   "outer_calls": 0,
-  "status": "REGISTERED",
+  "status": "INCOMPLETE",
   "training_fits": 0
 }

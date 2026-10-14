@@ -4,12 +4,12 @@ import json
 from pathlib import Path
 
 T1 = Path('outputs/challenger_70/representation_v2/amendment_a6_transformer/t1')
-OUTPUT = Path('outputs/challenger_70/representation_v2/amendment_a7_ppg/attempt_02')
+OUTPUT = Path('outputs/challenger_70/representation_v2/amendment_a7_ppg/attempt_03')
 SPEC = 'docs/challenge_070_amendment_a7_ppg.md'
 PLAN = 'docs/superpowers/plans/2026-10-14-a7-ppg-p0-plan.md'
 PARTITIONS = tuple(f'wrapper{k}_{part}' for k in range(3)
                    for part in ('health', 'policy0', 'policy1', 'policy2'))
-SCHEMA = {'version': 'a7-p0-v2', 'delimiter': 'header_tab_or_comma', 'hz': 25, 'packet_rows': 15, 'window_packets': 50,
+SCHEMA = {'version': 'a7-p0-v3', 'delimiter': 'header_tab_or_comma', 'bad_numeric': 'nan_break_not_drop', 'hz': 25, 'packet_rows': 15, 'window_packets': 50,
           'packet_gap_ms': [450, 750], 'band': [.7, 3.3], 'peak_band': [.7, 3.],
           'peak_radius': .12, 'concentration_min': .15, 'peak_difference_max': 1/6,
           'coverage_min': .5, 'windows_min': 6, 'anchor_shifts_ms': [0, -560]}

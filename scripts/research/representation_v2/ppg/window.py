@@ -70,11 +70,19 @@ def extract_file(path, sid, chunksize=100000):
         with io.BufferedReader(hashing) as stream:
             header = stream.peek(8192).split(b'\n', 1)[0]
             delimiter = '\t' if b'\t' in header else ','
-            reader = pd.read_csv(stream, sep=delimiter, usecols=COLUMNS, dtype=np.float64, chunksize=chunksize)
+            reader = pd.read_csv(stream, sep=delimiter, usecols=COLUMNS, low_memory=False, chunksize=chunksize)
 
             def chunks():
                 for frame in reader:
                     counts['raw_rows'] += len(frame)
+                    if any(frame[c].dtype.kind not in 'fiub' for c in COLUMNS):
+                        repeated_header = np.logical_and.reduce([frame[c].eq(c).to_numpy() for c in COLUMNS])
+                        counts['repeated_headers'] += int(repeated_header.sum())
+                        for c in COLUMNS:
+                            original = frame[c]
+                            numeric = pd.to_numeric(original, errors='coerce')
+                            counts['nonnumeric_cells'] += int((numeric.isna() & original.notna()).sum())
+                            frame[c] = numeric
                     a = frame[COLUMNS].to_numpy()
                     good = ((a[:, 3] > 0) & np.isfinite(a[:, 3:]).all(axis=1)
                             & np.any(a[:, 4:] != 0, axis=1))

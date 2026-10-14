@@ -57,3 +57,17 @@ def test_tab_delimited_sensor_header(tmp_path):
     frame.to_csv(path, sep='\t', index=False)
     result = extract_file(path, 's')
     assert len(result['windows']) == 1 and result['windows'][0]['pair_pass']
+
+
+def test_repeated_header_is_counted_and_breaks_packet(tmp_path):
+    from scripts.research.representation_v2.ppg.window import extract_file
+    frame = pd.DataFrame({'PPG_TIME': np.repeat(1000+np.arange(50)*600, 15),
+        'PPG3': np.arange(750)%3+100, 'PPG5': np.arange(750)%3+200,
+        'ACC_TIME': 1000+np.arange(750)*40, 'ACC_X': 1., 'ACC_Y': 1., 'ACC_Z': 1.})
+    path = tmp_path/'collect_data.txt'
+    text = frame.to_csv(sep='\t', index=False).splitlines(keepends=True)
+    path.write_text(''.join(text[:8]+[text[0]]+text[8:]), encoding='utf-8')
+    result = extract_file(path, 's', chunksize=300)
+    assert result['counts']['repeated_headers'] == 1
+    assert result['counts']['invalid_packets'] >= 2
+    assert len(result['windows']) == 0  # 7/8 split packet, then only49 complete packets

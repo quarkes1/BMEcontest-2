@@ -1,0 +1,10 @@
+{
+  "completed_files": 29,
+  "elapsed_seconds": 8.632096799992723,
+  "extraction_bytes": 2373322336,
+  "outer_calls": 0,
+  "peak_sampled_rss_bytes": 807686144,
+  "registration_hash_bytes": 19778565685,
+  "started_epoch": 1791975711.3974395,
+  "training_fits": 0
+}
