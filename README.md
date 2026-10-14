@@ -29,6 +29,7 @@
   [P1固定融合](outputs/challenger_70/representation_v2/amendment_a7_ppg_fusion/attempt_03/interpretation.md)已完成且失败：同T24对照B=.72131、Q=.70408、P=.68421。
   [P2冻结先验残差](outputs/challenger_70/representation_v2/amendment_a7_ppg_residual/attempt_02/interpretation.md)亦失败：B=.72131、Q=.70930、P=.71264；P减少5FP但丢4TP、没有新增GT，171.74秒、峰值RSS3.61GiB。
   61项PPG专项测试通过。固定PPG代理路线收束，转向全天时序定位；未进入V7/outer或dist，正式模型仍为0.65143。
+  [A8固定定位探针](outputs/challenger_70/representation_v2/amendment_a8_dense_localization/interpretation.md)：旧候选可达93/97GT，加入1317个源域候选只增加1GT、1235个候选无GT重叠，不直接部署；下一轮优先检验事件均衡复核损失。
 - **挑战**：进食动作与喝水、打电话等日常动作高度相似；惯用手（IMU 主导）与非惯用手
   （动作弱，依赖上下文/生理信号）两种佩戴场景检测原理不同。
 - **赛题评估（Resources/试题.txt）**：预测 Episode 与 GT Episode `IoU > 0.25` 判 TP；

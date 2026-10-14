@@ -1,0 +1,75 @@
+{
+  "cached_sessions": 227,
+  "diagnostic_only": true,
+  "event_f1": null,
+  "formal_f1": null,
+  "full_t24_sessions": 696,
+  "outer_calls": 0,
+  "totals": {
+    "additional_gt": 1,
+    "cached_gt": 97,
+    "candidate_without_gt_overlap": 1235,
+    "n_true": 97,
+    "new_candidate_count": 1317,
+    "new_reachable": 80,
+    "old_candidate_count": 794,
+    "old_reachable": 93,
+    "one_to_one_matched": 80,
+    "union_reachable": 94,
+    "unmatched_candidates": 1237
+  },
+  "valid_token_seconds": 855580,
+  "wrappers": [
+    {
+      "additional_gt": [],
+      "cached_gt": 32,
+      "candidate_without_gt_overlap": 408,
+      "n_true": 32,
+      "new_candidate_count": 433,
+      "new_reachable": 25,
+      "old_candidate_count": 276,
+      "old_reachable": 32,
+      "one_to_one_matched": 25,
+      "union_reachable": 32,
+      "unmatched_candidates": 408,
+      "wrapper": 0
+    },
+    {
+      "additional_gt": [],
+      "cached_gt": 31,
+      "candidate_without_gt_overlap": 420,
+      "n_true": 31,
+      "new_candidate_count": 448,
+      "new_reachable": 27,
+      "old_candidate_count": 268,
+      "old_reachable": 30,
+      "one_to_one_matched": 27,
+      "union_reachable": 30,
+      "unmatched_candidates": 421,
+      "wrapper": 1
+    },
+    {
+      "additional_gt": [
+        {
+          "index": 14,
+          "truth": {
+            "end_ms": 1784689014000,
+            "sid": "sensorData-1784734900060-10909d0c50c243e4b7706abaaf7a5484",
+            "start_ms": 1784687632000
+          }
+        }
+      ],
+      "cached_gt": 34,
+      "candidate_without_gt_overlap": 407,
+      "n_true": 34,
+      "new_candidate_count": 436,
+      "new_reachable": 28,
+      "old_candidate_count": 250,
+      "old_reachable": 31,
+      "one_to_one_matched": 28,
+      "union_reachable": 32,
+      "unmatched_candidates": 408,
+      "wrapper": 2
+    }
+  ]
+}
