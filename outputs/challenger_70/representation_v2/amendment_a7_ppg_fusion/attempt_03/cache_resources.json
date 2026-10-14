@@ -1,0 +1,12 @@
+{
+  "completed_files": 696,
+  "elapsed_seconds": 0,
+  "extracted_bytes": 0,
+  "outer_calls": 0,
+  "peak_rss_bytes": 1234554880,
+  "previous_extraction_bytes": 45690701447,
+  "reuse_source": "outputs/challenger_70/representation_v2/amendment_a7_ppg_fusion/attempt_02",
+  "reused_complete_cache": true,
+  "reused_files": 165,
+  "windows": 97599
+}
