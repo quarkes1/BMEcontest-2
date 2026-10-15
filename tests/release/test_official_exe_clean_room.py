@@ -46,6 +46,14 @@ def test_zip_roundtrip_relocated_exe_and_self_check(exe, tmp_path):
         result = invoke(relocated/exe.name,neutral,'--self-check')
         assert result.returncode == 0, result.stderr
         assert json.loads(result.stdout)['run_key'] == '160afaf81debf1ee'
+        # A fresh checkout normalizes text to LF; its manifest must still verify.
+        committed_zip = base/'committed.zip'
+        exported = subprocess.run(['git','archive','--format=zip','--output',str(committed_zip),
+                                   'HEAD','dist/submission'],cwd=ROOT,capture_output=True)
+        assert exported.returncode == 0, exported.stderr
+        fresh = base/'fresh-checkout'; fresh.mkdir()
+        with zipfile.ZipFile(committed_zip) as z: z.extractall(fresh)
+        verify_submission(fresh/'dist/submission')
 
 
 def test_only_exe_runs_without_python_and_overwrites_empty_results(exe, tmp_path):
