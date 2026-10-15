@@ -16,6 +16,23 @@ def test_package_manifest_rejects_extra_data_or_tampered_exe(tmp_path):
     with pytest.raises(ValueError): verify_submission(p)
 
 
+def test_nested_manifest_name_cannot_escape_file_ledger(tmp_path):
+    from scripts.build_competition_exe import write_manifest, verify_submission
+    (tmp_path/'EatingDetection.exe').write_bytes(b'MZtest')
+    (tmp_path/'README.md').write_text('instructions')
+    (tmp_path/'licenses').mkdir()
+    write_manifest(tmp_path, {})
+    (tmp_path/'licenses/build_manifest.json').write_text('unexpected untracked file')
+    with pytest.raises(ValueError): verify_submission(tmp_path)
+
+
+def test_license_bytes_survive_git_lf_checkout(tmp_path):
+    from scripts.build_competition_exe import copy_licenses
+    copy_licenses(tmp_path/'licenses')
+    for p in (tmp_path/'licenses').rglob('*'):
+        if p.is_file(): assert b'\r' not in p.read_bytes(), p
+
+
 def test_builder_refuses_workspace_root_or_external_destination_before_build(tmp_path):
     from scripts.build_competition_exe import validate_destination
     (tmp_path/'dist').mkdir()

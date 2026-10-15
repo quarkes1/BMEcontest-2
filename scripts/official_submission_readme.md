@@ -38,14 +38,7 @@ EatingDetection.exe --self-check
 
 ## 模型与依赖
 
-正式发布run为160afaf81debf1ee，已记录subject-disjoint nested五折开发F1=0.6514285714（不是官方未公开测试成绩）。模型、阈值和特征没有为接口适配而更改。当前正式模型在CPU运行，不要求GPU。
-
 EXE采用PyInstaller onefile自包含打包，内置CPython、科学计算库、LightGBM和部署模型。运行时在Windows临时目录释放内置DLL，结束后由bootloader清理；这不是所有库的传统静态链接，也不依赖机器预装Python。首次启动解包可能需要数秒，请勿连续重复启动。需有Windows临时目录及EXE目录的写入权限。
 
 build_manifest.json记录EXE/包内文件SHA-256、正式模型文件哈希、源代码标识与依赖版本。official_api为原样官方接口来源，licenses为第三方许可证；不需要运行它们。
 
-## 提交
-
-直接将本目录内容压缩成ZIP，EXE应位于ZIP顶层，不必额外包含父目录。不要加入ACC_test_data、真实数据、金标准、旧results.csv或临时文件。评测方解压后把自己的ACC_test_data置于EXE旁即可运行。
-
-官方说明要求发送至bmedesign03@hainanu.edu.cn，主题注明“赛题2＋队伍ID”；通知截图另含“＋程序提交”，可用“赛题2＋实际队伍ID＋程序提交”同时满足。队伍ID请自行填写。本工具不自动发送邮件。

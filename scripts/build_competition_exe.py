@@ -43,13 +43,14 @@ def files(root):
     found = {}
     for p in Path(root).rglob('*'):
         if p.is_symlink(): raise ValueError('submission cannot contain symlinks')
-        if p.is_file() and p.name != MANIFEST: found[p.relative_to(root).as_posix()] = sha(p)
+        if p.is_file() and p.relative_to(root).as_posix() != MANIFEST:
+            found[p.relative_to(root).as_posix()] = sha(p)
     return found
 
 
 def write_manifest(root, metadata):
     (Path(root)/MANIFEST).write_text(json.dumps({**metadata, 'package_files': files(root)},
-        ensure_ascii=False, sort_keys=True, indent=2)+'\n', encoding='utf-8')
+        ensure_ascii=False, sort_keys=True, indent=2)+'\n', encoding='utf-8', newline='\n')
 
 
 def verify_submission(root):
@@ -87,7 +88,10 @@ def copy_licenses(target):
     target.mkdir(parents=True)
     python_license = Path(sys.base_prefix)/'LICENSE_PYTHON.txt'
     if not python_license.is_file(): raise ValueError('CPython license not found')
-    shutil.copyfile(python_license, target/'Python.txt')
+    def copy_text(source, dest):
+        # License text must have the same hashes after Git's LF checkout.
+        dest.write_bytes(source.read_bytes().replace(b'\r\n', b'\n').replace(b'\r', b'\n'))
+    copy_text(python_license, target/'Python.txt')
     for name in (*RUNTIME_PACKAGES, 'pyinstaller'):
         dist = distribution(name); count = 0
         for relative in dist.files or []:
@@ -98,7 +102,7 @@ def copy_licenses(target):
             source = Path(dist.locate_file(relative))
             if not source.is_file(): continue
             dest = target/name/Path(*parts)
-            dest.parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(source, dest); count += 1
+            dest.parent.mkdir(parents=True, exist_ok=True); copy_text(source, dest); count += 1
         if not count: raise ValueError('third-party license missing: '+name)
 
 
