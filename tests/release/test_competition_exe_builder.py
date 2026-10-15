@@ -58,3 +58,15 @@ def test_release_preflight_distinguishes_role_and_experiment_key():
     assert release['run_key'] == '160afaf81debf1ee'
     assert bundle.name == 'deployment'
     assert release['aggregate']['outer_metrics']['f1'] == pytest.approx(.6514285714285714)
+
+
+def test_release_verifier_handles_official_exe_and_detects_tampering(tmp_path):
+    from scripts.build_competition_exe import write_manifest
+    from scripts.reproduce_release import verify_distributions
+    p = tmp_path/'dist/submission'; p.mkdir(parents=True)
+    (p/'EatingDetection.exe').write_bytes(b'MZtest')
+    (p/'README.md').write_text('instructions')
+    write_manifest(p, {'release_run_key':'test'})
+    assert verify_distributions(tmp_path) == []
+    (p/'EatingDetection.exe').write_bytes(b'MZchanged')
+    assert any('dist/submission:' in problem for problem in verify_distributions(tmp_path))

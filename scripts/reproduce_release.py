@@ -60,7 +60,11 @@ def verify_distributions(root: Path) -> list[str]:
         # distribution keeps both at the package root.
         required = ("app", "meta", "models") if (package / "app" / "event_stack").is_dir() else ("event_stack", "models")
         try:
-            verify_distribution_manifest(package, entrypoint=entrypoint, required_roots=required)
+            if name == "submission" and (package / "build_manifest.json").is_file():
+                from scripts.build_competition_exe import verify_submission
+                verify_submission(package)
+            else:
+                verify_distribution_manifest(package, entrypoint=entrypoint, required_roots=required)
         except (OSError, ValueError) as exc:
             problems.append(f"dist/{name}: {exc}")
     return problems

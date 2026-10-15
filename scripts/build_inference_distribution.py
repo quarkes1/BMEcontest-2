@@ -365,6 +365,13 @@ python predict.py path/to/subject-folder --output prediction.json --include-time
 `/api/analyze`、`/api/artifacts/...`）。浏览器中选择 collect_data*.txt 文件/文件夹后，
 由本包的 canonical Predictor 完成推理并返回预测契约与运动遥测；前端不实现任何模型逻辑。
 `dist/start.bat` 即为该服务的一键启动器。
+
+## 官方自动评分接口
+
+2026-10-15官方比赛接口由相邻的`../submission/EatingDetection.exe`实现：无参数读取
+EXE同级ACC_test_data，输出results.csv三列externalid,beforeTime,afterTime。此处predict.py
+与前端仍使用JSON契约，不能将JSON或历史四列CSV当作官方结果。比赛EXE无需Python或联网，
+构建与提交说明见`../submission/README.md`；本包用于前端开发/可视化，模型版本相同。
 """
 
 

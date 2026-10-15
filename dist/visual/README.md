@@ -1,5 +1,9 @@
 # EatingSense Visual（可视化应用）
 
+2026-10-15交付说明：本应用继续使用`../inference/`的JSON推理接口与`../start.bat`。
+官方自动评分使用`../submission/EatingDetection.exe`，无参数生成三列`results.csv`；
+两者使用同一正式模型，但接口不同。官方CSV不替代可视化JSON，也不需要把本应用放入提交ZIP。
+
 腕部 IMU 进食事件检测的实验台界面：证据时间轴、原始 IMU/姿态查看器、进食事件列表、
 发布指标与三维动作回放。前端**只消费** canonical 预测契约与运动遥测，不实现任何模型
 逻辑；原始 TXT 推理始终由本地 Python 服务完成。

@@ -1,0 +1,16 @@
+{
+  "source": "User-provided official competition topic-2 interface package",
+  "received": "2026-10-15",
+  "modifications": "None; Git may normalize input.py CRLF to LF. Normalized hashes remain identical.",
+  "api_sha256_lf": {
+    "input.py": "05aa45a6906fcba09a4b46c39c099de85cd85f31ceb4bfa9d897d3cdac378e3b",
+    "output.py": "801cd33962cdb8af97f0f0d3621e7f116a7b62e5c23c27de5dcfa40b637795b0"
+  },
+  "original_files_sha256": {
+    "input.py": "cec0e2dfc169ac4753b1f49c9f55ef8594b89e311e51aff4b720be616fb221a0",
+    "output.py": "801cd33962cdb8af97f0f0d3621e7f116a7b62e5c23c27de5dcfa40b637795b0",
+    "interface_docx": "829af1d86c688456fee48eade666d1b18f177abcfe865d55e8e73aed7bf95d94",
+    "test_instructions_docx": "046b927b93ea2e1fa5637d7b80cede9903211c9c87dcc268ac3191840c13b6de",
+    "example_json": "712a726010bd66138b3fa0370936ab0ee84640a40b681b9e3f483bd44c3b488b"
+  }
+}

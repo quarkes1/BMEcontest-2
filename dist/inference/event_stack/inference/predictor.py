@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 import json
 from pathlib import Path
-from typing import Literal, Sequence
+from typing import Iterable, Literal, Sequence
 
 import numpy as np
 
@@ -18,7 +18,7 @@ from event_stack.event_stack import (
 from event_stack.features.macro import MacroFeatureConfig, add_time_prior, extract_macro_windows
 from event_stack.features.micro import extract_micro_windows
 from event_stack.imu_features import MicroFeatureConfig
-from event_stack.io.raw_session import RawSessionSource, discover_raw_sessions, load_raw_session
+from event_stack.io.raw_session import RawSessionSource, discover_raw_sessions, load_raw_session, load_raw_text
 from event_stack.preprocessing.timeline import valid_imu_spans
 
 from .legacy_payload import resolve_device
@@ -198,6 +198,26 @@ class Predictor:
         """Expose frozen intermediate values for parity tests and release audits."""
         path = Path(path)
         return self._trace_sources((RawSessionSource(path, path.stem, subject_id),))
+
+    def trace_texts(self, records: Iterable[tuple[str, str]], *, subject_id: str) -> InferenceTrace:
+        """Stream official TXT records, sharing admission/caps across one person.
+
+        Only one raw session is materialized at a time. No temporary raw copy,
+        external path read, metadata routing or independent per-file cap is used.
+        """
+        pending = {}
+        seen = set()
+        def sources():
+            for file_id, text in records:
+                if not isinstance(file_id, str) or not file_id or file_id in seen:
+                    raise ValueError("official file identifiers must be unique non-empty strings")
+                seen.add(file_id)
+                if text == "":
+                    continue
+                source = RawSessionSource(Path(file_id+".txt"), subject_id+":"+file_id, subject_id)
+                pending["session"] = load_raw_text(source, text)
+                yield source
+        return self._trace_sources(sources(), session_loader=lambda source: pending.pop("session"))
 
     def predict_folder(self, path: Path, *, subject_id: str | None = None,
                        options: PredictionOptions = PredictionOptions()) -> dict[str, object]:

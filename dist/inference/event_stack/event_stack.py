@@ -8,6 +8,7 @@ from typing import Mapping, Sequence
 import numpy as np
 
 from event_stack.context_features import context_v1_features
+from event_stack.context_features_v2 import context_v2_features
 
 from event_stack.eval.metrics import event_iou
 
@@ -1043,24 +1044,32 @@ def multiscale_verifier_features(
     context_features_version: str | None = None,
     session_bounds_by_sid: Mapping[str, tuple[int, int]] | None = None,
 ) -> np.ndarray:
-    """Build legacy verifier features, optionally appending Context-v1."""
+    """Build legacy verifier features, optionally appending a versioned context."""
 
     legacy = _legacy_multiscale_verifier_features(
         candidates, macro_windows_by_sid, micro_windows_by_sid
     )
     if context_features_version is None:
         return legacy
-    if context_features_version != "v1":
-        raise ValueError("context_features_version must be None or 'v1'")
+    if context_features_version not in ("v1", "v2"):
+        raise ValueError("context_features_version must be None, 'v1', or 'v2'")
     if session_bounds_by_sid is None:
         raise ValueError("session_bounds_by_sid is required for Context-v1")
-    context = context_v1_features(
+    context_v1 = context_v1_features(
         candidates,
         macro_windows_by_sid,
         micro_windows_by_sid,
         session_bounds_by_sid,
     )
-    return np.concatenate((legacy, context), axis=1)
+    if context_features_version == "v1":
+        return np.concatenate((legacy, context_v1), axis=1)
+    context_v2 = context_v2_features(
+        candidates,
+        macro_windows_by_sid,
+        micro_windows_by_sid,
+        session_bounds_by_sid,
+    )
+    return np.concatenate((legacy, context_v1, context_v2), axis=1)
 
 
 def aggregate_candidate_features(

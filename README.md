@@ -103,14 +103,17 @@ git 历史）：
 
 ```text
 原始 collect_data*.txt（真实时间戳、53 列 TSV）
+  → 官方EXE：DataReader.iter_data；前端/API：原始文件读取（同一解析器）
   → SessionReader：有效 IMU 段/缺口切分（不跨缺口、不跨会话）
   → macro：240s/15s 全覆盖窗 → 62 维 ACC 特征 + 冻结 time-prior 适配器（63 维）
   → micro：15s/7.5s ACC+GYRO 重力对齐窗 → 47 维特征（micro 模型）
   → 候选并集：macro 密度候选 ∪ micro 阈值候选
-  → 同会话稳定 NMS → subject admission（阈值/IoU/cap 由 outer-train OOF 冻结）
   → 事件复核：LogisticRegression + 受限 LightGBM 概率 blend（116 维 = 56 基础
      + Context-v1 60 列确定性同会话上下文）
-  → 冻结 event policy（阈值、事件几何、subject budget）→ canonical Episode JSON
+  → 同会话稳定 NMS → subject admission（阈值/IoU/cap 由 outer-train OOF 冻结）
+  → 冻结 event policy（阈值、事件几何、subject budget）→ 事件
+      ├─ 前端/API：canonical Episode JSON
+      └─ 官方EXE：save_result → results.csv（externalid,beforeTime,afterTime）
 ```
 
 设计要点：
@@ -198,7 +201,7 @@ BMEcontest-2/
 │   │   ├── io/                           # 原始会话发现、时间线与缺口切分
 │   │   ├── preprocessing/                # 有效段与窗口网格原语
 │   │   ├── features/                     # macro（62→63）与 micro（47）特征生产器
-│   │   ├── inference/                    # Predictor API、预测 schema、竞赛 adapter 边界
+│   │   ├── inference/                    # Predictor/JSON、official_runner/官方API、历史CSV边界
 │   │   ├── event_stack.py                # 候选/复核特征/解码（canonical 事件图）
 │   │   ├── runner.py                     # 数据集组装与训练编排
 │   │   ├── candidate_control.py          # 同会话 NMS 与 subject admission
@@ -215,6 +218,7 @@ BMEcontest-2/
 │   ├── build_inference_distribution.py   # 生成 dist/inference
 │   ├── build_micro_features.py           # micro 特征缓存构建
 │   ├── build_submission.py               # 生成 dist/submission
+│   ├── build_competition_exe.py           # 官方无参数Windows EXE、模型/依赖内置、SHA清单
 │   ├── crossfit_event_stack.py           # nested 评估实现
 │   ├── evaluate_event_stack.py           # 严格 nested 评估（薄封装）
 │   ├── official_iou_eval.py              # 官方匹配/评估
