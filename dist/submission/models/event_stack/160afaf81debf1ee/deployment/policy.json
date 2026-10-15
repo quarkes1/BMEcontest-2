@@ -1,0 +1,8 @@
+{
+  "admission_threshold": 0.2,
+  "blend_weight": 0.25,
+  "max_candidates_per_subject": 6,
+  "max_events_per_group": null,
+  "nms_iou": 0.3,
+  "threshold": 0.6595272837359293
+}

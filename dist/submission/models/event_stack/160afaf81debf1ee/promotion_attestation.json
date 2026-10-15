@@ -1,0 +1,44 @@
+{
+  "aggregate_summary": {
+    "filename": "promotion_summary.json",
+    "sha256": "6d435ebb829b06b16f50e99f360cda62a516dc291b6ccb0574ce4b9ed71945a9"
+  },
+  "attestation_version": 1,
+  "bundles": {
+    "deployment": {
+      "manifest_sha256": "71a7cdd7f181f3cc02309d35513c6fc65b9fed4338637b4e96dc4c4f182d7237",
+      "role": "deployment"
+    },
+    "outer-fold-0": {
+      "diagnostics_sha256": "6c66b25d3b78b53908317f8315d335f63a9fa36233a21c5a1af8f587f0ef7be4",
+      "manifest_sha256": "e397ddf166d9115788adb968bb82819ecaab8c281dd876d4281523d276999b1f",
+      "role": "outer-fold-evidence"
+    },
+    "outer-fold-1": {
+      "diagnostics_sha256": "277ca9cf84504dbb2fefbaa360657c581d8140fe24d4549c72797d6450c03128",
+      "manifest_sha256": "94e2843322cd4adfe45fa9713de67f8c63304a565db3161269f2f2a7571d4daf",
+      "role": "outer-fold-evidence"
+    },
+    "outer-fold-2": {
+      "diagnostics_sha256": "f8f44247e0d89128851e7824832568a08153fc2728cae704208a60933ea75c87",
+      "manifest_sha256": "4d867b2983330c67badcd69fd28a31daf1d0c595462c1f45cf27a7a10eb6674e",
+      "role": "outer-fold-evidence"
+    },
+    "outer-fold-3": {
+      "diagnostics_sha256": "52aaf77cf3409599f27a32c6c1a279889161ea07ef01c5541e429fba597e7eb7",
+      "manifest_sha256": "264d16de962dbf854c9f60660d3cbe173452b94a7d02591ca28d893c86b1b85b",
+      "role": "outer-fold-evidence"
+    },
+    "outer-fold-4": {
+      "diagnostics_sha256": "925da402f96adf0dbbb6a9f26a9a25bb997b302fe76a5392fc2727f621983642",
+      "manifest_sha256": "98e694c2de9565ddb171ccf02682d6df93d193f7f6631c097873ff825ee60120",
+      "role": "outer-fold-evidence"
+    }
+  },
+  "gate": {
+    "f1": 0.6514285714285715,
+    "floor": 0.5432098765432098,
+    "version": 1
+  },
+  "run_key": "160afaf81debf1ee"
+}

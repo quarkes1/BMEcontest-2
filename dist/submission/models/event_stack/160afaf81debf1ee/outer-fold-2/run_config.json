@@ -1,0 +1,75 @@
+{
+  "admission_minimum_recall": 0.8,
+  "admission_nms_iou_grid": [
+    0.3,
+    0.5,
+    0.7
+  ],
+  "admission_subject_cap_grid": [
+    3,
+    4,
+    5,
+    6,
+    8
+  ],
+  "admission_threshold_grid": [
+    0.2,
+    0.35,
+    0.5,
+    0.65
+  ],
+  "candidate_control_enabled": true,
+  "context_features_version": "v1",
+  "density": {
+    "bridge_ms": 60000,
+    "context_ms": 1200000,
+    "coverage_fix": false,
+    "coverage_min": 0.8,
+    "density_ms": 600000,
+    "merge_ms": 120000,
+    "min_positive": 10,
+    "stride_ms": 15000,
+    "window_ms": 240000,
+    "window_threshold": 0.28838
+  },
+  "device": "auto",
+  "external_fd_weight_grid": [
+    0.0
+  ],
+  "inner_splits": 4,
+  "micro_candidate": {
+    "context_ms": 1200000,
+    "merge_ms": 180000,
+    "min_duration_ms": 60000,
+    "smooth_radius_ms": 60000,
+    "smooth_sigma_ms": 30000,
+    "stride_ms": 7500,
+    "window_ms": 15000
+  },
+  "micro_enabled": true,
+  "micro_gravity_align": true,
+  "micro_positive_middle_fraction": null,
+  "micro_threshold_grid": [
+    0.1,
+    0.2,
+    0.3,
+    0.4,
+    0.5
+  ],
+  "no_tcn": true,
+  "outer_fold": 2,
+  "seed": 20260908,
+  "subject_cap_grid": [],
+  "verifier_blend_weight_grid": [
+    0.0,
+    0.25,
+    0.5,
+    0.75,
+    1.0
+  ],
+  "verifier_c_grid": [
+    0.1
+  ],
+  "verifier_feature_mode": "probability",
+  "workers": 5
+}

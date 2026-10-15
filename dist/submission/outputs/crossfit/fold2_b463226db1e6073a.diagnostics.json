@@ -1,0 +1,86 @@
+{
+  "distribution": {
+    "excluded_empty": 0,
+    "f1_percentiles": {
+      "p0": 0.0,
+      "p100": 0.7272727272727272,
+      "p25": 0.30000000000000004,
+      "p50": 0.5714285714285715,
+      "p75": 0.6166666666666666
+    },
+    "included": 8
+  },
+  "runtime": {
+    "cuda_peak_bytes": null,
+    "peak_working_set_bytes": 745242624,
+    "ssl_runtime": null,
+    "unavailable_reason": null
+  },
+  "schema_version": 1,
+  "subjects": {
+    "HNU21004": {
+      "f1": 0.6666666666666665,
+      "n_pred": 4,
+      "n_tp": 3,
+      "n_true": 5,
+      "ppv": 0.75,
+      "sensitivity": 0.6
+    },
+    "HNU21012": {
+      "f1": 0.0,
+      "n_pred": 4,
+      "n_tp": 0,
+      "n_true": 2,
+      "ppv": 0.0,
+      "sensitivity": 0.0
+    },
+    "HNU21014": {
+      "f1": 0.6,
+      "n_pred": 6,
+      "n_tp": 3,
+      "n_true": 4,
+      "ppv": 0.5,
+      "sensitivity": 0.75
+    },
+    "HNU21022": {
+      "f1": 0.0,
+      "n_pred": 4,
+      "n_tp": 0,
+      "n_true": 1,
+      "ppv": 0.0,
+      "sensitivity": 0.0
+    },
+    "HNU21023": {
+      "f1": 0.7272727272727272,
+      "n_pred": 6,
+      "n_tp": 4,
+      "n_true": 5,
+      "ppv": 0.6666666666666666,
+      "sensitivity": 0.8
+    },
+    "HNU21041": {
+      "f1": 0.4,
+      "n_pred": 4,
+      "n_tp": 1,
+      "n_true": 1,
+      "ppv": 0.25,
+      "sensitivity": 1.0
+    },
+    "HNU212020": {
+      "f1": 0.5714285714285715,
+      "n_pred": 3,
+      "n_tp": 2,
+      "n_true": 4,
+      "ppv": 0.6666666666666666,
+      "sensitivity": 0.5
+    },
+    "hnu21033": {
+      "f1": 0.5714285714285715,
+      "n_pred": 2,
+      "n_tp": 2,
+      "n_true": 5,
+      "ppv": 1.0,
+      "sensitivity": 0.4
+    }
+  }
+}
