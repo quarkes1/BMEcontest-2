@@ -57,4 +57,4 @@ def test_release_preflight_distinguishes_role_and_experiment_key():
     release, bundle = release_preflight(root)
     assert release['run_key'] == '160afaf81debf1ee'
     assert bundle.name == 'deployment'
-    assert release['aggregate']['f1'] == pytest.approx(.6514285714285714)
+    assert release['aggregate']['outer_metrics']['f1'] == pytest.approx(.6514285714285714)

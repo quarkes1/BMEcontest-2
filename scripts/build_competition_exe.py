@@ -162,7 +162,7 @@ def build(root=ROOT, destination=None):
             raise RuntimeError('clean-room EXE self-check failed; old submission retained')
         tracked = subprocess.check_output(['git','ls-files','src','scripts'],cwd=root,text=True).splitlines()
         metadata = dict(format='official-20261015-windows-x64-onefile', release_run_key=run_key,
-            release_development_f1=release['aggregate']['f1'], no_new_f1=True, python=platform.python_version(),
+            release_development_f1=release['aggregate']['outer_metrics']['f1'], no_new_f1=True, python=platform.python_version(),
             build_tool={'pyinstaller': version('pyinstaller'),'hooks':version('pyinstaller-hooks-contrib')},
             dependencies={n:version(n) for n in RUNTIME_PACKAGES},
             code_commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip(),
