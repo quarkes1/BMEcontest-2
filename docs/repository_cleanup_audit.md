@@ -29,6 +29,8 @@
 
 按用户要求推送main前，保留原删除审计的全部范围/正则/断言，仅将每项重复读取改为每轮每类一次只读快照，并在正则前增加必要字面量预筛选。预筛选无法排除真实正则匹配，最终判断仍由原正则完成；新增测试覆盖模块导入、非代码过滤、词边界、自身引用排除和通用文件名规则。审计文件7 passed（22.67秒），不修改任何模型或研究规则。
 
+推送前最终全仓回归：`python -m pytest -q -p no:cacheprovider`完整结束，972 passed、5 skipped、31 warnings，耗时1067.08秒。初始未完成的测试运行不计入通过数。本轮README/清单/清理修订与审计测试均包含在此完整验证树中；正式模型及EXE哈希不变。
+
 Audit date: 2026-09-15.  Post-refactor record added 2026-09-17 (Phase 8
 execution).  Scope is the current `main` worktree only.  The audit deliberately
 makes no move, deletion, or algorithm change; its purpose is to establish the
