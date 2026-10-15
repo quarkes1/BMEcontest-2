@@ -1,0 +1,41 @@
+import json
+from pathlib import Path
+import pytest
+
+
+def test_package_manifest_rejects_extra_data_or_tampered_exe(tmp_path):
+    from scripts.build_competition_exe import write_manifest, verify_submission
+    p = tmp_path/'submission'; p.mkdir()
+    (p/'EatingDetection.exe').write_bytes(b'MZtest')
+    (p/'README.md').write_text('instructions')
+    write_manifest(p, {'release_run_key': 'test'})
+    verify_submission(p)
+    (p/'results.csv').write_text('old results')
+    with pytest.raises(ValueError): verify_submission(p)
+    (p/'results.csv').unlink(); (p/'EatingDetection.exe').write_bytes(b'MZchanged')
+    with pytest.raises(ValueError): verify_submission(p)
+
+
+def test_builder_refuses_workspace_root_or_external_destination_before_build(tmp_path):
+    from scripts.build_competition_exe import validate_destination
+    (tmp_path/'dist').mkdir()
+    assert validate_destination(tmp_path,tmp_path/'dist'/'submission') == tmp_path/'dist'/'submission'
+    for p in (tmp_path, tmp_path/'dist', tmp_path/'models', tmp_path.parent/'outside'):
+        with pytest.raises(ValueError): validate_destination(tmp_path,p)
+
+
+def test_clean_environment_keeps_system_dll_search_but_no_python_path():
+    from scripts.build_competition_exe import clean_environment
+    e = clean_environment({'SystemRoot': r'C:\Windows', 'PATH': r'D:\Anaconda3;C:\Windows',
+                           'PYTHONPATH': 'repo', 'PYTHONHOME':'python', 'CONDA_PREFIX':'env'})
+    assert e['PATH'] == r'C:\Windows\System32;C:\Windows'
+    assert not any(k in e for k in ('PYTHONPATH','PYTHONHOME','CONDA_PREFIX'))
+
+
+def test_official_api_matches_recorded_source_hashes():
+    import hashlib
+    root = Path(__file__).resolve().parents[2]
+    provenance = json.loads((root/'src/pipeline/inference/official_api/provenance.json').read_text())
+    for name, expected in provenance['api_sha256_lf'].items():
+        data = (root/'src/pipeline/inference/official_api'/name).read_bytes().replace(b'\r\n',b'\n')
+        assert hashlib.sha256(data).hexdigest() == expected

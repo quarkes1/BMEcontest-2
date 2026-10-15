@@ -1,8 +1,9 @@
 """Isolated adapter boundary for the official competition input/output contract.
 
-The audited competition materials do not define an official machine input/output
-schema.  Until a real contract is published, the documented **default** is the
-``csv`` adapter: official input is one ``collect_data*.txt`` session (or a folder
+This module retains the historical, non-official CSV adapter for source-bundle
+compatibility. The official 2026-10-15 contract is implemented by official_runner
+and official_api; do not submit this four-column CSV to the competition.
+Here the ``csv`` adapter input is one ``collect_data*.txt`` session (or a folder
 tree of them) and official output is a CSV with one row per detected eating event
 (``start_time,end_time,start_ms,end_ms``; ISO local time with milliseconds plus
 the raw epoch milliseconds).  When the official contract appears, implement a

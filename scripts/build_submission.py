@@ -1,4 +1,8 @@
-"""Build the competition submission bundle from canonical source.
+"""Build the official Windows EXE submission (default) or a legacy source bundle.
+
+Since 2026-10-15 the CLI defaults to scripts.build_competition_exe. The
+build_submission() Python API below and --source-bundle preserve the old source
+reproduction bundle for audits; it is NOT the official no-argument EXE format.
 
 ``dist/submission`` 是竞赛最终交付物，由本脚本从仓库唯一真源确定性生成：
 
@@ -185,10 +189,16 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bundle", type=Path, default=None)
     parser.add_argument("--destination", type=Path, default=ROOT / "dist/submission")
+    parser.add_argument("--source-bundle", action="store_true", help="legacy source/reproduction bundle, not the official EXE submission")
     args = parser.parse_args(argv)
     try:
-        built = build_submission(repository_root=ROOT, destination=args.destination,
-                                 bundle_path=args.bundle)
+        if args.source_bundle:
+            built = build_submission(repository_root=ROOT, destination=args.destination, bundle_path=args.bundle)
+        else:
+            if args.bundle is not None:
+                raise ValueError("official EXE always uses the current promoted release; no custom --bundle")
+            from scripts.build_competition_exe import build
+            built = build(ROOT, args.destination)
     except (OSError, RuntimeError, ValueError) as exc:
         print(f"submission build refused: {exc}", file=sys.stderr)
         return 2

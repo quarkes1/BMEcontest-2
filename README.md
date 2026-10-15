@@ -157,7 +157,7 @@ result = predictor.predict_file("path/to/collect_data1_2_3.txt")
 
 ```bash
 cd dist/submission
-python main.py --raw path/to/collect_data1_2_3.txt --output result.json
+.\EatingDetection.exe     # ACC_test_data放EXE旁；无参数，生成同级results.csv
 ```
 
 ## 6. 复现训练 / 评估 / 发布
@@ -178,7 +178,8 @@ python scripts/train_event_stack.py --summary outputs/crossfit/context_v1_summar
 
 # 重建分发包（从 canonical 源生成，勿手改 dist/）
 python scripts/build_inference_distribution.py
-python scripts/build_submission.py
+python -m pip install -r scripts/requirements-build.txt  # 仅构建环境需要
+python scripts/build_submission.py                      # 官方自包含EXE
 
 # 生成参赛作品报告（输出至 Archieves/；截图链路需 Node + 本机 Edge/Chrome）
 node dist/visual/app/tools/capture-report-shots.mjs   # 界面截图（仅合成演示数据）
@@ -247,33 +248,24 @@ BMEcontest-2/
 
 ## 8. 竞赛提交
 
-`dist/submission/` 是竞赛最终交付物，由 `scripts/build_submission.py` 确定性地从
-仓库唯一真源生成。包根只保留 `README.md`、`requirements.txt`、`start.bat`、`main.py`，
-其余按职责成组：
+2026-10-15官方测试接口已适配，详见[交付与验收合同](docs/official_submission_20261015.md)。
+`python scripts/build_submission.py`（或`build_competition_exe.py`）从canonical代码和当前
+正式deployment构建`dist/submission/EatingDetection.exe`。它内置模型/CPython/依赖，目标
+Windows10/11 x64无需安装Python或联网。onefile会在临时目录释放DLL，不是所有库的传统静态链接。
 
-- **`app/`**：推理运行时与本地桥（`serve.py` + vendored `event_stack/`）；
-- **`models/`**：`event_stack/<run_key>/`（deployment bundle + 五个 outer-fold
-  evidence bundle + promotion summary 与 attestation）；
-- **`src/`、`scripts/`、`tests/`**：canonical 源码与训练/评估/发布/构建全链；
-- **`release/`、`outputs/crossfit/`**：发布指针与五折证据（让包内 repro 可直接运行）；
-- **`visual/`、`schema/`、`examples/`**：可视化与预测契约/安全示例；
-- **`meta/`**：`manifest.json`（逐文件 SHA-256 与 source/model 闭包）与
-  `feature_schema.json`；精确依赖见 `requirements.txt`。
+EXE无参数运行，以自身目录读取`ACC_test_data/userinfobean.txt`和每个人全部TXT，实际调用
+官方DataReader/InfoReader/save_result。结果为同级`results.csv`，只有三列
+`externalid,beforeTime,afterTime`，时间是13位原始Unix毫秒。成功运行完整替换，不混入旧结果；
+零预测仍有表头。`EatingDetection.exe --self-check`可验证内置模型与依赖。
 
-README 内容由 `scripts/submission_readme.md` 维护（直接编辑该文件，重建生效）。
-官方竞赛模式默认输出 CSV（每行一次进食事件）；自定义 adapter 的注册教程见包内 README。
+提交时直接将`dist/submission/`内容压缩为ZIP，EXE置于ZIP顶层。包内仅EXE、README、
+build_manifest.json、official_api来源及licenses；无数据/金标准/旧CSV/训练脚本。README
+真源为`scripts/official_submission_readme.md`；`build_manifest.json`可用
+`python scripts/build_competition_exe.py --verify-only`核验逐文件SHA。可视化继续使用
+`dist/visual`和`dist/inference`，不混入官方自动评分入口。
 
-验证：
-
-```bash
-cd dist/submission
-python main.py --raw path/to/session.txt --output result.json   # 与 Predictor 输出一致
-python main.py --official-input IN --output OUT                 # 退出码 2：adapter 未注册
-```
-
-**已知约束**：官方机器 I/O 规范未在已审计材料中定义，官方模式在注册具体 adapter
-前显式拒绝，绝不猜测线格式（`src/pipeline/inference/competition_adapter.py`）；
-可用接口（raw CLI / Predictor API / 预测 schema）见包内 README。
+历史源码复现包可用`--source-bundle --destination dist/source_submission`单独生成，
+其四列CSV适配器仅供历史自测，不能当作本次官方CSV。F1仍为0.6514285714，本轮不涉及新模型晋级。
 
 ## 9. 可视化应用与契约
 
@@ -295,9 +287,8 @@ python main.py --official-input IN --output OUT                 # 退出码 2：
    CPU 后端；
 2. 短餐（<10min）最终 recall 20/39 与餐时高分误报（FP 83，部分疑为未记录进食）
    是主要剩余误差；
-3. 官方提交 I/O 适配器未注册（见 §8）；
-4. 迁移学习（FD-I/FD-II）未启动，须遵守 CC BY-NC-ND 4.0 并保留随机初始化与
-   `external_weight=0` 对照。
+3. 官方EXE已适配；隔离环境验收仍不能等同于另一台实体电脑或组委会独立测试成绩；
+4. FD-I迁移等研究已开展但未获正式晋级；外部研究不自动进入本次提交模型。
 
 ### 历史实验简表（完整记录见 git 历史与 `docs/superpowers/plans/`）
 

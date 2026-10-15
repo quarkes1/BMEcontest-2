@@ -9,7 +9,7 @@ dist/
 │                   # 附 serve.py 本地推理桥（可视化同源调用）
 ├── visual/         # 团队可视化应用（React+TS+Vite）：源码在 visual/app/，
 │                   # 生产构建为自包含单文件 index.html（双击即用，无任何依赖）
-├── submission/     # 竞赛最终提交包（生成物）：推理接口 + 完整模型证据链 + 复现代码 + 可视化
+├── submission/     # 官方测试提交包：自包含EatingDetection.exe + README/清单/许可证
 ├── examples/       # 合成安全示例 example_prediction.json（符合 schema，无真实数据）
 ├── schema/         # 稳定契约 prediction.schema.json（v1.0）
 ├── start.bat       # 竞赛一键启动器：本地推理服务 + 浏览器
@@ -24,8 +24,22 @@ TP/eligible/pred = 114/153/197）。发布证据与模型在 `models/event_stack
 
 ```bash
 python scripts/build_inference_distribution.py     # 重建 dist/inference/
-python scripts/build_submission.py                 # 重建 dist/submission/
+python -m pip install -r scripts/requirements-build.txt  # 仅构建机
+python scripts/build_submission.py                 # 重建官方单文件EXE submission
+python scripts/build_competition_exe.py --verify-only   # 核对最终提交文件与SHA
 ```
+
+## 官方提交EXE（2026-10-15接口）
+
+直接压缩`submission/`内容提交；EXE应在ZIP顶层。`EatingDetection.exe`无参数启动，以自身
+目录读取同级`ACC_test_data`，通过官方DataReader/InfoReader处理所有人的全部TXT，使用
+save_result输出同级`results.csv`，只有`externalid,beforeTime,afterTime`三列原始毫秒时间。
+每次成功运行覆盖完整结果，零预测也输出表头。目标Windows10/11 x64无需Python/pip/网络。
+onefile内置依赖并在临时目录解包DLL，不是所有库传统静态链接；详情见submission/README.md。
+不含测试数据/金标准/旧结果；模型仍是正式run160afaf81debf1ee，未混入研究分支模型。
+
+可视化与JSON推理接口保持独立，仍使用下面的`start.bat`和`inference/`，不要将历史四列
+CSV或JSON当成官方三列结果。源码复现包仅在`--source-bundle`时生成到另一个指定目录。
 
 ## 一键启动（可视化 + 本地推理服务）
 

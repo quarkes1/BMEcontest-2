@@ -1,6 +1,9 @@
-# 竞赛提交包
+# 历史源码复现包（不是官方EXE提交包）
 
-本目录由 `python scripts/build_submission.py` 从原仓库自动生成。
+本目录由 `python scripts/build_submission.py --source-bundle --destination dist/source_submission` 生成。
+2026-10-15官方接口已发布，真正比赛包使用`python scripts/build_competition_exe.py`，
+交付`dist/submission/EatingDetection.exe`，输出三列`externalid,beforeTime,afterTime`。
+本文的四列CSV与Python入口仅保留兼容/审计，不用于官方提交。
 请勿手工修改任何生成文件；需要变更时重建整个包。
 
 ## 可视化应用打开方式
@@ -80,7 +83,7 @@ python main.py --raw path/to/subject-folder --output result.json --include-timel
 
 ## 测试接口说明
 
-由于目前本组没有在官方赛题及官网找到具体的测试接口信息，故该功能目前默认输出包含进食开始，结束的csv。其中每一行 为一次检测到的进食事件的起始与终止时。 不指定输出位置时默认放在./predict中。--cls会清空./predict使之只包含当前预测的结果。
+以下为历史自测接口，不是2026-10-15的官方接口。每行一次进食事件，不指定位置时写入./predict，--cls会清空该目录。官方运行方式和三列输出以`scripts/official_submission_readme.md`及`dist/submission/README.md`为准。
 
 ```bash
 python main.py --official-input INPUT_FILENAME.txt  # 输出预测结果到 ./predict/predict_INPUT_FILENAME.csv
@@ -110,7 +113,7 @@ INPUT_FOLD
 
 ## 自定义 adapter（替换官方接口）
 
-官方真实契约发布后，无需改动算法、模型与证据链，只需实现一个 adapter 并注册。
+以下仅说明历史扩展机制。正式接口已经由official_runner实现；不要用本节自定义格式替换官方CSV。
 接口定义在 `app/event_stack/inference/competition_adapter.py`：
 
 1. **实现接口**（``load``：官方输入 → canonical raw 路径；``dump``：预测文档 → 官方输出）：
