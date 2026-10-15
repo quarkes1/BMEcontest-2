@@ -87,13 +87,20 @@ def _terms(path_str: str) -> tuple[str, ...]:
     return tuple(terms)
 
 
-def _category_hits(path_str: str, category: str) -> list[str]:
-    texts = _scan_texts(_SCOPES[category])
+def _category_hits(path_str: str, category: str, *, texts=None) -> list[str]:
+    if texts is None:
+        texts = _scan_texts(_SCOPES[category])
+    path = Path(path_str)
+    # Every existing regex requires at least one of these literal substrings.
+    # Fast rejection cannot remove a genuine match; regexes still decide hits.
+    needles = (path_str, path.name, 'scripts.' + path.stem)
     hits: list[str] = []
     for term in _terms(path_str):
         pattern = re.compile(term)
         for relative, text in texts:
             if relative == path_str:
+                continue
+            if not any(needle in text for needle in needles):
                 continue
             if category == "imports" and not re.search(r"^\s*(from|import)\b", text, re.MULTILINE):
                 continue
@@ -116,12 +123,15 @@ def test_deleted_paths_have_no_consumers():
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     assert manifest["deleted"], "deletion ledger must not be empty"
     proof_fields = ("imports", "tests", "reproduction", "release", "submission", "references")
+    # One consistent read-only snapshot per consumer scope for this audit only.
+    # Do not reread the entire workspace for every retired path and category.
+    snapshots = {category: _scan_texts(_SCOPES[category]) for category in proof_fields}
     for item in manifest["deleted"]:
         assert set(item) == {"path", *proof_fields}, item
         assert all(type(item[name]) is bool and item[name] is False for name in proof_fields), item
         assert not (ROOT / item["path"]).exists(), f"ledger path still exists: {item['path']}"
         for category in proof_fields:
-            hits = _category_hits(item["path"], category)
+            hits = _category_hits(item["path"], category, texts=snapshots[category])
             assert hits == [], f"{item['path']} still referenced ({category}): {hits[:5]}"
 
 
@@ -140,3 +150,28 @@ def test_git_status_has_no_rebuildable_trash():
         assert "__pycache__" not in name, line
         assert not name.endswith(".pyc"), line
         assert ".staging-" not in name and ".backup-" not in name, line
+
+
+def test_preloaded_consumer_scope_preserves_reference_matching():
+    path = 'scripts/example_retired_tool.py'
+    snapshot = [('README.md', 'python scripts/example_retired_tool.py'),
+                ('scripts/example_retired_tool.py', 'self reference')]
+    assert _category_hits(path, 'references', texts=snapshot) == ['README.md']
+    assert _category_hits(path, 'references', texts=[]) == []
+
+
+def test_preloaded_import_scope_preserves_noncode_filter():
+    path = 'scripts/example_retired_tool.py'
+    snapshot = [('README.md', 'python scripts/example_retired_tool.py'),
+                ('src/consumer.py', 'from scripts.example_retired_tool import main')]
+    assert _category_hits(path, 'imports', texts=snapshot) == ['src/consumer.py']
+
+
+def test_consumer_prefilter_keeps_exact_regex_boundaries_and_module_names():
+    snapshot = [('src/use.py', 'from scripts.example_retired_tool import main'),
+                ('README.md', 'old example_retired_tool.py'),
+                ('unrelated.md', 'not_example_retired_tool.py'),
+                ('generic.md', 'config.py')]
+    assert _category_hits('scripts/example_retired_tool.py', 'references', texts=snapshot) == [
+        'README.md', 'src/use.py']
+    assert _category_hits('src/config.py', 'references', texts=snapshot) == []

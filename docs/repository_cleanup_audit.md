@@ -27,6 +27,8 @@
 
 验证：974项全仓测试正常收集；相关诊断、源码交付、构建和目录回滚专项53 passed、1 skipped（38.44秒）。发布证据链和最终提交包逐文件SHA校验通过；EXE及模型均未改变。
 
+按用户要求推送main前，保留原删除审计的全部范围/正则/断言，仅将每项重复读取改为每轮每类一次只读快照，并在正则前增加必要字面量预筛选。预筛选无法排除真实正则匹配，最终判断仍由原正则完成；新增测试覆盖模块导入、非代码过滤、词边界、自身引用排除和通用文件名规则。审计文件7 passed（22.67秒），不修改任何模型或研究规则。
+
 Audit date: 2026-09-15.  Post-refactor record added 2026-09-17 (Phase 8
 execution).  Scope is the current `main` worktree only.  The audit deliberately
 makes no move, deletion, or algorithm change; its purpose is to establish the
