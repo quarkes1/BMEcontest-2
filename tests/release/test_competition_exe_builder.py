@@ -39,3 +39,13 @@ def test_official_api_matches_recorded_source_hashes():
     for name, expected in provenance['api_sha256_lf'].items():
         data = (root/'src/pipeline/inference/official_api'/name).read_bytes().replace(b'\r\n',b'\n')
         assert hashlib.sha256(data).hexdigest() == expected
+
+
+def test_compiled_python_platform_not_optional_architecture_env(monkeypatch):
+    from scripts.build_competition_exe import build_platform
+    monkeypatch.delenv('PROCESSOR_ARCHITECTURE', raising=False)
+    monkeypatch.delenv('PROCESSOR_ARCHITEW6432', raising=False)
+    assert build_platform() == 'win-amd64'
+    import sysconfig
+    monkeypatch.setattr(sysconfig, 'get_platform', lambda: 'win-arm64')
+    with pytest.raises(ValueError): build_platform()

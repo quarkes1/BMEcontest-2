@@ -11,6 +11,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import sysconfig
 import tempfile
 import uuid
 
@@ -20,6 +21,15 @@ if str(ROOT) not in sys.path: sys.path.insert(0, str(ROOT))
 EXE = 'EatingDetection.exe'
 MANIFEST = 'build_manifest.json'
 RUNTIME_PACKAGES = ('numpy','scipy','scikit-learn','lightgbm','joblib','threadpoolctl','packaging')
+
+
+def build_platform():
+    # platform.machine() may be empty when the execution host strips optional
+    # PROCESSOR_ARCHITECTURE env vars; sysconfig describes this interpreter ABI.
+    target = sysconfig.get_platform()
+    if os.name != 'nt' or target != 'win-amd64':
+        raise ValueError('build the Windows x64 EXE using Windows x64 Python')
+    return target
 
 
 def sha(path):
@@ -96,8 +106,7 @@ def build(root=ROOT, destination=None):
     from src.pipeline.artifacts import load_current_promoted_release, load_event_stack_bundle
     from scripts.build_inference_distribution import _atomic_replace
     root = Path(root).resolve(); dest = validate_destination(root, destination or root/'dist/submission')
-    if os.name != 'nt' or platform.machine().upper() not in ('AMD64','X86_64'):
-        raise ValueError('build the Windows x64 EXE on Windows x64')
+    build_platform()
     if version('pyinstaller') != '6.22.3' or version('pyinstaller-hooks-contrib') != '2026.8':
         raise ValueError('install scripts/requirements-build.txt in the frozen release environment')
     release = load_current_promoted_release(root); run_key = str(release['run_key'])
@@ -126,6 +135,7 @@ def build(root=ROOT, destination=None):
             args += ['--exclude-module',module]
         args += [str(root/'scripts/competition_entry.py')]
         env = dict(os.environ, PYINSTALLER_CONFIG_DIR=str(work/'config'))
+        env.setdefault('PROCESSOR_ARCHITECTURE', 'AMD64')
         print('Building standalone Windows EXE...', flush=True)
         result = subprocess.run(args, cwd=root, env=env, capture_output=True, text=True, errors='replace', timeout=1800)
         (logs/'pyinstaller.log').write_text(result.stdout+'\n'+result.stderr, encoding='utf-8')
