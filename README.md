@@ -274,6 +274,11 @@ EXE无参数运行，以自身目录读取`ACC_test_data/userinfobean.txt`和每
 其四列CSV适配器仅供历史自测，不能当作本次官方CSV。当前提交包的`python main.py`与EXE
 均实现官方三列CSV。源码复现步骤见包内README。F1仍为0.6514285714，本轮不涉及新模型晋级。
 
+2026-10-15提交说明以用户维护的`dist/submission/README.md`为准，已同步至仓库模板和
+包内模板，并刷新文件清单；无需为文案改动重编译EXE。全仓脚本依赖复查已移除4个已完成
+诊断的一次性入口，保留现用训练/推理/发布、测试依赖和研究库，详见
+[清理审计](docs/repository_cleanup_audit.md)。历史实验信息和封存证据保持不变。
+
 ## 9. 可视化应用与契约
 
 `dist/visual/` 是已实现的可视化应用（React + TypeScript + Vite + Three.js，源码在

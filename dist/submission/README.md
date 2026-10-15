@@ -1,6 +1,6 @@
-# 赛题2 Windows EXE提交包
+# 赛题2 提交包
 
-本包用于2026年10月15日发布的官方测试接口。无需安装Python、pip、CUDA或其他软件，不需要联网。支持Windows10/11 x64。
+本包适配官方测试接口的提交包，EatingDetection.exe 可以独立运行
 
 ## 运行
 
@@ -18,7 +18,7 @@
 └── results.csv                 # 运行成功后生成，不是提交包预置数据
 ```
 
-双击EatingDetection.exe，或在命令行直接运行它，不需要参数。程序总是以EXE所在目录定位ACC_test_data和results.csv，不依赖启动时的工作目录。每个人的全部TXT通过官方DataReader.iter_data读取，InfoReader读取官方人口信息，save_result保存预测。
+双击EatingDetection.exe，或在命令行直接运行，不需要参数。程序总是以EXE所在目录定位ACC_test_data和results.csv，不依赖启动时的工作目录。每个人的全部TXT通过官方DataReader.iter_data读取，InfoReader读取信息，save_result保存预测。
 
 输出只包含预测进食事件，CSV列名及顺序固定：
 
@@ -28,7 +28,7 @@ externalid,beforeTime,afterTime
 
 编号对应个人目录并按官方规则大写/移除空白；时间为原始采集轴13位Unix毫秒整数，开始小于结束。没有进食预测也会产生表头。UTF-8 BOM便于Excel读取。
 
-每次成功运行原子替换本轮全部结果，不追加旧结果。退出码0为成功；退出码2为失败。失败时不会发布半成品，但之前成功的results.csv可能仍在，请勿将旧结果当作本次结果。请在命令提示符中运行以查看错误。
+每次成功运行替换本轮全部结果，不追加旧结果。退出码0为成功；退出码2为失败。失败时不会发布半成品，但之前成功的results.csv可能仍在，请勿将旧结果当作本次结果。请在命令提示符中运行以查看错误。
 
 可选依赖/模型自检（不读测试数据）：
 
@@ -44,7 +44,7 @@ build_manifest.json记录EXE/包内文件SHA-256、正式模型文件哈希、�
 
 ## 源代码与模型结构
 
-本包同时提供可独立运行的EXE和当前模型Python源代码，无需返回原始项目目录获取模型或脚本。
+本包同时提供可独立运行的EXE和当前模型Python源代码
 
 ```text
 submission/
@@ -58,10 +58,10 @@ submission/
 ├── outputs/crossfit/             # 冻结评估记录，非逐样本标签
 ├── official_api/                 # 官方输入输出接口与来源校验
 ├── build_manifest.json           # 全包逐文件SHA-256
-└── THIRD_PARTY_NOTICES.txt        # 完整第三方声明的合并文本
+└── THIRD_PARTY_NOTICES.txt        # 所用库的第三方声明文件
 ```
 
-算法为双时间尺度IMU特征模型：宏窗口HGB和微窗口LightGBM产生候选，56维基础特征与60维Context-v1组成116维事件表示，经逻辑回归/LightGBM融合评分、候选准入与冻结事件策略输出。模型权重和阈值不因接口适配变化。当前正式版本使用CPU多线程，不要求GPU，不混入未通过正式验证的研究模型。
+算法为双时间尺度IMU特征模型：宏窗口HGB和微窗口LightGBM产生候选，56维基础特征与60维Context-v1组成116维事件表示，经逻辑回归/LightGBM融合评分、候选准入与冻结事件策略输出。模型权重和阈值不因接口适配变化。
 
 ## 源码运行与复现
 
@@ -90,7 +90,18 @@ py -3.11 -m venv .venv
 
 ### 3. 从原始训练数据重建特征并评估
 
-将合法取得的训练数据放在本包Data目录，包含会话索引CSV、mealinfo标注CSV和sensorData会话目录。src/config.py的SENSOR_DIR默认指向Data/t_zsstnnrj_sensororiginaldata_system附件0826_1857，若文件夹名不同需先调整配置。会话TXT为53列TSV（3个时间戳、44列PPG、3轴ACC、3轴GYRO），本模型识别分支使用IMU。解析、受试者划分和标注读取见src/data/，不能用未标注测试输入替代训练集。
+将训练数据放在本包Data目录，组织为以下形式：
+
+```text
+Data/
+├── t_<...>_sensororiginaldata_<...>.csv        # 会话索引（受试者 ↔ sensorData 映射）
+├── t_<...>_mealinfo_<...>.csv                  # 餐次标注（受试者 / 起止时间 / 手别）
+└── t_<...>_sensororiginaldata_system<...>/      # 会话数据
+    ├── sensorData-<时间戳>-<uuid>/
+    │   ├── collect_data<N>_<起>_<止>.txt        # 53 列 TSV：3 个时间戳 + PPG×44 + ACC×3 + GYRO×3
+    │   └── info.json
+    └── ...
+```
 
 ```powershell
 .\.venv\Scripts\python.exe scripts/build_micro_features.py --fold all --split all --workers 8

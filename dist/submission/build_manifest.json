@@ -47,7 +47,7 @@
   },
   "package_files": {
     "EatingDetection.exe": "a2e71599e4832b43328319b6a93a8636023bb5a01c3cc17a9b3fe2c4ea205dc1",
-    "README.md": "758f0a5ed3153c42e4709334ed559dd0f920335d8d37f9a51469ab4ad1e4bb4a",
+    "README.md": "e2427c9a52e125318199228bcd005d9f7d2788d87032ec8e927172834bfea7ea",
     "THIRD_PARTY_NOTICES.txt": "eb2c5a7f5cb4a9bd5d5d7aa72379d2594f00b36c7f72230cc85ccd58e99c6625",
     "main.py": "7413369d29ebfb5f7e689c1273c099dfaed9cf489dcce814fda5ac96bbba2e49",
     "models/event_stack/160afaf81debf1ee/deployment/feature_schema.json": "939ed3a65787abf68675a95704281490ab2519cfe1c5512a4118d5837b8aa34d",
@@ -129,7 +129,7 @@
     "scripts/crossfit_event_stack.py": "0272954d66a8e32f0236a57a30c022176ff15c51013abe3ab99fce3080cac88c",
     "scripts/evaluate_event_stack.py": "e2ec57cef8bc5d828ed6c6db35fb3d312886b566744f0d26181276f23c282c1d",
     "scripts/official_iou_eval.py": "682dcbae4cc205fba520af04270acb1b00c7e4ecf0db3bf75bb43376e24eea15",
-    "scripts/official_submission_readme.md": "758f0a5ed3153c42e4709334ed559dd0f920335d8d37f9a51469ab4ad1e4bb4a",
+    "scripts/official_submission_readme.md": "e2427c9a52e125318199228bcd005d9f7d2788d87032ec8e927172834bfea7ea",
     "scripts/package_event_stack.py": "82c94518e13ac04314fd6bc3fba852690b0f7a34c464f4b4cadc75c221502d7a",
     "scripts/promote_event_stack.py": "7e6eb8895d6a3c6625d80a4482b872c538a6d6fcd1eddcc4869351717c78640c",
     "scripts/release_event_stack.py": "b3ab2a80c13b32d272b8fcbed55cc917e7d4c3a2884837f00fcac3231b675792",

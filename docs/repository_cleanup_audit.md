@@ -1,5 +1,32 @@
 # Repository cleanup audit — Phase 1 (read-only) + post-refactor record
 
+## 2026-10-15 — 提交说明同步与全仓脚本复查
+
+本轮不改模型、特征、阈值或EXE。以用户更新后的`dist/submission/README.md`为准，同步至`scripts/official_submission_readme.md`和包内同名模板，并只刷新包内两份Markdown对应的清单哈希。用户README原文件未被改写；同步时SHA-256为`e2427c9a52e125318199228bcd005d9f7d2788d87032ec8e927172834bfea7ea`。
+
+### 范围与删除标准
+
+扫描当前Git跟踪的1424项文件，以980项项目文本（不含生成的dist副本）核对脚本引用，检查90个非`__init__`项目脚本。使用Python AST解析绝对、相对、`from scripts import ...`及未加包前缀的导入，同时核对动态加载文件名、测试、README、任务书和历史JSON证据。另枚举项目内脚本扩展名，未发现额外散落的自建临时脚本。外部数据、下载第三方代码、Git内部及node_modules不作为删除对象；不可访问的`.pytest_cache`未尝试绕过权限读取或清除。
+
+下列四项只用于已经结束的封存诊断，无当前代码或测试消费者，已删除。其核心研究函数、完整结果、注册表、历史源码指纹均保留。历史任务书与JSON证据中的旧路径只是历史事实，不伪装成当前可用命令，也不为删除而修改不可变证据。
+
+| 已移除入口 | 处理依据 | 保留内容 |
+|---|---|---|
+| `scripts/research/run_data_sprint.py` | 一次性封存数据诊断入口，结果已生成，无调用者 | data_sprint纯函数、单元测试、outputs/challenger_70/data_sprint |
+| `scripts/research/run_e05_churn_audit.py` | 一次性E05.1恢复/流失诊断入口，结果已生成，无调用者 | 门控函数、单元测试、outputs/challenger_70/e05_1_churn_audit |
+| `scripts/run_challenger_e03_5.py` | 已完成E03.5诊断的薄CLI包装，无调用者 | src/pipeline/challenger/c1_attrition_run.py及其测试、封存输出 |
+| `scripts/run_challenger_e04.py` | 已完成E04诊断的薄CLI包装，无调用者 | src/pipeline/challenger/verifier_audit_run.py及其测试、封存输出 |
+
+这四项不加入下面历史`deletion_manifest.json`的“所有文档零引用”断言：它们确有应保留的历史证据引用。本表记录的是“无当前可执行消费者”，而不是声称历史从未存在。全部源码可从本轮清理前提交`9481c49`恢复；如确需重跑封存诊断，应在独立工作副本恢复当时版本，而不是覆盖现有封存结果。
+
+保留86个项目脚本：85个有可执行引用，报告生成入口由README明确使用。旧滑窗、排序和官方匹配链仍被基线/parity测试动态导入，不能因不属于当前推理主链而删除。研究库仍被测试和后续研究使用，也不当作临时脚本删除。训练、评估、模型晋级、发布验证、EXE/前端构建入口全部保留。
+
+本轮只删除上述四个已核对的具体文件，不递归删除目录，不删除模型、数据或封存输出；删除内容可从Git恢复。
+
+同时移除这四项入口中实际存在的两份残留字节码：`scripts/research/__pycache__/run_e05_churn_audit.cpython-311.pyc`（20207字节）及`scripts/__pycache__/run_challenger_e04.cpython-311.pyc`（1713字节）。它们不是源代码，可按对应历史版本重新生成。未对其他缓存目录执行递归清理。
+
+验证：974项全仓测试正常收集；相关诊断、源码交付、构建和目录回滚专项53 passed、1 skipped（38.44秒）。发布证据链和最终提交包逐文件SHA校验通过；EXE及模型均未改变。
+
 Audit date: 2026-09-15.  Post-refactor record added 2026-09-17 (Phase 8
 execution).  Scope is the current `main` worktree only.  The audit deliberately
 makes no move, deletion, or algorithm change; its purpose is to establish the
