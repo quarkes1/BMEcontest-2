@@ -58,6 +58,24 @@ def test_reused_runtime_comparison_accepts_only_line_ending_normalization(tmp_pa
     assert not reusable_runtime_matches(tmp_path, {'source_sha256': {}})
 
 
+def test_atomic_publish_initial_rename_failure_never_removes_existing_package(tmp_path, monkeypatch):
+    from scripts.build_inference_distribution import _atomic_replace
+    import os
+    destination = tmp_path/'submission'; destination.mkdir()
+    (destination/'README.md').write_text('user content must survive')
+    staging = tmp_path/'.submission.staging-test'; staging.mkdir()
+    (staging/'README.md').write_text('new generated content')
+    original = os.replace
+    def locked_old_directory(source, target):
+        if Path(source) == destination:
+            raise PermissionError('Windows directory is temporarily locked')
+        return original(source, target)
+    monkeypatch.setattr(os, 'replace', locked_old_directory)
+    with pytest.raises(PermissionError):
+        _atomic_replace(staging, destination)
+    assert (destination/'README.md').read_text() == 'user content must survive'
+
+
 def test_builder_refuses_workspace_root_or_external_destination_before_build(tmp_path):
     from scripts.build_competition_exe import validate_destination
     (tmp_path/'dist').mkdir()

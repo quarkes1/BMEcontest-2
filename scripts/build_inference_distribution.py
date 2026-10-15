@@ -443,6 +443,7 @@ def _atomic_replace(staging: Path, destination: Path) -> Path:
     parent = destination.parent
     backup = parent / f".{destination.name}.backup-{uuid.uuid4().hex}"
     moved = False
+    published = False
     try:
         if destination.exists():
             if destination.is_symlink():
@@ -450,19 +451,20 @@ def _atomic_replace(staging: Path, destination: Path) -> Path:
             os.replace(destination, backup)
             moved = True
         os.replace(staging, destination)
-        if moved:
-            shutil.rmtree(backup)
+        published = True
         return destination
     except Exception:
-        if destination.exists() and not destination.is_symlink():
-            shutil.rmtree(destination)
+        # A failed first rename leaves the ORIGINAL directory in place.
+        # Never remove it unless its successful backup move was observed.
         if moved and backup.exists():
+            if destination.exists() and not destination.is_symlink():
+                shutil.rmtree(destination)
             os.replace(backup, destination)
         raise
     finally:
         if staging.exists():
             shutil.rmtree(staging)
-        if backup.exists() and destination.exists():
+        if published and backup.exists() and destination.exists():
             shutil.rmtree(backup)
 
 
