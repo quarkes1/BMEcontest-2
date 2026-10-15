@@ -102,16 +102,23 @@ def copy_licenses(target):
         if not count: raise ValueError('third-party license missing: '+name)
 
 
-def build(root=ROOT, destination=None):
+def release_preflight(root):
     from src.pipeline.artifacts import load_current_promoted_release, load_event_stack_bundle
+    release = load_current_promoted_release(root)
+    bundle = Path(root)/'models/event_stack'/str(release['run_key'])/'deployment'
+    # Bundle manifests identify their role-directory (deployment); the parent
+    # experiment key is independently attested by load_current_promoted_release.
+    load_event_stack_bundle(bundle, expected_role='deployment', expected_run_key='deployment')
+    return release, bundle
+
+
+def build(root=ROOT, destination=None):
     from scripts.build_inference_distribution import _atomic_replace
     root = Path(root).resolve(); dest = validate_destination(root, destination or root/'dist/submission')
     build_platform()
     if version('pyinstaller') != '6.22.3' or version('pyinstaller-hooks-contrib') != '2026.8':
         raise ValueError('install scripts/requirements-build.txt in the frozen release environment')
-    release = load_current_promoted_release(root); run_key = str(release['run_key'])
-    bundle = root/'models/event_stack'/run_key/'deployment'
-    load_event_stack_bundle(bundle, expected_role='deployment', expected_run_key=run_key)
+    release, bundle = release_preflight(root); run_key = str(release['run_key'])
     api = root/'src/pipeline/inference/official_api'
     provenance = json.loads((api/'provenance.json').read_text(encoding='utf-8'))
     for name, expected in provenance['api_sha256_lf'].items():
@@ -126,7 +133,8 @@ def build(root=ROOT, destination=None):
     try:
         args = [sys.executable,'-m','PyInstaller','--noconfirm','--clean','--onefile','--console','--noupx',
                 '--name','EatingDetection','--paths',str(root),'--distpath',str(staging),
-                '--workpath',str(work/'build'),'--specpath',str(work), '--add-data',str(bundle)+':deployment']
+                '--workpath',str(work/'build'),'--specpath',str(work), '--add-data',str(bundle)+':deployment',
+                '--add-data',str(root/'release/event_stack_incumbent.json')+':release']
         for module in ('sklearn.ensemble._hist_gradient_boosting.gradient_boosting', 'sklearn.linear_model._logistic',
                        'sklearn.impute._base','sklearn.preprocessing._data','sklearn.pipeline','sklearn._loss.loss',
                        'lightgbm.sklearn'):
@@ -154,7 +162,7 @@ def build(root=ROOT, destination=None):
             raise RuntimeError('clean-room EXE self-check failed; old submission retained')
         tracked = subprocess.check_output(['git','ls-files','src','scripts'],cwd=root,text=True).splitlines()
         metadata = dict(format='official-20261015-windows-x64-onefile', release_run_key=run_key,
-            release_development_f1=release['f1'], no_new_f1=True, python=platform.python_version(),
+            release_development_f1=release['aggregate']['f1'], no_new_f1=True, python=platform.python_version(),
             build_tool={'pyinstaller': version('pyinstaller'),'hooks':version('pyinstaller-hooks-contrib')},
             dependencies={n:version(n) for n in RUNTIME_PACKAGES},
             code_commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip(),

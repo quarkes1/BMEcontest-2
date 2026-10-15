@@ -49,3 +49,12 @@ def test_compiled_python_platform_not_optional_architecture_env(monkeypatch):
     import sysconfig
     monkeypatch.setattr(sysconfig, 'get_platform', lambda: 'win-arm64')
     with pytest.raises(ValueError): build_platform()
+
+
+def test_release_preflight_distinguishes_role_and_experiment_key():
+    from scripts.build_competition_exe import release_preflight
+    root = Path(__file__).resolve().parents[2]
+    release, bundle = release_preflight(root)
+    assert release['run_key'] == '160afaf81debf1ee'
+    assert bundle.name == 'deployment'
+    assert release['aggregate']['f1'] == pytest.approx(.6514285714285714)
