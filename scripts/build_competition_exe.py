@@ -1,4 +1,4 @@
-"""Build and atomically publish the official standalone Windows onefile submission."""
+"""Build the Windows executable and self-contained current-model source package."""
 from __future__ import annotations
 
 import argparse
@@ -53,13 +53,25 @@ def write_manifest(root, metadata):
         ensure_ascii=False, sort_keys=True, indent=2)+'\n', encoding='utf-8', newline='\n')
 
 
-def verify_submission(root):
+def verify_submission(root, *, allow_readme_changes=False):
     root = Path(root); m = json.loads((root/MANIFEST).read_text(encoding='utf-8'))
-    if files(root) != m['package_files']: raise ValueError('submission file set or SHA differs')
-    allowed = {EXE,'README.md',MANIFEST,'licenses','official_api'}
+    actual, expected = files(root), dict(m['package_files'])
+    if allow_readme_changes:
+        actual.pop('README.md', None); expected.pop('README.md', None)
+    if actual != expected: raise ValueError('submission file set or SHA differs')
+    allowed = {EXE,'README.md',MANIFEST,'licenses','official_api', 'THIRD_PARTY_NOTICES.txt',
+               'main.py', 'requirements.txt', 'src', 'scripts', 'models', 'release', 'outputs'}
     if {p.name for p in root.iterdir()}-allowed or not (root/EXE).is_file() or not (root/'README.md').is_file():
         raise ValueError('unexpected submission files; no test data or results may be shipped')
     if (root/EXE).read_bytes()[:2] != b'MZ': raise ValueError('not a Windows executable')
+    if m.get('source_delivery'):
+        required = ('main.py', 'requirements.txt', 'src/pipeline/inference/official_runner.py',
+                    'scripts/reproduce_release.py', 'scripts/evaluate_event_stack.py',
+                    'THIRD_PARTY_NOTICES.txt',
+                    f"models/event_stack/{m['release_run_key']}/deployment/manifest.json")
+        if any(not (root/name).is_file() for name in required):
+            raise ValueError('current-model source delivery is incomplete')
+        if (root/'licenses').exists(): raise ValueError('use the consolidated third-party notice')
     return m
 
 
@@ -116,13 +128,25 @@ def release_preflight(root):
     return release, bundle
 
 
-def build(root=ROOT, destination=None):
+def build(root=ROOT, destination=None, *, reuse_exe=False):
     from scripts.build_inference_distribution import _atomic_replace
+    from scripts.submission_sources import add_sources, consolidate_notices
     root = Path(root).resolve(); dest = validate_destination(root, destination or root/'dist/submission')
     build_platform()
     if version('pyinstaller') != '6.22.3' or version('pyinstaller-hooks-contrib') != '2026.8':
         raise ValueError('install scripts/requirements-build.txt in the frozen release environment')
     release, bundle = release_preflight(root); run_key = str(release['run_key'])
+    previous = None
+    if reuse_exe:
+        previous = verify_submission(dest, allow_readme_changes=True)
+        if previous['release_run_key'] != run_key or previous['deployment_sha256'] != {
+                p.name:sha(p) for p in bundle.iterdir() if p.is_file()}:
+            raise ValueError('cannot reuse executable from another model')
+        runtime_sources = {name: value for name, value in previous['source_sha256'].items()
+                           if name.startswith('src/') or name == 'scripts/competition_entry.py'}
+        if not runtime_sources or any(not (root/name).is_file() or sha(root/name) != value
+                                      for name, value in runtime_sources.items()):
+            raise ValueError('runtime source changed; rebuild executable without --reuse-exe')
     api = root/'src/pipeline/inference/official_api'
     provenance = json.loads((api/'provenance.json').read_text(encoding='utf-8'))
     for name, expected in provenance['api_sha256_lf'].items():
@@ -148,12 +172,19 @@ def build(root=ROOT, destination=None):
         args += [str(root/'scripts/competition_entry.py')]
         env = dict(os.environ, PYINSTALLER_CONFIG_DIR=str(work/'config'))
         env.setdefault('PROCESSOR_ARCHITECTURE', 'AMD64')
-        print('Building standalone Windows EXE...', flush=True)
-        result = subprocess.run(args, cwd=root, env=env, capture_output=True, text=True, errors='replace', timeout=1800)
-        (logs/'pyinstaller.log').write_text(result.stdout+'\n'+result.stderr, encoding='utf-8')
-        if result.returncode: raise RuntimeError('PyInstaller failed; see outputs/delivery/official_20261015/pyinstaller.log')
-        shutil.copyfile(root/'scripts/official_submission_readme.md', staging/'README.md')
+        if reuse_exe:
+            shutil.copyfile(dest/EXE, staging/EXE)
+        else:
+            print('Building standalone Windows EXE...', flush=True)
+            result = subprocess.run(args, cwd=root, env=env, capture_output=True, text=True, errors='replace', timeout=1800)
+            (logs/'pyinstaller.log').write_text(result.stdout+'\n'+result.stderr, encoding='utf-8')
+            if result.returncode: raise RuntimeError('PyInstaller failed; see outputs/delivery/official_20261015/pyinstaller.log')
+        # Keep submission-specific README edits; the template serves new exports.
+        readme = dest/'README.md' if (dest/'README.md').is_file() else root/'scripts/official_submission_readme.md'
+        shutil.copyfile(readme, staging/'README.md')
         copy_licenses(staging/'licenses')
+        consolidate_notices(staging)
+        add_sources(root, staging, run_key)
         (staging/'official_api').mkdir()
         for name in ('input.py','output.py','provenance.json'):
             text = (api/name).read_text(encoding='utf-8')
@@ -164,13 +195,18 @@ def build(root=ROOT, destination=None):
         (logs/'self_check.log').write_text(probe.stdout+'\n'+probe.stderr,encoding='utf-8')
         if probe.returncode or json.loads(probe.stdout.strip().splitlines()[-1]).get('run_key') != run_key:
             raise RuntimeError('clean-room EXE self-check failed; old submission retained')
-        tracked = subprocess.check_output(['git','ls-files','src','scripts'],cwd=root,text=True).splitlines()
+        source_files = sorted(p for tree in ('src', 'scripts') for p in (staging/tree).rglob('*.py'))
+        revision = (subprocess.run(['git','rev-parse','HEAD'],cwd=root,capture_output=True,text=True)
+                    if shutil.which('git') else subprocess.CompletedProcess([], 1, '', ''))
         metadata = dict(format='official-20261015-windows-x64-onefile', release_run_key=run_key,
+            source_delivery=True, executable_reused=bool(reuse_exe),
             release_development_f1=release['aggregate']['outer_metrics']['f1'], no_new_f1=True, python=platform.python_version(),
             build_tool={'pyinstaller': version('pyinstaller'),'hooks':version('pyinstaller-hooks-contrib')},
             dependencies={n:version(n) for n in RUNTIME_PACKAGES},
-            code_commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip(),
-            source_sha256={n:sha(root/n) for n in tracked if n.endswith('.py')},
+            code_commit=revision.stdout.strip() if revision.returncode == 0 else 'source-package',
+            executable_code_commit=(previous.get('executable_code_commit', previous['code_commit'])
+                                    if previous else (revision.stdout.strip() if revision.returncode == 0 else 'source-package')),
+            source_sha256={p.relative_to(staging).as_posix():sha(p) for p in source_files},
             deployment_sha256={p.name:sha(p) for p in bundle.iterdir() if p.is_file()},
             official_api=provenance, clean_environment_self_check='PASS',
             clean_environment_scope='Same Windows machine, neutral cwd, PATH stripped of development environments; not a second physical PC')
@@ -187,10 +223,11 @@ def build(root=ROOT, destination=None):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--verify-only',action='store_true')
+    parser.add_argument('--reuse-exe',action='store_true', help='repackage a verified executable only if model and runtime sources are unchanged')
     args = parser.parse_args(argv)
     try:
         if args.verify_only: verify_submission(ROOT/'dist/submission'); print('Submission SHA and file set: OK')
-        else: print(build())
+        else: print(build(reuse_exe=args.reuse_exe))
         return 0
     except (OSError,RuntimeError,ValueError,subprocess.SubprocessError) as exc:
         print(f'Official EXE build refused: {exc}',file=sys.stderr); return 2

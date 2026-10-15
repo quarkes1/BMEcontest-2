@@ -262,14 +262,17 @@ EXE无参数运行，以自身目录读取`ACC_test_data/userinfobean.txt`和每
 `externalid,beforeTime,afterTime`，时间是13位原始Unix毫秒。成功运行完整替换，不混入旧结果；
 零预测仍有表头。`EatingDetection.exe --self-check`可验证内置模型与依赖。
 
-提交时直接将`dist/submission/`内容压缩为ZIP，EXE置于ZIP顶层。包内仅EXE、README、
-build_manifest.json、official_api来源及licenses；无数据/金标准/旧CSV/训练脚本。README
-真源为`scripts/official_submission_readme.md`；`build_manifest.json`可用
+提交时直接将`dist/submission/`内容压缩为ZIP，EXE置于ZIP顶层。包内同时包含当前模型
+`src/`源码、训练/评估/构建脚本、模型权重与五折证据、依赖版本及源码入口`main.py`。
+不含数据、金标准、旧CSV、缓存或研究试验脚本；不含开发协作措辞。
+第三方必要声明合并在`THIRD_PARTY_NOTICES.txt`，不保留licenses目录。README保留提交包内
+用户修改，初始模板为`scripts/official_submission_readme.md`；`build_manifest.json`可用
 `python scripts/build_competition_exe.py --verify-only`核验逐文件SHA。可视化继续使用
 `dist/visual`和`dist/inference`，不混入官方自动评分入口。
 
 历史源码复现包可用`--source-bundle --destination dist/source_submission`单独生成，
-其四列CSV适配器仅供历史自测，不能当作本次官方CSV。F1仍为0.6514285714，本轮不涉及新模型晋级。
+其四列CSV适配器仅供历史自测，不能当作本次官方CSV。当前提交包的`python main.py`与EXE
+均实现官方三列CSV。源码复现步骤见包内README。F1仍为0.6514285714，本轮不涉及新模型晋级。
 
 ## 9. 可视化应用与契约
 

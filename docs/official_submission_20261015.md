@@ -12,7 +12,7 @@
 
 主代理直接实现（executing-plans/TDD）；最新自主授权允许不重复等待计划审批。沿用已授权研究分支和干净工作区，不新建worktree。正式模型不重训。
 
-保留当前Python/前端推理包dist/inference、dist/visual；将dist/submission收口为比赛专用自包含单文件EatingDetection.exe、README、清单/校验和/第三方许可证及官方接口来源。旧src/scripts/tests/五折证据等仍在仓库，不必放入本次官方运行ZIP。新构建脚本scripts/build_competition_exe.py负责最终包；旧build_submission保留源码复现构建API，CLI默认重定向官方EXE构建，--source-bundle显式生成旧格式，防止下次覆盖错误。
+按后续交付要求修订：保留dist/inference、dist/visual；dist/submission同时包含自包含EatingDetection.exe、当前模型源码src/、main.py、训练/评估/构建脚本、模型权重、五折证据、requirements.txt、README与逐文件清单。源码无研究试验分支或开发协作措辞；不复制任务书。README保留用户删改并补入复现说明。原licenses目录合并为THIRD_PARTY_NOTICES.txt，完整保留分发所需的上游声明，不擅自删改许可正文。build_competition_exe负责完整包，--reuse-exe仅在已验证EXE、模型和运行源码均未变化时重组源码交付；默认仍重新编译EXE。旧build_submission的--source-bundle只用于历史兼容。
 
 PyInstaller onefile内置CPython、NumPy/SciPy/sklearn/LightGBM、部署模型和官方API。它不是所有C库传统静态链接，运行时会在临时目录释放内置DLL；无需目标机器Python/pip/CUDA/网络。Windows10/11 x64为验收平台；不声称已在另一台实体机器实测。参考官方文档https://pyinstaller.org/en/stable/usage.html 。
 

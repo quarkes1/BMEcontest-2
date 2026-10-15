@@ -16,6 +16,18 @@ def test_package_manifest_rejects_extra_data_or_tampered_exe(tmp_path):
     with pytest.raises(ValueError): verify_submission(p)
 
 
+def test_repack_can_preserve_only_readme_edits_not_executable_edits(tmp_path):
+    from scripts.build_competition_exe import write_manifest, verify_submission
+    (tmp_path/'EatingDetection.exe').write_bytes(b'MZtest')
+    (tmp_path/'README.md').write_text('original')
+    write_manifest(tmp_path, {})
+    (tmp_path/'README.md').write_text('user edited reproduction instructions')
+    with pytest.raises(ValueError): verify_submission(tmp_path)
+    verify_submission(tmp_path, allow_readme_changes=True)
+    (tmp_path/'EatingDetection.exe').write_bytes(b'MZtampered')
+    with pytest.raises(ValueError): verify_submission(tmp_path, allow_readme_changes=True)
+
+
 def test_nested_manifest_name_cannot_escape_file_ledger(tmp_path):
     from scripts.build_competition_exe import write_manifest, verify_submission
     (tmp_path/'EatingDetection.exe').write_bytes(b'MZtest')
