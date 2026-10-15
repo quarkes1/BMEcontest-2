@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+import io
 import re
 
 import numpy as np
@@ -68,12 +69,12 @@ def _discover_in_directory(path: Path) -> list[RawSessionSource]:
     return [RawSessionSource(file, f"{path.name}:{file.stem}", None) for file in files]
 
 
-def _parse_collect_data_tsv(path: Path) -> SessionData:
+def _parse_collect_data_tsv(path: Path, *, text: str | None = None) -> SessionData:
     """The existing 53-column parser, retained without cache side effects."""
     acc_x, acc_y, acc_z, gx, gy, gz = [], [], [], [], [], []
     t_acc, t_ppg, imu_valid, ppg_valid = [], [], [], []
     ppg = [[] for _ in range(N_PPG)]
-    with Path(path).open(encoding="utf-8", errors="replace") as handle:
+    with (io.StringIO(text) if text is not None else Path(path).open(encoding="utf-8", errors="replace")) as handle:
         header = handle.readline()
         assert "ACC_TIME" in header, f"bad header: {path}"
         for line in handle:
@@ -115,3 +116,10 @@ def load_raw_session(source: RawSessionSource) -> SessionData:
     if source.path.suffix.lower() != ".txt" or not _SESSION_NAME.fullmatch(source.path.name):
         raise ValueError("supported raw session input is collect_data*.txt")
     return _parse_collect_data_tsv(source.path)
+
+
+def load_raw_text(source: RawSessionSource, text: str) -> SessionData:
+    """Parse official DataReader text with exactly the canonical file parser."""
+    if not isinstance(text, str):
+        raise TypeError("official TXT content must be text")
+    return _parse_collect_data_tsv(source.path, text=text)
