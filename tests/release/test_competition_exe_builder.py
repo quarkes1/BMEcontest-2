@@ -45,6 +45,19 @@ def test_license_bytes_survive_git_lf_checkout(tmp_path):
         if p.is_file(): assert b'\r' not in p.read_bytes(), p
 
 
+def test_reused_runtime_comparison_accepts_only_line_ending_normalization(tmp_path):
+    import hashlib
+    from scripts.build_competition_exe import reusable_runtime_matches
+    source = tmp_path/'src/example.py'; source.parent.mkdir()
+    source.write_bytes(b'value = 1\r\n')
+    metadata = {'source_delivery': True, 'source_sha256': {
+        'src/example.py': hashlib.sha256(b'value = 1\n').hexdigest()}}
+    assert reusable_runtime_matches(tmp_path, metadata)
+    source.write_bytes(b'value = 2\r\n')
+    assert not reusable_runtime_matches(tmp_path, metadata)
+    assert not reusable_runtime_matches(tmp_path, {'source_sha256': {}})
+
+
 def test_builder_refuses_workspace_root_or_external_destination_before_build(tmp_path):
     from scripts.build_competition_exe import validate_destination
     (tmp_path/'dist').mkdir()

@@ -128,6 +128,23 @@ def release_preflight(root):
     return release, bundle
 
 
+def reusable_runtime_matches(root, metadata):
+    sources = {name: value for name, value in metadata['source_sha256'].items()
+               if name.startswith('src/') or name == 'scripts/competition_entry.py'}
+    if not sources:
+        return False
+    for name, expected in sources.items():
+        path = Path(root)/name
+        if not path.is_file():
+            return False
+        data = path.read_bytes()
+        if metadata.get('source_delivery'):
+            data = data.replace(b'\r\n', b'\n').replace(b'\r', b'\n')
+        if hashlib.sha256(data).hexdigest() != expected:
+            return False
+    return True
+
+
 def build(root=ROOT, destination=None, *, reuse_exe=False):
     from scripts.build_inference_distribution import _atomic_replace
     from scripts.submission_sources import add_sources, consolidate_notices
@@ -142,10 +159,7 @@ def build(root=ROOT, destination=None, *, reuse_exe=False):
         if previous['release_run_key'] != run_key or previous['deployment_sha256'] != {
                 p.name:sha(p) for p in bundle.iterdir() if p.is_file()}:
             raise ValueError('cannot reuse executable from another model')
-        runtime_sources = {name: value for name, value in previous['source_sha256'].items()
-                           if name.startswith('src/') or name == 'scripts/competition_entry.py'}
-        if not runtime_sources or any(not (root/name).is_file() or sha(root/name) != value
-                                      for name, value in runtime_sources.items()):
+        if not reusable_runtime_matches(root, previous):
             raise ValueError('runtime source changed; rebuild executable without --reuse-exe')
     api = root/'src/pipeline/inference/official_api'
     provenance = json.loads((api/'provenance.json').read_text(encoding='utf-8'))
