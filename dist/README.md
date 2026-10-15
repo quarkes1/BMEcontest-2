@@ -1,7 +1,8 @@
 # Distribution Workspace
 
 `dist/` 是发布与交付工作区。算法唯一真源在仓库 `src/pipeline/`；`dist/` 下的
-**生成物不得手工修改**，一律由仓库脚本重建。
+算法生成物由仓库脚本重建，不手工修改。`submission/README.md`允许维护提交说明；
+构建会保留其中的用户修改，其初始模板位于`scripts/official_submission_readme.md`。
 
 ```text
 dist/
