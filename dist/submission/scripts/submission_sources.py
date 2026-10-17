@@ -72,15 +72,20 @@ def add_sources(root: Path, package: Path, run_key: str):
                            (root/'release', package/'release'),
                            (root/'outputs/crossfit', package/'outputs/crossfit')):
         copy_tree(source, target)
+    # A source submission keeps these siblings at its root; the repository
+    # keeps them in dist/. Both layouts must support the documented rebuild.
+    assets = root if (root/'visual/index.html').is_file() else root/'dist'
     for name in ('visual', 'schema', 'examples'):
-        copy_tree(root/'dist'/name, package/name)
+        if not (assets/name).is_dir():
+            raise FileNotFoundError(f'missing submission asset directory: {assets/name}')
+        copy_tree(assets/name, package/name)
     copy_file(root/'scripts/serve_submission.py', package/'serve.py')
     copy_file(root/'scripts/start_submission.bat', package/'start.bat')
     copy_file(root/'scripts/submission_visual_readme.md', package/'visual/README.md')
     notice = package/'THIRD_PARTY_NOTICES.txt'
     if notice.is_file():
         with notice.open('a',encoding='utf-8',newline='\n') as stream:
-            stream.write('\n\n'+(root/'dist/visual/THIRD_PARTY_NOTICES.txt').read_text(encoding='utf-8'))
+            stream.write('\n\n'+(assets/'visual/THIRD_PARTY_NOTICES.txt').read_text(encoding='utf-8'))
     # Root source entry follows the same official no-argument contract as the EXE.
     entry = '"""Official competition source entry point."""\n'
     entry += 'from pathlib import Path\nimport sys\n'
