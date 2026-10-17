@@ -270,6 +270,10 @@ EXE无参数运行，以自身目录读取`ACC_test_data/userinfobean.txt`和每
 `python scripts/build_competition_exe.py --verify-only`核验逐文件SHA。可视化继续使用
 `dist/visual`和`dist/inference`，不混入官方自动评分入口。
 
+`dist/submission/`另含独立可视化：双击其中`start.bat`会调用
+`EatingDetection.exe --visual --open`，不依赖Python、Node、原仓库或联网。
+可视化JSON接口与官方无参数CSV模式相互隔离，使用同一正式模型；前端源码和构建工具随包提供。
+
 历史源码复现包可用`--source-bundle --destination dist/source_submission`单独生成，
 其四列CSV适配器仅供历史自测，不能当作本次官方CSV。当前提交包的`python main.py`与EXE
 均实现官方三列CSV。源码复现步骤见包内README。F1仍为0.6514285714，本轮不涉及新模型晋级。

@@ -2,7 +2,9 @@
 
 2026-10-15交付说明：本应用继续使用`../inference/`的JSON推理接口与`../start.bat`。
 官方自动评分使用`../submission/EatingDetection.exe`，无参数生成三列`results.csv`；
-两者使用同一正式模型，但接口不同。官方CSV不替代可视化JSON，也不需要把本应用放入提交ZIP。
+两者使用同一正式模型，但接口不同。官方CSV不替代可视化JSON。
+`../submission/visual/`同时提供本应用的独立副本：`../submission/start.bat`调用内置模型的
+EXE可视化模式，不需要Python/Node或联网；本目录原有`../start.bat`仍使用Python服务。
 
 腕部 IMU 进食事件检测的实验台界面：证据时间轴、原始 IMU/姿态查看器、进食事件列表、
 发布指标与三维动作回放。前端**只消费** canonical 预测契约与运动遥测，不实现任何模型

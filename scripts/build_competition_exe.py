@@ -60,7 +60,8 @@ def verify_submission(root, *, allow_readme_changes=False):
         actual.pop('README.md', None); expected.pop('README.md', None)
     if actual != expected: raise ValueError('submission file set or SHA differs')
     allowed = {EXE,'README.md',MANIFEST,'licenses','official_api', 'THIRD_PARTY_NOTICES.txt',
-               'main.py', 'requirements.txt', 'src', 'scripts', 'models', 'release', 'outputs'}
+               'main.py', 'requirements.txt', 'src', 'scripts', 'models', 'release', 'outputs',
+               'serve.py','start.bat','visual','schema','examples'}
     if {p.name for p in root.iterdir()}-allowed or not (root/EXE).is_file() or not (root/'README.md').is_file():
         raise ValueError('unexpected submission files; no test data or results may be shipped')
     if (root/EXE).read_bytes()[:2] != b'MZ': raise ValueError('not a Windows executable')
@@ -72,6 +73,9 @@ def verify_submission(root, *, allow_readme_changes=False):
         if any(not (root/name).is_file() for name in required):
             raise ValueError('current-model source delivery is incomplete')
         if (root/'licenses').exists(): raise ValueError('use the consolidated third-party notice')
+    if m.get('visual_delivery'):
+        for name in ('start.bat','serve.py','visual/index.html','visual/runtime/release-metadata.json'):
+            if not (root/name).is_file(): raise ValueError('visual delivery is incomplete: '+name)
     return m
 
 
@@ -213,7 +217,7 @@ def build(root=ROOT, destination=None, *, reuse_exe=False):
         revision = (subprocess.run(['git','rev-parse','HEAD'],cwd=root,capture_output=True,text=True)
                     if shutil.which('git') else subprocess.CompletedProcess([], 1, '', ''))
         metadata = dict(format='official-20261015-windows-x64-onefile', release_run_key=run_key,
-            source_delivery=True, executable_reused=bool(reuse_exe),
+            source_delivery=True, visual_delivery=True, executable_reused=bool(reuse_exe),
             release_development_f1=release['aggregate']['outer_metrics']['f1'], no_new_f1=True, python=platform.python_version(),
             build_tool={'pyinstaller': version('pyinstaller'),'hooks':version('pyinstaller-hooks-contrib')},
             dependencies={n:version(n) for n in RUNTIME_PACKAGES},

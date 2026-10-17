@@ -10,7 +10,7 @@ dist/
 │                   # 附 serve.py 本地推理桥（可视化同源调用）
 ├── visual/         # 团队可视化应用（React+TS+Vite）：源码在 visual/app/，
 │                   # 生产构建为自包含单文件 index.html（双击即用，无任何依赖）
-├── submission/     # 官方提交：自包含EXE + 当前模型源码/权重/复现脚本/合并第三方声明
+├── submission/     # 官方EXE + 模型源码/权重 + visual/独立应用 + 无Python依赖start.bat
 ├── examples/       # 合成安全示例 example_prediction.json（符合 schema，无真实数据）
 ├── schema/         # 稳定契约 prediction.schema.json（v1.0）
 ├── start.bat       # 竞赛一键启动器：本地推理服务 + 浏览器

@@ -14,14 +14,15 @@ import { chromium } from 'playwright-core';
 const app = resolve(import.meta.dirname, '..');
 const visual = resolve(app, '..');
 const dist = resolve(visual, '..');
-const repo = resolve(dist, '..');
+const submission = existsSync(resolve(dist, 'build_manifest.json'));
+const repo = submission ? dist : resolve(dist, '..');
 const PORT = 4199;
 const python = process.env.BME_PYTHON || 'python';
 
 // A real recorded session that the promoted release detects at least one event in
 // (fold-1 validation subject); keeps the end-to-end assertion meaningful.
 const session_id = process.env.BME_E2E_SESSION || 'sensorData-1784562356253-23edff73a65e4e9583c963c5a6ee26dd';
-const dataDir = resolve(repo, 'Data');
+const dataDir = process.env.BME_E2E_DATA_ROOT || resolve(repo, 'Data');
 const batchDirs = await readdir(dataDir);
 const sessionRoot = batchDirs.map(name => resolve(dataDir, name, session_id)).find(candidate => existsSync(candidate));
 if (!sessionRoot) throw new Error(`session fixture not found under ${dataDir}/*/${session_id}`);
@@ -29,7 +30,10 @@ const sessionFile = (await readdir(sessionRoot)).find(name => /^collect_data.*\.
 if (!sessionFile) throw new Error(`no collect_data*.txt in ${sessionRoot}`);
 const sessionPath = resolve(sessionRoot, sessionFile);
 
-const server = spawn(python, [resolve(dist, 'inference', 'serve.py'), '--port', String(PORT), '--visual-dir', resolve(visual)],
+const serverArguments = submission
+  ? [resolve(dist, 'serve.py'), '--port', String(PORT)]
+  : [resolve(dist, 'inference', 'serve.py'), '--port', String(PORT), '--visual-dir', resolve(visual)];
+const server = spawn(python, serverArguments,
   { cwd: repo, stdio: ['ignore', 'pipe', 'pipe'] });
 server.stderr.on('data', chunk => process.stderr.write(String(chunk)));
 let serverExited = false;

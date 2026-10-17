@@ -106,3 +106,18 @@ def test_base_directory_uses_executable_not_cwd(monkeypatch, tmp_path):
     monkeypatch.setattr(sys, 'frozen', True, raising=False)
     monkeypatch.setattr(sys, 'executable', str(tmp_path/'中文路径'/'EatingDetection.exe'))
     assert executable_directory() == tmp_path/'中文路径'
+
+
+def test_visual_flags_do_not_accidentally_run_official_batch():
+    from src.pipeline.inference.official_runner import main
+    for arguments in (['--open'], ['--port','0'], ['--visual','--port','65536']):
+        with pytest.raises(SystemExit) as refused:
+            main(arguments)
+        assert refused.value.code == 2
+
+
+def test_missing_visual_assets_fails_without_creating_official_results(monkeypatch, tmp_path):
+    from src.pipeline.inference import official_runner
+    monkeypatch.setattr(official_runner, 'executable_directory', lambda: tmp_path)
+    assert official_runner.main(['--visual','--no-open']) == 2
+    assert not (tmp_path/'results.csv').exists()

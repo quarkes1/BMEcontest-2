@@ -36,6 +36,23 @@ externalid,beforeTime,afterTime
 EatingDetection.exe --self-check
 ```
 
+## 可视化应用
+
+双击`start.bat`，即可启动本机推理服务并在浏览器打开可视化页面，无需Python、Node或联网。
+默认地址为`http://127.0.0.1:4173/`；可选择原始TXT文件/文件夹查看进食事件、证据时间轴、IMU和三维姿态回放。
+窗口需保持运行，使用控制台Ctrl+C退出。关闭网页不会关闭服务；正常退出会清理本次系统临时上传目录。
+
+```text
+start.bat                         # 一键启动
+start.bat --port 4180              # 端口冲突时切换
+EatingDetection.exe --visual --open
+EatingDetection.exe --visual --port 0 --no-open
+```
+
+直接打开`visual/index.html`可查看演示和已有JSON，原始TXT推理需使用start.bat。
+网页模式使用JSON/运动遥测接口，不会读写或清空官方results.csv；官方评分仍直接无参数运行EXE。
+`visual/app/src`包含前端源码，接口和重建说明见`visual/README.md`。
+
 ## 模型与依赖
 
 EXE采用PyInstaller onefile自包含打包，内置CPython、科学计算库、LightGBM和部署模型。运行时在Windows临时目录释放内置DLL，结束后由bootloader清理；这不是所有库的传统静态链接，也不依赖机器预装Python。首次启动解包可能需要数秒，请勿连续重复启动。需有Windows临时目录及EXE目录的写入权限。
@@ -50,6 +67,10 @@ build_manifest.json记录EXE/包内文件SHA-256、正式模型文件哈希、�
 submission/
 ├── EatingDetection.exe           # 内置模型与依赖，无参数启动
 ├── main.py                       # 相同官方接口的源码入口
+├── start.bat                     # 无Python依赖的一键可视化启动器
+├── serve.py                      # 可视化服务的可选Python源码入口
+├── visual/                       # 网页、React/TypeScript源码及构建工具
+├── schema/、examples/            # 预测JSON契约与合成示例
 ├── requirements.txt              # 源码运行和复现的精确依赖版本
 ├── src/                          # 特征、候选、评分、策略及数据读取源码
 ├── scripts/                      # 当前模型训练、评估、验证与EXE构建
