@@ -81,7 +81,8 @@ def test_source_visualization_runs_from_its_own_tree(tmp_path):
         process.kill(); process.wait(timeout=20)
 
 
-def test_native_start_bat_needs_no_python_or_repository(tmp_path):
+@pytest.fixture
+def native_visual(tmp_path):
     from scripts.build_competition_exe import clean_environment
     if not (PACKAGE/'EatingDetection.exe').is_file():
         pytest.skip('build the submission EXE first')
@@ -91,12 +92,61 @@ def test_native_start_bat_needs_no_python_or_repository(tmp_path):
     shutil.copytree(PACKAGE/'visual', package/'visual')
     # No src, model directory, Python, Node or original parent is available.
     shell = os.environ.get('COMSPEC', r'C:\Windows\System32\cmd.exe')
-    command = [shell,'/d','/c',f'"{package / "start.bat"}" --port 0 --no-open']
-    process, base = start_server(command, tmp_path, clean_environment())
+    # cmd.exe has shell quoting rules, not the C-runtime argv quoting applied
+    # by subprocess to a list. /s removes the outer pair around the /c payload.
+    command = f'"{shell}" /d /s /c ""{package / "start.bat"}" --port 0 --no-open"'
+    environment = clean_environment()
+    environment.update(TEMP=str(tmp_path), TMP=str(tmp_path))
+    process, base = start_server(command, tmp_path, environment)
     try:
-        exercise_bridge(base)
-        assert not (package/'results.csv').exists()
+        yield package, base
     finally:
         # This test owns the cmd -> frozen executable process tree.
         subprocess.run(['taskkill','/PID',str(process.pid),'/T','/F'],capture_output=True)
         process.wait(timeout=20)
+
+
+def test_native_start_bat_needs_no_python_or_repository(native_visual):
+    package, base = native_visual
+    exercise_bridge(base)
+    assert not (package/'results.csv').exists()
+
+
+@pytest.mark.skipif(not shutil.which('node') or not (ROOT/'dist/visual/app/node_modules/playwright-core').is_dir(),
+                    reason='browser acceptance requires Node and the frontend development dependencies')
+def test_native_browser_upload_renders_real_model_result(native_visual):
+    package, base = native_visual
+    # Node/Edge are test drivers outside the isolated package, not EXE dependencies.
+    script = r'''
+import { chromium } from 'playwright-core';
+const browser = await chromium.launch({channel:'msedge',headless:true})
+  .catch(() => chromium.launch({channel:'chrome',headless:true}));
+try {
+  const page = await browser.newPage();
+  const errors = [];
+  page.on('pageerror', error => errors.push(String(error)));
+  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+  await page.goto(process.argv[1]);
+  await page.waitForSelector('.timeline-panel');
+  await page.waitForFunction(() => !document.querySelector('button[title="Run canonical inference on collect_data*.txt files"]')?.disabled);
+  const header = ['ACC_TIME','PPG_TIME','GYRO_TIME',...Array.from({length:44},(_,i)=>`PPG${i+1}`),'ACC_X','ACC_Y','ACC_Z','GYRO_X','GYRO_Y','GYRO_Z'];
+  const rows = [header.join('\t')];
+  for (let i=0;i<1000;i++) {
+    const t=1760000000000+i*10;
+    rows.push([t,t,t,...Array(44).fill(100),0,0,1,0,0,0].join('\t'));
+  }
+  await page.setInputFiles('.data-loader input[accept=".txt,text/plain"]', {
+    name:'collect_data1_2_3.txt',mimeType:'text/plain',buffer:Buffer.from(rows.join('\n')+'\n')});
+  await page.waitForFunction(() => document.querySelector('.status-line')?.textContent?.includes('Ready'),null,{timeout:120000});
+  if (!(await page.inputValue('.session-picker select')).includes('collect_data1_2_3')) throw new Error('uploaded session not selected');
+  if (await page.locator('.timeline-analyzing').count()) throw new Error('analysis overlay not cleared');
+  if (await page.locator('.error-banner').count()) throw new Error(await page.locator('.error-banner').innerText());
+  if (errors.length) throw new Error(errors.join(' | '));
+  console.log('Frozen EXE browser upload: Ready, uploaded session rendered, no page errors');
+} finally { await browser.close(); }
+'''
+    result = subprocess.run([shutil.which('node'),'--input-type=module','-e',script,base],
+                            cwd=ROOT/'dist/visual/app',capture_output=True,text=True,
+                            encoding='utf-8',errors='replace',timeout=180)
+    assert result.returncode == 0, result.stdout+'\n'+result.stderr
+    assert not (package/'results.csv').exists()

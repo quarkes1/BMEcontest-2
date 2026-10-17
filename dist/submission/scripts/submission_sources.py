@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from importlib.metadata import version
 from pathlib import Path
+import os
 import shutil
 
 
@@ -12,8 +13,9 @@ SOURCE_SCRIPTS = (
     'evaluate_event_stack.py', 'crossfit_event_stack.py', 'train_event_stack.py',
     'promote_event_stack.py', 'release_event_stack.py', 'package_event_stack.py',
     'official_iou_eval.py', 'requirements-build.txt', 'official_submission_readme.md',
+    'serve_submission.py', 'start_submission.bat', 'submission_visual_readme.md',
 )
-TEXT_SUFFIXES = {'.py', '.md', '.json', '.txt', '.bat', '.yml', '.yaml'}
+TEXT_SUFFIXES = {'.py', '.md', '.json', '.txt', '.bat', '.yml', '.yaml', '.mjs', '.js', '.ts', '.tsx', '.css', '.html'}
 
 
 def copy_file(source: Path, destination: Path):
@@ -23,15 +25,22 @@ def copy_file(source: Path, destination: Path):
     data = source.read_bytes()
     if source.suffix.lower() in TEXT_SUFFIXES:
         data = data.replace(b'\r\n', b'\n').replace(b'\r', b'\n')
+        if source.suffix.lower() == '.bat':
+            data = data.replace(b'\n', b'\r\n')
     destination.write_bytes(data)
 
 
 def copy_tree(source: Path, destination: Path):
-    for file in sorted(source.rglob('*')):
-        if file.is_symlink():
-            raise ValueError('source export cannot contain symlinks')
-        if file.is_file() and '__pycache__' not in file.parts and file.suffix != '.pyc':
-            copy_file(file, destination/file.relative_to(source))
+    excluded = {'node_modules', '__pycache__', '.git', '.vite', 'coverage'}
+    for parent, directories, filenames in os.walk(source):
+        directories[:] = sorted(name for name in directories if name not in excluded)
+        for name in directories:
+            if (Path(parent)/name).is_symlink():
+                raise ValueError('source export cannot contain symlinks')
+        for name in sorted(filenames):
+            file = Path(parent)/name
+            if file.suffix != '.pyc' and name != 'capture-report-shots.mjs':
+                copy_file(file, destination/file.relative_to(source))
 
 
 def consolidate_notices(package: Path):
@@ -63,6 +72,15 @@ def add_sources(root: Path, package: Path, run_key: str):
                            (root/'release', package/'release'),
                            (root/'outputs/crossfit', package/'outputs/crossfit')):
         copy_tree(source, target)
+    for name in ('visual', 'schema', 'examples'):
+        copy_tree(root/'dist'/name, package/name)
+    copy_file(root/'scripts/serve_submission.py', package/'serve.py')
+    copy_file(root/'scripts/start_submission.bat', package/'start.bat')
+    copy_file(root/'scripts/submission_visual_readme.md', package/'visual/README.md')
+    notice = package/'THIRD_PARTY_NOTICES.txt'
+    if notice.is_file():
+        with notice.open('a',encoding='utf-8',newline='\n') as stream:
+            stream.write('\n\n'+(root/'dist/visual/THIRD_PARTY_NOTICES.txt').read_text(encoding='utf-8'))
     # Root source entry follows the same official no-argument contract as the EXE.
     entry = '"""Official competition source entry point."""\n'
     entry += 'from pathlib import Path\nimport sys\n'

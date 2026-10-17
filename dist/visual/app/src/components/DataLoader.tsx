@@ -25,8 +25,8 @@ export default function DataLoader({ capabilities, prediction, onDataset, onErro
   const existingInput = useRef<HTMLInputElement>(null);
   const bridgeReady = capabilities?.inference === true;
   const unavailableHint = capabilities?.reason === 'file-protocol'
-    ? 'Opened as a local file: raw TXT analysis needs the local inference service — double-click dist\\start.bat and use the page it opens. Demo and existing prediction files stay available here.'
-    : 'Local inference service unavailable — start it with dist\\start.bat. Demo and existing prediction files are still available.';
+    ? 'Opened as a local file: raw TXT analysis needs the local inference service — double-click start.bat in the distribution folder and use the page it opens. Demo and existing prediction files stay available here.'
+    : 'Local inference service unavailable — double-click start.bat in the distribution folder. Demo and existing prediction files are still available.';
 
   async function handleRaw(files: FileList | null, folder: boolean) {
     if (!files?.length) return;

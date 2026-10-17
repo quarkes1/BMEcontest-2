@@ -1,0 +1,152 @@
+{
+  "candidates": [
+    {
+      "admitted": true,
+      "end_ms": 1784559600000,
+      "score": 0.83,
+      "session_id": "synthetic-session-a",
+      "start_ms": 1784558040000
+    },
+    {
+      "admitted": false,
+      "end_ms": 1784598000000,
+      "score": 0.42,
+      "session_id": "synthetic-session-a",
+      "start_ms": 1784595000000
+    },
+    {
+      "admitted": true,
+      "end_ms": 1784600700000,
+      "score": 0.66,
+      "session_id": "synthetic-session-a",
+      "start_ms": 1784599380000
+    },
+    {
+      "admitted": true,
+      "end_ms": 1784642760000,
+      "score": 0.9,
+      "session_id": "synthetic-session-b",
+      "start_ms": 1784641740000
+    }
+  ],
+  "diagnostics": {
+    "coverage": 0.982,
+    "resolved_device": "cpu",
+    "warnings": [
+      "synthetic-session-a contains an unmonitored gap"
+    ]
+  },
+  "events": [
+    {
+      "confidence": 0.87,
+      "duration_s": 1320.0,
+      "end_ms": 1784559480000,
+      "id": 0,
+      "session_id": "synthetic-session-a",
+      "start_ms": 1784558160000
+    },
+    {
+      "confidence": 0.71,
+      "duration_s": 1080.0,
+      "end_ms": 1784600580000,
+      "id": 1,
+      "session_id": "synthetic-session-a",
+      "start_ms": 1784599500000
+    },
+    {
+      "confidence": 0.9,
+      "duration_s": 900.0,
+      "end_ms": 1784642700000,
+      "id": 2,
+      "session_id": "synthetic-session-b",
+      "start_ms": 1784641800000
+    }
+  ],
+  "gaps": [
+    {
+      "end_ms": 1784570600000,
+      "session_id": "synthetic-session-a",
+      "start_ms": 1784570000000
+    },
+    {
+      "end_ms": 1784630240000,
+      "session_id": "synthetic-session-b",
+      "start_ms": 1784630000000
+    }
+  ],
+  "input": {
+    "duration_seconds": 86400.0,
+    "source": "synthetic-example"
+  },
+  "model": {
+    "name": "event-stack",
+    "run_key": "160afaf81debf1ee"
+  },
+  "schema_version": "1.0",
+  "timeline": {
+    "macro_windows": 5760,
+    "micro_windows": 11520,
+    "series": [
+      {
+        "gap": false,
+        "macro_probability": 0.31,
+        "micro_probability": 0.24,
+        "session_id": "synthetic-session-a",
+        "timestamp_ms": 1784558100000,
+        "valid": true
+      },
+      {
+        "gap": false,
+        "macro_probability": 0.58,
+        "micro_probability": 0.51,
+        "session_id": "synthetic-session-a",
+        "timestamp_ms": 1784558250000,
+        "valid": true
+      },
+      {
+        "gap": false,
+        "macro_probability": 0.86,
+        "micro_probability": 0.79,
+        "session_id": "synthetic-session-a",
+        "timestamp_ms": 1784558400000,
+        "valid": true
+      },
+      {
+        "gap": false,
+        "macro_probability": 0.91,
+        "micro_probability": 0.84,
+        "session_id": "synthetic-session-a",
+        "timestamp_ms": 1784558550000,
+        "valid": true
+      },
+      {
+        "gap": false,
+        "macro_probability": 0.78,
+        "micro_probability": 0.72,
+        "session_id": "synthetic-session-a",
+        "timestamp_ms": 1784558700000,
+        "valid": true
+      },
+      {
+        "gap": false,
+        "macro_probability": 0.35,
+        "micro_probability": 0.29,
+        "session_id": "synthetic-session-a",
+        "timestamp_ms": 1784558850000,
+        "valid": true
+      },
+      {
+        "gap": true,
+        "macro_probability": 0.0,
+        "micro_probability": 0.0,
+        "session_id": "synthetic-session-a",
+        "timestamp_ms": 1784570200000,
+        "valid": false
+      }
+    ],
+    "session_ids": [
+      "synthetic-session-a",
+      "synthetic-session-b"
+    ]
+  }
+}

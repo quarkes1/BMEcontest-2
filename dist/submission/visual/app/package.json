@@ -1,0 +1,30 @@
+{
+  "name": "eatingsense-visual",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "predev": "node ../tools/prepare-release.mjs",
+    "dev": "vite --host 127.0.0.1",
+    "prebuild": "node ../tools/prepare-release.mjs && node ../tools/clean-build.mjs",
+    "build": "tsc --noEmit && vite build && node ../tools/make-standalone.mjs",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "vitest run",
+    "e2e": "node tools/e2e-smoke.mjs",
+    "e2e:bridge": "node tools/e2e-bridge.mjs"
+  },
+  "dependencies": {
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "three": "^0.186.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/three": "^0.186.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "playwright-core": "^1.63.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1"
+  }
+}

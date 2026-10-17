@@ -16,7 +16,7 @@ type SessionArtifact = {
 };
 
 /**
- * Client for the local canonical-inference bridge (`dist/inference/serve.py`).
+ * Client for the local inference bridge (start.bat or the source serve.py entry).
  * It only transports raw TXT files and returns the published prediction contract plus
  * motion telemetry — the browser never implements model logic.
  */

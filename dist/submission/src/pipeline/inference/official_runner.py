@@ -31,6 +31,23 @@ def default_bundle() -> Path:
     return root/"models"/"event_stack"/str(release["run_key"])/"deployment"
 
 
+def run_visual(*, port=4173, open_browser=False) -> int:
+    from . import local_server
+    base = executable_directory()
+    visual = base/'visual'
+    if not (visual/'index.html').is_file():
+        raise FileNotFoundError('visual/index.html must be next to the executable; extract the complete submission package')
+    resources = Path(sys._MEIPASS) if getattr(sys, 'frozen', False) else base
+    registry = json.loads((resources/'release/event_stack_incumbent.json').read_text(encoding='utf-8'))
+    arguments = ['--bundle',str(default_bundle()),'--run-key',str(registry['run_key']),
+                 '--visual-dir',str(visual),'--host','127.0.0.1','--port',str(port)]
+    if open_browser:
+        arguments.append('--open')
+    with tempfile.TemporaryDirectory(prefix='eatingsense-visual-', ignore_cleanup_errors=True) as work:
+        with threadpool_limits(limits=min(8, os.cpu_count() or 1)):
+            return local_server.main(arguments, temp_root=Path(work))
+
+
 def run(base: Path, bundle: Path, *, predictor=None) -> dict:
     base = Path(base).resolve(); data = base/"ACC_test_data"
     if not data.is_dir():
@@ -75,9 +92,21 @@ def run(base: Path, bundle: Path, *, predictor=None) -> dict:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Place ACC_test_data next to EatingDetection.exe; run without arguments; writes results.csv.")
-    parser.add_argument('--self-check', action='store_true', help='validate bundled release and dependencies without reading test data')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--self-check', action='store_true', help='validate bundled release and dependencies without reading test data')
+    mode.add_argument('--visual', action='store_true', help='serve the packaged visualization and local JSON inference API')
+    parser.add_argument('--port', type=int, default=None, help='visual mode port (default 4173; 0 selects a free port)')
+    parser.add_argument('--open', dest='open_browser', action='store_true', help='visual mode: open the default browser')
+    parser.add_argument('--no-open', dest='open_browser', action='store_false', help='visual mode: do not open a browser')
+    parser.set_defaults(open_browser=False)
     args = parser.parse_args(argv)
+    if args.port is not None and not 0 <= args.port <= 65535:
+        parser.error('--port must be between 0 and 65535')
+    if not args.visual and (args.port is not None or args.open_browser):
+        parser.error('--port and --open require --visual')
     try:
+        if args.visual:
+            return run_visual(port=4173 if args.port is None else args.port, open_browser=args.open_browser)
         if args.self_check:
             predictor = Predictor.from_bundle(default_bundle(), device="cpu")
             print(json.dumps(dict(status="OK", run_key=predictor._run_key, device="cpu")))

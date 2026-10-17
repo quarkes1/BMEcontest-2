@@ -405,7 +405,7 @@ def build_server(service: LocalInferenceService, host: str, port: int) -> Thread
     return server
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None, *, temp_root: Path | None = None) -> int:
     parser = argparse.ArgumentParser(description="Local canonical-inference bridge for the visual application.")
     parser.add_argument("--bundle", type=Path, default=None, help="deployment bundle directory (required; serve.py fills it in)")
     parser.add_argument("--run-key", default=None, help="release run key reported to clients")
@@ -425,7 +425,7 @@ def main(argv: list[str] | None = None) -> int:
             run_key = str(manifest.get("release_run_key"))
         except (OSError, ValueError):
             run_key = Path(bundle).parent.name
-    service = LocalInferenceService(Path(bundle), run_key=run_key, visual_dir=args.visual_dir)
+    service = LocalInferenceService(Path(bundle), run_key=run_key, visual_dir=args.visual_dir, temp_root=temp_root)
     try:
         server = build_server(service, args.host, args.port)
     except OSError as exc:
