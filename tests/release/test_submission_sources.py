@@ -8,6 +8,16 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def test_exported_source_can_reexport_visual_from_package_root(tmp_path):
+    from scripts.submission_sources import add_sources
+    source, destination = tmp_path/'source', tmp_path/'rebuilt'
+    add_sources(ROOT, source, '160afaf81debf1ee')
+    add_sources(source, destination, '160afaf81debf1ee')
+    assert (destination/'visual/index.html').read_bytes() == (source/'visual/index.html').read_bytes()
+    assert (destination/'schema/prediction.schema.json').is_file()
+    assert (destination/'examples/example_prediction.json').is_file()
+
+
 def test_consolidated_notice_retains_complete_license_texts(tmp_path):
     from scripts.build_competition_exe import copy_licenses
     from scripts.submission_sources import consolidate_notices
