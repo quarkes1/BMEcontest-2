@@ -1,5 +1,6 @@
 """Frozen-result audits must not turn evaluation-scope changes into model gains."""
-from pathlib import Path
+import hashlib
+import json
 
 import pytest
 
@@ -77,3 +78,20 @@ def test_matching_rejects_nonpositive_intervals():
     from scripts.research.official_recovery.scope_audit import match_events
     with pytest.raises(ValueError, match='positive'):
         match_events([('A', 50, 50)], [('A', 0, 100)])
+
+
+def test_subjects_come_from_verified_diagnostics_not_summary_alias(tmp_path):
+    from scripts.research.official_recovery.scope_audit import read_fold_subjects
+    fold = tmp_path/'outer-fold-0'
+    fold.mkdir()
+    data = json.dumps({'subjects': {'A': {'n_true': 1}}}).encode()
+    (fold/'diagnostics.json').write_bytes(data)
+    (fold/'manifest.json').write_text(json.dumps({'files': {
+        'diagnostics.json': hashlib.sha256(data).hexdigest()}}))
+    summary = {'folds': [{'outer_fold': 0, 'config_hash': 'example'}]}
+    records, paths = read_fold_subjects(tmp_path, summary)
+    assert records == [{'fold': 0, 'subjects': ['A']}]
+    assert fold/'diagnostics.json' in paths
+    (fold/'diagnostics.json').write_text('{"subjects": {"B": {}}}')
+    with pytest.raises(ValueError, match='SHA'):
+        read_fold_subjects(tmp_path, summary)

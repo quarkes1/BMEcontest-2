@@ -121,6 +121,21 @@ def protection(root):
     return {p.relative_to(root).as_posix(): _sha(p) for p in files if p.is_file()}
 
 
+def read_fold_subjects(run_root, summary):
+    records, paths = [], []
+    for record in summary['folds']:
+        fold = int(record['outer_fold'])
+        directory = Path(run_root)/f'outer-fold-{fold}'
+        manifest_path, diagnostic_path = directory/'manifest.json', directory/'diagnostics.json'
+        manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+        if _sha(diagnostic_path) != manifest['files']['diagnostics.json']:
+            raise ValueError('diagnostic SHA differs from attested bundle')
+        diagnostic = json.loads(diagnostic_path.read_text(encoding='utf-8'))
+        records.append(dict(fold=fold, subjects=sorted(diagnostic['subjects'])))
+        paths.extend([manifest_path, diagnostic_path])
+    return records, paths
+
+
 def audit_scope(root):
     from src.data.manifests import load_meals, load_sensor_index, MEALS_CSV, INDEX_CSV
     from src.pipeline.artifacts import verify_promotion_attestation
@@ -134,8 +149,7 @@ def audit_scope(root):
     if problems:
         raise ValueError('release attestation invalid: '+str(problems))
     started = time.perf_counter()
-    paths = [Path(MEALS_CSV), Path(INDEX_CSV)]
-    fold_records = []
+    paths = [Path(MEALS_CSV), Path(INDEX_CSV), Path(__file__).resolve()]
     for fold in range(5):
         path = root/'models/event_stack'/RUN_KEY/f'outer-fold-{fold}'/'run_config.json'
         # Subject membership comes from the attested promotion summary, not an alias cache.
@@ -143,9 +157,8 @@ def audit_scope(root):
     summary_path = root/'models/event_stack'/RUN_KEY/'promotion_summary.json'
     paths.append(summary_path)
     summary = json.loads(summary_path.read_text(encoding='utf-8'))
-    for record in summary['folds']:
-        fold_records.append(dict(fold=record['run_config']['outer_fold'],
-                                 subjects=record['outer_subjects']))
+    fold_records, fold_paths = read_fold_subjects(root/'models/event_stack'/RUN_KEY, summary)
+    paths.extend(fold_paths)
     subject_fold = fold_subjects(fold_records)
     tp_path = root/'outputs/challenger_70/e04_verifier_audit/tp_reference.csv'
     fp_path = root/'outputs/challenger_70/e04_verifier_audit/fp_reference.csv'
@@ -230,6 +243,8 @@ def audit_scope(root):
         truth_rows=truth_rows, per_subject=per_subject,
         source_sha256=sources_before, protected_sha256=protected,
         code_commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip(),
+        execution_source_sha256=_sha(Path(__file__).resolve()),
+        working_tree_dirty=bool(subprocess.check_output(['git','status','--porcelain'],cwd=root,text=True).strip()),
         training_fits=0, policy_selections=0, raw_signal_reads=0,
         elapsed_seconds=time.perf_counter()-started)
     if protected != protection(root) or sources_before != {str(p.relative_to(root)):_sha(p) for p in paths}:
