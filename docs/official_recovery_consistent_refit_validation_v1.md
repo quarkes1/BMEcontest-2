@@ -71,3 +71,8 @@ Ruling: 本轮B训练候选正例计数日志发生NumPy int8溢出，仅该诊�
 - [ ] 验证官方示例、真实数据Python/EXE一致、多文件同人、空/错误输入和隔离目录无开发PATH；对最终变更做一次全套回归及整体只读审查；更新README/报告，逐项固化并保持工作树干净。独立送测不自动发送、不晋级正式release。
 
 Pre-flight接口：refit输出deployment manifest与训练证明→trial builder输入；gate证据summary/plan/五折report/score→refit预检。重点检查原始ID别名、多文件cap共享、固定策略不调参、错误时不发布半成品、源及模型身份。用户已授权连续执行，不另发计划审批。
+
+- 全数据refit完成（99.23秒）：macro一次抽样26916窗/8897正例（.330547），micro61469窗/19252正例（.313199）；3323个OOF候选/152正例，116D。新独立四模型和全部SHA已保存，源/资格指纹与正式保护均通过；没有训练内F1。
+- 固定聚合policy：micro=.1、blend=.25、NMS=.3、admission=.2、cap=6、event threshold=.6595272837359293、C=.1、无最终event cap。与原deployment策略相同，不将五折成绩当权重。
+- 最终审查一个Important：原通用bundle writer会替换在预检后出现的独立目标。补Windows原生rename原子拒绝覆盖安装（含空目标目录），3项真实文件系统RED→GREEN测试；模型先写专属staging，再原子发布整个版本目录。此次训练已在修改前安全结束，未发生并发目标；不因安装层保护补丁重训，不改既有模型SHA。EXE同用此保护。
+- Ruling: 原子no-replace发布限定Windows（本交付平台），其他系统明确失败，不将POSIX rename冒充同语义。代价：研究导出需Windows运行；通用正式artifact writer保持原行为。

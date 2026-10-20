@@ -49,3 +49,22 @@ def test_policy_aggregation_uses_only_frozen_fields_not_fold_performance():
     p=aggregate_policy(settings)
     assert p['threshold']==.7 and p['blend_weight']==.25 and p['max_candidates_per_subject']==6
     assert p['micro_threshold']==.1 and p['admission_threshold']==.2
+
+
+@pytest.mark.parametrize('empty',[False,True])
+def test_atomic_directory_publication_never_replaces_existing_destination(tmp_path,empty):
+    from scripts.research.official_recovery.consistent_refit import install_new_directory
+    source=tmp_path/'staging';source.mkdir();(source/'new.txt').write_text('new')
+    target=tmp_path/'destination';target.mkdir()
+    if not empty: (target/'old.txt').write_text('old')
+    with pytest.raises(OSError): install_new_directory(source,target)
+    assert source.is_dir() and not (target/'new.txt').exists()
+    if not empty: assert (target/'old.txt').read_text()=='old'
+
+
+def test_atomic_directory_publication_moves_a_new_complete_tree(tmp_path):
+    from scripts.research.official_recovery.consistent_refit import install_new_directory
+    source=tmp_path/'staging';source.mkdir();(source/'model.txt').write_text('model')
+    target=tmp_path/'destination'
+    install_new_directory(source,target)
+    assert not source.exists() and (target/'model.txt').read_text()=='model'

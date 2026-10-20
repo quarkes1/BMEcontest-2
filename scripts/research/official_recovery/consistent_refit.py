@@ -6,9 +6,11 @@ from dataclasses import asdict,replace
 import gc
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
+import tempfile
 import time
 import warnings
 
@@ -118,6 +120,28 @@ def fit_consistent(data,config,policy):
     return fit,statistics
 
 
+def install_new_directory(source,destination):
+    # Windows rename has atomic fail-if-destination-exists semantics, including empty dirs.
+    # Do not substitute Path.replace or the POSIX rename implementation here.
+    if os.name!='nt': raise RuntimeError('atomic no-replace publication requires Windows')
+    os.rename(source,destination)
+
+
+def publish_bundle_new(destination,bundle,event_stack_root):
+    root=Path(event_stack_root);destination=Path(destination)
+    if destination!=root/VERSION/'deployment': raise ValueError('unexpected independent bundle destination')
+    root.mkdir(parents=True,exist_ok=True)
+    staging=Path(tempfile.mkdtemp(prefix='.consistent-refit-',dir=root))
+    try:
+        write_event_stack_bundle(staging/'deployment',bundle,event_stack_root=root)
+        install_new_directory(staging,destination.parent)
+    finally:
+        if staging.exists():
+            if staging.parent!=root or not staging.name.startswith('.consistent-refit-'):
+                raise RuntimeError('unsafe model staging cleanup')
+            shutil.rmtree(staging)
+
+
 def execute(root,source,output):
     from src.data.manifests import load_sensor_index
     root,source,output=map(lambda p:Path(p).resolve(),(root,source,output))
@@ -127,7 +151,7 @@ def execute(root,source,output):
             raise RuntimeError('commit code and evidence before refitting')
         gate_plan,gate=validated_gate(root,source);protected=protection(root)
         destination=root/'models/event_stack'/VERSION/'deployment'
-        if destination.exists(): raise FileExistsError('independent model already exists')
+        if destination.parent.exists(): raise FileExistsError('independent model version already exists')
         mapping=validated_session_subjects(load_sensor_index().to_dict('records'))
         eligibility=eligibility_inputs(root,mapping)
         _write(output/'eligibility_inputs.json',eligibility)
@@ -174,7 +198,7 @@ def execute(root,source,output):
                 fold_configs=[asdict(c) for c in configs],trial_version=VERSION),
             feature_schema=_validated_feature_schema(fit,config),metrics=dict(evidence_kind='INDEPENDENT_OFFICIAL_TRIAL_NOT_PROMOTED',
                 development_validation=gate,no_official_score=True,no_training_f1=True),source_fingerprints=fingerprints,role='deployment')
-        write_event_stack_bundle(destination,bundle,event_stack_root=root/'models/event_stack')
+        publish_bundle_new(destination,bundle,event_stack_root=root/'models/event_stack')
         loaded=load_event_stack_bundle(destination,expected_role='deployment')
         if set(loaded.models)!=set(bundle.models): raise ValueError('serialized model set differs')
         result=dict(state='COMPLETE',version=VERSION,bundle=str(destination.relative_to(root)),
