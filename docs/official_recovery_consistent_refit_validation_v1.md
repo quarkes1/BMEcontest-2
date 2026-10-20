@@ -65,9 +65,9 @@ Ruling: 本轮B训练候选正例计数日志发生NumPy int8溢出，仅该诊�
 
 按已批准规范继续原地实现，以下是剩余任务的执行清单，不增加实验参数：
 
-- [ ] `scripts/research/official_recovery/consistent_refit.py`与对应研究测试：验证五折gate和证据SHA；从唯一完整val联合构建全数据角色；复用sample_training_rows(seed=20260901, negative_ratio=3)，每流只采一次；验证无重复/灰区、原session合同、身份哈希；四折subject OOF→116D verifier；最终窗口refit，模型写独立`models/event_stack/official_consistent_refit_v1/deployment`。失败gate禁止fit，所有输入前后校验，训练内不报告F1。
-- [ ] 训练预算：CPU8线程、<=2小时、证据<=128MiB、空间>=10GiB；只保存最终四个必要模型，不存中间权重/特征。policy使用既有canonical_deployment_policy等权mode/median（mode平票最小值），不看本轮成绩加权；模型seed与五折B保持一致。
-- [ ] `scripts/research/official_recovery/trial_exe.py`与对应交付测试：固定只写`dist/official_trials/consistent_refit_v1`，禁止覆盖正式目录；嵌入独立bundle和非晋级trial身份，PyInstaller onefile；复用官方接口并保留源保护。单独构建日志和证据，清理本次临时编译树。
+- [x] `scripts/research/official_recovery/consistent_refit.py`与对应研究测试：验证五折gate和证据SHA；从唯一完整val联合构建全数据角色；复用sample_training_rows(seed=20260901, negative_ratio=3)，每流只采一次；验证无重复/灰区、原session合同、身份哈希；四折subject OOF→116D verifier；最终窗口refit，模型写独立`models/event_stack/official_consistent_refit_v1/deployment`。失败gate禁止fit，所有输入前后校验，训练内不报告F1。
+- [x] 训练预算：CPU8线程、<=2小时、证据<=128MiB、空间>=10GiB；只保存最终四个必要模型，不存中间权重/特征。policy使用既有canonical_deployment_policy等权mode/median（mode平票最小值），不看本轮成绩加权；模型seed与五折B保持一致。
+- [x] `scripts/research/official_recovery/trial_exe.py`与对应交付测试：固定只写`dist/official_trials/consistent_refit_v1`，禁止覆盖正式目录；嵌入独立bundle和非晋级trial身份，PyInstaller onefile；复用官方接口并保留源保护。单独构建日志和证据，清理本次临时编译树。
 - [ ] 验证官方示例、真实数据Python/EXE一致、多文件同人、空/错误输入和隔离目录无开发PATH；对最终变更做一次全套回归及整体只读审查；更新README/报告，逐项固化并保持工作树干净。独立送测不自动发送、不晋级正式release。
 
 Pre-flight接口：refit输出deployment manifest与训练证明→trial builder输入；gate证据summary/plan/五折report/score→refit预检。重点检查原始ID别名、多文件cap共享、固定策略不调参、错误时不发布半成品、源及模型身份。用户已授权连续执行，不另发计划审批。
@@ -81,3 +81,12 @@ Pre-flight接口：refit输出deployment manifest与训练证明→trial builder
 - verified EXE构建46.36秒，62,893,900字节，SHA256 `9e21b91a4a47ddc490bd2f9ace2151a5d5c2eea1c040c0d5b2c9985d2b82ca5e`；clean-tree与全src/scripts SHA前后匹配，试测身份自检通过。
 - 运行验收1 passed/1 skipped，59.89秒；真实同人连续两文件+空文件，Python/EXE CSV逐字节一致，共1个事件；中文路径/中性cwd/开发PATH剥离、无输入、空结果、错误metadata保留旧结果均验证。唯一skip为原官方示例缺失，不将其混作通过。全套回归正在运行。
 - 清理已完成验收scratch与过期试构建副本的PowerShell操作被执行策略拒绝，未执行删除，不换工具绕过。暂存`cache/delivery_build/consistent-trial-superseded-v1`和`consistent_trial_acceptance_v1`；不在dist，待有合适执行权限后清理。活动全套scratch不作删除。
+
+## 最终核验（2026-10-20）
+
+- 最终完整pytest：**1048 passed / 7 skipped / 39 warnings，987.87秒**。命令：`python -X utf8 -m pytest -q -ra -p no:cacheprovider --basetemp cache/delivery_build/consistent_full_pytest_v1`。7项skip为5项Windows符号链接权限测试和2项缺少同一官方原样例的测试，不记作通过。研究专项另为66 passed；完整回归包含全部新增代码测试和新EXE真实验收。
+- 最终序列化HGB实际基准概率=.33054688661019466，与抽样正例比例精确一致；四模型宽度63/47/116/116、seed分别20260910/20260920/20260911/20260931，符合冻结合同。
+- 57个正式模型/release/EXE文件与最初scope保护SHA逐项相等；新EXE=构建记录=验收记录SHA，全src/scripts与实际构建前快照相等；送测目录只有EatingDetection.exe。
+- 编译work/staging已由导出器清理；策略拦截留下的旧试构建与验收scratch，加上已完成全套测试scratch，合计1,831,027,719字节（约1.71GiB），分别在`cache/delivery_build/consistent-trial-superseded-v1`、`consistent_trial_acceptance_v1`、`consistent_full_pytest_v1`。它们不是必要模型/特征缓存，未混入dist，仍需后续获准的清理方式。
+- 审查两项Important均已通过RED→GREEN修复并纳入最终绿套；无其他Critical/Important待处理。按用户既有授权保留main提交，不另建worktree/PR、不自动push或邮件发送、不改正式release或前端。
+- 最后一项交付清单未勾选仅因**原官方样例补测、受策略拦截的scratch清理**尚未完成；其他实现/验收/文档固化均完成。不宣称整份规范零缺口或官方F1提升。

@@ -1,0 +1,11 @@
+{
+  "code_and_executable_commit": "d9560dc",
+  "full_pytest": {"passed":1048,"skipped":7,"warnings":39,"elapsed_seconds":987.87,"exit_code":0},
+  "serialized_hgb_positive_prior": 0.33054688661019466,
+  "protected_original_files_unchanged": 57,
+  "executable_sha256": "9e21b91a4a47ddc490bd2f9ace2151a5d5c2eea1c040c0d5b2c9985d2b82ca5e",
+  "formal_release_changed": false,
+  "new_official_score": null,
+  "remaining_gaps": ["Original official sample unavailable for rerun", "Execution policy denied cleanup of 1831027719 bytes of task-owned test/obsolete-build scratch under cache/delivery_build"],
+  "overall_claim": "Independent trial EXE and implemented-path verification complete; documented sample and cleanup gaps remain."
+}
