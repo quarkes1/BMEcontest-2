@@ -54,3 +54,20 @@ dist/submission、dist/inference和前端正式模型不动；独立送测不等
 - Ruling: 训练角色在切片前使用已通过别名冲突检查的传感器索引映射规范ID；不修改窗口、标签、折归属或评估分母。新增真实数据适配回归测试RED→GREEN后，以`consistent_validation_v1_retry1`重启同一预注册实验。代价：若映射错误会影响隔离，故未知session仍硬失败，且继续保留fit祖先审计；不进行参数调整。
 - 全分支只读审查未发现Critical/Important；运行结果和资源开销由实际执行验证，静态审查不替代实验。
 - `retry1`被干净工作树门拦截（仍0次fit）：前一次失败证据尚未入库。先将两次INCOMPLETE证据固化，再以`retry2`启动；不覆盖失败记录，不改变实验设置。
+
+## 同规模验证结论与后续实现
+
+`retry2`完成，461.41秒、60次窗口fit/20次verifier fit；零策略搜索，输入指纹与57项正式文件保护通过。
+完整254餐：A=90TP/34FP/164FN、F1=.476190；B=126TP/47FP/128FN、F1=.590164，差+.113973，4/5折改善；逐人29改善/6退步/4持平，达到独立送测门。
+eligible153诊断：A=.519856，B=.687117；不能用该较高数字替代完整口径或称官方提升，亦未达到.70目标。
+
+Ruling: 本轮B训练候选正例计数日志发生NumPy int8溢出，仅该诊断字段作废；labels未修改，模型fit、概率、事件与gate不使用该求和值，不重训/不改写原始证据。新增300正例计数RED→GREEN测试，后续改用count_nonzero。代价：本轮不能报告B训练候选正例的精确数量，但窗口类比例仍有效。
+
+按已批准规范继续原地实现，以下是剩余任务的执行清单，不增加实验参数：
+
+- [ ] `scripts/research/official_recovery/consistent_refit.py`与对应研究测试：验证五折gate和证据SHA；从唯一完整val联合构建全数据角色；复用sample_training_rows(seed=20260901, negative_ratio=3)，每流只采一次；验证无重复/灰区、原session合同、身份哈希；四折subject OOF→116D verifier；最终窗口refit，模型写独立`models/event_stack/official_consistent_refit_v1/deployment`。失败gate禁止fit，所有输入前后校验，训练内不报告F1。
+- [ ] 训练预算：CPU8线程、<=2小时、证据<=128MiB、空间>=10GiB；只保存最终四个必要模型，不存中间权重/特征。policy使用既有canonical_deployment_policy等权mode/median（mode平票最小值），不看本轮成绩加权；模型seed与五折B保持一致。
+- [ ] `scripts/research/official_recovery/trial_exe.py`与对应交付测试：固定只写`dist/official_trials/consistent_refit_v1`，禁止覆盖正式目录；嵌入独立bundle和非晋级trial身份，PyInstaller onefile；复用官方接口并保留源保护。单独构建日志和证据，清理本次临时编译树。
+- [ ] 验证官方示例、真实数据Python/EXE一致、多文件同人、空/错误输入和隔离目录无开发PATH；对最终变更做一次全套回归及整体只读审查；更新README/报告，逐项固化并保持工作树干净。独立送测不自动发送、不晋级正式release。
+
+Pre-flight接口：refit输出deployment manifest与训练证明→trial builder输入；gate证据summary/plan/五折report/score→refit预检。重点检查原始ID别名、多文件cap共享、固定策略不调参、错误时不发布半成品、源及模型身份。用户已授权连续执行，不另发计划审批。

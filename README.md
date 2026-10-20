@@ -56,7 +56,10 @@
 按天预算对照也未提高；补齐研究候选池后F1 .55849→.56347，TP+17/FP+41，仍未达到送测条件。
 进一步发现最终重训与CV不同：部署宏窗正类比例3.18%，五折约31%–35%；固定训练侧策略的配对模拟中，恢复CV抽样使F1 .36279→.42727，TP+8/FP−3、2/3折提高。
 进一步只把verifier训练特征改为OOF，F1 .42727→.54826，TP+24/FP+15，3/3折提高；两步合计.36279→.54826。
-这是部署训练一致性的机制证据，不是正式模型新F1；下一阶段按[一致性验证任务](docs/official_recovery_consistent_refit_validation_v1.md)做更广同规模对照，再决定独立送测EXE。尚未改dist。
+这是部署训练一致性的机制证据，不是正式模型新F1。
+[同规模五折验证](outputs/official_recovery/consistent_validation_v1_retry2/summary.json)现已完成：完整254餐共同分母下，release-style为90TP/34FP/164FN、F1=.476190；consistent-style为126TP/47FP/128FN、F1=.590164，差+.113973，4/5折改善，29人改善/6人退步/4人持平。
+该对照仍是重复outer的开发证据，并非正式EXE逐位复现或官方新成绩；eligible153诊断.687117不能替代完整口径或宣称已达.70。
+按[一致性验证任务](docs/official_recovery_consistent_refit_validation_v1.md)继续全目标一次抽样、subject-OOF重训及独立送测EXE；正式dist/release不覆盖。
 详见[召回恢复记录](outputs/official_recovery/report.md)及[执行计划](docs/superpowers/plans/2026-10-19-official-recall-recovery.md)。
 
 | 项 | 值 |

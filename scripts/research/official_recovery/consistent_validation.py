@@ -83,6 +83,10 @@ def aggregate(rows):
         f1=2*tp/(pred+true) if pred+true else 0.,ppv=tp/pred if pred else 0.,recall=tp/true if true else 0.)
 
 
+def positive_count(labels):
+    return int(np.count_nonzero(np.asarray(labels)==1))
+
+
 def validation_gate(records):
     if len(records)!=5 or {r['fold'] for r in records}!=set(range(5)):
         raise ValueError('five unique complete folds required')
@@ -185,7 +189,7 @@ def execute(root,output):
             check_graph(graph,'score',score,train)
             predictions['release_style']=decode(vc,p,groups,frozen['policy'])
             diagnostics['release_style']=dict(window_training=stats,train_candidates=len(tc),
-                train_candidate_positive=int(sum(labels)),raw_reachable_truths=reachable_truths(vc,mapping,targets),health_window_quantiles=quantiles)
+                train_candidate_positive=positive_count(labels),raw_reachable_truths=reachable_truths(vc,mapping,targets),health_window_quantiles=quantiles)
             _save_scores(output/f'fold{fold}_release_scores.json',vc,p,components,groups,graph,train,score)
             del macro,micro,tc,vc,x,z,p,components;gc.collect();budget()
             print(f'fivefold {fold} consistent-style: four-fold window OOF',flush=True)
@@ -200,7 +204,7 @@ def execute(root,output):
             diagnostics['consistent_style']=dict(window_training={name:dict(rows=int(sum(batch.labels>=0)),
                 positive=int(sum(batch.labels==1)),positive_ratio=float(np.mean(batch.labels[batch.labels>=0]==1)))
                 for name,batch in [('macro',t.window_train),('micro',t.micro_window_train)]},
-                train_candidates=len(train_ledger.candidates),train_candidate_positive=int(sum(train_ledger.labels)),
+                train_candidates=len(train_ledger.candidates),train_candidate_positive=positive_count(train_ledger.labels),
                 raw_reachable_truths=reachable_truths(score_ledger.candidates,mapping,targets))
             _save_scores(output/f'fold{fold}_consistent_scores.json',score_ledger.candidates,p,components,score_ledger.groups,graph,train,score)
             for arm,pred in predictions.items():

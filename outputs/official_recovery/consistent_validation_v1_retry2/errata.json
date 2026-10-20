@@ -1,0 +1,8 @@
+{
+  "scope": "diagnostic counter only; no prediction, model fit, event metric or gate changes",
+  "invalid_field": "fold*_report.json diagnostics.consistent_style.train_candidate_positive",
+  "reason": "Python sum over NumPy int8 labels can overflow under the installed NumPy version",
+  "action": "Ignore this optional diagnostic for this run; use count_nonzero in future runs. Original evidence is retained unchanged.",
+  "core_result_valid": true,
+  "algorithm_rerun": false
+}

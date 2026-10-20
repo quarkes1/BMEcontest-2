@@ -79,6 +79,12 @@ def test_blend_uses_the_sealed_weight_and_rejects_invalid_weights():
 def metric(tp): return dict(tp=tp,predictions=10,truths=10)
 
 
+def test_candidate_positive_count_cannot_overflow_int8():
+    from scripts.research.official_recovery.consistent_validation import positive_count
+    assert positive_count(np.ones(300,dtype=np.int8))==300
+    assert positive_count(np.array([0,1,0,1],dtype=np.int8))==2
+
+
 def test_five_fold_gate_requires_practical_gain_and_majority_not_one_large_fold():
     from scripts.research.official_recovery.consistent_validation import validation_gate
     good=[dict(fold=i,release_style=metric(7),consistent_style=metric(8)) for i in range(5)]
