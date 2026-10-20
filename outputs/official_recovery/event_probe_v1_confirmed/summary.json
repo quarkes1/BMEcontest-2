@@ -1,0 +1,33 @@
+{
+  "state": "COMPLETE",
+  "evidence_kind": "T24_NESTED_EVENT_COMPLETE_MEAL_DEVELOPMENT_ONLY",
+  "passed": false,
+  "aggregate": {
+    "old": {
+      "tp": 68,
+      "fp": 18,
+      "fn": 92,
+      "predictions": 86,
+      "truths": 160,
+      "f1": 0.5528455284552846,
+      "ppv": 0.7906976744186046,
+      "recall": 0.425
+    },
+    "full": {
+      "tp": 74,
+      "fp": 31,
+      "fn": 86,
+      "predictions": 105,
+      "truths": 160,
+      "f1": 0.5584905660377358,
+      "ppv": 0.7047619047619048,
+      "recall": 0.4625
+    }
+  },
+  "delta_f1": 0.005645037582451273,
+  "positive_folds": 1,
+  "elapsed_seconds": 193.83619579998776,
+  "completed_splits": 12,
+  "protected_unchanged": true,
+  "outer_calls": 0
+}

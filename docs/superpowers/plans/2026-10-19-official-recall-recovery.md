@@ -45,10 +45,10 @@
 
 **Interfaces:** `match_events(predictions, truths, strict=True)`返回一对一索引对；事件为(subject/session,start_ms,end_ms)。`audit_scope(root)`返回四种匹配/标签口径的计数、GT差异、逐人记录及保护哈希；`python -m scripts.research.official_recovery.scope_audit --output ...`只写新输出目录，拒绝覆盖。
 
-- [ ] 先写严格边界、重复预测、跨主体、空集、ID冲突、主体跨折、输入重复缺行等失败测试，运行观察RED。
-- [ ] 实现最小审计，复用原始元数据但不调用训练；记录所有实际输入SHA。
-- [ ] 运行单元测试和真实审计，独立重算计数；确认模型/EXE/release SHA前后不变。
-- [ ] README记录官方反馈与口径区别，审计report写清开发诊断属性；完成后提交。
+- [x] 先写严格边界、重复预测、跨主体、空集、ID冲突、主体跨折、输入重复缺行等失败测试，运行观察RED。
+- [x] 实现最小审计，复用原始元数据但不调用训练；记录所有实际输入SHA。
+- [x] 运行单元测试和真实审计，独立重算计数；确认模型/EXE/release SHA前后不变。
+- [x] README记录官方反馈与口径区别，审计report写清开发诊断属性；完成后提交。
 
 ## Task 2: 部署覆盖与预算归因
 
@@ -56,9 +56,9 @@
 
 **Interfaces:** 以Task1的规范主体/标签和已有宏微窗口索引为输入；按真实记录覆盖计算重叠区间并集，不把索引时段跨度当连续有效时间。不训练、不挑策略。
 
-- [ ] 测试重叠记录去重、断档、跨午夜、短文件、零窗口和多天同一主体。
-- [ ] 统计完整标签的宏/微窗可达性、旧eligible排除原因、每主体有效记录天数与预算饱和；明确缓存与真实官方入口的差异。
-- [ ] 根据证据选择下一条窄假设，另写固定实验配置；不从sealed-outer诊断直接报告改进成绩。
+- [x] 测试重叠记录去重、断档、跨午夜、短文件、零窗口和多天同一主体。
+- [x] 统计完整标签的宏/微窗可达性、旧eligible排除原因、每主体有效记录天数与预算饱和；明确缓存与真实官方入口的差异。
+- [x] 根据证据选择下一条窄假设，另写固定实验配置；不从sealed-outer诊断直接报告改进成绩。
 
 ## 后续条件阶段
 
@@ -83,3 +83,7 @@ Task1/2完成后，优先在官方式完整标签的训练内OOF验证输入适�
 - Final review: Important为eligible依赖session的t_acc/imu_valid指纹缺失；增加实际读取数组的前后身份校验，2项RED→GREEN测试。一次同参完整性重放，不择优；初次记录保留不篡改。
 - Final: minor (deferred): 启动前manifest/输入哈希错误可能没有INCOMPLETE状态文件；计算阶段仍捕获。当前已存在完整启动输入，不影响完成运行数值。
 - Final: Ruling: policy并列的“更少候选”指admission后的候选数，沿用原选择器；不改成最终事件数。代价：并列策略可能不同，但两臂合同固定，不据health回选。
+- EVENT-COVERAGE-V1完整性重放完成：287会话数组前后SHA一致，20份配对账本/策略/事件/人口语义全部一致；gate仍失败，193.84秒。Important修复以2项RED→GREEN和实际重放验证；全套回归仍运行。
+- DAY-BUDGET-V1注册：只用confirmed old臂冻结分数，subject vs subject×UTC+8日cap，两臂统一完整GT选策略/评分；零拟合、无新特征、+.01及2/3折工程门，T24反复开发属性明确。4项RED→GREEN，相关43项通过。
+- DAY-BUDGET review: Important为零候选score主体被groups全等校验错误拒绝，已改为候选身份为score子集，score总体仍精确校验；新增实际FN分母回归测试RED→GREEN。没有读取未冻结的health进行参数选择。
+- Final: minor (deferred): DAY-BUDGET启动mkdir/保护哈希在异常状态处理之外；源summary未额外检查evidence_kind，但实际源为固定confirmed、输入SHA及每份祖先图均验证，不接受缺eligibility清单的旧源。
