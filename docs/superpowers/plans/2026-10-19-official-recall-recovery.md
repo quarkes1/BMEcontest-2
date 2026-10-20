@@ -78,3 +78,4 @@ Task1/2完成后，优先在官方式完整标签的训练内OOF验证输入适�
 - Review: 修复重复session/规范化别名风险，真实索引重复0/别名0；增加2项RED→GREEN测试。旧实验原始证据不追写；未来运行补齐旧标签、抽样行和上游源哈希。
 - Verification: 全套收集快照993 passed/6 skipped（不含之后7项新增测试）；当前23项召回恢复专项通过。
 - Ruling: 下一实验保持窗口监督不变，只检验事件级完整餐次监督；不是失败窗口变体的升级。代价：仍受原候选可达性限制，不能据此宣称全流程已修复。
+- EVENT-COVERAGE-V1注册：docs/official_recovery_event_contract_v1.md；共享旧生产器、独立verifier标签/策略目标、三折全部policy先冻结后health；完整GT统一评分，工程门为+.01及2/3折提高。8项新逻辑测试RED→GREEN，随后与既有23项一起验证。
