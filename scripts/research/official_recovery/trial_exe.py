@@ -33,6 +33,17 @@ def validate_destination(root,destination):
     return destination
 
 
+def require_clean_tree(root):
+    if subprocess.check_output(['git','status','--porcelain'],cwd=root,text=True).strip():
+        raise RuntimeError('commit source and prior evidence before exporting')
+    return subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()
+
+
+def source_snapshot(root):
+    root=Path(root)
+    return {p.relative_to(root).as_posix():_sha(p) for tree in ('src','scripts') for p in (root/tree).rglob('*.py')}
+
+
 def build_command(root,bundle,staging,work,identity):
     args=[sys.executable,'-m','PyInstaller','--noconfirm','--clean','--onefile','--console','--noupx',
         '--name','EatingDetection','--paths',str(root),'--distpath',str(staging),'--workpath',str(work/'build'),
@@ -50,6 +61,7 @@ def build(root,training_report,output):
     destination=validate_destination(root,root/'dist/official_trials/consistent_refit_v1')
     output.mkdir(parents=True,exist_ok=False);start=time.perf_counter();work=staging=None
     try:
+        revision=require_clean_tree(root);sources=source_snapshot(root)
         build_platform()
         if version('pyinstaller')!='6.22.3' or version('pyinstaller-hooks-contrib')!='2026.8':
             raise ValueError('use the frozen build environment')
@@ -89,17 +101,15 @@ def build(root,training_report,output):
         (output/'self_check.log').write_text(probe.stdout+'\n'+probe.stderr,encoding='utf-8')
         if probe.returncode or json.loads(probe.stdout.strip().splitlines()[-1]).get('run_key')!=VERSION:
             raise RuntimeError('isolated trial self-check failed')
-        if (protection(root)!=protected or before!={p.name:_sha(p) for p in bundle.iterdir() if p.is_file()}):
-            raise ValueError('protected release or trial model changed during build')
-        sources={p.relative_to(root).as_posix():_sha(p) for p in (root/'src').rglob('*.py')}
-        for path in (Path(__file__).resolve(),root/'scripts/competition_entry.py'):
-            sources[path.relative_to(root).as_posix()]=_sha(path)
+        if (protection(root)!=protected or before!={p.name:_sha(p) for p in bundle.iterdir() if p.is_file()}
+            or source_snapshot(root)!=sources):
+            raise ValueError('protected release, trial model or source changed during build')
         metadata=dict(state='COMPLETE',trial_version=VERSION,formal_release_unchanged=True,no_official_score=True,
             executable=str((destination/exe.name).relative_to(root)),exe_sha256=_sha(exe),exe_bytes=exe.stat().st_size,
             training_summary_sha256=_sha(training_report/'summary.json'),bundle_sha256=before,source_sha256=sources,
             python=sys.version,build_tool=dict(pyinstaller=version('pyinstaller'),hooks=version('pyinstaller-hooks-contrib')),
             dependencies={name:version(name) for name in RUNTIME_PACKAGES},
-            code_sha=subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip(),
+            code_sha=revision,clean_worktree_at_start=True,
             self_check='PASS',elapsed_seconds=time.perf_counter()-start)
         if destination.exists(): raise FileExistsError('trial destination appeared during build')
         install_new_directory(staging,destination);staging=None

@@ -76,3 +76,5 @@ Pre-flight接口：refit输出deployment manifest与训练证明→trial builder
 - 固定聚合policy：micro=.1、blend=.25、NMS=.3、admission=.2、cap=6、event threshold=.6595272837359293、C=.1、无最终event cap。与原deployment策略相同，不将五折成绩当权重。
 - 最终审查一个Important：原通用bundle writer会替换在预检后出现的独立目标。补Windows原生rename原子拒绝覆盖安装（含空目标目录），3项真实文件系统RED→GREEN测试；模型先写专属staging，再原子发布整个版本目录。此次训练已在修改前安全结束，未发生并发目标；不因安装层保护补丁重训，不改既有模型SHA。EXE同用此保护。
 - Ruling: 原子no-replace发布限定Windows（本交付平台），其他系统明确失败，不将POSIX rename冒充同语义。代价：研究导出需Windows运行；通用正式artifact writer保持原行为。
+- EXE初次构建成功（60.70秒、62,894,165字节），隔离self-check通过，但仅为尚未验收的构建。交付审查发现exporter缺少clean-tree门、未覆盖build helper SHA；两项RED→GREEN已修复，全scripts/src构建前后指纹一起冻结。原构建移入本次专属可恢复临时目录后重建，不复用旧EXE；验收通过再清理该副本，正式包不动。
+- 官方原示例目录目前已不存在，仓库只保留接口原文件/provenance。将明确记录原示例复跑未覆盖，不伪称合成/真实训练文件就是官方例子；仍执行真实双文件Python/EXE逐字节一致、错误/空输入、中文路径及无开发PATH验证。用户可日后提供原示例补测，不据此阻断其余安全验证。
