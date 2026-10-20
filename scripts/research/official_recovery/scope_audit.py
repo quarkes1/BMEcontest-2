@@ -20,6 +20,19 @@ def normalized_id(value):
     return result
 
 
+def validated_session_subjects(records):
+    result, originals = {}, {}
+    for row in records:
+        sid, raw = str(row['session_id']), str(row['externalid'])
+        subject = normalized_id(raw)
+        if sid in result:
+            raise ValueError('duplicate session identity in sensor index')
+        if subject in originals and originals[subject] != raw:
+            raise ValueError('normalized subject aliases require explicit resolution')
+        result[sid], originals[subject] = subject, raw
+    return result
+
+
 def fold_subjects(records):
     result, originals = {}, {}
     for record in records:
@@ -198,6 +211,7 @@ def audit_scope(root):
     matched = dict((ti, pi) for pi, ti in match_events(predictions, complete))
     eligible_set = set(eligible_subject_truths)
     index = load_sensor_index()
+    validated_session_subjects(index.to_dict('records'))
     bounds = {}
     for row in index.to_dict('records'):
         subject = normalized_id(row['externalid'])

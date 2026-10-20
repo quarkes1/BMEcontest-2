@@ -95,3 +95,17 @@ def test_subjects_come_from_verified_diagnostics_not_summary_alias(tmp_path):
     (fold/'diagnostics.json').write_text('{"subjects": {"B": {}}}')
     with pytest.raises(ValueError, match='SHA'):
         read_fold_subjects(tmp_path, summary)
+
+
+def test_index_collisions_cannot_reassign_a_cached_session_to_another_subject():
+    from scripts.research.official_recovery.scope_audit import validated_session_subjects
+    rows=[{'session_id':'S','externalid':'A'},{'session_id':'S','externalid':'B'}]
+    with pytest.raises(ValueError,match='duplicate session'):
+        validated_session_subjects(rows)
+
+
+def test_index_normalized_aliases_require_explicit_resolution():
+    from scripts.research.official_recovery.scope_audit import validated_session_subjects
+    rows=[{'session_id':'S','externalid':'HNU 01'}, {'session_id':'T','externalid':'hnu01'}]
+    with pytest.raises(ValueError,match='aliases'):
+        validated_session_subjects(rows)

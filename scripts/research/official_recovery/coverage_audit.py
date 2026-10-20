@@ -10,7 +10,7 @@ import time
 
 import numpy as np
 
-from .scope_audit import _sha, normalized_id, protection
+from .scope_audit import _sha, normalized_id, protection, validated_session_subjects
 
 
 def merge_intervals(intervals):
@@ -62,7 +62,7 @@ def audit_coverage(root,scope_path):
                    str(Path(__file__).resolve().relative_to(root)):_sha(Path(__file__).resolve())}
     subjects={row['subject']:row['fold'] for row in scope['per_subject']}
     index=load_sensor_index()
-    by_sid={str(r['session_id']):normalized_id(r['externalid']) for r in index.to_dict('records')}
+    by_sid=validated_session_subjects(index.to_dict('records'))
     recorded=defaultdict(list)
     for r in index.to_dict('records'):
         a,b=int(r['timeStamp.startTime']),int(r['timeStamp.endTime'])

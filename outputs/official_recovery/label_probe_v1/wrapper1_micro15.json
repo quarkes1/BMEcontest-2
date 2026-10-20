@@ -1,0 +1,75 @@
+{
+  "wrapper": 1,
+  "kind": "micro15",
+  "health_subjects": [
+    "HNU21014",
+    "HNU21017",
+    "HNU21026",
+    "HNU21029",
+    "HNU21034",
+    "HNU21038",
+    "HNU21041",
+    "HNU212020"
+  ],
+  "health_windows": 133640,
+  "health_positive": 7327,
+  "arms": {
+    "old": {
+      "ap": 0.2202412029092435,
+      "bce": 0.5079127860254018,
+      "auc": 0.7626612475549862,
+      "recall_at_fixed_half": 0.6429643783267367,
+      "train_rows": 26708,
+      "train_positive": 7947,
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21005",
+        "HNU21006",
+        "HNU21008",
+        "HNU21011",
+        "HNU21012",
+        "HNU21015",
+        "HNU21016",
+        "HNU21021",
+        "HNU21022",
+        "HNU21023",
+        "HNU21024",
+        "HNU21031",
+        "HNU21032",
+        "HNU21037"
+      ],
+      "elapsed_seconds": 3.4631217999994988
+    },
+    "new": {
+      "ap": 0.2151420227230304,
+      "bce": 0.5892546704070882,
+      "auc": 0.7713685997759269,
+      "recall_at_fixed_half": 0.7410945816841817,
+      "train_rows": 43035,
+      "train_positive": 15310,
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21005",
+        "HNU21006",
+        "HNU21008",
+        "HNU21011",
+        "HNU21012",
+        "HNU21015",
+        "HNU21016",
+        "HNU21021",
+        "HNU21022",
+        "HNU21023",
+        "HNU21024",
+        "HNU21031",
+        "HNU21032",
+        "HNU21037"
+      ],
+      "elapsed_seconds": 3.6367209000018192
+    }
+  },
+  "ap_delta": -0.005099180186213109,
+  "score_sha256": "05b404ff75e3959d274b10140abe761f0efd47f2f008b0356a03edcd825c3cee",
+  "training_old0_to_new1": 7363
+}

@@ -12,7 +12,7 @@ import numpy as np
 from sklearn.metrics import average_precision_score, log_loss, roc_auc_score
 from threadpoolctl import threadpool_limits
 
-from .scope_audit import _sha, normalized_id, protection
+from .scope_audit import _sha, normalized_id, protection, validated_session_subjects
 
 
 def corrected_labels(intervals,meals,*,micro):
@@ -75,7 +75,7 @@ def load_pools(root,manifest):
         s=normalized_id(row.externalid)
         if s in allowed:
             meals[s].append((int(row.before_ms),int(row.after_ms)))
-    by_sid={str(r.session_id):normalized_id(r.externalid) for r in load_sensor_index().itertuples()}
+    by_sid=validated_session_subjects(load_sensor_index().to_dict('records'))
     result={}
     for kind in ('slide','micro15'):
         feats,old,refs=[],[],[]
@@ -130,6 +130,9 @@ def execute(root,output):
     manifest_path=root/'outputs/challenger_70/representation_v2/amendment_a6_transformer/t1/manifest.json'
     spec=root/'docs/official_recovery_label_contract_v1.md'
     inputs=[manifest_path,spec,Path(__file__).resolve(),Path(MEALS_CSV),Path(INDEX_CSV)]
+    inputs.extend(root/name for name in ('src/pipeline/runner.py','src/pipeline/event_stack.py',
+        'src/pipeline/features/macro.py','src/data/manifests.py',
+        'scripts/research/official_recovery/scope_audit.py'))
     inputs.extend(root/'cache'/kind/f'fold{fold}_val.npz' for kind in ('slide','micro15') for fold in range(5))
     input_sha={str(p.relative_to(root)):_sha(p) for p in inputs}
     manifest=json.loads(manifest_path.read_text(encoding='utf-8'))
@@ -164,7 +167,8 @@ def execute(root,output):
                         raise ValueError('nonfinite probe scores')
                     paired[arm]=dict(**score_metrics(labels,probabilities),
                         train_rows=len(selected),train_positive=int(sum(pool[arm][selected]==1)),
-                        fit_subjects=sorted(set(pool['subjects'][selected])),
+                    fit_subjects=sorted(set(pool['subjects'][selected])),
+                    sampled_master_rows_sha256=__import__('hashlib').sha256(selected.astype('<i8').tobytes()).hexdigest(),
                         elapsed_seconds=time.perf_counter()-before)
                     scores[arm]=probabilities.astype(np.float32)
                     print(f"wrapper{wrapper['id']} {kind} {arm}: AP={paired[arm]['ap']:.6f}",flush=True)
@@ -173,6 +177,7 @@ def execute(root,output):
                 score_path=output/f"wrapper{wrapper['id']}_{kind}_scores.npz"
                 unique_sessions,inverse=np.unique(pool['sessions'][testing],return_inverse=True)
                 np.savez_compressed(score_path,old=scores['old'],new=scores['new'],label=labels,
+                    cached_old_label=pool['old'][testing],
                     interval=pool['intervals'][testing],sessions=unique_sessions,session_code=inverse.astype(np.int32))
                 result=dict(wrapper=wrapper['id'],kind=kind,health_subjects=sorted(health),
                     health_windows=len(testing),health_positive=int(sum(labels==1)),arms=paired,
