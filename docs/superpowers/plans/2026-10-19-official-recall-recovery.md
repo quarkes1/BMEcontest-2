@@ -87,3 +87,6 @@ Task1/2完成后，优先在官方式完整标签的训练内OOF验证输入适�
 - DAY-BUDGET-V1注册：只用confirmed old臂冻结分数，subject vs subject×UTC+8日cap，两臂统一完整GT选策略/评分；零拟合、无新特征、+.01及2/3折工程门，T24反复开发属性明确。4项RED→GREEN，相关43项通过。
 - DAY-BUDGET review: Important为零候选score主体被groups全等校验错误拒绝，已改为候选身份为score子集，score总体仍精确校验；新增实际FN分母回归测试RED→GREEN。没有读取未冻结的health进行参数选择。
 - Final: minor (deferred): DAY-BUDGET启动mkdir/保护哈希在异常状态处理之外；源summary未额外检查evidence_kind，但实际源为固定confirmed、输入SHA及每份祖先图均验证，不接受缺eligibility清单的旧源。
+- DAY-BUDGET-V1完成17.86秒：两臂均72TP/24FP/88FN、F1 .5625，无改善，不继续本轮cap调参。
+- GT-aware冻结诊断：88FN=56无raw匹配候选+32低分；旧范围外63GT中52无候选。没有新F1或参数选择。
+- Ruling: 原inner候选来自抽样candidate_train，T24仅227会话而完整缓存696宏/702微会话；此前结果只适用于该子集，不能据此否定完整候选范围。56无候选GT中31个在全缓存>=80%支持而旧池不足。下一FULL-POOL-V1只扩展候选池，保持监督窗口和分区micro阈值不变；代价是新增候选负担可能降低PPV，必须统一完整GT评价。

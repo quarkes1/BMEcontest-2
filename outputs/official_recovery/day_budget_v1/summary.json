@@ -1,0 +1,33 @@
+{
+  "state": "COMPLETE",
+  "evidence_kind": "T24_FROZEN_SCORE_BUDGET_DEVELOPMENT_ONLY",
+  "passed": false,
+  "aggregate": {
+    "subject": {
+      "tp": 72,
+      "fp": 24,
+      "fn": 88,
+      "predictions": 96,
+      "truths": 160,
+      "f1": 0.5625,
+      "ppv": 0.75,
+      "recall": 0.45
+    },
+    "day": {
+      "tp": 72,
+      "fp": 24,
+      "fn": 88,
+      "predictions": 96,
+      "truths": 160,
+      "f1": 0.5625,
+      "ppv": 0.75,
+      "recall": 0.45
+    }
+  },
+  "delta_f1": 0.0,
+  "positive_folds": 0,
+  "model_fits": 0,
+  "outer_calls": 0,
+  "protected_unchanged": true,
+  "elapsed_seconds": 17.858104600018123
+}

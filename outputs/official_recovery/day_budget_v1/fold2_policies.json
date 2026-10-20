@@ -1,0 +1,84 @@
+{
+  "policies": {
+    "subject": {
+      "admission": {
+        "nms_iou": 0.3,
+        "threshold": 0.2,
+        "max_candidates_per_subject": 8
+      },
+      "threshold": 0.6672799849473854,
+      "selection_metrics": {
+        "tp": 53,
+        "fp": 12,
+        "fn": 56,
+        "predictions": 65,
+        "truths": 109,
+        "recall": 0.48623853211009177,
+        "ppv": 0.8153846153846154,
+        "f1": 0.6091954022988506
+      }
+    },
+    "day": {
+      "admission": {
+        "nms_iou": 0.3,
+        "threshold": 0.2,
+        "max_candidates_per_subject": 8
+      },
+      "threshold": 0.6672799849473854,
+      "selection_metrics": {
+        "tp": 53,
+        "fp": 12,
+        "fn": 56,
+        "predictions": 65,
+        "truths": 109,
+        "recall": 0.48623853211009177,
+        "ppv": 0.8153846153846154,
+        "f1": 0.6091954022988506
+      }
+    }
+  },
+  "train": [
+    "HNU21002",
+    "HNU21003",
+    "HNU21006",
+    "HNU21011",
+    "HNU21014",
+    "HNU21015",
+    "HNU21017",
+    "HNU21022",
+    "HNU21024",
+    "HNU21026",
+    "HNU21029",
+    "HNU21034",
+    "HNU21037",
+    "HNU21038",
+    "HNU21041",
+    "HNU212020"
+  ],
+  "excluded": [
+    "6C7",
+    "HNU 21013",
+    "HNU21001",
+    "HNU21004",
+    "HNU21005",
+    "HNU21008",
+    "HNU21009",
+    "HNU21010",
+    "HNU21012",
+    "HNU21016",
+    "HNU21018",
+    "HNU21019",
+    "HNU21021",
+    "HNU21023",
+    "HNU21025",
+    "HNU21027",
+    "HNU21028",
+    "HNU21031",
+    "HNU21032",
+    "HNU21035",
+    "HNU21036",
+    "HNU21039",
+    "HNU21040",
+    "hnu21033"
+  ]
+}

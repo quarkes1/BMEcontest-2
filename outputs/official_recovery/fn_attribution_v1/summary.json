@@ -1,0 +1,38 @@
+{
+  "evidence_kind": "DIAGNOSTIC_ONLY_USES_GT_NO_NEW_F1",
+  "source_sha256": {
+    "outputs\\official_recovery\\event_probe_v1_confirmed\\population.json": "e8eeeaf88d2aff5876a48c598ffe37beaf39c9b285612c59ae7cfadeffd29861",
+    "outputs\\official_recovery\\event_probe_v1_confirmed\\summary.json": "cddb5e21f5ae4b7aa2b1f215ac98278916a4400100b1a397a51d02099df06b03",
+    "outputs\\official_recovery\\day_budget_v1\\summary.json": "2149ac616e3af8f2bb0c41420d183962fd67a6ae15a459f31be5642d00b064ba",
+    "scripts\\research\\official_recovery\\fn_audit.py": "74193487c4464a549be3dbfda445b19d93505670d51e3997064e366bfee8d1be",
+    "outputs\\official_recovery\\event_probe_v1_confirmed\\fold0_health_scores.json": "b95833ce984e1d00b236805b2b26e3d74f2a96082ab3d81e717109552d3a2554",
+    "outputs\\official_recovery\\event_probe_v1_confirmed\\fold1_health_scores.json": "ce009d94f90cb8f621299a80aaf946810e1fe6a76dc400a59092cdbe60cde4a9",
+    "outputs\\official_recovery\\event_probe_v1_confirmed\\fold2_health_scores.json": "7151975c6a7106c4b162200c3805a755e95aa4ce6ada9104b2056b2aa45b9e0d",
+    "outputs\\official_recovery\\day_budget_v1\\fold0_policies.json": "a68aeddb4474f478e47f913b0d39df458250cabd13591d2f8aacb9e830dd3d99",
+    "outputs\\official_recovery\\day_budget_v1\\fold1_policies.json": "34312c967a3bd526c58faf1bf4616e4573b3a38772b8353dffa679310a5069ec",
+    "outputs\\official_recovery\\day_budget_v1\\fold2_policies.json": "8ac2bc2a80209a29eebadf0cdc1760dca8d2ba1c83f0251c5f4ca68c91185d71"
+  },
+  "truths": 160,
+  "mechanisms": {
+    "MATCHED_TP": 72,
+    "NO_MATCHABLE_RAW_CANDIDATE": 56,
+    "SCORE_BELOW_FINAL_THRESHOLD": 32
+  },
+  "by_scope": {
+    "legacy_eligible": {
+      "MATCHED_TP": 69,
+      "SCORE_BELOW_FINAL_THRESHOLD": 24,
+      "NO_MATCHABLE_RAW_CANDIDATE": 4
+    },
+    "previously_excluded": {
+      "NO_MATCHABLE_RAW_CANDIDATE": 52,
+      "SCORE_BELOW_FINAL_THRESHOLD": 8,
+      "MATCHED_TP": 3
+    }
+  },
+  "fn_without_single_file_containment": 45,
+  "subject_event_scores_frozen": true,
+  "model_fits": 0,
+  "outer_calls": 0,
+  "protected_unchanged": true
+}
