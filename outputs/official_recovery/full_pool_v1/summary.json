@@ -1,0 +1,33 @@
+{
+  "state": "COMPLETE",
+  "evidence_kind": "T24_FULL_CANDIDATE_POOL_DEVELOPMENT_ONLY",
+  "passed": false,
+  "aggregate": {
+    "old": {
+      "tp": 74,
+      "fp": 31,
+      "fn": 86,
+      "predictions": 105,
+      "truths": 160,
+      "f1": 0.5584905660377358,
+      "ppv": 0.7047619047619048,
+      "recall": 0.4625
+    },
+    "full": {
+      "tp": 91,
+      "fp": 72,
+      "fn": 69,
+      "predictions": 163,
+      "truths": 160,
+      "f1": 0.5634674922600619,
+      "ppv": 0.558282208588957,
+      "recall": 0.56875
+    }
+  },
+  "delta_f1": 0.004976926222326039,
+  "positive_folds": 2,
+  "completed_splits": 12,
+  "outer_calls": 0,
+  "protected_unchanged": true,
+  "elapsed_seconds": 253.96257329999935
+}

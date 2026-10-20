@@ -90,3 +90,7 @@ Task1/2完成后，优先在官方式完整标签的训练内OOF验证输入适�
 - DAY-BUDGET-V1完成17.86秒：两臂均72TP/24FP/88FN、F1 .5625，无改善，不继续本轮cap调参。
 - GT-aware冻结诊断：88FN=56无raw匹配候选+32低分；旧范围外63GT中52无候选。没有新F1或参数选择。
 - Ruling: 原inner候选来自抽样candidate_train，T24仅227会话而完整缓存696宏/702微会话；此前结果只适用于该子集，不能据此否定完整候选范围。56无候选GT中31个在全缓存>=80%支持而旧池不足。下一FULL-POOL-V1只扩展候选池，保持监督窗口和分区micro阈值不变；代价是新增候选负担可能降低PPV，必须统一完整GT评价。
+- FULL-POOL-V1完成：74TP/31FP/86FN→91TP/72FP/69FN，F1 .558491→.563467，+.004977、2/3折改善但门失败；253.96秒。只修复研究协议，不冒充正式推理覆盖改进。
+- FULL-POOL final review: 无Critical/Important；minor为live MEALS_CSV未单独复核（完整GT用冻结人口快照、旧eligible另行重建一致）和极早初始化异常无state，暂不改变已冻结实验。
+- 验证：新全套收集快照1008 passed/6 skipped/39 warnings，1163.97秒；收集后新增测试单独运行，当前相关52项全部通过，不能冒充一次最新全套1023项运行。
+- 新证据：正式部署HGB正类基准.031810，五折.310366~.346865；代码确认deployment全负窗与CV抽样不同，以及训练内verifier特征vsCV OOF不同。REFIT-SAMPLING-V1只隔离抽样因素，固定train-only策略与旧eligible事件监督，两个verifier都in-sample，不夹带OOF修复。
