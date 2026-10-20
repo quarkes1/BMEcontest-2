@@ -97,3 +97,6 @@ Task1/2完成后，优先在官方式完整标签的训练内OOF验证输入适�
 - REFIT-SAMPLING-V1完成：.362791→.427273，39TP/16FP/121FN→47TP/13FP/113FN，+.064482、2/3折提高，gate支持更广验证；122.94秒，24fits。不是正式EXE新F1，不改dist。
 - Ruling: 审查“固定源未纳入SHA”部分不成立，full-pool输入映射已传递9份实际源到本次plan且前后校验；增加显式源种类/目录/图身份fail-closed，2项RED→GREEN。实际9份源同上游及原trial SHA全部一致，采用无训练复核，不为同样数字重复24fits。代价：初次证据保持原代码版本，补充校验单独说明而不追写。
 - REFIT-OOF-V1注册：固定sampled/in-sample基准与相同策略/旧标签，macro seed+2/micro+12精确对齐，只将meta训练改OOF，health候选必须逐位回放。2项RED→GREEN，未读取本轮health结果选参数。
+- REFIT-OOF-V1完成：.427273→.548263，47TP/13FP/113FN→71TP/28FP/89FN，+.120990、3/3折提高，80.33秒；两步总差+.185472。仅受控机制模拟，不填正式performance，不外推官方提升幅度。
+- OOF final review: 无Critical/Important；极早初始化错误无INCOMPLETE为沿用小项。最终相关56项通过；正式模型/release/EXE对照最初scope SHA。
+- 下一阶段预注册docs/official_recovery_consistent_refit_validation_v1.md：同规模五折一致性对照，通过再独立EXE，不直接覆盖dist/submission。
