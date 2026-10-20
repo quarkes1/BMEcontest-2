@@ -1,0 +1,5 @@
+{
+  "state": "INCOMPLETE",
+  "error": "RuntimeError('commit code and protocol before validation')",
+  "completed_folds": 0
+}

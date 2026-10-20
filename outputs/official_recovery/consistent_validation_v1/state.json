@@ -1,0 +1,5 @@
+{
+  "state": "INCOMPLETE",
+  "error": "ValueError(\"unknown or empty subject selection: ['HNU21013', 'HNU21033']\")",
+  "completed_folds": 0
+}
