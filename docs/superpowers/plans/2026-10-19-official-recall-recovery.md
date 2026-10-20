@@ -94,3 +94,6 @@ Task1/2完成后，优先在官方式完整标签的训练内OOF验证输入适�
 - FULL-POOL final review: 无Critical/Important；minor为live MEALS_CSV未单独复核（完整GT用冻结人口快照、旧eligible另行重建一致）和极早初始化异常无state，暂不改变已冻结实验。
 - 验证：新全套收集快照1008 passed/6 skipped/39 warnings，1163.97秒；收集后新增测试单独运行，当前相关52项全部通过，不能冒充一次最新全套1023项运行。
 - 新证据：正式部署HGB正类基准.031810，五折.310366~.346865；代码确认deployment全负窗与CV抽样不同，以及训练内verifier特征vsCV OOF不同。REFIT-SAMPLING-V1只隔离抽样因素，固定train-only策略与旧eligible事件监督，两个verifier都in-sample，不夹带OOF修复。
+- REFIT-SAMPLING-V1完成：.362791→.427273，39TP/16FP/121FN→47TP/13FP/113FN，+.064482、2/3折提高，gate支持更广验证；122.94秒，24fits。不是正式EXE新F1，不改dist。
+- Ruling: 审查“固定源未纳入SHA”部分不成立，full-pool输入映射已传递9份实际源到本次plan且前后校验；增加显式源种类/目录/图身份fail-closed，2项RED→GREEN。实际9份源同上游及原trial SHA全部一致，采用无训练复核，不为同样数字重复24fits。代价：初次证据保持原代码版本，补充校验单独说明而不追写。
+- REFIT-OOF-V1注册：固定sampled/in-sample基准与相同策略/旧标签，macro seed+2/micro+12精确对齐，只将meta训练改OOF，health候选必须逐位回放。2项RED→GREEN，未读取本轮health结果选参数。

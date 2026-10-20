@@ -62,7 +62,7 @@ DIAGNOSTIC ONLY / USES GT，不产生新F1：72TP、56无可匹配raw候选、32
 
 ## 验证与保护
 
-此前全套993 passed / 6 skipped，1242.29秒；这是其收集时的代码快照，不包括之后新增测试。当前召回恢复及上游crossfit相关43项测试全部通过；新的全套回归测试仍在运行。正式模型、release和submission EXE未改动。
+新全套收集快照1008 passed / 6 skipped / 39 warnings，1163.97秒；这是其收集时的代码快照，后续新增的召回恢复测试另行验证，不冒充一次最新全套运行。正式模型、release和submission EXE未改动。
 
 ## FULL-POOL-V1（完成，未通过）
 
@@ -77,3 +77,13 @@ A74TP/31FP/86FN、F1=.558491；B91TP/72FP/69FN、F1=.563467，TP+17/FP+41，+.00
 规范最终构建把完整val联合用作window_train，最终训练直接保留全部label>=0负窗；历史CV则采用既有抽样train角色。HGB无类别平衡，因而训练先验相差约十倍；不能仅凭此证明官方下降的全部原因。
 
 另外，最终fit用自身训练数据上的窗口概率构建verifier特征，CV使用OOF概率。后续应单独检验，不与抽样因素同时更改。下一REFIT-SAMPLING-V1先固定train-only策略，对照全量/原CV抽样窗口重训，两个verifier都保持训练内特征和旧eligible监督，明确这是机制模拟而非正式EXE逐位复现。
+
+## REFIT-SAMPLING-V1（完成，支持继续验证）
+
+24个fit，122.94秒，两臂全候选、旧eligible verifier标签、训练内meta特征、train-only固定策略、.5融合。完整160餐上：全量负窗39TP/16FP/121FN、F1=.362791；原CV抽样47TP/13FP/113FN、F1=.427273，**+.064482、TP+8/FP−3、2/3折提高**。折0 .41667→.53846，折1 .32432→.30986，折2 .34783→.42254。
+
+不将模拟A称为正式EXE：训练人数、.5融合、逐训练分区策略均与最终正式全数据模型不同。它支持重训抽样差异会造成损失，不足以推断官方全部差距。
+
+审查提出固定源检查缺口后核对：实际9份confirmed源文件本来已由FULL-POOL计划传递进本次输入SHA，前后检查存在；并非完全没有锚定。另补显式source种类、状态、policy/threshold祖先及固定源目录校验，两项RED→GREEN测试。对本次实际9份源做无训练复核，全部与上游锚和本次原plan SHA一致，故不重复24个fit也不改写初次证据。
+
+REFIT-OOF-V1单独注册：基准固定上一sampled臂，只改verifier训练特征为当前train内部窗口OOF；窗口refit与health候选必须精确回放，策略/标签不变。不夹带完整事件重标或再次调阈值。

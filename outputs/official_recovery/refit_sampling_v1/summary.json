@@ -1,0 +1,33 @@
+{
+  "state": "COMPLETE",
+  "evidence_kind": "T24_FINAL_REFIT_SAMPLING_DEVELOPMENT_ONLY",
+  "passed": true,
+  "aggregate": {
+    "old": {
+      "tp": 39,
+      "fp": 16,
+      "fn": 121,
+      "predictions": 55,
+      "truths": 160,
+      "f1": 0.3627906976744186,
+      "ppv": 0.7090909090909091,
+      "recall": 0.24375
+    },
+    "full": {
+      "tp": 47,
+      "fp": 13,
+      "fn": 113,
+      "predictions": 60,
+      "truths": 160,
+      "f1": 0.42727272727272725,
+      "ppv": 0.7833333333333333,
+      "recall": 0.29375
+    }
+  },
+  "delta_f1": 0.06448202959830862,
+  "positive_folds": 2,
+  "model_fits": 24,
+  "outer_calls": 0,
+  "protected_unchanged": true,
+  "elapsed_seconds": 122.93771720002405
+}

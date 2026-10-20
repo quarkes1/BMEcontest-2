@@ -58,6 +58,32 @@ def _read(path): return json.loads(path.read_text(encoding='utf-8'))
 def _write(path,payload): path.write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
 
 
+def validate_fixed_source(root,source,anchored_hashes,manifest):
+    root,source=Path(root).resolve(),Path(source).resolve()
+    files=[source/name for name in ('summary.json','population.json','eligibility_inputs.json')]
+    files.extend(source/f"fold{w['id']}_{suffix}.json" for w in manifest['wrappers']
+                 for suffix in ('policies','health_scores'))
+    actual={str(p.relative_to(root)):_sha(p) for p in files}
+    if any(anchored_hashes.get(path)!=digest for path,digest in actual.items()):
+        raise ValueError('fixed source missing anchor or source content changed')
+    summary=_read(source/'summary.json')
+    if (summary.get('state')!='COMPLETE' or summary.get('protected_unchanged') is not True or
+            summary.get('evidence_kind')!='T24_NESTED_EVENT_COMPLETE_MEAL_DEVELOPMENT_ONLY'):
+        raise ValueError('unexpected fixed source identity')
+    forbidden=set(manifest['identities']['v7'])|set(manifest['identities']['outer'])
+    for w in manifest['wrappers']:
+        train,health=set(w['train']),set(w['health'])
+        policy=_read(source/f"fold{w['id']}_policies.json")
+        if set(policy['graph']['policy']['fit_subjects'])!=train:
+            raise ValueError('fixed source policy fit identities differ')
+        check_graph(policy['graph'],'policy',health|forbidden,train)
+        row=_read(source/f"fold{w['id']}_health_scores.json")
+        if set(row['train'])!=train or set(row['score'])!=health:
+            raise ValueError('fixed source score identities differ')
+        check_graph(row['graph'],'threshold',health|forbidden,train)
+    return actual
+
+
 def execute(root,source,pool_source,output):
     from src.data.manifests import load_sensor_index,INDEX_CSV,MEALS_CSV
     root,source,pool_source,output=map(lambda p:Path(p).resolve(),(root,source,pool_source,output))
@@ -73,7 +99,9 @@ def execute(root,source,pool_source,output):
         if eligibility_inputs(root,reference)!=reference: raise ValueError('eligible session source changed')
         pool_plan=_read(pool_source/'plan.json')
         if _read(pool_source/'summary.json').get('state')!='COMPLETE': raise ValueError('complete candidate pool source required')
+        validate_fixed_source(root,source,pool_plan['source_sha256'],manifest)
         files=[manifest_path,Path(INDEX_CSV),Path(MEALS_CSV),Path(__file__).resolve(),root/'docs/official_recovery_refit_sampling_v1.md']
+        files.append(pool_source/'plan.json')
         files.extend(root/path for path in pool_plan['source_sha256'])
         files.extend(root/path for path in ('scripts/research/official_recovery/full_pool_probe.py',
             'src/pipeline/runner.py','src/pipeline/event_stack.py','src/pipeline/context_features.py'))
