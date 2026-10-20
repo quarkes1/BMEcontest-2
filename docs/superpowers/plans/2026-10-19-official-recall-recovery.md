@@ -79,3 +79,7 @@ Task1/2完成后，优先在官方式完整标签的训练内OOF验证输入适�
 - Verification: 全套收集快照993 passed/6 skipped（不含之后7项新增测试）；当前23项召回恢复专项通过。
 - Ruling: 下一实验保持窗口监督不变，只检验事件级完整餐次监督；不是失败窗口变体的升级。代价：仍受原候选可达性限制，不能据此宣称全流程已修复。
 - EVENT-COVERAGE-V1注册：docs/official_recovery_event_contract_v1.md；共享旧生产器、独立verifier标签/策略目标、三折全部policy先冻结后health；完整GT统一评分，工程门为+.01及2/3折提高。8项新逻辑测试RED→GREEN，随后与既有23项一起验证。
+- EVENT-COVERAGE-V1首次完成：完整口径旧监督68TP/18FP/92FN、F1 .552846；完整事件监督74TP/31FP/86FN、F1 .558491，+.005645且1/3折改善，gate失败。不得包装成正式提升。
+- Final review: Important为eligible依赖session的t_acc/imu_valid指纹缺失；增加实际读取数组的前后身份校验，2项RED→GREEN测试。一次同参完整性重放，不择优；初次记录保留不篡改。
+- Final: minor (deferred): 启动前manifest/输入哈希错误可能没有INCOMPLETE状态文件；计算阶段仍捕获。当前已存在完整启动输入，不影响完成运行数值。
+- Final: Ruling: policy并列的“更少候选”指admission后的候选数，沿用原选择器；不改成最终事件数。代价：并列策略可能不同，但两臂合同固定，不据health回选。

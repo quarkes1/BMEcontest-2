@@ -1,0 +1,391 @@
+{
+  "id": "EVENT-COVERAGE-V1",
+  "source_sha256": {
+    "outputs\\challenger_70\\representation_v2\\amendment_a6_transformer\\t1\\manifest.json": "561f03ac732666b55a1db05aab2a80a576208260a4d673d82765dd41ac57fc78",
+    "Data\\t_zsstnnrj_mealinfo_puadqog70826_1857.csv": "28c93b53ae5169864570c833e0fa7711b9ea4858906102af1ff2bbd4f868852f",
+    "Data\\t_zsstnnrj_sensororiginaldata_system0826_1857.csv": "b2f0eb6ae653a4e5cd4f2500daa752deebc3cbe7df7592ae2f146b99965a5858",
+    "scripts\\research\\official_recovery\\event_probe.py": "8bfbb4dbfe060b252edd15378bc74dd8864a33903be63498e849fb0539ac460a",
+    "docs\\official_recovery_event_contract_v1.md": "c92421b9b91a32594e773aaa83b389a6c7d8dec19618b339d6d1ef1e82df747f",
+    "scripts\\research\\official_recovery\\scope_audit.py": "fe85f432a5f334b2f032cfa47a61657489d913d246fedcb866a0214ed5e7eb74",
+    "scripts\\research\\official_recovery\\label_probe.py": "f4f7ffa5877e4db85b8b2ddb010e901c1b313c2ffadaabf963cffe85f5fdd618",
+    "scripts\\research\\representation_v2\\crossfit.py": "30c2a63d6f7b5191f7705cfab274b1e6c920ebec49dee5fa8ead8d81fbc784d8",
+    "scripts\\research\\representation_v2\\provenance.py": "4cfbc0247ea93ed304773455bd16e35c12800c5a79f8edc7e9a32f39177b4576",
+    "src\\pipeline\\runner.py": "2452ee25591b190c88958b1e8217a3f029b8682e3bff7ede2176a8ce5039add1",
+    "src\\pipeline\\event_stack.py": "8eb04b1445248531a731148a9cbc5798149794619bdde008e46279bec9a43468",
+    "src\\pipeline\\candidate_control.py": "c65326fc1f61d23ebb5f9df8ae39bb2801584c002740b7542c8fb1da7ea7f373",
+    "src\\pipeline\\context_features.py": "4eca09cadc3f165595fe506e9a3d50bf7f2976e6a26c63716b444859722d9b28",
+    "src\\data\\manifests.py": "d0a6a6e1a0fc773ae421315805f773122cc4793f2a6707266c9336197361bba7",
+    "src\\pipeline\\features\\macro.py": "cd6b6882642c8b59c6d1bfbb0ddfca212f609ddebb50b1c567fde4712ca5c8b8",
+    "cache\\slide\\fold0_train.npz": "82b4545f7f4440bb8443d7c875f7af0caaeb79ce84cbab4b176f043ee44f95b4",
+    "cache\\slide\\fold0_meal_train.npz": "8d410a982a9d7cb22af59d778f1b52b2a4793d13c5edf03891663187ad407c27",
+    "cache\\slide\\fold0_no_meal_train.npz": "5a8148c6de921e9bfbacc3de9f64ed7d9994198f500c5a194d5a881d7ad3a110",
+    "cache\\micro15\\fold0_train.npz": "98d0a0cf8ac326b2cd096c6716f207ab2463437369e66a7e380367088c2ecde5",
+    "cache\\micro15\\fold0_meal_train.npz": "64271da54953c45de7eac9053e6bffae9c94193cf905745b59eb21ab4aff90af",
+    "cache\\micro15\\fold0_no_meal_train.npz": "a90aa4275911db4331464dad69315327dfdf2068fc1da1af3ee19cb18bc6b8a9",
+    "cache\\splits\\fold0.json": "e805a1d03536408140902d88b4e45e3a19aac7a99afce9773146b9a187f4916b"
+  },
+  "protected": {
+    "release/event_stack_incumbent.json": "27ee2f0ad4cd85cb8819e4c6fa71e985c8ec2d3666ec8eed8f14602faf0009b8",
+    "dist/submission/EatingDetection.exe": "62e599716649fcad586f77e830c3f48ae681dfb0e30c6a7c129390736eb0bf98",
+    "models/event_stack/160afaf81debf1ee/deployment/feature_schema.json": "939ed3a65787abf68675a95704281490ab2519cfe1c5512a4118d5837b8aa34d",
+    "models/event_stack/160afaf81debf1ee/deployment/macro.joblib": "ea1c3d0edb51c61016a4064ed2a755ed1ccf7b9bddf4bcf7965c05ba8e0e1eab",
+    "models/event_stack/160afaf81debf1ee/deployment/manifest.json": "71a7cdd7f181f3cc02309d35513c6fc65b9fed4338637b4e96dc4c4f182d7237",
+    "models/event_stack/160afaf81debf1ee/deployment/micro.joblib": "a402c1b604b63d5a8f58620ff37c7fc5f665e2a7bebe836f83822093ed94fc05",
+    "models/event_stack/160afaf81debf1ee/deployment/policy.json": "8e138811d15845c7c613a5b1a6748ce6db3486e814ad404fdfc5e64422d9f734",
+    "models/event_stack/160afaf81debf1ee/deployment/run_config.json": "94103040e8ae85b5013752a8a27bb7d632300ca86c773576d35b20bd8a8f0617",
+    "models/event_stack/160afaf81debf1ee/deployment/verifier_lgbm.joblib": "03c333fed5002f93905dcd891981e3ac7e149d6b5912e4862f9105c9d537225f",
+    "models/event_stack/160afaf81debf1ee/deployment/verifier_logistic.joblib": "614af1d790757cbbf8878c2b0ffee7aca933f3831ae976c400b9be0d66a64140",
+    "models/event_stack/160afaf81debf1ee/outer-fold-0/diagnostics.json": "6c66b25d3b78b53908317f8315d335f63a9fa36233a21c5a1af8f587f0ef7be4",
+    "models/event_stack/160afaf81debf1ee/outer-fold-0/feature_schema.json": "939ed3a65787abf68675a95704281490ab2519cfe1c5512a4118d5837b8aa34d",
+    "models/event_stack/160afaf81debf1ee/outer-fold-0/macro.joblib": "078414601751c75c084b9b4e741a16c8903f5c4fa92032841fea9b8cc9e81cbf",
+    "models/event_stack/160afaf81debf1ee/outer-fold-0/manifest.json": "e397ddf166d9115788adb968bb82819ecaab8c281dd876d4281523d276999b1f",
+    "models/event_stack/160afaf81debf1ee/outer-fold-0/micro.joblib": "8ceeffb426fe08d9b248926864dc20f8ee48ce4fbba76eebbcedca194be2a48c",
+    "models/event_stack/160afaf81debf1ee/outer-fold-0/policy.json": "1b9b1e359258f34885a1845fb9e9af4b532f4c29051385da04c5eaef460cbdc2",
+    "models/event_stack/160afaf81debf1ee/outer-fold-0/run_config.json": "e11b44cafb0932634d0b2ebc2821e0bc7a4d679ceb2a8730dbb9deba756e60d0",
+    "models/event_stack/160afaf81debf1ee/outer-fold-0/verifier_lgbm.joblib": "0a5a19e5e2fcfc2c64d9d3e25d938d350bca9bbb02a9594ac8bc3200fb79e151",
+    "models/event_stack/160afaf81debf1ee/outer-fold-0/verifier_logistic.joblib": "b1b2457e108e00cb60d12ffd928b24fc4205b2ea61693907c4fa05b4161f48d1",
+    "models/event_stack/160afaf81debf1ee/outer-fold-1/diagnostics.json": "277ca9cf84504dbb2fefbaa360657c581d8140fe24d4549c72797d6450c03128",
+    "models/event_stack/160afaf81debf1ee/outer-fold-1/feature_schema.json": "939ed3a65787abf68675a95704281490ab2519cfe1c5512a4118d5837b8aa34d",
+    "models/event_stack/160afaf81debf1ee/outer-fold-1/macro.joblib": "60b043b49ada8980d9f835a406753932e2ba1721da4c1cfb5a55c8d47dfa0c0d",
+    "models/event_stack/160afaf81debf1ee/outer-fold-1/manifest.json": "94e2843322cd4adfe45fa9713de67f8c63304a565db3161269f2f2a7571d4daf",
+    "models/event_stack/160afaf81debf1ee/outer-fold-1/micro.joblib": "19ca65fc69b94579c16e6b5df96a63769f9b74ce171d1a7545135d9574032783",
+    "models/event_stack/160afaf81debf1ee/outer-fold-1/policy.json": "7cdd4bd794f1cdcc1cd50ff8dcae25db07347858532814b840ee8871342e174c",
+    "models/event_stack/160afaf81debf1ee/outer-fold-1/run_config.json": "87b51b60e39f1145e3a2e6111be7de5767356906bbb747792af6d2f0177ac95d",
+    "models/event_stack/160afaf81debf1ee/outer-fold-1/verifier_lgbm.joblib": "1e1746220d176d7079e2de33178b920afb88cec811aac5503e01b6d27190aa72",
+    "models/event_stack/160afaf81debf1ee/outer-fold-1/verifier_logistic.joblib": "3a112a1e7495cd6763d669c11eaaf31ca69541ecabf4ba2a7b61036fe5770549",
+    "models/event_stack/160afaf81debf1ee/outer-fold-2/diagnostics.json": "f8f44247e0d89128851e7824832568a08153fc2728cae704208a60933ea75c87",
+    "models/event_stack/160afaf81debf1ee/outer-fold-2/feature_schema.json": "939ed3a65787abf68675a95704281490ab2519cfe1c5512a4118d5837b8aa34d",
+    "models/event_stack/160afaf81debf1ee/outer-fold-2/macro.joblib": "f1746cc51cb3fdf20c75f970f75752b6b814a10492d9dc6238c05e6b4a020391",
+    "models/event_stack/160afaf81debf1ee/outer-fold-2/manifest.json": "4d867b2983330c67badcd69fd28a31daf1d0c595462c1f45cf27a7a10eb6674e",
+    "models/event_stack/160afaf81debf1ee/outer-fold-2/micro.joblib": "2fb593bd91cd1ccecbf19f11211ce92840bcf222ba5cb9a6599ab39a99e4f600",
+    "models/event_stack/160afaf81debf1ee/outer-fold-2/policy.json": "c3c9e54354a42a505ae5162ee3ab3e41a04755ebdd0f54ac14564a7f4c1e8af4",
+    "models/event_stack/160afaf81debf1ee/outer-fold-2/run_config.json": "f29c3dd29bbab4cb416f2839733446955bcea4d96b0488a3ca61e33a7144c61e",
+    "models/event_stack/160afaf81debf1ee/outer-fold-2/verifier_lgbm.joblib": "2278252ac5959320dc90afe6e161815de7b2eb88deb13ec3cbc80b341647344a",
+    "models/event_stack/160afaf81debf1ee/outer-fold-2/verifier_logistic.joblib": "2af9b9348514368e73546b679d765e22577bc2785db7c6ccec4a84e63a561333",
+    "models/event_stack/160afaf81debf1ee/outer-fold-3/diagnostics.json": "52aaf77cf3409599f27a32c6c1a279889161ea07ef01c5541e429fba597e7eb7",
+    "models/event_stack/160afaf81debf1ee/outer-fold-3/feature_schema.json": "939ed3a65787abf68675a95704281490ab2519cfe1c5512a4118d5837b8aa34d",
+    "models/event_stack/160afaf81debf1ee/outer-fold-3/macro.joblib": "1cda530effa428d0f090abfe6669d8808df02c8a6fbc4c14feefa4afdf3c5fdb",
+    "models/event_stack/160afaf81debf1ee/outer-fold-3/manifest.json": "264d16de962dbf854c9f60660d3cbe173452b94a7d02591ca28d893c86b1b85b",
+    "models/event_stack/160afaf81debf1ee/outer-fold-3/micro.joblib": "30c50486504ac25a1098104192334c581a44aed7344b9a16b958293eed7169c5",
+    "models/event_stack/160afaf81debf1ee/outer-fold-3/policy.json": "3cd41d20e97d3ce65d69d79467a5e5b4c0f2aa94a7fcc1af51aaee47ff5d3443",
+    "models/event_stack/160afaf81debf1ee/outer-fold-3/run_config.json": "154528f4e695b2b24e08c3e299bf52a7e38387241bd449885882670a10c30758",
+    "models/event_stack/160afaf81debf1ee/outer-fold-3/verifier_lgbm.joblib": "fe1424b7d2856fa57736fefd524b27b3b386fe339f0add53eec81c4a67c13bef",
+    "models/event_stack/160afaf81debf1ee/outer-fold-3/verifier_logistic.joblib": "522082adb1bbc868e20a61a1d200324348a434799b1a20451ce773924d851378",
+    "models/event_stack/160afaf81debf1ee/outer-fold-4/diagnostics.json": "925da402f96adf0dbbb6a9f26a9a25bb997b302fe76a5392fc2727f621983642",
+    "models/event_stack/160afaf81debf1ee/outer-fold-4/feature_schema.json": "939ed3a65787abf68675a95704281490ab2519cfe1c5512a4118d5837b8aa34d",
+    "models/event_stack/160afaf81debf1ee/outer-fold-4/macro.joblib": "26febff1fb28cf10d79acd399a947805d126dc5191fb77d7dd60b78f6774a68d",
+    "models/event_stack/160afaf81debf1ee/outer-fold-4/manifest.json": "98e694c2de9565ddb171ccf02682d6df93d193f7f6631c097873ff825ee60120",
+    "models/event_stack/160afaf81debf1ee/outer-fold-4/micro.joblib": "dfd342dd7cfe74b510da5d06c6ce871d3ef8fd1a3859ae5ed32cef0c8cc216be",
+    "models/event_stack/160afaf81debf1ee/outer-fold-4/policy.json": "51fc03d6c35d4113854aeb9c7b80c123b4e29fab95a179f12285c94e74c81562",
+    "models/event_stack/160afaf81debf1ee/outer-fold-4/run_config.json": "dfbfe6fda0dab46ceb02fcf5bd730a775bfb0bc76912b2aeebecff531212c2ce",
+    "models/event_stack/160afaf81debf1ee/outer-fold-4/verifier_lgbm.joblib": "d0805a159a96be85e0d151a166708df2213c2b0348abb64163969ecb57a4f319",
+    "models/event_stack/160afaf81debf1ee/outer-fold-4/verifier_logistic.joblib": "02c0f45d87a2856ceabd957ce7457cb718807844e14a80dc66319548d8b77ed0",
+    "models/event_stack/160afaf81debf1ee/promotion_attestation.json": "2e8235c10ed1b02f67cc7c10124b85d0e85d6e9671f1d423a24d02bec79024b5",
+    "models/event_stack/160afaf81debf1ee/promotion_summary.json": "6d435ebb829b06b16f50e99f360cda62a516dc291b6ccb0574ce4b9ed71945a9"
+  },
+  "code_sha": "5af44aedc4fc4b719de5cc81fe23120795c6fc73",
+  "outer_calls": 0,
+  "wrappers": [
+    {
+      "health": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21006",
+        "HNU21011",
+        "HNU21015",
+        "HNU21022",
+        "HNU21024",
+        "HNU21037"
+      ],
+      "id": 0,
+      "policy_splits": [
+        {
+          "score": [
+            "HNU21014",
+            "HNU21026",
+            "HNU21029",
+            "HNU21034",
+            "HNU21038"
+          ],
+          "train": [
+            "HNU21005",
+            "HNU21008",
+            "HNU21012",
+            "HNU21016",
+            "HNU21017",
+            "HNU21021",
+            "HNU21023",
+            "HNU21031",
+            "HNU21032",
+            "HNU21041",
+            "HNU212020"
+          ]
+        },
+        {
+          "score": [
+            "HNU21005",
+            "HNU21012",
+            "HNU21021",
+            "HNU21023",
+            "HNU212020"
+          ],
+          "train": [
+            "HNU21008",
+            "HNU21014",
+            "HNU21016",
+            "HNU21017",
+            "HNU21026",
+            "HNU21029",
+            "HNU21031",
+            "HNU21032",
+            "HNU21034",
+            "HNU21038",
+            "HNU21041"
+          ]
+        },
+        {
+          "score": [
+            "HNU21008",
+            "HNU21016",
+            "HNU21017",
+            "HNU21031",
+            "HNU21032",
+            "HNU21041"
+          ],
+          "train": [
+            "HNU21005",
+            "HNU21012",
+            "HNU21014",
+            "HNU21021",
+            "HNU21023",
+            "HNU21026",
+            "HNU21029",
+            "HNU21034",
+            "HNU21038",
+            "HNU212020"
+          ]
+        }
+      ],
+      "train": [
+        "HNU21005",
+        "HNU21008",
+        "HNU21012",
+        "HNU21014",
+        "HNU21016",
+        "HNU21017",
+        "HNU21021",
+        "HNU21023",
+        "HNU21026",
+        "HNU21029",
+        "HNU21031",
+        "HNU21032",
+        "HNU21034",
+        "HNU21038",
+        "HNU21041",
+        "HNU212020"
+      ]
+    },
+    {
+      "health": [
+        "HNU21014",
+        "HNU21017",
+        "HNU21026",
+        "HNU21029",
+        "HNU21034",
+        "HNU21038",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "id": 1,
+      "policy_splits": [
+        {
+          "score": [
+            "HNU21002",
+            "HNU21006",
+            "HNU21012",
+            "HNU21023",
+            "HNU21024"
+          ],
+          "train": [
+            "HNU21003",
+            "HNU21005",
+            "HNU21008",
+            "HNU21011",
+            "HNU21015",
+            "HNU21016",
+            "HNU21021",
+            "HNU21022",
+            "HNU21031",
+            "HNU21032",
+            "HNU21037"
+          ]
+        },
+        {
+          "score": [
+            "HNU21005",
+            "HNU21011",
+            "HNU21016",
+            "HNU21021",
+            "HNU21022",
+            "HNU21037"
+          ],
+          "train": [
+            "HNU21002",
+            "HNU21003",
+            "HNU21006",
+            "HNU21008",
+            "HNU21012",
+            "HNU21015",
+            "HNU21023",
+            "HNU21024",
+            "HNU21031",
+            "HNU21032"
+          ]
+        },
+        {
+          "score": [
+            "HNU21003",
+            "HNU21008",
+            "HNU21015",
+            "HNU21031",
+            "HNU21032"
+          ],
+          "train": [
+            "HNU21002",
+            "HNU21005",
+            "HNU21006",
+            "HNU21011",
+            "HNU21012",
+            "HNU21016",
+            "HNU21021",
+            "HNU21022",
+            "HNU21023",
+            "HNU21024",
+            "HNU21037"
+          ]
+        }
+      ],
+      "train": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21005",
+        "HNU21006",
+        "HNU21008",
+        "HNU21011",
+        "HNU21012",
+        "HNU21015",
+        "HNU21016",
+        "HNU21021",
+        "HNU21022",
+        "HNU21023",
+        "HNU21024",
+        "HNU21031",
+        "HNU21032",
+        "HNU21037"
+      ]
+    },
+    {
+      "health": [
+        "HNU21005",
+        "HNU21008",
+        "HNU21012",
+        "HNU21016",
+        "HNU21021",
+        "HNU21023",
+        "HNU21031",
+        "HNU21032"
+      ],
+      "id": 2,
+      "policy_splits": [
+        {
+          "score": [
+            "HNU21002",
+            "HNU21003",
+            "HNU21029",
+            "HNU21034",
+            "HNU21038"
+          ],
+          "train": [
+            "HNU21006",
+            "HNU21011",
+            "HNU21014",
+            "HNU21015",
+            "HNU21017",
+            "HNU21022",
+            "HNU21024",
+            "HNU21026",
+            "HNU21037",
+            "HNU21041",
+            "HNU212020"
+          ]
+        },
+        {
+          "score": [
+            "HNU21006",
+            "HNU21011",
+            "HNU21014",
+            "HNU21026",
+            "HNU212020"
+          ],
+          "train": [
+            "HNU21002",
+            "HNU21003",
+            "HNU21015",
+            "HNU21017",
+            "HNU21022",
+            "HNU21024",
+            "HNU21029",
+            "HNU21034",
+            "HNU21037",
+            "HNU21038",
+            "HNU21041"
+          ]
+        },
+        {
+          "score": [
+            "HNU21015",
+            "HNU21017",
+            "HNU21022",
+            "HNU21024",
+            "HNU21037",
+            "HNU21041"
+          ],
+          "train": [
+            "HNU21002",
+            "HNU21003",
+            "HNU21006",
+            "HNU21011",
+            "HNU21014",
+            "HNU21026",
+            "HNU21029",
+            "HNU21034",
+            "HNU21038",
+            "HNU212020"
+          ]
+        }
+      ],
+      "train": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21006",
+        "HNU21011",
+        "HNU21014",
+        "HNU21015",
+        "HNU21017",
+        "HNU21022",
+        "HNU21024",
+        "HNU21026",
+        "HNU21029",
+        "HNU21034",
+        "HNU21037",
+        "HNU21038",
+        "HNU21041",
+        "HNU212020"
+      ]
+    }
+  ],
+  "window_labels": "legacy unchanged",
+  "verifier_blend": 0.5,
+  "expected_window_fits": 120,
+  "expected_verifier_fits": 48
+}

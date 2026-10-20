@@ -17,6 +17,7 @@ from threadpoolctl import threadpool_limits
 
 from .scope_audit import _sha, event_metrics, match_events, normalized_id, prepare_truths, protection
 from .label_probe import validate_partitions
+from .eligibility_provenance import eligibility_inputs
 from scripts.research.representation_v2.crossfit import build_candidate_ledgers, slice_outer_train
 from scripts.research.representation_v2.provenance import assert_no_heldout_ancestors
 from src.pipeline import runner
@@ -165,6 +166,7 @@ def execute(root,output):
     inputs=[manifest_path,Path(MEALS_CSV),Path(INDEX_CSV),Path(__file__).resolve()]
     inputs.extend(root/name for name in ('docs/official_recovery_event_contract_v1.md',
         'scripts/research/official_recovery/scope_audit.py','scripts/research/official_recovery/label_probe.py',
+        'scripts/research/official_recovery/eligibility_provenance.py',
         'scripts/research/representation_v2/crossfit.py','scripts/research/representation_v2/provenance.py',
         'src/pipeline/runner.py','src/pipeline/event_stack.py','src/pipeline/candidate_control.py',
         'src/pipeline/context_features.py','src/data/manifests.py','src/pipeline/features/macro.py'))
@@ -184,6 +186,12 @@ def execute(root,output):
     records=[]; completed=0
     try:
         validated_session_subjects(load_sensor_index().to_dict('records'))
+        eligible_sids=set()
+        for split in ('meal_train','no_meal_train'):
+            with np.load(root/'cache/slide'/f'fold0_{split}.npz',allow_pickle=False) as cache:
+                eligible_sids.update(json.loads(str(w))[0] for w in cache['wid'])
+        eligibility_before=eligibility_inputs(root,eligible_sids)
+        _write(output/'eligibility_inputs.json',eligibility_before)
         config=registered_e03_config(0,workers=4)
         data=runner.FilesystemDataSource(root).load_outer_train_only(config)
         allowed=set(manifest['identities']['t24']); forbidden=set(manifest['identities']['v7'])|set(manifest['identities']['outer'])
@@ -245,7 +253,8 @@ def execute(root,output):
             _write(output/'state.json',dict(state='IN_PROGRESS',completed_splits=completed,health_folds=len(records)))
             print('paired complete-meal counts '+json.dumps(events),flush=True)
         budget()
-        if protected!=protection(root) or hashes!={str(p.relative_to(root)):_sha(p) for p in inputs}:
+        if (protected!=protection(root) or hashes!={str(p.relative_to(root)):_sha(p) for p in inputs}
+                or eligibility_before!=eligibility_inputs(root,eligible_sids)):
             raise ValueError('protected release or source changed')
         result=dict(state='COMPLETE',evidence_kind='T24_NESTED_EVENT_COMPLETE_MEAL_DEVELOPMENT_ONLY',
             **assess_gate(records),elapsed_seconds=time.perf_counter()-start,completed_splits=completed,
