@@ -1,0 +1,8 @@
+{
+  "status": "SUPERSEDED_BUILD_NOT_FOR_SUBMISSION",
+  "reason": "Rebuilt with clean-worktree gate and complete build-helper source fingerprints; model weights unchanged.",
+  "active_build": "outputs/official_recovery/consistent_refit_exe_v1_verified/summary.json",
+  "active_executable_sha256": "9e21b91a4a47ddc490bd2f9ace2151a5d5c2eea1c040c0d5b2c9985d2b82ca5e",
+  "obsolete_executable_removed": false,
+  "cleanup": "Execution policy rejected cleanup. Obsolete EXE remains under cache/delivery_build/consistent-trial-superseded-v1, not in the delivery directory."
+}

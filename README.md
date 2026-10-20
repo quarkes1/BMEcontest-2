@@ -60,6 +60,8 @@
 [同规模五折验证](outputs/official_recovery/consistent_validation_v1_retry2/summary.json)现已完成：完整254餐共同分母下，release-style为90TP/34FP/164FN、F1=.476190；consistent-style为126TP/47FP/128FN、F1=.590164，差+.113973，4/5折改善，29人改善/6人退步/4人持平。
 该对照仍是重复outer的开发证据，并非正式EXE逐位复现或官方新成绩；eligible153诊断.687117不能替代完整口径或宣称已达.70。
 按[一致性验证任务](docs/official_recovery_consistent_refit_validation_v1.md)继续全目标一次抽样、subject-OOF重训及独立送测EXE；正式dist/release不覆盖。
+独立重训现已完成（macro正类比例33.05%，micro31.32%），试测程序位于`dist/official_trials/consistent_refit_v1/EatingDetection.exe`，约60MiB，内含模型与运行依赖。此阶段仅需发送该EXE；官方无参数接口不变：将`ACC_test_data/`放在EXE旁，运行后在同目录生成`results.csv`。它不是正式release替换，真实官方F1待返回。
+EXE-only中文路径/无开发PATH自检、真实同人双文件Python/EXE CSV逐字节一致、非空预测、空输入和错误输入保护均已通过；官方原示例已不在本机，未声称复跑通过。详见[验收记录](outputs/official_recovery/consistent_refit_acceptance_v1/summary.json)。
 详见[召回恢复记录](outputs/official_recovery/report.md)及[执行计划](docs/superpowers/plans/2026-10-19-official-recall-recovery.md)。
 
 | 项 | 值 |

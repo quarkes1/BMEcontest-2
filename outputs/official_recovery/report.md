@@ -127,3 +127,13 @@ eligible153辅助诊断A=.519856/B=.687117；不得将B较高诊断与完整口�
 461.41秒，60次窗口fit/20次verifier fit，57项正式文件与所有输入前后指纹一致。前两次0-fit预检失败分别是旧主体ID拼写与失败证据未入库，保留INCOMPLETE，不计性能尝试。实际retry2通过+.03且多数折改善门。B训练候选正例数量日志发生int8溢出，该诊断作废，未影响模型/评分/gate；已加300例计数测试并修复后续统计，不为该日志重跑算法。
 
 全套收集快照1034 passed/6 skipped/39 warnings，1054.65秒；其后身份/计数与refit新增测试另跑，不称该全套覆盖所有后续提交。下一步按固定聚合策略，仅修复全目标抽样与OOF合同，训练独立模型并导出独立试测EXE；不自动晋级release，不修改dist/submission。
+
+## 独立一致性重训与EXE（2026-10-20）
+
+全数据训练99.23秒，五份val联合只采样一次，每session最多3×正窗负例、至少1个，seed20260901：macro26916窗/8897正例（33.05%），micro61469窗/19252正例（31.32%）。OOF meta有3323候选/152正例，116D；最后窗口与meta的seed合同一致，四个必要模型保存于`models/event_stack/official_consistent_refit_v1/deployment`。无训练内F1，全部输入/资格指纹与正式文件保护通过。
+
+策略按原封存五折等权mode/median聚合，未调参，数值与原deployment一致。独立交付`dist/official_trials/consistent_refit_v1/EatingDetection.exe`，62,893,900字节，SHA256 `9e21b91a4a47ddc490bd2f9ace2151a5d5c2eea1c040c0d5b2c9985d2b82ca5e`。
+首次构建后补齐clean-tree门和全src/scripts SHA前后冻结，按同权重重建；初次EXE不交付。模型与EXE安装均使用Windows原子拒绝覆盖，正式artifact writer不改。
+
+59.89秒专项验收：仅EXE复制到中文路径、neutral cwd、移除开发PATH/PYTHON/CONDA变量，自检和真实两文件（同人）+空文件与Python CSV逐字节一致，共1个非空事件。无输入报错、空输入覆盖旧结果、错误metadata不覆盖已有结果均通过。此为接口/打包一致性，不是准确率实验。
+官方原样例目录已从本机移走，样例项明确skip；不能称已完成原样例复跑。可在设置BME_OFFICIAL_SAMPLE_ROOT后补测。当前EXE是独立试测版，未自动邮件发送、未晋级正式release/前端。

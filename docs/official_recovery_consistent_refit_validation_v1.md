@@ -78,3 +78,6 @@ Pre-flight接口：refit输出deployment manifest与训练证明→trial builder
 - Ruling: 原子no-replace发布限定Windows（本交付平台），其他系统明确失败，不将POSIX rename冒充同语义。代价：研究导出需Windows运行；通用正式artifact writer保持原行为。
 - EXE初次构建成功（60.70秒、62,894,165字节），隔离self-check通过，但仅为尚未验收的构建。交付审查发现exporter缺少clean-tree门、未覆盖build helper SHA；两项RED→GREEN已修复，全scripts/src构建前后指纹一起冻结。原构建移入本次专属可恢复临时目录后重建，不复用旧EXE；验收通过再清理该副本，正式包不动。
 - 官方原示例目录目前已不存在，仓库只保留接口原文件/provenance。将明确记录原示例复跑未覆盖，不伪称合成/真实训练文件就是官方例子；仍执行真实双文件Python/EXE逐字节一致、错误/空输入、中文路径及无开发PATH验证。用户可日后提供原示例补测，不据此阻断其余安全验证。
+- verified EXE构建46.36秒，62,893,900字节，SHA256 `9e21b91a4a47ddc490bd2f9ace2151a5d5c2eea1c040c0d5b2c9985d2b82ca5e`；clean-tree与全src/scripts SHA前后匹配，试测身份自检通过。
+- 运行验收1 passed/1 skipped，59.89秒；真实同人连续两文件+空文件，Python/EXE CSV逐字节一致，共1个事件；中文路径/中性cwd/开发PATH剥离、无输入、空结果、错误metadata保留旧结果均验证。唯一skip为原官方示例缺失，不将其混作通过。全套回归正在运行。
+- 清理已完成验收scratch与过期试构建副本的PowerShell操作被执行策略拒绝，未执行删除，不换工具绕过。暂存`cache/delivery_build/consistent-trial-superseded-v1`和`consistent_trial_acceptance_v1`；不在dist，待有合适执行权限后清理。活动全套scratch不作删除。

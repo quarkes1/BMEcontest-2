@@ -1,0 +1,24 @@
+{
+  "state": "PASS",
+  "exe_sha256": "9e21b91a4a47ddc490bd2f9ace2151a5d5c2eea1c040c0d5b2c9985d2b82ca5e",
+  "self_check": "PASS",
+  "missing_input": "PASS",
+  "empty_output": "PASS",
+  "malformed_metadata_preserves_previous_output": "PASS",
+  "real_python_exe_csv_byte_parity": "PASS",
+  "multi_file_same_person": "PASS",
+  "real_fixture_sha256": {
+    "collect_data1_1784539509_1784544161.txt": "f261eb4680cd0ed88dfa24bad83b411fab4e1f485f64bc82fd0dd7a08549f445",
+    "collect_data2_1784544161_1784548552.txt": "3e863e60ea359b86eb0a96736dcbe84d22046bf02acb3ba28bd08077de0e54ef"
+  },
+  "result": {
+    "subjects": 1,
+    "input_files": 3,
+    "eating_events": 1,
+    "missing_info": [],
+    "conflicting_info": []
+  },
+  "csv_sha256": "8d1cd7dabcc3fc6264351a1520de7338773c6976ca2b617382de40f2edea16f0",
+  "elapsed_seconds": 58.327817000012146,
+  "environment": "same Windows machine; EXE-only copy, neutral cwd, development PATH/PYTHON/CONDA stripped"
+}
