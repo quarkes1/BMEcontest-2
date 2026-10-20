@@ -53,6 +53,19 @@ def test_full_heldout_candidates_do_not_add_heldout_training_rows():
     assert expanded.subject_by_session['b']=='B'
 
 
+def test_train_role_uses_validated_canonical_ids_before_subject_slice():
+    from scripts.research.official_recovery.consistent_validation import canonical_train_role
+    batch=WindowBatch(np.ones((2,62)),np.array([1,0]),(EventRef('a',0,100),EventRef('b',0,100)))
+    old=OuterTrainOnlyData(batch,batch,(),{'a':'hnu 21013','b':'B'},
+                           {'a':(0,100),'b':(0,100)},batch,batch)
+    result=canonical_train_role(old,{'a':'HNU21013','b':'B','c':'C'},{'HNU21013'})
+    assert result.subject_by_session=={'a':'HNU21013'}
+    assert [w.sid for w in result.window_train.windows]==['a']
+    np.testing.assert_array_equal(result.window_train.features,np.ones((1,62)))
+    with pytest.raises(KeyError):
+        canonical_train_role(old,{'b':'B'},{'HNU21013'})
+
+
 def test_blend_uses_the_sealed_weight_and_rejects_invalid_weights():
     from scripts.research.official_recovery.consistent_validation import fit_verifiers
     x=np.zeros((8,116));x[:,0]=np.arange(8);y=np.array([0]*4+[1]*4)

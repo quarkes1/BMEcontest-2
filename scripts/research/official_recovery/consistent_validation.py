@@ -56,6 +56,12 @@ def assemble_full_data(old,pools,mapping,bounds):
     return expand_candidates(base,pools,mapping,bounds)
 
 
+def canonical_train_role(old,mapping,train):
+    # Legacy loader preserves raw spelling; cohort and pools use validated canonical IDs.
+    canonical=replace(old,subject_by_session={sid:mapping[sid] for sid in old.subject_by_session})
+    return slice_outer_train(canonical,train)
+
+
 def fit_verifiers(x,y,z,config,regularization,blend):
     if not 0<=blend<=1: raise ValueError('invalid verifier blend')
     if set(np.asarray(y).tolist())!={0,1}: raise ValueError('binary verifier targets required')
@@ -161,7 +167,7 @@ def execute(root,output):
             sealed=frozen['config'].copy();registered=json.loads(json.dumps(asdict(config)));sealed.pop('workers');registered.pop('workers')
             if sealed!=registered: raise ValueError('registered factory config differs from sealed fold')
             train={s for s,k in subject_fold.items() if k!=fold};score=cohort-train
-            old=slice_outer_train(runner.FilesystemDataSource(root).load_outer_train_only(config),train)
+            old=canonical_train_role(runner.FilesystemDataSource(root).load_outer_train_only(config),mapping,train)
             universe=assemble_full_data(old,pools,mapping,bounds)
             t=slice_outer_train(universe,train);v=slice_outer_train(universe,score)
             if set(t.subject_by_session.values())&score: raise ValueError('heldout identity in fit slice')
