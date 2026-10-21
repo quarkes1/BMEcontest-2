@@ -1,0 +1,41 @@
+{
+  "sample": {
+    "macro": {
+      "mask": {
+        "rows": 82603,
+        "positive": 2731,
+        "negative": 78275,
+        "ignored": 1597,
+        "censored_negative": 0
+      },
+      "sample": {
+        "seed": 20260901,
+        "negative_ratio": 3,
+        "rows": 7784,
+        "positive": 2731,
+        "positive_ratio": 0.35084789311408016,
+        "sample_identity_sha256": "e95a854fb55d2cb9db18a7bfa6f1b3cb41d37ad026231d84a2837904416b3019"
+      }
+    },
+    "micro": {
+      "mask": {
+        "rows": 179276,
+        "positive": 5770,
+        "negative": 170710,
+        "ignored": 2796,
+        "censored_negative": 0
+      },
+      "sample": {
+        "seed": 20260901,
+        "negative_ratio": 3,
+        "rows": 17450,
+        "positive": 5770,
+        "positive_ratio": 0.33065902578796563,
+        "sample_identity_sha256": "ee313791b3ec1ab91e36e0e55821d1eed01f5fd6199cd093b620cd292adc7bc1"
+      }
+    }
+  },
+  "micro_threshold": 0.1,
+  "meta_rows": 958,
+  "meta_positive": 38
+}
