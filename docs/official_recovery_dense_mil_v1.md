@@ -12,7 +12,7 @@
 
 - 仍为T1三个16train/8health、每个train三折policy OOF，V7/outer完全不参与拟合或选择。完整160餐、严格整数IoU>.25一对一，缺窗/缺候选GT也保留。
 - 输入47维既有gravity-aligned micro特征，15s窗/7.5s步长。读取完整T24 val唯一联合；拒绝重复窗/未知主体/非固定窗宽；按sid和时间排序，相邻start差非7500ms立即断span，不跨session或缺口卷积。无时间先验、无旧候选标志或GT字段作为输入，不读取raw ACC/PPG，不使用仅227session的旧token。
-- 每个当前fit分区独立拟合normalizer：每主体按时间等距最多4096行，训练行拼接后逐维nanmedian填补、std下限1e-4，标准化后clip±8；全缺维填0/scale1。绝不使用score/health行统计。
+- 每个当前fit分区独立拟合normalizer：每主体按真实时间排序后，在**有效观测行序列**上等距最多4096行（每行对应固定7.5s观测步长，缺口不补样、不重复边缘行），训练行拼接后逐维nanmedian填补、std下限1e-4，标准化后clip±8；全缺维填0/scale1。绝不使用score/health行统计。
 - 每个完整GT是一个positive bag：取当前fit主体、GT内中心点的所有可见micro窗口，跨session片段可以属于同一bag，但encoder从不跨gap。至少2行才参与loss；缺失/不足单独记录，不删评价GT。**只约束bag最高20% logits均值为positive，不把每行标1。**
 - negative bag中心在连续span内每300s采一个，长度按当前fit完整GT时长列表确定性循环匹配；请求区间必须完全在span内且距当前主体任何GT至少300s，至少2个中心。负bag同样取最高20% logits均值为negative。无合格正/负bag即INCOMPLETE，不补健康主体数据。采样按类别各8个bag、先均匀选有该类bag的主体再选bag。
 
@@ -45,3 +45,7 @@
 - 2026-10-21：按已批准的条件分支自主启动，不因失败W降低门槛。CUDA已实测PyTorch2.11.0+cu128 / RTX5060 Laptop 8GiB可用；选择微窗统计TCN而非重新抽取raw encoder tokens，减少IO与打包负担。
 - Ruling: 首轮采用保守追加分支而非全替换baseline——避免丢失已确认的检出，代价是不能修复与baseline事件明显重叠的边界错误；该限制固定，不根据health放宽。
 - Ruling: 使用bag top20%而非餐内逐片硬标签——吻合进食/停顿交替，代价是meal边界只能由固定proposal聚合近似，未必达到IoU要求。
+- 实现预检：冻结A逐事件精确回放，完整160餐结果89/62/71；全输入391444窗口、702个sid、1440物理连续span，与旧227候选session缓存不同。27项相关专项通过（本阶段14项），含CPU/CUDA合成fit与p allclose、chunk/fullspan等价、normalizer按物理时间采样顺序不变；尚未启动真实target fit。
+- Ruling: compact A scores没有完整stream细节——仅在每份文件candidate geometry唯一且health逐事件精确回放时，使用原冻结score和geometry复原admission；代价是若将来出现同几何多stream重复行必须拒绝，不猜测tie行为。
+- Final review：Luna/medium无其他严重问题。Final: Ruling: 审查将“时间等距”歧义列Important；本方选择明确为按有效观测时长/行均匀，而不按跨缺口的calendar时间取最近窗——后者可能重复缺口边缘，给缺失时间加权。所有真实target训练前修订合同并补gap长度不变性测试；算法不变，该性质既已满足，不冒称RED→GREEN修复。代价是较长有效span在同一主体统计中权重更高，这是归一化目标而非对未观测时段估计。
+- Final: minor (deferred): baseline loader未自动检查既有COMPLETE state/完整policy seal；当前真实训练前另外手工核对，A仍逐事件精确回放，全部输入SHA冻结。后续泛化复用入口应加强来源门，不为该小项改动当前代码。
