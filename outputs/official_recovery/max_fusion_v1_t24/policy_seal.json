@@ -1,0 +1,8 @@
+{
+  "sha256": {
+    "fold0_policy.json": "0fa42187da5207df6a0da08ecd737c686500e57635b8bcba18f7b44df6fcf450",
+    "fold1_policy.json": "3d6e35f32e9476d1d0c55accceb6bdbab6053b724a47f5dc14dd98787e34fa7a",
+    "fold2_policy.json": "f730af5fc62d2e962f290f3404aa2a1854c6aeb11327684fda9e2095b358d1fb",
+    "plan.json": "54be1d03324ef1058208c320d3717314a60e9e8e0a0e29a3134a42c42dbef634"
+  }
+}
