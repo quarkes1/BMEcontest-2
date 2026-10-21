@@ -64,7 +64,7 @@
 独立重训现已完成（macro正类比例33.05%，micro31.32%），试测程序位于`dist/official_trials/consistent_refit_v1/EatingDetection.exe`，约60MiB，内含模型与运行依赖。此阶段仅需发送该EXE；官方无参数接口不变：将`ACC_test_data/`放在EXE旁，运行后在同目录生成`results.csv`。它不是正式release替换，真实官方F1待返回。
 EXE-only中文路径/无开发PATH自检、真实同人双文件Python/EXE CSV逐字节一致、非空预测、空输入和错误输入保护均已通过；官方原示例已不在本机，未声称复跑通过。详见[验收记录](outputs/official_recovery/consistent_refit_acceptance_v1/summary.json)。
 最终全套回归：1048通过、7跳过、39警告（无失败）；7项跳过含Windows符号链接权限限制与缺少官方原样例。编译临时树已自动清理，另约1.71GiB本轮测试/旧构建scratch因执行策略拒绝删除仍留于`cache/delivery_build/`，不在送测目录；具体清单见任务书收尾记录。
-[负监督去污染](docs/official_recovery_negative_clean_v1.md)三组嵌套开发对照已完成（160完整餐次）：窗口侧W由F1=.572347升至.593333，TP保持89、FP62→51，2/3折提高，刚过预注册门；verifier侧E未通过。第三折W退步，不能称普遍改善。目前仅W进入[39主体/254餐五折配对验证](docs/official_recovery_negative_clean_validation_v1.md)，全部五折策略仍须先在各自训练OOF封存。0.521277版保留回退，五折结果支持后才生成另一独立EXE，不保证隐藏集必然提升。
+[负监督去污染](docs/official_recovery_negative_clean_v1.md)在160餐三组开发对照中，窗口侧W曾由F1=.572347升至.593333；但[39主体/254餐五折配对验证](docs/official_recovery_negative_clean_validation_v1.md)未复现：A138TP/80FP/116FN、F1=.584746，W135/82/119、.573248，仅1/5折提高。候选侧E此前也未通过。该参数面已关闭，**没有导出失败模型**；下一步改为全天弱监督定位。官方.521277独立版和正式提交包均保持不变。
 详见[召回恢复记录](outputs/official_recovery/report.md)及[执行计划](docs/superpowers/plans/2026-10-19-official-recall-recovery.md)。
 
 | 项 | 值 |

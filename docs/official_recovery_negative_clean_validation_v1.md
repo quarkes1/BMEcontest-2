@@ -30,3 +30,6 @@ PyInstaller自包含CPU EXE沿用官方无参数接口；构建须clean tree、�
 - 2026-10-21：W刚好通过前三组门；保留第三组退步。Ruling: 不把新A与旧.590164跨合同比较——本阶段两臂都重新在outer-train完整GT选择策略；代价是不能单独把所有绝对差异归于W。
 - Ruling: policy划分用主体均衡随机而非按GT分层——避免借outer标签定分区；潜在代价是小分区餐次不均衡，固定后不重分。
 - TDD：4项新增已观察RED→GREEN；连同上一阶段31项通过。只读全量预检确认39人/254完整GT/153旧eligible，macro285310窗、micro621199窗；所有窗口来自五个互斥val联合，不拼train缓存。
+- 2026-10-21完成：eb717ef先封存全部15个policy分区，后完整五折评分。A138TP/80FP/116FN、F1=.584745763；W135/82/119、.573248408，差−.011497355，仅1/5折提高，TP−3/FP+2，**失败，不重训或导出**。逐人15改善/12退步/12持平；不以逐人多数掩盖pooled退化。训练及阶段间隔计时1789.34秒（初次数据初始化另计），400窗口/80meta fit，保护66项不变。
+- Final review：Luna/medium无Critical/Important。Final: minor (deferred): 没有独立mask成员集合SHA，但完整输入/代码SHA与sample成员SHA支持复算；当前不为审计小项重跑。Final: Ruling: reviewer未评审后续EXE——本阶段性能失败，因此不产生后续EXE；不把审查通过当成模型通过。
+- 关闭W/E mask参数面；按已批准分支转入目标域全天弱监督定位，不以新mask比例、组合W+E或回调threshold挽救本次结果。
