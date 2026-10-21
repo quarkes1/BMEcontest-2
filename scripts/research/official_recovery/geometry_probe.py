@@ -59,7 +59,7 @@ def verify_parent_identity(root,parent,scope,metadata):
         raise ValueError('scope metadata provenance differs')
 
 
-def load_context(root,cohort):
+def load_context(root,cohort,*,parent_directory=T24_OUTPUT,parent_gate=geometry_gate):
     from src.data.manifests import load_sensor_index,load_meals,MEALS_CSV,INDEX_CSV
     rows=load_sensor_index().to_dict('records');mapping=validated_session_subjects(rows)
     bounds={str(r['session_id']):(int(r['timeStamp.startTime']),int(r['timeStamp.endTime'])) for r in rows}
@@ -77,9 +77,9 @@ def load_context(root,cohort):
         base,_=frozen_baseline(root,mapping,truths,manifest)
         wrappers=[dict(id=w['id'],train=w['train'],score=w['health'],**base[w['id']]) for w in manifest['wrappers']]
     elif cohort=='five':
-        gate_source=root/T24_OUTPUT
+        gate_source=root/parent_directory
         if _read(gate_source/'state.json')['state']!='COMPLETE': raise ValueError('completed T24 geometry gate required')
-        gate=geometry_gate([_read(gate_source/f'fold{k}_report.json') for k in range(3)],'t24')
+        gate=parent_gate([_read(gate_source/f'fold{k}_report.json') for k in range(3)],'t24')
         summary=_read(gate_source/'summary.json')
         if not gate['passed'] or any(summary[k]!=v for k,v in gate.items()): raise ValueError('T24 geometry gate did not pass')
         if any(_sha(root/p)!=h for p,h in _read(gate_source/'plan.json')['source_sha256'].items()):
@@ -119,14 +119,14 @@ def load_context(root,cohort):
     return truths,mapping,bounds,wrappers
 
 
-def inputs(root,cohort):
+def inputs(root,cohort,*,parent_directory=T24_OUTPUT):
     from src.data.manifests import MEALS_CSV,INDEX_CSV
     paths={Path(MEALS_CSV),Path(INDEX_CSV),root/SPEC,root/MANIFEST}
     paths.update(root/'cache'/kind/f'fold{k}_val.npz' for kind in ('slide','micro15') for k in range(5))
     paths.update(p for tree in ('src','scripts') for p in (root/tree).rglob('*.py'))
     paths.update((root/T24_SOURCE).glob('*.json'))
     if cohort=='five':
-        paths.update((root/FIVE_SOURCE).glob('*.json'));paths.update((root/T24_OUTPUT).glob('*.json'))
+        paths.update((root/FIVE_SOURCE).glob('*.json'));paths.update((root/parent_directory).glob('*.json'))
         paths.add(root/'outputs/official_recovery/scope_audit_confirmed/summary.json')
     return {str(p.relative_to(root)):_sha(p) for p in paths}
 

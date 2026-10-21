@@ -21,3 +21,5 @@ T24 gate：F1至少+.02、至少2/3组严格提高、TP不降。通过才对最�
 Pre-flight：score生产器只提供已封存LR/LGBM与几何，融合不拟合额外模型，故不引入跨层stacking的OOF祖先问题。threshold属于训练侧全局policy选择，不能按health GT校正。现有_admission排序会随新score变化，这是被检验公式的确定性后果，保留原控制参数不等于保留同一入选集合。
 
 Ruling：旧任务书禁止重启adaptive融合搜索；本次不启动该学习型方案，而对修复训练后的冻结分量实施一个固定无参数公式。若无效关闭，不扩为手工outer融合搜索。代价：不能代表所有融合架构的结论。
+
+实施：4项新测试与geometry合计13项通过，含不同预测数的fusion gate；相关41项通过。Luna medium一次审查无Critical/Important。Final: minor (deferred): 保存的fusion policy祖先图沿用已冻结A policy，未再显式连接三个分量score文件节点；每个输入文件的完整祖先与精确角色均独立核对，且SHA冻结，当前未发现泄漏，但图形审计不够直接。
