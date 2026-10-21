@@ -49,3 +49,4 @@
 - Ruling: compact A scores没有完整stream细节——仅在每份文件candidate geometry唯一且health逐事件精确回放时，使用原冻结score和geometry复原admission；代价是若将来出现同几何多stream重复行必须拒绝，不猜测tie行为。
 - Final review：Luna/medium无其他严重问题。Final: Ruling: 审查将“时间等距”歧义列Important；本方选择明确为按有效观测时长/行均匀，而不按跨缺口的calendar时间取最近窗——后者可能重复缺口边缘，给缺失时间加权。所有真实target训练前修订合同并补gap长度不变性测试；算法不变，该性质既已满足，不冒称RED→GREEN修复。代价是较长有效span在同一主体统计中权重更高，这是归一化目标而非对未观测时段估计。
 - Final: minor (deferred): baseline loader未自动检查既有COMPLETE state/完整policy seal；当前真实训练前另外手工核对，A仍逐事件精确回放，全部输入SHA冻结。后续泛化复用入口应加强来源门，不为该小项改动当前代码。
+- 2026-10-21完成：e0d83de封存全部9次policy fit后，再做3次health refit。三个训练侧选择均cap0，A/R均89TP/62FP/71FN、F1=.572347267，无提升，gate失败，不做五折或导出。12模型共379.69秒，峰值进程工作集2.29GiB；首模型1000步23.76秒、65665参数、CUDA模型峰值198020608字节。只读GT诊断：三个health原始dense proposal分别582/599/542个，可达33/54、27/55、23/51个GT，不是新F1或官方归因。关闭本轮objective/decoder，不下调阈值挽救。

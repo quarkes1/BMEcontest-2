@@ -1,0 +1,41 @@
+{
+  "state": "COMPLETE",
+  "evidence_kind": "T24_DENSE_MIL_RESCUE_DEVELOPMENT_ONLY",
+  "passed": false,
+  "aggregate": {
+    "A": {
+      "tp": 89,
+      "fp": 62,
+      "fn": 71,
+      "predictions": 151,
+      "truths": 160,
+      "f1": 0.572347266881029,
+      "ppv": 0.5894039735099338,
+      "recall": 0.55625
+    },
+    "R": {
+      "tp": 89,
+      "fp": 62,
+      "fn": 71,
+      "predictions": 151,
+      "truths": 160,
+      "f1": 0.572347266881029,
+      "ppv": 0.5894039735099338,
+      "recall": 0.55625
+    }
+  },
+  "delta_f1": 0.0,
+  "positive_folds": 0,
+  "delta_tp": 0,
+  "delta_fp": 0,
+  "subject_diagnostics": {
+    "improved": 0,
+    "worsened": 0,
+    "tied": 24
+  },
+  "protected_unchanged": true,
+  "outer_calls": 0,
+  "fits": 12,
+  "total_wall_seconds": 379.69192695617676,
+  "peak_rss_bytes": 2456412160
+}
