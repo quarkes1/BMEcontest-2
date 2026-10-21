@@ -38,3 +38,5 @@ Pre-flight：load_pools的features已含时间先验，fit不可再次追加；�
 实现`scripts/research/official_recovery/macro_lgbm_event.py`，增加factory透传/默认恒等、parent失败拒绝、gate完整人口测试；一位Luna medium只读审查后执行。通过事件两门才登记部署合同；失败关闭工厂，不按health修改树参数或AP门。
 
 审查修复：窗口parent原仅检查结果数字/保护身份，不能证明来自本轮源；增加固定plan SHA `2b6c1d8fc33ac0462c1e6a516163af79c57289bb8a12a2f79d76d1639a457e3a`与代码24aa4667597483a9eea144bf14d5a2986a9c485a，逐项核对parent原source SHA。仅允许本文M1追加与已测试的crossfit factory注入两处预期源差异；新增事件代码由新plan完整冻结。`test_window_parent_requires_exact_reviewed_plan_and_live_source`观察拒绝缺失RED后修复GREEN。eligibility在数据加载前后及fit后核对，不只在fit前后取样。一次审查其余无严重问题；事件结果未产生。
+
+M1事件结果（完成，失败）：0a4417a封存9份fit后统一评分。A89/62/71、F1=.572347267；L87/60/73、F1=.566775244（−.005572023，TP−2/FP−2）。逐组.594059→.616822、.555556→.574074、.568627→.500000，虽2/3提高但总体下降，不能按多数折单独晋级。120窗口/24meta fit，500.74秒，66保护与源/eligibility不变；56项相关测试通过，全套9d04ef3快照运行中。原AP门失败与M1事件失败均保留，不启动五折、无新EXE，关闭该独立替换工厂。
