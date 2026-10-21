@@ -27,3 +27,5 @@
 TDD：按session有效正/负质量等于canonical sample，零正/零负/ignored、未知标签、顺序非破坏；真实HGB权重传递与micro不受影响，None默认恒等；新hypothesis父级隔离与不覆盖。一次Luna medium只读审查，严重项一次RED→GREEN修复，提交后训练。失败关闭本权重合同，不按health改ratio/clip/权重放大。
 
 Pre-flight：权重数组与data.window_train原序严格对齐，subject切片后再按labels>=0切片；每个OOF fit只收到其train行权重。per-sid规则不跨subject拟合统计，因此当前被评分subject的标签不影响其他fit subject的权重。
+
+实施：纯权重与macro传递三项先RED→GREEN；真实Pipeline-fit spy验证subject/OOF切片的逐行权重等于原行身份且micro kwargs为空。真实常量HGB验证100行原正类比例.02，在权重下回到canonical质量2/(2+6)=.25；这是现有HGB sample_weight能力的额外验证，不冒称新功能RED。新的full_weight工厂/父级namespace/gate测试RED→GREEN。一次Luna medium审查无Critical/Important或Minor。代码冻结后运行事件实验与最新全套，在全套结束前不再扩展研究代码，以避免旧一次回归的混合快照问题。

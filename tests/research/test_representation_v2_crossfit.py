@@ -108,3 +108,25 @@ def test_explicit_macro_factory_matches_default_without_touching_micro():
     np.testing.assert_array_equal(a.features,x.features)
     np.testing.assert_array_equal(b.features,y.features)
     assert a.micro_threshold==x.micro_threshold
+
+
+def test_macro_weights_are_subject_sliced_then_fold_sliced_and_never_reach_micro(monkeypatch):
+    from sklearn.pipeline import Pipeline
+    from sklearn.ensemble import HistGradientBoostingClassifier
+    from threadpoolctl import threadpool_limits
+    data=_data();batch=data.window_train
+    data=replace(data,window_train=replace(batch,features=np.column_stack([np.arange(8),np.zeros(8)])))
+    config=replace(registered_e03_config(0,workers=1),micro_positive_middle_fraction=None)
+    seen=[];original=Pipeline.fit
+    def tracked(self,x,y,**kwargs):
+        macro=isinstance(self.named_steps['model'],HistGradientBoostingClassifier)
+        seen.append((macro,np.asarray(x)[:,0].copy(),kwargs))
+        return original(self,x,y,**kwargs)
+    monkeypatch.setattr(Pipeline,'fit',tracked)
+    with threadpool_limits(limits=2):
+        build_candidate_ledgers(data,config,{f'person{i}' for i in range(6)},{'person6','person7'},
+            macro_fit_sample_weight=np.arange(1,9,dtype=np.float64))
+    assert sum(macro for macro,_,_ in seen)==config.inner_splits+1
+    for macro,rows,kwargs in seen:
+        if macro: np.testing.assert_array_equal(kwargs['model__sample_weight'],rows+1)
+        else: assert not kwargs

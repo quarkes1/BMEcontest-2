@@ -39,19 +39,29 @@ def macro_ensemble_factory(seed):
         voting='soft',n_jobs=1)
 
 
+def macro_contract(hypothesis):
+    contracts={
+        'lgbm':dict(id='MACRO-LGBM-EVENT-M1',t24=T24_OUTPUT,spec=SPEC,factory=macro_estimator,member_fits=2),
+        'ensemble':dict(id='MACRO-SOFT-ENSEMBLE-V1',t24=ENSEMBLE_T24,spec=ENSEMBLE_SPEC,factory=macro_ensemble_factory,member_fits=3),
+        'full_weight':dict(id='WEIGHTED-FULL-NEGATIVES-V1',t24='outputs/official_recovery/weighted_full_negative_v1_t24',
+            spec='docs/official_recovery_weighted_full_negative_v1.md',factory=runner._window_estimator,member_fits=2),
+    }
+    if hypothesis not in contracts: raise ValueError('unknown macro hypothesis')
+    return contracts[hypothesis]
+
+
 def event_gate(records,cohort,hypothesis='lgbm'):
-    if hypothesis not in ('lgbm','ensemble'): raise ValueError('unknown macro hypothesis')
+    macro_contract(hypothesis)
     result=fusion_gate(records,cohort)
-    if hypothesis=='ensemble':
+    if hypothesis in ('ensemble','full_weight'):
         result['passed']=bool(result['delta_f1']>=.01-1e-12 and result['positive_folds']>=(2 if cohort=='t24' else 3)
             and result['delta_tp']>=0 and (result['delta_fp']<=0 or result['delta_tp']>result['delta_fp']))
     return result
 
 
 def verify_event_parent(root,hypothesis):
-    if hypothesis not in ('lgbm','ensemble'): raise ValueError('unknown macro hypothesis')
-    parent=root/(ENSEMBLE_T24 if hypothesis=='ensemble' else T24_OUTPUT)
-    plan=_read(parent/'plan.json');expected='MACRO-SOFT-ENSEMBLE-V1' if hypothesis=='ensemble' else 'MACRO-LGBM-EVENT-M1'
+    contract=macro_contract(hypothesis);parent=root/contract['t24']
+    plan=_read(parent/'plan.json');expected=contract['id']
     if (plan['id']!=expected or plan['cohort']!='t24' or plan.get('hypothesis','lgbm')!=hypothesis
         or _read(parent/'state.json')['state']!='COMPLETE' or _read(parent/'summary.json')['passed'] is not True):
         raise ValueError('successful matching macro parent required')
@@ -93,7 +103,7 @@ def fingerprints(root,cohort,hypothesis='lgbm'):
     hashes=_inputs(root)
     files={root/SPEC};files.update((root/WINDOW_SOURCE).glob('*'))
     files.update((root/T24_SOURCE).glob('*.json'))
-    parent_directory=ENSEMBLE_T24 if hypothesis=='ensemble' else T24_OUTPUT
+    contract=macro_contract(hypothesis);parent_directory=contract['t24'];files.add(root/contract['spec'])
     if hypothesis=='ensemble':
         files.add(root/ENSEMBLE_SPEC);files.update((root/T24_OUTPUT).glob('*.json'))
     if cohort=='five':
@@ -103,14 +113,18 @@ def fingerprints(root,cohort,hypothesis='lgbm'):
     return hashes
 
 
-def fit_score(data,config,train,score,excluded,truths,output,prefix,source,*,factory=macro_estimator,arm='L'):
+def fit_score(data,config,train,score,excluded,truths,output,prefix,source,*,factory=macro_estimator,arm='L',weighted=False):
     train,score,excluded=map(set,(train,score,excluded))
     if train&(score|excluded) or score&excluded: raise ValueError('producer roles overlap')
-    prepared,sampling=prepare_train(data,train,truths,'A')
+    weights=None;weight_stats=None
+    if weighted:
+        from .weighted_full_negatives import prepare_weighted_train
+        prepared,sampling,weights,weight_stats=prepare_weighted_train(data,train,truths)
+    else: prepared,sampling=prepare_train(data,train,truths,'A')
     scoring=replace(data,window_train=prepared.window_train,micro_window_train=prepared.micro_window_train)
     graph={};seed=config.seed+2
     t,v=build_candidate_ledgers(scoring,replace(config,seed=seed),train,score,fit_audit=graph,
-        macro_estimator_factory=lambda:factory(seed))
+        macro_estimator_factory=lambda:factory(seed),macro_fit_sample_weight=weights)
     frozen=_read(source/f'{prefix}_training.json')
     # Window sampling and micro-only learned threshold must remain precisely the baseline contract.
     if sampling!=frozen['A'] or t.micro_threshold!=frozen['A_meta']['micro_threshold']:
@@ -120,30 +134,29 @@ def fit_score(data,config,train,score,excluded,truths,output,prefix,source,*,fac
     graph['score']=dict(fit_subjects=[],parents=['verifier']);check_graph(graph,'score',score|excluded,train)
     _save_scores(output/f'{prefix}_{arm}_scores.json',v.candidates,p,components,v.groups,graph,train,score)
     _write(output/f'{prefix}_training.json',dict(sample=sampling,micro_threshold=t.micro_threshold,
-        meta_rows=len(t.labels),meta_positive=int(np.count_nonzero(t.labels==1))))
+        meta_rows=len(t.labels),meta_positive=int(np.count_nonzero(t.labels==1)),weighted_macro=weight_stats))
     gc.collect();return v,p,graph
 
 
 def execute(root,output,phase='policy',cohort='t24',hypothesis='lgbm'):
-    if hypothesis not in ('lgbm','ensemble'): raise ValueError('unknown macro hypothesis')
-    factory=macro_ensemble_factory if hypothesis=='ensemble' else macro_estimator
-    arm='E' if hypothesis=='ensemble' else 'L'
-    parent_directory=ENSEMBLE_T24 if hypothesis=='ensemble' else T24_OUTPUT
-    window_fits=(180 if hypothesis=='ensemble' else 120) if cohort=='t24' else (300 if hypothesis=='ensemble' else 200)
+    contract=macro_contract(hypothesis);factory=contract['factory'];parent_directory=contract['t24']
+    arm={'lgbm':'L','ensemble':'E','full_weight':'W'}[hypothesis]
+    window_fits=contract['member_fits']*(60 if cohort=='t24' else 100)
     root,output=Path(root).resolve(),Path(output).resolve();completed=0;started=time.perf_counter()
     if phase=='policy': output.mkdir(parents=True,exist_ok=False)
     elif phase!='score': raise ValueError('unknown event phase')
     try:
         if subprocess.check_output(['git','status','--porcelain'],cwd=root,text=True).strip():
             raise RuntimeError('commit source/evidence before event training')
-        protected=protected_sources(root);verify_window_parent(root/WINDOW_SOURCE,protected,root)
+        protected=protected_sources(root)
+        if hypothesis!='full_weight': verify_window_parent(root/WINDOW_SOURCE,protected,root)
         if hypothesis=='ensemble': verify_failed_m1(root,protected)
         if phase=='policy':
             hashes=fingerprints(root,cohort,hypothesis)
-            plan=dict(id='MACRO-SOFT-ENSEMBLE-V1' if hypothesis=='ensemble' else 'MACRO-LGBM-EVENT-M1',
+            plan=dict(id=contract['id'],
                 hypothesis=hypothesis,cohort=cohort,source_sha256=hashes,protected=protected,
                 started_epoch=time.time(),code_sha=subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip(),
-                window_gate_failed=True,exploratory_amendment='ENSEMBLE' if hypothesis=='ensemble' else 'M1',expected_window_fits=window_fits,
+                window_gate_failed=hypothesis!='full_weight',exploratory_amendment=hypothesis,expected_window_fits=window_fits,
                 expected_meta_fits=24 if cohort=='t24' else 40)
             _write(output/'plan.json',plan)
         else:
@@ -193,7 +206,8 @@ def execute(root,output,phase='policy',cohort='t24',hypothesis='lgbm'):
                     guard()
                     if set(fit)&set(valid) or set(fit)|set(valid)!=train: raise ValueError('policy partition differs')
                     print(f'macro-event {cohort} policy {fold}/{i}: train{len(fit)} score{len(valid)}',flush=True)
-                    ledger,p,parent=fit_score(data,config,fit,valid,score|forbidden,truths,output,f'fold{fold}_policy{i}',source,factory=factory,arm=arm)
+                    ledger,p,parent=fit_score(data,config,fit,valid,score|forbidden,truths,output,f'fold{fold}_policy{i}',source,
+                        factory=factory,arm=arm,weighted=hypothesis=='full_weight')
                     candidates.extend(ledger.candidates);probabilities.extend(p);groups.extend(ledger.groups);seen.extend(valid)
                     for name,node in parent.items():
                         graph[f'p{i}_{name}']=dict(fit_subjects=node['fit_subjects'],parents=[f'p{i}_{p}' for p in node['parents']])
@@ -207,7 +221,8 @@ def execute(root,output,phase='policy',cohort='t24',hypothesis='lgbm'):
             frozen=_read(output/f'fold{fold}_policy.json');check_graph(frozen['graph'],'policy',score|forbidden,train)
             role='health' if cohort=='t24' else 'outer'
             print(f'macro-event {cohort} score {fold}: train{len(train)} score{len(score)}',flush=True)
-            ledger,p,graph=fit_score(data,config,train,score,forbidden,truths,output,f'fold{fold}_{role}',source,factory=factory,arm=arm)
+            ledger,p,graph=fit_score(data,config,train,score,forbidden,truths,output,f'fold{fold}_{role}',source,
+                factory=factory,arm=arm,weighted=hypothesis=='full_weight')
             events={'A':w['health_events'],'G':decode(ledger.candidates,p,ledger.groups,frozen['policy'])};targets=partition_truths(truths,score)
             row=dict(fold=fold,events={a:complete_metrics(es,mapping,targets) for a,es in events.items()},truths=targets,
                 predictions={a:[asdict(e) for e in es] for a,es in events.items()},score_graph=graph,policy_graph=frozen['graph'],
@@ -222,8 +237,8 @@ def execute(root,output,phase='policy',cohort='t24',hypothesis='lgbm'):
             result=dict(state='POLICY_FROZEN',completed_splits=completed)
         else:
             result=dict(state='COMPLETE',evidence_kind='EXPLORATORY_MACRO_CLASSIFIER_EVENT_DEVELOPMENT_ONLY',cohort=cohort,
-                **event_gate(records,cohort,hypothesis),hypothesis=hypothesis,protected_unchanged=True,window_gate_failed=True,
-                exploratory_amendment='ENSEMBLE' if hypothesis=='ensemble' else 'M1',
+                **event_gate(records,cohort,hypothesis),hypothesis=hypothesis,protected_unchanged=True,window_gate_failed=hypothesis!='full_weight',
+                exploratory_amendment=hypothesis,
                 window_fits=window_fits,meta_fits=24 if cohort=='t24' else 40,
                 elapsed_seconds=time.time()-plan['started_epoch'])
             _write(output/'summary.json',result)
@@ -236,6 +251,6 @@ def execute(root,output,phase='policy',cohort='t24',hypothesis='lgbm'):
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--phase',choices=('policy','score'),default='policy');parser.add_argument('--cohort',choices=('t24','five'),default='t24')
-    parser.add_argument('--hypothesis',choices=('lgbm','ensemble'),default='lgbm')
+    parser.add_argument('--hypothesis',choices=('lgbm','ensemble','full_weight'),default='lgbm')
     args=parser.parse_args()
     with threadpool_limits(limits=8): print(execute(Path(__file__).resolve().parents[3],args.output,args.phase,args.cohort,args.hypothesis),flush=True)

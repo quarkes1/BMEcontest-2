@@ -9,7 +9,7 @@ import numpy as np
 from sklearn.model_selection import GroupKFold
 
 from src.pipeline import runner as _runner
-from src.pipeline.crossfit import crossfit_predict_proba
+from src.pipeline.crossfit import crossfit_predict_proba,validate_fit_sample_weight
 from src.pipeline.runner import OuterTrainOnlyData, WindowBatch
 
 
@@ -72,7 +72,7 @@ class CandidateLedger:
 
 def build_candidate_ledgers(data: OuterTrainOnlyData, config: object, train_subjects: Iterable[str],
                             score_subjects: Iterable[str], *, fit_audit: dict | None = None,
-                            macro_estimator_factory=None) -> tuple[CandidateLedger, CandidateLedger | None]:
+                            macro_estimator_factory=None,macro_fit_sample_weight=None) -> tuple[CandidateLedger, CandidateLedger | None]:
     """Build T OOF and optional V candidates with T-only learned ancestors.
 
     The micro threshold is selected from T truth only. V truth is consulted only
@@ -84,19 +84,25 @@ def build_candidate_ledgers(data: OuterTrainOnlyData, config: object, train_subj
     if set(train) & set(score):
         raise ValueError("candidate producer train/score subject overlap")
     t = slice_outer_train(data, train)
+    macro_weights=None
+    if macro_fit_sample_weight is not None:
+        supplied=validate_fit_sample_weight(macro_fit_sample_weight,len(data.window_train.windows))
+        rows=np.asarray([data.subject_by_session[w.sid] in set(train) for w in data.window_train.windows])
+        macro_weights=supplied[rows]
     v = slice_outer_train(data, score) if score else None
     if t.micro_window_train is None or t.micro_candidate_train is None or (v is not None and v.micro_candidate_train is None):
         raise ValueError("registered candidate producer requires micro path")
 
     def _fit_and_score(train_batch: WindowBatch, t_candidate: WindowBatch, v_candidate: WindowBatch | None,
-                       keep: np.ndarray, estimator_factory, *, time_prior: bool):
+                       keep: np.ndarray, estimator_factory, *, time_prior: bool,fit_weights=None):
         x = lambda batch: _runner._with_time_prior(batch.features, batch.windows) if time_prior else batch.features
         labels = np.asarray(train_batch.labels[keep], dtype=np.int8)
         _runner._validate_binary(labels, "candidate producer training")
         groups = _runner._groups_for(train_batch.windows, t.subject_by_session)[keep]
         t_groups = _runner._groups_for(t_candidate.windows, t.subject_by_session)
         oof = crossfit_predict_proba(x(train_batch)[keep], labels, groups, x(t_candidate), t_groups,
-                                    config.inner_splits, estimator_factory=estimator_factory)
+                                    config.inner_splits, estimator_factory=estimator_factory,
+                                    fit_sample_weight=fit_weights[keep] if fit_weights is not None else None)
         t_scores = oof.probabilities
         if fit_audit is not None:
             name = 'macro' if time_prior else 'micro'
@@ -105,7 +111,7 @@ def build_candidate_ledgers(data: OuterTrainOnlyData, config: object, train_subj
         if v_candidate is None:
             return _runner._windows_by_session(t_candidate.windows, t_scores), None
         model = estimator_factory()
-        model.fit(x(train_batch)[keep], labels)
+        model.fit(x(train_batch)[keep], labels,**({'model__sample_weight':fit_weights[keep]} if fit_weights is not None else {}))
         if fit_audit is not None:
             fit_audit[f'{name}_refit'] = {'fit_subjects': sorted(map(str, set(groups))), 'parents': []}
         v_scores = _runner._positive_probability(model, x(v_candidate))
@@ -115,7 +121,8 @@ def build_candidate_ledgers(data: OuterTrainOnlyData, config: object, train_subj
     macro_t, macro_v = _fit_and_score(
         t.window_train, t.candidate_train, v.candidate_train if v is not None else None,
         np.asarray(t.window_train.labels) >= 0,
-        macro_estimator_factory if macro_estimator_factory is not None else lambda: _runner._window_estimator(config.seed), time_prior=True)
+        macro_estimator_factory if macro_estimator_factory is not None else lambda: _runner._window_estimator(config.seed),
+        time_prior=True,fit_weights=macro_weights)
     micro_t, micro_v = _fit_and_score(
         t.micro_window_train, t.micro_candidate_train, v.micro_candidate_train if v is not None else None,
         _runner._micro_training_keep(t.micro_window_train, t.train_truths, config.micro_positive_middle_fraction),
