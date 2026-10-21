@@ -20,3 +20,5 @@
 两门通过才另登记独立全目标ensemble refit与EXE版本；第一版/正式release/dist/submission不覆盖，前端不自动切换。EXE-only接口、真实数据Python/EXE字节一致、空错输入、自检、中文路径无开发环境与最新回归后才交付。不能保证隐藏测试一定改善，也不把T24或重复五折称官方F1。
 
 Pre-flight：VotingClassifier成员各自封装imputer，不共享fit状态；clone后的成员seed与train主体不变。宏窗predict_proba接口和classes_兼容canonical Predictor，因此若通过无需改预测数学，仅需模型、策略与构建身份新版本。
+
+实施：4项测试RED→GREEN（含真实Voting fit），随后一次Luna medium审查指出M1失败结果仅被当前哈希不能证明父级身份；新增第五项失败测试后修复，固定M1 plan SHA `fe1eb7de1de58c99cf6c610f8ef62c970944666946e575af7bfcb66e1571f8e2`、COMPLETE/failed/87-60-73、保护身份与原source。仅允许原M1文档新增结果和本入口扩展ensemble两个已声明的源差异；源指纹仍由本轮plan冻结。父级五折入口额外明确验证hypothesis/ID/成功门，避免误用M1。无其他严重问题或Minor。
