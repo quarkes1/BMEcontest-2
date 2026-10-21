@@ -85,10 +85,12 @@ def load_context(root):
     return config,data,truths,manifest,forbidden
 
 
-def _paired(data,config,train,score,excluded,truths,output,prefix):
+def _paired(data,config,train,score,excluded,truths,output,prefix,*,arms=ARMS):
+    if not arms or arms[0]!='A' or len(set(arms))!=len(arms) or set(arms)-set(ARMS):
+        raise ValueError('invalid explicit paired arms')
     if set(train)&(set(score)|set(excluded)) or set(score)&set(excluded): raise ValueError('split subject overlap')
     producers={};statistics={}
-    for producer in ('A','W'):
+    for producer in ('A','W') if 'W' in arms else ('A',):
         prepared,sampling=prepare_train(data,set(train),truths,producer)
         # Only training windows change; score role retains every original candidate window.
         scoring=replace(data,window_train=prepared.window_train,micro_window_train=prepared.micro_window_train)
@@ -96,7 +98,7 @@ def _paired(data,config,train,score,excluded,truths,output,prefix):
         t,v=build_candidate_ledgers(scoring,replace(config,seed=config.seed+2),train,score,fit_audit=graph)
         producers[producer]=(t,v,graph);statistics[producer]=sampling
     ledgers={};scores={};graphs={};targets=partition_truths(truths,set(train))
-    for arm in ARMS:
+    for arm in arms:
         t,v,parent=producers['W' if arm=='W' else 'A']
         y=np.asarray(t.labels);masked=dict(censored_negative=0,positive=int(np.count_nonzero(y==1)))
         if arm=='E': y,masked=censor_candidate_labels(t.candidates,y,targets,data.subject_by_session)
