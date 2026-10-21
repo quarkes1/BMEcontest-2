@@ -1,0 +1,96 @@
+{
+  "A": {
+    "macro": {
+      "mask": {
+        "rows": 154469,
+        "positive": 4437,
+        "negative": 146819,
+        "ignored": 3213,
+        "censored_negative": 0
+      },
+      "sample": {
+        "seed": 20260901,
+        "negative_ratio": 3,
+        "rows": 14163,
+        "positive": 4437,
+        "positive_ratio": 0.31328108451599235,
+        "sample_identity_sha256": "e3ffd7290fb776fb6795cf615cb2b30c2ee1c982c6bf3079c6a6f827fd8b1f1e"
+      }
+    },
+    "micro": {
+      "mask": {
+        "rows": 336514,
+        "positive": 9719,
+        "negative": 321042,
+        "ignored": 5753,
+        "censored_negative": 0
+      },
+      "sample": {
+        "seed": 20260901,
+        "negative_ratio": 3,
+        "rows": 32376,
+        "positive": 9719,
+        "positive_ratio": 0.3001914998764517,
+        "sample_identity_sha256": "4eeb38af021792103bc5d3b4bf87923294de1aa08f8191ee462078430dd46a66"
+      }
+    }
+  },
+  "W": {
+    "macro": {
+      "mask": {
+        "rows": 154469,
+        "positive": 4437,
+        "negative": 143814,
+        "ignored": 6218,
+        "censored_negative": 3005
+      },
+      "sample": {
+        "seed": 20260901,
+        "negative_ratio": 3,
+        "rows": 14146,
+        "positive": 4437,
+        "positive_ratio": 0.31365757104481834,
+        "sample_identity_sha256": "514832385731a55026db0a6121ddd73f8f0937518876ba61dad7ea09a47a5cac"
+      }
+    },
+    "micro": {
+      "mask": {
+        "rows": 336514,
+        "positive": 9719,
+        "negative": 313982,
+        "ignored": 12813,
+        "censored_negative": 7060
+      },
+      "sample": {
+        "seed": 20260901,
+        "negative_ratio": 3,
+        "rows": 32376,
+        "positive": 9719,
+        "positive_ratio": 0.3001914998764517,
+        "sample_identity_sha256": "c146bdddf587d0028044a5685e8b63d7d54959d3cccd36f87220cb1461933eca"
+      }
+    }
+  },
+  "A_meta": {
+    "mask": {
+      "censored_negative": 0,
+      "positive": 82
+    },
+    "fit_rows": 1878,
+    "fit_positive": 82,
+    "oof_candidates": 1878,
+    "micro_threshold": 0.1,
+    "score_candidates": 887
+  },
+  "W_meta": {
+    "mask": {
+      "censored_negative": 0,
+      "positive": 82
+    },
+    "fit_rows": 1881,
+    "fit_positive": 82,
+    "oof_candidates": 1881,
+    "micro_threshold": 0.1,
+    "score_candidates": 863
+  }
+}
