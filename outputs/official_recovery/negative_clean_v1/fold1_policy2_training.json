@@ -1,0 +1,110 @@
+{
+  "A": {
+    "macro": {
+      "mask": {
+        "rows": 77196,
+        "positive": 2476,
+        "negative": 73064,
+        "ignored": 1656,
+        "censored_negative": 0
+      },
+      "sample": {
+        "seed": 20260901,
+        "negative_ratio": 3,
+        "rows": 7756,
+        "positive": 2476,
+        "positive_ratio": 0.31923671995874164,
+        "sample_identity_sha256": "90771d65a7b150c5cdafd9c69cde75dc68d8eedad4b5e660febb719cd9cc79ae"
+      }
+    },
+    "micro": {
+      "mask": {
+        "rows": 167975,
+        "positive": 5399,
+        "negative": 159584,
+        "ignored": 2992,
+        "censored_negative": 0
+      },
+      "sample": {
+        "seed": 20260901,
+        "negative_ratio": 3,
+        "rows": 17846,
+        "positive": 5399,
+        "positive_ratio": 0.3025327804550039,
+        "sample_identity_sha256": "6be2a6b0ac4134940fdabad7c849dab28c2e4e8434490de59d46998306618a92"
+      }
+    }
+  },
+  "W": {
+    "macro": {
+      "mask": {
+        "rows": 77196,
+        "positive": 2476,
+        "negative": 70962,
+        "ignored": 3758,
+        "censored_negative": 2102
+      },
+      "sample": {
+        "seed": 20260901,
+        "negative_ratio": 3,
+        "rows": 7642,
+        "positive": 2476,
+        "positive_ratio": 0.3239989531536247,
+        "sample_identity_sha256": "f09a1811345363d4a1b81a45339fc65b5a507c6294aec5f81dc75106d9ecd066"
+      }
+    },
+    "micro": {
+      "mask": {
+        "rows": 167975,
+        "positive": 5399,
+        "negative": 154802,
+        "ignored": 7774,
+        "censored_negative": 4782
+      },
+      "sample": {
+        "seed": 20260901,
+        "negative_ratio": 3,
+        "rows": 17600,
+        "positive": 5399,
+        "positive_ratio": 0.30676136363636364,
+        "sample_identity_sha256": "0b65bc6561fc3ee18785b6db1ac8b2ff7233722123e8d1eb490174263b5d1aa3"
+      }
+    }
+  },
+  "A_meta": {
+    "mask": {
+      "censored_negative": 0,
+      "positive": 43
+    },
+    "fit_rows": 896,
+    "fit_positive": 43,
+    "oof_candidates": 896,
+    "micro_threshold": 0.1,
+    "score_candidates": 475
+  },
+  "W_meta": {
+    "mask": {
+      "censored_negative": 0,
+      "positive": 44
+    },
+    "fit_rows": 937,
+    "fit_positive": 44,
+    "oof_candidates": 937,
+    "micro_threshold": 0.1,
+    "score_candidates": 482
+  },
+  "E_meta": {
+    "mask": {
+      "rows": 896,
+      "positive": 43,
+      "negative": 831,
+      "ignored": 22,
+      "censored_negative": 22
+    },
+    "fit_rows": 874,
+    "fit_positive": 43,
+    "oof_candidates": 896,
+    "micro_threshold": 0.1,
+    "score_candidates": 475
+  }
+}
