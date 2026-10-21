@@ -64,3 +64,4 @@ Interfaces：消费Task1，复用build_candidate_ledgers与完整GT policy选择
 - Pre-flight：mask→采样→producer→meta→policy→health共用精确主体集合；baseline/arm共用完整评价分母；A/E同producer而W分开；prototype无交付权限。
 - Ruling: 第一轮只遮蔽达到正标签标准的冲突负窗，不遮蔽所有临近餐次灰窗——保持最小假设面；代价是可能留下部分弱污染，本轮不根据结果扩大规则。
 - Ruling: 所有臂重新以完整GT选择train-only策略，固定blend=.25——与新官方目标一致；代价是A不再是旧T24数字，必须重跑配对基线。
+- masking/边界/主体隔离及gate/preflight共9项新增测试已观察RED→GREEN；零候选主体仍保留GT和分区覆盖，不能以缺candidate为理由删人。实现未修改任何canonical算法文件。
