@@ -24,3 +24,15 @@ T24 3×3 policy OOF，每producer独立四折窗口OOF，宏窗工厂A/HGB或L/L
 Pre-flight：load_pools的features已含时间先验，fit不可再次追加；训练用old、评价用new，labels>=0过滤只作用于评价定义，不得把health标签用于训练采样。样本抽样使用canonical sample_training_rows，而非另写等价rng函数。
 
 实施：4项新测试RED→GREEN，含真实缺失值LGBM fit；相关45项通过。Luna medium一次审查无Critical/Important；Final: minor (deferred): 探针graph将训练主体直接记在score节点而非显式fit→score边，单独train/score及抽样行身份仍准确，但图命名不够直接。未运行前不推断AP或事件效果。
+
+窗口结果：6 fit共17.51s，峰值1.05GiB；平均AP .334534358→.353412104（+.018877746，2/3提高），未达到+.02，原初筛保持失败。逐组A/L .325975/.322397、.408040/.413533、.269588/.324307；没有事件F1。
+
+## Amendment M1 — 一次探索性事件验证（窗口评分后、事件训练前登记）
+
+显式取代“仅窗口gate通过才允许事件验证”的工程预算限制，不修改原窗口结果，也不降低最终F1门。理由：AP是替代指标，+1.89个百分点与预设+2的差额不能等价为事件指标无效；固定新工厂未调参、两组方向一致，现有CPU可在数分钟完成严格配对事件验证。该决定受到已见T24窗口结果影响，必须明确标为探索性，不能假称预注册确认性实验。仅此固定工厂一次，不借此重启已失败路线。代价：增加一次重复T24开发选择与计算预算。
+
+事件实施精确合同：`build_candidate_ledgers`增加可选零参数`macro_estimator_factory`，默认None保持原调用逐位一致；L在全部inner OOF与最终refit均提供factory(当前config.seed+2)，micro仍原config.seed+12。每训练分区先`prepare_train(...,'A')`采样一次，旧标签、候选全池不变。C=.1、融合.25固定，所有train验证图与原116D方法不变。A复用已冻结逐事件回放的原score与policy，不重新择优；L使用原完整GT choose_complete_policy。每个L policy graph显式连接3个split score节点。
+
+同一入口支持T24/five；T24所有9个L分区fit并封存三份policy才health，五折所有15个L分区fit封存才outer。五折另须T24事件门真实通过、parent源/protected核验。原A源JSON/Data/cache SHA对照，加载及两阶段间eligibility t_acc/imu_valid指纹；输入代码/本文/窗口探针证据SHA封存。T24预计120窗口/24meta fit，五折200窗口/40meta fit，均≤2h、RSS≤12GiB、证据≤128MiB、余量≥10GiB；只保存分数/身份，不保存探针权重/特征缓存。所有结果明确重复开发，不修改正式release/第一试测。
+
+实现`scripts/research/official_recovery/macro_lgbm_event.py`，增加factory透传/默认恒等、parent失败拒绝、gate完整人口测试；一位Luna medium只读审查后执行。通过事件两门才登记部署合同；失败关闭工厂，不按health修改树参数或AP门。

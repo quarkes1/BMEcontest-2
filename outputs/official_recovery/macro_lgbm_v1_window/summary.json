@@ -1,0 +1,16 @@
+{
+  "state": "COMPLETE",
+  "evidence_kind": "WINDOW_CLASSIFIER_SCREEN_NOT_EVENT_F1",
+  "passed": false,
+  "mean_ap": {
+    "A": 0.3345343577123922,
+    "L": 0.3534121042059492
+  },
+  "delta_ap": 0.018877746493557,
+  "positive_folds": 2,
+  "model_fits": 6,
+  "outer_calls": 0,
+  "protected_unchanged": true,
+  "elapsed_seconds": 17.51256469998043,
+  "peak_working_set_bytes": 1128321024
+}
