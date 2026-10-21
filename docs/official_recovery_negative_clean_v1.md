@@ -65,3 +65,5 @@ Interfaces：消费Task1，复用build_candidate_ledgers与完整GT policy选择
 - Ruling: 第一轮只遮蔽达到正标签标准的冲突负窗，不遮蔽所有临近餐次灰窗——保持最小假设面；代价是可能留下部分弱污染，本轮不根据结果扩大规则。
 - Ruling: 所有臂重新以完整GT选择train-only策略，固定blend=.25——与新官方目标一致；代价是A不再是旧T24数字，必须重跑配对基线。
 - masking/边界/主体隔离及gate/preflight共9项新增测试已观察RED→GREEN；零候选主体仍保留GT和分区覆盖，不能以缺candidate为理由删人。实现未修改任何canonical算法文件。
+- Task 1/2 complete：27项专项通过；policy九分区先封存于c762037，后health。587.56秒，240窗口/72meta fits；A89TP/62FP/71FN、F1=.572347267，W89/51/71、.593333333（+.020986066，2/3折改善，TP不减），E87/57/73、.572368421未过门。W进入五折开发验证，不提前导出；第三折W退步须保留。
+- Final review：Luna/medium只读审查无Critical/Important。Final: minor (deferred): 缺一个显式同主体多session窗口遮蔽测试，现实现按主体聚合GT；保留为测试覆盖小项。Final: Ruling: reviewer未判断health结果及下一阶段EXE——本轮仅完成预注册health gate、未产生EXE；下一阶段另行验证，不能以代码审查代替性能证据。

@@ -1,0 +1,60 @@
+{
+  "state": "COMPLETE",
+  "evidence_kind": "T24_NESTED_NEGATIVE_CLEAN_DEVELOPMENT_ONLY",
+  "aggregate": {
+    "A": {
+      "tp": 89,
+      "fp": 62,
+      "fn": 71,
+      "predictions": 151,
+      "truths": 160,
+      "f1": 0.572347266881029,
+      "ppv": 0.5894039735099338,
+      "recall": 0.55625
+    },
+    "W": {
+      "tp": 89,
+      "fp": 51,
+      "fn": 71,
+      "predictions": 140,
+      "truths": 160,
+      "f1": 0.5933333333333334,
+      "ppv": 0.6357142857142857,
+      "recall": 0.55625
+    },
+    "E": {
+      "tp": 87,
+      "fp": 57,
+      "fn": 73,
+      "predictions": 144,
+      "truths": 160,
+      "f1": 0.5723684210526315,
+      "ppv": 0.6041666666666666,
+      "recall": 0.54375
+    }
+  },
+  "arms": {
+    "W": {
+      "passed": true,
+      "delta_f1": 0.020986066452304386,
+      "positive_folds": 2,
+      "delta_tp": 0,
+      "delta_fp": -11
+    },
+    "E": {
+      "passed": false,
+      "delta_f1": 2.115417160253319e-05,
+      "positive_folds": 1,
+      "delta_tp": -2,
+      "delta_fp": -5
+    }
+  },
+  "winner": "W",
+  "passed": true,
+  "protected_unchanged": true,
+  "outer_calls": 0,
+  "window_fits": 240,
+  "meta_fits": 72,
+  "health_phase_seconds": 169.6684624000336,
+  "total_wall_seconds": 587.5561344623566
+}
