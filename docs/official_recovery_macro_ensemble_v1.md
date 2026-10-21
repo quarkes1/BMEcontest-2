@@ -22,3 +22,7 @@
 Pre-flight：VotingClassifier成员各自封装imputer，不共享fit状态；clone后的成员seed与train主体不变。宏窗predict_proba接口和classes_兼容canonical Predictor，因此若通过无需改预测数学，仅需模型、策略与构建身份新版本。
 
 实施：4项测试RED→GREEN（含真实Voting fit），随后一次Luna medium审查指出M1失败结果仅被当前哈希不能证明父级身份；新增第五项失败测试后修复，固定M1 plan SHA `fe1eb7de1de58c99cf6c610f8ef62c970944666946e575af7bfcb66e1571f8e2`、COMPLETE/failed/87-60-73、保护身份与原source。仅允许原M1文档新增结果和本入口扩展ensemble两个已声明的源差异；源指纹仍由本轮plan冻结。父级五折入口额外明确验证hypothesis/ID/成功门，避免误用M1。无其他严重问题或Minor。
+
+结果：561642b封存全部policy后评分，A89/62/71、F1=.572347267；E86/52/74、F1=.577181208，+.004833941但TP−3、FP−10，仅1/3严格提高，未过预注册+.01/TP不减/多数折门。逐组.594059→.593407、.555556→.581818、.568627→.556701。180基础窗口/24meta fit、485.79秒，源/资格/66保护一致，没有五折与新EXE。
+
+回归：1098 passed/7 skipped/39 warnings、1328.14秒；启动时9d04ef3，收集不含后加ensemble测试，且执行期间有研究代码扩展，因此不是最终冻结全树attestation，不称覆盖当前所有修改。ensemble相关61项独立通过；若交付新EXE须冻结代码后重跑最新全套。
