@@ -22,3 +22,5 @@ T24 3×3 policy OOF，每producer独立四折窗口OOF，宏窗工厂A/HGB或L/L
 2. 一次Luna medium只读审查，严重问题一次修复；提交后6fit，源/保护验证、报告、提交。失败关闭该工厂合同；通过才按上述注册事件实现。
 
 Pre-flight：load_pools的features已含时间先验，fit不可再次追加；训练用old、评价用new，labels>=0过滤只作用于评价定义，不得把health标签用于训练采样。样本抽样使用canonical sample_training_rows，而非另写等价rng函数。
+
+实施：4项新测试RED→GREEN，含真实缺失值LGBM fit；相关45项通过。Luna medium一次审查无Critical/Important；Final: minor (deferred): 探针graph将训练主体直接记在score节点而非显式fit→score边，单独train/score及抽样行身份仍准确，但图命名不够直接。未运行前不推断AP或事件效果。
