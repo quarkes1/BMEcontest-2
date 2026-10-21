@@ -1,0 +1,27 @@
+{
+  "sha256": {
+    "eligibility_inputs.json": "f9579c1e3955a24aafacb2ca9af98028f2218f81648eb82de5270e6342a1967b",
+    "fold0_policy.json": "6724427ab64d5af0f2cb1045e922514e0aafb58a8a80e3bc7d92333c7f79df33",
+    "fold0_policy0_training.json": "ee731cd58938ab5943958d014fe1386699046a85ccbdfbadc692522c7d6ef17a",
+    "fold0_policy0_W_scores.json": "17ece8c93af289da3c25e3d0b6905285d1c098ce0b3a197d7b7859795182c34e",
+    "fold0_policy1_training.json": "719ef01a9fa0ea1e3466abd22740b16a21f806e99958272cfe012bfe34e20253",
+    "fold0_policy1_W_scores.json": "1c8c60595164fabff4553259e7ab22261ce6ee1437e0f7f83140d7f83f696b77",
+    "fold0_policy2_training.json": "508cc1b9f5a71e01db06ac6fb6444939c1fc5c8d00f0a42a09f385edfa3cc264",
+    "fold0_policy2_W_scores.json": "b0c595aeec41c0e2f424cb6fc60044a8061d01ae675c2485ec804d1d01537681",
+    "fold1_policy.json": "fd62455a010ce8662cdf5ccb37773cc165a6bc67ba12d39e72dffea4568c6faa",
+    "fold1_policy0_training.json": "f764419ead90ead1b14dcd00f9c1d6e8f98c4ed6cba5853a5758a678e5515b95",
+    "fold1_policy0_W_scores.json": "f9103c57f9002556fec5a20d970ea08fcb48c473583a7d0c071973046ffde22b",
+    "fold1_policy1_training.json": "20ead3cb1923adf3840288fe90ecc5cf0dea64d15d1040a9ded4eb14cb30a9d0",
+    "fold1_policy1_W_scores.json": "86bb82fc1bfcd038221b5427943d5844540864b4391684aba0ceb89c78d22718",
+    "fold1_policy2_training.json": "6c1a13810e6e86f04dd59c3402175c168f9c81692798dceeabed06a16899d741",
+    "fold1_policy2_W_scores.json": "f114d3bbd4e37967d7fb9842a67b3daf249cd916cc6345e6a9b6a1a46fa57a75",
+    "fold2_policy.json": "6281bcee7fbc27cfde835e1e1fa9639ae4c2cc1138ce9d078a241771a5af6a76",
+    "fold2_policy0_training.json": "ece81cc19260574570cc9b65c83d651164f2116eae33ab12724f4d56313574ec",
+    "fold2_policy0_W_scores.json": "32507712364a56309c3c190f4729c9a126851f9b46d692cdf94700e4e0fa41b6",
+    "fold2_policy1_training.json": "dfda1f09bce8d152ca074b0419c2d4e2e03afe82293eedd9bee4a91fc6b0f58f",
+    "fold2_policy1_W_scores.json": "c7f447174f2e6774e44100ce5081df7fe48e10ae2580bdcd43be77c31ac4e909",
+    "fold2_policy2_training.json": "48fbc2a10df3e497ede575c81f152830c48a42c437703449f2a99167175c2aef",
+    "fold2_policy2_W_scores.json": "31e1851255931b347b7fd69af37594f4a58145a0ccb8477a4a8eb59fbf8374c4",
+    "plan.json": "c04ac9482ce64499356cf15833c37788240a7872a98f9663d2f64a56badeaf9d"
+  }
+}

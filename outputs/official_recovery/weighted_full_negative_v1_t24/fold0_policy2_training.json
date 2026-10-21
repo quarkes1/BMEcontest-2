@@ -1,0 +1,2131 @@
+{
+  "sample": {
+    "macro": {
+      "mask": {
+        "rows": 74727,
+        "positive": 2586,
+        "negative": 70634,
+        "ignored": 1507,
+        "censored_negative": 0
+      },
+      "sample": {
+        "seed": 20260901,
+        "negative_ratio": 3,
+        "rows": 7723,
+        "positive": 2586,
+        "positive_ratio": 0.3348439725495274,
+        "sample_identity_sha256": "721988e3bba7f3d8d8b94652400da77dd6213d6856696ac9beefa0b644335f85"
+      }
+    },
+    "micro": {
+      "mask": {
+        "rows": 162750,
+        "positive": 5510,
+        "negative": 154541,
+        "ignored": 2699,
+        "censored_negative": 0
+      },
+      "sample": {
+        "seed": 20260901,
+        "negative_ratio": 3,
+        "rows": 17477,
+        "positive": 5510,
+        "positive_ratio": 0.31527149968530066,
+        "sample_identity_sha256": "cbab13a37d4e6b1c49d64d8cef4bb0b4afa2949cff9483b472a832fa1e002aae"
+      }
+    }
+  },
+  "micro_threshold": 0.1,
+  "meta_rows": 863,
+  "meta_positive": 36,
+  "weighted_macro": {
+    "fit_rows": 73220,
+    "ignored_rows": 1507,
+    "effective_positive": 2586.0,
+    "effective_negative": 5137.000000000001,
+    "weight_min": 0.0035587188612099642,
+    "weight_max": 1.0,
+    "weight_sha256": "1a6a8f053c931949e91e8e3b8ce4a2a8c3a572e09d39463b7d29bc4c9225f967",
+    "sessions": [
+      {
+        "sid": "sensorData-1784638925857-54962bfb5ca6401686d5df0b3c535cc9",
+        "positive": 0,
+        "negative": 281,
+        "effective_negative": 1,
+        "negative_weight": 0.0035587188612099642
+      },
+      {
+        "sid": "sensorData-1784639182182-adba7e6c96914013914536ea2282dd33",
+        "positive": 81,
+        "negative": 158,
+        "effective_negative": 158,
+        "negative_weight": 1.0
+      },
+      {
+        "sid": "sensorData-1784639884958-dbb4bbe815f54584b17959c796d75962",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784640093277-f2dc3f9c096b4725a37d4db7703ac112",
+        "positive": 0,
+        "negative": 138,
+        "effective_negative": 1,
+        "negative_weight": 0.007246376811594203
+      },
+      {
+        "sid": "sensorData-1784640098080-a30e6e9ad9614c0a98d6274dfb370b29",
+        "positive": 93,
+        "negative": 153,
+        "effective_negative": 153,
+        "negative_weight": 1.0
+      },
+      {
+        "sid": "sensorData-1784640105575-e382261f3b7540258c7e16132a5187ee",
+        "positive": 0,
+        "negative": 220,
+        "effective_negative": 1,
+        "negative_weight": 0.004545454545454545
+      },
+      {
+        "sid": "sensorData-1784640368324-7ad603c206de4f8db201ebf71d75bf3b",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784640647354-b993c645718444db8aaf224a68b08ab8",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784640922885-c22dd382d51f41039afbb063139bf2d9",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784641149983-728e73a00aed4117a86ca6446192928a",
+        "positive": 0,
+        "negative": 258,
+        "effective_negative": 1,
+        "negative_weight": 0.003875968992248062
+      },
+      {
+        "sid": "sensorData-1784641384995-8bc570f6d6db44708bda1fb82450508d",
+        "positive": 44,
+        "negative": 175,
+        "effective_negative": 132,
+        "negative_weight": 0.7542857142857143
+      },
+      {
+        "sid": "sensorData-1784641624819-a63db5209d324428abc8776f7c58e35f",
+        "positive": 41,
+        "negative": 156,
+        "effective_negative": 123,
+        "negative_weight": 0.7884615384615384
+      },
+      {
+        "sid": "sensorData-1784641849826-bdd7781cbdb04d0ca04a5d3505f70796",
+        "positive": 0,
+        "negative": 280,
+        "effective_negative": 1,
+        "negative_weight": 0.0035714285714285713
+      },
+      {
+        "sid": "sensorData-1784644745503-eeac80c253de44f1baca336b8fb96999",
+        "positive": 0,
+        "negative": 277,
+        "effective_negative": 1,
+        "negative_weight": 0.0036101083032490976
+      },
+      {
+        "sid": "sensorData-1784644970370-900f3a8d53294960a834496518c63a08",
+        "positive": 0,
+        "negative": 268,
+        "effective_negative": 1,
+        "negative_weight": 0.0037313432835820895
+      },
+      {
+        "sid": "sensorData-1784645181868-0f3fa08b0477410a840907537d7d42e1",
+        "positive": 0,
+        "negative": 258,
+        "effective_negative": 1,
+        "negative_weight": 0.003875968992248062
+      },
+      {
+        "sid": "sensorData-1784645348790-16ba5907a5da4126ac399776e3ad56b1",
+        "positive": 0,
+        "negative": 258,
+        "effective_negative": 1,
+        "negative_weight": 0.003875968992248062
+      },
+      {
+        "sid": "sensorData-1784645403579-8a16dcb9d9764d598539c5056e4eeb13",
+        "positive": 0,
+        "negative": 275,
+        "effective_negative": 1,
+        "negative_weight": 0.0036363636363636364
+      },
+      {
+        "sid": "sensorData-1784648061951-f08e7da7d00249d5ae41294b065e9036",
+        "positive": 0,
+        "negative": 266,
+        "effective_negative": 1,
+        "negative_weight": 0.0037593984962406013
+      },
+      {
+        "sid": "sensorData-1784648258721-bc3ed1a6dfaa4582b0c4fb87abbb0347",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784648439299-49b2c79227f74527b7d9702c4ecba625",
+        "positive": 0,
+        "negative": 184,
+        "effective_negative": 1,
+        "negative_weight": 0.005434782608695652
+      },
+      {
+        "sid": "sensorData-1784648451120-eceaf7682d6a4c5c82be415136bd3989",
+        "positive": 0,
+        "negative": 268,
+        "effective_negative": 1,
+        "negative_weight": 0.0037313432835820895
+      },
+      {
+        "sid": "sensorData-1784648579739-70169d1eed7b4ef1b10fe8c72d2a10dc",
+        "positive": 0,
+        "negative": 4,
+        "effective_negative": 1,
+        "negative_weight": 0.25
+      },
+      {
+        "sid": "sensorData-1784648643198-9a9fc7a9417f45148c152e39bdb6d392",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784648844109-fcdc924fd9b54c5ea0f3a1ecec689bea",
+        "positive": 111,
+        "negative": 107,
+        "effective_negative": 107,
+        "negative_weight": 1.0
+      },
+      {
+        "sid": "sensorData-1784648872116-6e180035dfbc4514b71cb48a382fc831",
+        "positive": 0,
+        "negative": 57,
+        "effective_negative": 1,
+        "negative_weight": 0.017543859649122806
+      },
+      {
+        "sid": "sensorData-1784649038773-e1cfc20ecd7a44698fca92f0f45cbac6",
+        "positive": 0,
+        "negative": 279,
+        "effective_negative": 1,
+        "negative_weight": 0.0035842293906810036
+      },
+      {
+        "sid": "sensorData-1784650595670-9702899cbe384344be449d464923161e",
+        "positive": 0,
+        "negative": 231,
+        "effective_negative": 1,
+        "negative_weight": 0.004329004329004329
+      },
+      {
+        "sid": "sensorData-1784650814190-58a821d245b34644ab5cbf7111696502",
+        "positive": 0,
+        "negative": 173,
+        "effective_negative": 1,
+        "negative_weight": 0.005780346820809248
+      },
+      {
+        "sid": "sensorData-1784650830634-9ff2c3e659db4fb685a3f72959d2af00",
+        "positive": 0,
+        "negative": 43,
+        "effective_negative": 1,
+        "negative_weight": 0.023255813953488372
+      },
+      {
+        "sid": "sensorData-1784650836171-3eb72248a61544259533f3421ee4c7fb",
+        "positive": 0,
+        "negative": 54,
+        "effective_negative": 1,
+        "negative_weight": 0.018518518518518517
+      },
+      {
+        "sid": "sensorData-1784730642522-b8f64f495b1b42d98e2486b7103b29a9",
+        "positive": 0,
+        "negative": 268,
+        "effective_negative": 1,
+        "negative_weight": 0.0037313432835820895
+      },
+      {
+        "sid": "sensorData-1784730871779-a6d98583f04a41bab5f1cc8b5321ec26",
+        "positive": 0,
+        "negative": 225,
+        "effective_negative": 1,
+        "negative_weight": 0.0044444444444444444
+      },
+      {
+        "sid": "sensorData-1784731096741-cfb6eef59bbe4a2387614386ed5911d0",
+        "positive": 0,
+        "negative": 277,
+        "effective_negative": 1,
+        "negative_weight": 0.0036101083032490976
+      },
+      {
+        "sid": "sensorData-1784731322824-afd9459748024fa3a2d54ae6022c6f42",
+        "positive": 0,
+        "negative": 267,
+        "effective_negative": 1,
+        "negative_weight": 0.003745318352059925
+      },
+      {
+        "sid": "sensorData-1784731467534-5b58d529ac704f44b2dc0a43323e0120",
+        "positive": 0,
+        "negative": 279,
+        "effective_negative": 1,
+        "negative_weight": 0.0035842293906810036
+      },
+      {
+        "sid": "sensorData-1784731501324-9369aaaa1f5f42b0a05c9f9326878832",
+        "positive": 0,
+        "negative": 258,
+        "effective_negative": 1,
+        "negative_weight": 0.003875968992248062
+      },
+      {
+        "sid": "sensorData-1784731671402-cf866736d6e9408187a46846e44cb53a",
+        "positive": 0,
+        "negative": 279,
+        "effective_negative": 1,
+        "negative_weight": 0.0035842293906810036
+      },
+      {
+        "sid": "sensorData-1784731875765-fe257433099c45819bbbd10667dc7181",
+        "positive": 0,
+        "negative": 269,
+        "effective_negative": 1,
+        "negative_weight": 0.0037174721189591076
+      },
+      {
+        "sid": "sensorData-1784731992358-dff76a439753451d999d539c2352cd83",
+        "positive": 0,
+        "negative": 277,
+        "effective_negative": 1,
+        "negative_weight": 0.0036101083032490976
+      },
+      {
+        "sid": "sensorData-1784732072636-e3862efea38d4c8b83d2e8565d4c2ad2",
+        "positive": 44,
+        "negative": 192,
+        "effective_negative": 132,
+        "negative_weight": 0.6875
+      },
+      {
+        "sid": "sensorData-1784732273240-5100adf8312e4c82a2c47f2330bcbe15",
+        "positive": 0,
+        "negative": 279,
+        "effective_negative": 1,
+        "negative_weight": 0.0035842293906810036
+      },
+      {
+        "sid": "sensorData-1784732355650-8796c4f44baf47448f839768c3f97bd8",
+        "positive": 0,
+        "negative": 12,
+        "effective_negative": 1,
+        "negative_weight": 0.08333333333333333
+      },
+      {
+        "sid": "sensorData-1784732373343-19b3bbea77744b1e8b9b6bd8502bee1e",
+        "positive": 0,
+        "negative": 263,
+        "effective_negative": 1,
+        "negative_weight": 0.0038022813688212928
+      },
+      {
+        "sid": "sensorData-1784732480413-96816ad7418e4131b907ea891065d2c5",
+        "positive": 0,
+        "negative": 246,
+        "effective_negative": 1,
+        "negative_weight": 0.0040650406504065045
+      },
+      {
+        "sid": "sensorData-1784732716339-943601ac89d84ca8854497305cbb285f",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784732991403-0c69d9f379724d569503b7ecb4c704bd",
+        "positive": 62,
+        "negative": 155,
+        "effective_negative": 155,
+        "negative_weight": 1.0
+      },
+      {
+        "sid": "sensorData-1784733090738-a1ca5793a15e4e83adc865160e94d1b1",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784733261342-21187fa595b84a6089262be83bc09cf4",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784733282635-bf3eff30c84d4d02817699bbdf768fa2",
+        "positive": 33,
+        "negative": 217,
+        "effective_negative": 99,
+        "negative_weight": 0.45622119815668205
+      },
+      {
+        "sid": "sensorData-1784733477161-5227044e558d41c293cd2a4b3925fed4",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784733536760-cea23368157a477b88c55fae0586df1e",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784733541597-8a38e011fa3542a9bb5ec4e7ddaa7a56",
+        "positive": 47,
+        "negative": 185,
+        "effective_negative": 141,
+        "negative_weight": 0.7621621621621621
+      },
+      {
+        "sid": "sensorData-1784733667543-e3401079a0824d2293430a0f7bc7de09",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784733703501-5f587619824e461195b0bf6ed320e5ac",
+        "positive": 0,
+        "negative": 280,
+        "effective_negative": 1,
+        "negative_weight": 0.0035714285714285713
+      },
+      {
+        "sid": "sensorData-1784733755947-3cc7a6657e7b46b782bec33bc6340f45",
+        "positive": 0,
+        "negative": 259,
+        "effective_negative": 1,
+        "negative_weight": 0.003861003861003861
+      },
+      {
+        "sid": "sensorData-1784733804670-77a4821ef603438d86b8c3be5a296f0c",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784733856832-bfc2a83416aa4dd69a3f16c945ae0256",
+        "positive": 0,
+        "negative": 257,
+        "effective_negative": 1,
+        "negative_weight": 0.0038910505836575876
+      },
+      {
+        "sid": "sensorData-1784733896328-79625d41c2aa4c52be4f2c0b93ffacc2",
+        "positive": 0,
+        "negative": 280,
+        "effective_negative": 1,
+        "negative_weight": 0.0035714285714285713
+      },
+      {
+        "sid": "sensorData-1784734045800-92f98639b07b49358c55370d2fbd43e4",
+        "positive": 110,
+        "negative": 128,
+        "effective_negative": 128,
+        "negative_weight": 1.0
+      },
+      {
+        "sid": "sensorData-1784734073566-2e48cff9450a48cb89c3906b24ace89d",
+        "positive": 32,
+        "negative": 196,
+        "effective_negative": 96,
+        "negative_weight": 0.4897959183673469
+      },
+      {
+        "sid": "sensorData-1784734127402-c3b933d043e4421aa5ddd3c7d09f830d",
+        "positive": 35,
+        "negative": 193,
+        "effective_negative": 105,
+        "negative_weight": 0.5440414507772021
+      },
+      {
+        "sid": "sensorData-1784734235808-644bc7427e3245d2b61a90654d233f25",
+        "positive": 0,
+        "negative": 267,
+        "effective_negative": 1,
+        "negative_weight": 0.003745318352059925
+      },
+      {
+        "sid": "sensorData-1784734329487-6298b943eea34dffa0ce96aa09a32943",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784734363856-df4182d0fe8e48ef95aa1ce014025a1b",
+        "positive": 0,
+        "negative": 280,
+        "effective_negative": 1,
+        "negative_weight": 0.0035714285714285713
+      },
+      {
+        "sid": "sensorData-1784734421039-1b6a4addebdb4f798e321d6d4e873d67",
+        "positive": 0,
+        "negative": 271,
+        "effective_negative": 1,
+        "negative_weight": 0.0036900369003690036
+      },
+      {
+        "sid": "sensorData-1784734545423-b636a9dacabd4b249cdd37942b15d379",
+        "positive": 0,
+        "negative": 270,
+        "effective_negative": 1,
+        "negative_weight": 0.003703703703703704
+      },
+      {
+        "sid": "sensorData-1784734810290-2be0522dac434e1dbde440242bb540ec",
+        "positive": 0,
+        "negative": 270,
+        "effective_negative": 1,
+        "negative_weight": 0.003703703703703704
+      },
+      {
+        "sid": "sensorData-1784734900060-10909d0c50c243e4b7706abaaf7a5484",
+        "positive": 89,
+        "negative": 150,
+        "effective_negative": 150,
+        "negative_weight": 1.0
+      },
+      {
+        "sid": "sensorData-1784735004234-a41f95f6c26a48cbae00d3960b3d97ab",
+        "positive": 0,
+        "negative": 280,
+        "effective_negative": 1,
+        "negative_weight": 0.0035714285714285713
+      },
+      {
+        "sid": "sensorData-1784735162886-adf73219fb6c46c6bb487b2628725a19",
+        "positive": 0,
+        "negative": 257,
+        "effective_negative": 1,
+        "negative_weight": 0.0038910505836575876
+      },
+      {
+        "sid": "sensorData-1784735225797-59f14e9c76c64e288bdf63463f5e8044",
+        "positive": 0,
+        "negative": 281,
+        "effective_negative": 1,
+        "negative_weight": 0.0035587188612099642
+      },
+      {
+        "sid": "sensorData-1784735388055-d532cd23621d40928325f699ce955b3f",
+        "positive": 0,
+        "negative": 280,
+        "effective_negative": 1,
+        "negative_weight": 0.0035714285714285713
+      },
+      {
+        "sid": "sensorData-1784735507440-22f3e2e0a479479eb7e25b7ea3ccb70c",
+        "positive": 0,
+        "negative": 269,
+        "effective_negative": 1,
+        "negative_weight": 0.0037174721189591076
+      },
+      {
+        "sid": "sensorData-1784735612740-8e225c941db9484dba7cffe620d4371e",
+        "positive": 0,
+        "negative": 269,
+        "effective_negative": 1,
+        "negative_weight": 0.0037174721189591076
+      },
+      {
+        "sid": "sensorData-1784735649335-b34644bda58744a8a05694f62a645ea7",
+        "positive": 0,
+        "negative": 280,
+        "effective_negative": 1,
+        "negative_weight": 0.0035714285714285713
+      },
+      {
+        "sid": "sensorData-1784735781824-6792105cec0d421d951e103164d009a0",
+        "positive": 24,
+        "negative": 149,
+        "effective_negative": 72,
+        "negative_weight": 0.48322147651006714
+      },
+      {
+        "sid": "sensorData-1784735858448-eec9b25a80524a4c9841a3b07c6b0d05",
+        "positive": 0,
+        "negative": 248,
+        "effective_negative": 1,
+        "negative_weight": 0.004032258064516129
+      },
+      {
+        "sid": "sensorData-1784772961707-d5288b4d04534fc5aacfd2820d8e2a4e",
+        "positive": 0,
+        "negative": 50,
+        "effective_negative": 1,
+        "negative_weight": 0.02
+      },
+      {
+        "sid": "sensorData-1784774595128-b7669dbac781401187a7fb80e8a74dcf",
+        "positive": 0,
+        "negative": 249,
+        "effective_negative": 1,
+        "negative_weight": 0.004016064257028112
+      },
+      {
+        "sid": "sensorData-1784774845707-c0b72e5234b744f483de392e7a302f65",
+        "positive": 0,
+        "negative": 245,
+        "effective_negative": 1,
+        "negative_weight": 0.004081632653061225
+      },
+      {
+        "sid": "sensorData-1784775195088-9fcd7e3d884c4df39073c37d1c8c0325",
+        "positive": 0,
+        "negative": 267,
+        "effective_negative": 1,
+        "negative_weight": 0.003745318352059925
+      },
+      {
+        "sid": "sensorData-1784775988921-53809a8867274ba2916cad582772fae2",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784776326586-59af289072b144a1b0232f8f322fa2ab",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784776702036-5a51c2ab4ade46fc8d7e9b8a49f8e410",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784776962620-050eba3174f14926a3deb88c2fba8283",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784777261998-185dcfb7e0384ebbbed90bda4c28df18",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784777526931-a73d5ccc94e345cbb1989c0ac6aafb72",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784777772133-28ffd05735d740028536ba2daad146b2",
+        "positive": 0,
+        "negative": 262,
+        "effective_negative": 1,
+        "negative_weight": 0.003816793893129771
+      },
+      {
+        "sid": "sensorData-1784778022938-a64127d37edc4fe58d8d95f6a0a41df1",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784778544577-e6458a1bfc4945e88afec3a7df06ce2b",
+        "positive": 0,
+        "negative": 268,
+        "effective_negative": 1,
+        "negative_weight": 0.0037313432835820895
+      },
+      {
+        "sid": "sensorData-1784806341849-302ed8ede9a0440d8c2fc82e292d646b",
+        "positive": 28,
+        "negative": 200,
+        "effective_negative": 84,
+        "negative_weight": 0.42
+      },
+      {
+        "sid": "sensorData-1784806550365-4fdc2c1318904b398574490d94075b98",
+        "positive": 0,
+        "negative": 280,
+        "effective_negative": 1,
+        "negative_weight": 0.0035714285714285713
+      },
+      {
+        "sid": "sensorData-1784806739718-9ddc614168d7421cbdcc4b1a4b3b90f7",
+        "positive": 0,
+        "negative": 280,
+        "effective_negative": 1,
+        "negative_weight": 0.0035714285714285713
+      },
+      {
+        "sid": "sensorData-1784806926572-567a7be5d82541d79efa00387dbc139f",
+        "positive": 0,
+        "negative": 280,
+        "effective_negative": 1,
+        "negative_weight": 0.0035714285714285713
+      },
+      {
+        "sid": "sensorData-1784807181107-12a6673d2d2c4ef49bfbe038c42b7c8c",
+        "positive": 0,
+        "negative": 280,
+        "effective_negative": 1,
+        "negative_weight": 0.0035714285714285713
+      },
+      {
+        "sid": "sensorData-1784807646419-b23e7d280802471aa62b46ed4288f02f",
+        "positive": 44,
+        "negative": 189,
+        "effective_negative": 132,
+        "negative_weight": 0.6984126984126984
+      },
+      {
+        "sid": "sensorData-1784807986627-3a63399eec3d458d8864238a33609751",
+        "positive": 0,
+        "negative": 280,
+        "effective_negative": 1,
+        "negative_weight": 0.0035714285714285713
+      },
+      {
+        "sid": "sensorData-1784808169641-b60c5f7c3ab14253b88bc41e69c18944",
+        "positive": 0,
+        "negative": 270,
+        "effective_negative": 1,
+        "negative_weight": 0.003703703703703704
+      },
+      {
+        "sid": "sensorData-1784818206377-ac61b00610c843ad87722e49edfc6536",
+        "positive": 0,
+        "negative": 279,
+        "effective_negative": 1,
+        "negative_weight": 0.0035842293906810036
+      },
+      {
+        "sid": "sensorData-1784818417970-5e3d4b7bd37a4995934087fdbee93562",
+        "positive": 0,
+        "negative": 279,
+        "effective_negative": 1,
+        "negative_weight": 0.0035842293906810036
+      },
+      {
+        "sid": "sensorData-1784818625884-a1a33e7849444438adb8ed8a7d4e892a",
+        "positive": 66,
+        "negative": 185,
+        "effective_negative": 185,
+        "negative_weight": 1.0
+      },
+      {
+        "sid": "sensorData-1784818825637-3389a4be8d3740e7bd956256fa199fa3",
+        "positive": 0,
+        "negative": 259,
+        "effective_negative": 1,
+        "negative_weight": 0.003861003861003861
+      },
+      {
+        "sid": "sensorData-1784819001489-376d1435bf7043118811e9227ccca18e",
+        "positive": 15,
+        "negative": 209,
+        "effective_negative": 45,
+        "negative_weight": 0.215311004784689
+      },
+      {
+        "sid": "sensorData-1784819033976-2184267dfc2f47bfb246f7b0e0a709bd",
+        "positive": 0,
+        "negative": 260,
+        "effective_negative": 1,
+        "negative_weight": 0.0038461538461538464
+      },
+      {
+        "sid": "sensorData-1784819197845-2a8543396ec44d23b38bd7cf59614e85",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784819273085-1fe9adf4efdd46e89b7187b9ebd6edc7",
+        "positive": 0,
+        "negative": 279,
+        "effective_negative": 1,
+        "negative_weight": 0.0035842293906810036
+      },
+      {
+        "sid": "sensorData-1784819388100-07ae364f69e645648a6f54dadb6955a3",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784819432939-bbd2721cebb548dab911657abab8d45d",
+        "positive": 0,
+        "negative": 279,
+        "effective_negative": 1,
+        "negative_weight": 0.0035842293906810036
+      },
+      {
+        "sid": "sensorData-1784819582866-79caccdeedaf4382a24bdcb767e2cbb2",
+        "positive": 59,
+        "negative": 173,
+        "effective_negative": 173,
+        "negative_weight": 1.0
+      },
+      {
+        "sid": "sensorData-1784819616656-42f8dc824f864cc9b90825a3941b6a06",
+        "positive": 0,
+        "negative": 269,
+        "effective_negative": 1,
+        "negative_weight": 0.0037174721189591076
+      },
+      {
+        "sid": "sensorData-1784819774078-b6497be7777644958788507c672356be",
+        "positive": 0,
+        "negative": 267,
+        "effective_negative": 1,
+        "negative_weight": 0.003745318352059925
+      },
+      {
+        "sid": "sensorData-1784819963667-3ee3b6c4d2d04cac94bd8112b5c3daff",
+        "positive": 0,
+        "negative": 266,
+        "effective_negative": 1,
+        "negative_weight": 0.0037593984962406013
+      },
+      {
+        "sid": "sensorData-1784820152610-ff6be667605145b0bd9b9537a8e2ff98",
+        "positive": 0,
+        "negative": 267,
+        "effective_negative": 1,
+        "negative_weight": 0.003745318352059925
+      },
+      {
+        "sid": "sensorData-1784820342384-453d353397ba46de954975666ae5cb51",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784820730650-5c96e234ced6486587fa198f89c1b142",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784820917028-10b4ba8e215b4777bf1868fecf6ab707",
+        "positive": 0,
+        "negative": 256,
+        "effective_negative": 1,
+        "negative_weight": 0.00390625
+      },
+      {
+        "sid": "sensorData-1784821279927-3b692e153c5448dcb947820a641e0243",
+        "positive": 0,
+        "negative": 261,
+        "effective_negative": 1,
+        "negative_weight": 0.0038314176245210726
+      },
+      {
+        "sid": "sensorData-1784824909253-4d32670f22b24bf3a256f4b1ffbf3305",
+        "positive": 0,
+        "negative": 277,
+        "effective_negative": 1,
+        "negative_weight": 0.0036101083032490976
+      },
+      {
+        "sid": "sensorData-1784825117560-0b5050d19722470fb799457df86f0c56",
+        "positive": 0,
+        "negative": 277,
+        "effective_negative": 1,
+        "negative_weight": 0.0036101083032490976
+      },
+      {
+        "sid": "sensorData-1784825331659-1510e823685e4807b66d92f1e4d4c3bb",
+        "positive": 0,
+        "negative": 277,
+        "effective_negative": 1,
+        "negative_weight": 0.0036101083032490976
+      },
+      {
+        "sid": "sensorData-1784825418991-cfb613bdccc14f7ab5dcdefa1d570699",
+        "positive": 0,
+        "negative": 257,
+        "effective_negative": 1,
+        "negative_weight": 0.0038910505836575876
+      },
+      {
+        "sid": "sensorData-1784825708551-a7a09fe3171c45fa9c4704da107e3689",
+        "positive": 23,
+        "negative": 205,
+        "effective_negative": 69,
+        "negative_weight": 0.33658536585365856
+      },
+      {
+        "sid": "sensorData-1784825885970-32c2f3fc7dc547108ba23173cfcb05eb",
+        "positive": 0,
+        "negative": 277,
+        "effective_negative": 1,
+        "negative_weight": 0.0036101083032490976
+      },
+      {
+        "sid": "sensorData-1784826070278-76eb08f5399046dea253dc3ecffc8585",
+        "positive": 0,
+        "negative": 277,
+        "effective_negative": 1,
+        "negative_weight": 0.0036101083032490976
+      },
+      {
+        "sid": "sensorData-1784826299666-ffa0d2cbe4c047a1a70cb28a0dc79b59",
+        "positive": 0,
+        "negative": 268,
+        "effective_negative": 1,
+        "negative_weight": 0.0037313432835820895
+      },
+      {
+        "sid": "sensorData-1784826581883-a9077cad53f8477fbab554c503a5e630",
+        "positive": 0,
+        "negative": 267,
+        "effective_negative": 1,
+        "negative_weight": 0.003745318352059925
+      },
+      {
+        "sid": "sensorData-1784826726242-b7c4890d4f99413297d279b98b271dc2",
+        "positive": 0,
+        "negative": 265,
+        "effective_negative": 1,
+        "negative_weight": 0.0037735849056603774
+      },
+      {
+        "sid": "sensorData-1784826927877-17ffe401b01e4896a4ce32ec73f1b943",
+        "positive": 0,
+        "negative": 268,
+        "effective_negative": 1,
+        "negative_weight": 0.0037313432835820895
+      },
+      {
+        "sid": "sensorData-1784827130073-1d25f6827c4b49b18980284266debedf",
+        "positive": 13,
+        "negative": 202,
+        "effective_negative": 39,
+        "negative_weight": 0.19306930693069307
+      },
+      {
+        "sid": "sensorData-1784855815364-18b042c9b71f4d34bbcc3c2fdde00e09",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784856048297-6ba5e294231b4d4b99ad56d65efd4eba",
+        "positive": 0,
+        "negative": 267,
+        "effective_negative": 1,
+        "negative_weight": 0.003745318352059925
+      },
+      {
+        "sid": "sensorData-1784856288460-3830f4ebd9e344dd9b80991b7c28ce14",
+        "positive": 89,
+        "negative": 138,
+        "effective_negative": 138,
+        "negative_weight": 1.0
+      },
+      {
+        "sid": "sensorData-1784857510360-e33cfd8a0416458aa1391c9096bc6811",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784857788550-1d814de6e8f44f5287bb0494793a7439",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784858077140-2332f4880ba64f66868b35c95303ad8b",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784859420102-07801511a032459c96d421ba569cf719",
+        "positive": 72,
+        "negative": 147,
+        "effective_negative": 147,
+        "negative_weight": 1.0
+      },
+      {
+        "sid": "sensorData-1784860919949-a1e7133f1bc44d63b5bd7b71fae8bd0e",
+        "positive": 0,
+        "negative": 221,
+        "effective_negative": 1,
+        "negative_weight": 0.004524886877828055
+      },
+      {
+        "sid": "sensorData-1784861145808-7222f539b95c407abb4dc13a1e23fffa",
+        "positive": 0,
+        "negative": 41,
+        "effective_negative": 1,
+        "negative_weight": 0.024390243902439025
+      },
+      {
+        "sid": "sensorData-1784870107770-7e422df476934168a0949e9ae3d9011f",
+        "positive": 0,
+        "negative": 170,
+        "effective_negative": 1,
+        "negative_weight": 0.0058823529411764705
+      },
+      {
+        "sid": "sensorData-1784870373840-dc02e94b92b048dd95120cb47171ba49",
+        "positive": 27,
+        "negative": 183,
+        "effective_negative": 81,
+        "negative_weight": 0.4426229508196721
+      },
+      {
+        "sid": "sensorData-1784870628540-ac696d835ace45b2ae49a00303631b8c",
+        "positive": 0,
+        "negative": 217,
+        "effective_negative": 1,
+        "negative_weight": 0.004608294930875576
+      },
+      {
+        "sid": "sensorData-1784870943263-0e33136025204d00b8920f5b71b5e2e1",
+        "positive": 0,
+        "negative": 268,
+        "effective_negative": 1,
+        "negative_weight": 0.0037313432835820895
+      },
+      {
+        "sid": "sensorData-1784882914989-7d577b50992c4f11bba29a977477fe4c",
+        "positive": 0,
+        "negative": 253,
+        "effective_negative": 1,
+        "negative_weight": 0.003952569169960474
+      },
+      {
+        "sid": "sensorData-1784883113531-6531e6d7eed34693b78d0a76cde11b44",
+        "positive": 0,
+        "negative": 267,
+        "effective_negative": 1,
+        "negative_weight": 0.003745318352059925
+      },
+      {
+        "sid": "sensorData-1784883367561-348cf86b196f4f95989c465dbd2f0e4f",
+        "positive": 0,
+        "negative": 275,
+        "effective_negative": 1,
+        "negative_weight": 0.0036363636363636364
+      },
+      {
+        "sid": "sensorData-1784883493851-b1da506599b04b46ace19337045934ba",
+        "positive": 0,
+        "negative": 257,
+        "effective_negative": 1,
+        "negative_weight": 0.0038910505836575876
+      },
+      {
+        "sid": "sensorData-1784888099846-7d9d71872e474d5f99120ced81cfe0eb",
+        "positive": 0,
+        "negative": 130,
+        "effective_negative": 1,
+        "negative_weight": 0.007692307692307693
+      },
+      {
+        "sid": "sensorData-1784888347327-e2151c950e7c4322ac5027554910ce91",
+        "positive": 0,
+        "negative": 279,
+        "effective_negative": 1,
+        "negative_weight": 0.0035842293906810036
+      },
+      {
+        "sid": "sensorData-1784888588844-b97abbb79df34fdb83633995f601f30c",
+        "positive": 0,
+        "negative": 279,
+        "effective_negative": 1,
+        "negative_weight": 0.0035842293906810036
+      },
+      {
+        "sid": "sensorData-1784888849734-4513053cbe8b461bb3e117f4ba4ae1a6",
+        "positive": 0,
+        "negative": 279,
+        "effective_negative": 1,
+        "negative_weight": 0.0035842293906810036
+      },
+      {
+        "sid": "sensorData-1784889043142-c91844b018f342bf8d65b436c25245e8",
+        "positive": 0,
+        "negative": 279,
+        "effective_negative": 1,
+        "negative_weight": 0.0035842293906810036
+      },
+      {
+        "sid": "sensorData-1784889248481-88934cadb3b443068fcd528900342b47",
+        "positive": 10,
+        "negative": 221,
+        "effective_negative": 30,
+        "negative_weight": 0.13574660633484162
+      },
+      {
+        "sid": "sensorData-1784893914237-a72795e94f9549b2a804fca625922dc3",
+        "positive": 0,
+        "negative": 279,
+        "effective_negative": 1,
+        "negative_weight": 0.0035842293906810036
+      },
+      {
+        "sid": "sensorData-1784894129812-d339350a38f64381abd269f80c1ba977",
+        "positive": 0,
+        "negative": 279,
+        "effective_negative": 1,
+        "negative_weight": 0.0035842293906810036
+      },
+      {
+        "sid": "sensorData-1784894336404-2a9fe3e4185440ada8a7892867a5495c",
+        "positive": 0,
+        "negative": 270,
+        "effective_negative": 1,
+        "negative_weight": 0.003703703703703704
+      },
+      {
+        "sid": "sensorData-1784894546765-9b82470a529c4e5bab6394d611572392",
+        "positive": 0,
+        "negative": 268,
+        "effective_negative": 1,
+        "negative_weight": 0.0037313432835820895
+      },
+      {
+        "sid": "sensorData-1784900807392-124175c8167442aeb314306e469dae9d",
+        "positive": 0,
+        "negative": 279,
+        "effective_negative": 1,
+        "negative_weight": 0.0035842293906810036
+      },
+      {
+        "sid": "sensorData-1784901013681-3ae0287234f44ff19e7fd879fdc5ac10",
+        "positive": 0,
+        "negative": 280,
+        "effective_negative": 1,
+        "negative_weight": 0.0035714285714285713
+      },
+      {
+        "sid": "sensorData-1784901106208-f3d8c12eecf94802a27762be56c7a8f5",
+        "positive": 0,
+        "negative": 91,
+        "effective_negative": 1,
+        "negative_weight": 0.01098901098901099
+      },
+      {
+        "sid": "sensorData-1784901498555-df6088a77d384095a0b149559cf7129a",
+        "positive": 0,
+        "negative": 280,
+        "effective_negative": 1,
+        "negative_weight": 0.0035714285714285713
+      },
+      {
+        "sid": "sensorData-1784902951728-4c331efa966d4638893aaf4407eb49e9",
+        "positive": 0,
+        "negative": 280,
+        "effective_negative": 1,
+        "negative_weight": 0.0035714285714285713
+      },
+      {
+        "sid": "sensorData-1784903478787-f83e0b4b19654b828d73f2f84fbdb6a8",
+        "positive": 0,
+        "negative": 280,
+        "effective_negative": 1,
+        "negative_weight": 0.0035714285714285713
+      },
+      {
+        "sid": "sensorData-1784903767555-4a2d9de0df674962b1ea3b229fae6bab",
+        "positive": 0,
+        "negative": 122,
+        "effective_negative": 1,
+        "negative_weight": 0.00819672131147541
+      },
+      {
+        "sid": "sensorData-1784903987578-f37eb599038446758b16206582fdc791",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784904181503-29d93ecdb24641bb93a73f3d240a183b",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784904370034-e29a03ec4cab43f5941df43c4bbcf9ba",
+        "positive": 0,
+        "negative": 276,
+        "effective_negative": 1,
+        "negative_weight": 0.0036231884057971015
+      },
+      {
+        "sid": "sensorData-1784904409968-e8c0a812d86b482eb3e5f7f6f38d4033",
+        "positive": 0,
+        "negative": 260,
+        "effective_negative": 1,
+        "negative_weight": 0.0038461538461538464
+      },
+      {
+        "sid": "sensorData-1784904552143-8fcb0f6d09e543c79dff1646852f7bf7",
+        "positive": 0,
+        "negative": 259,
+        "effective_negative": 1,
+        "negative_weight": 0.003861003861003861
+      },
+      {
+        "sid": "sensorData-1784904957107-6c51e16c0dad48d1b80cda707dfdf2d1",
+        "positive": 0,
+        "negative": 126,
+        "effective_negative": 1,
+        "negative_weight": 0.007936507936507936
+      },
+      {
+        "sid": "sensorData-1784905294465-c6b090835cf74f4bb7141b7fe2e58c53",
+        "positive": 0,
+        "negative": 18,
+        "effective_negative": 1,
+        "negative_weight": 0.05555555555555555
+      },
+      {
+        "sid": "sensorData-1784906018701-bd7d2f03b33548d8bb2ea84942e1144e",
+        "positive": 0,
+        "negative": 40,
+        "effective_negative": 1,
+        "negative_weight": 0.025
+      },
+      {
+        "sid": "sensorData-1784906521973-d5ca0cb73edb4c5280e8895da2433e7a",
+        "positive": 0,
+        "negative": 53,
+        "effective_negative": 1,
+        "negative_weight": 0.018867924528301886
+      },
+      {
+        "sid": "sensorData-1784907040925-d46bd983c02d4a07aed78e2047e1e279",
+        "positive": 0,
+        "negative": 69,
+        "effective_negative": 1,
+        "negative_weight": 0.014492753623188406
+      },
+      {
+        "sid": "sensorData-1784907385763-a9dcc5f82b834981a4d7022da5164862",
+        "positive": 0,
+        "negative": 75,
+        "effective_negative": 1,
+        "negative_weight": 0.013333333333333334
+      },
+      {
+        "sid": "sensorData-1784908228522-c5a983efe8c149b5810f2305b4854602",
+        "positive": 0,
+        "negative": 20,
+        "effective_negative": 1,
+        "negative_weight": 0.05
+      },
+      {
+        "sid": "sensorData-1784909620550-5a8e3315b6314c07add725ed909a965c",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1784909742403-ef7d26e5182d4ddd88765a2131258326",
+        "positive": 0,
+        "negative": 270,
+        "effective_negative": 1,
+        "negative_weight": 0.003703703703703704
+      },
+      {
+        "sid": "sensorData-1784909844215-1850d5a87be9450eb54f967e94720dff",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1784910213868-677f9a98c2b24e629399b39585d372d7",
+        "positive": 15,
+        "negative": 235,
+        "effective_negative": 45,
+        "negative_weight": 0.19148936170212766
+      },
+      {
+        "sid": "sensorData-1784910376439-5f13757586e549738f10acf3e6059073",
+        "positive": 0,
+        "negative": 277,
+        "effective_negative": 1,
+        "negative_weight": 0.0036101083032490976
+      },
+      {
+        "sid": "sensorData-1784910377821-bc72526c4da1497387577540a1850fda",
+        "positive": 0,
+        "negative": 259,
+        "effective_negative": 1,
+        "negative_weight": 0.003861003861003861
+      },
+      {
+        "sid": "sensorData-1784984682783-98fceb955b214d5b8261fe3daa5e8ca6",
+        "positive": 0,
+        "negative": 279,
+        "effective_negative": 1,
+        "negative_weight": 0.0035842293906810036
+      },
+      {
+        "sid": "sensorData-1784985223743-e9a4d48661a9432ab99bcc1ad33c0b4a",
+        "positive": 105,
+        "negative": 106,
+        "effective_negative": 106,
+        "negative_weight": 1.0
+      },
+      {
+        "sid": "sensorData-1784987012039-20f6669eeb6a48a996e74c1ac6e330ff",
+        "positive": 48,
+        "negative": 166,
+        "effective_negative": 144,
+        "negative_weight": 0.8674698795180723
+      },
+      {
+        "sid": "sensorData-1784989892208-cd4bc6c2573c4de3ba1cfb5a418d3d61",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1784990146021-587efb69a3a94ec396583c6ed43687ca",
+        "positive": 0,
+        "negative": 268,
+        "effective_negative": 1,
+        "negative_weight": 0.0037313432835820895
+      },
+      {
+        "sid": "sensorData-1784990369173-e28fdf40db7549c3a365b2d8873328b5",
+        "positive": 0,
+        "negative": 277,
+        "effective_negative": 1,
+        "negative_weight": 0.0036101083032490976
+      },
+      {
+        "sid": "sensorData-1784990589755-2e186e5f90d14b49893aac8f7d222567",
+        "positive": 0,
+        "negative": 242,
+        "effective_negative": 1,
+        "negative_weight": 0.004132231404958678
+      },
+      {
+        "sid": "sensorData-1784990590371-a1011d168af84d55bb84729022de993b",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1784990818189-01061e8d648249f893fe052084590429",
+        "positive": 0,
+        "negative": 277,
+        "effective_negative": 1,
+        "negative_weight": 0.0036101083032490976
+      },
+      {
+        "sid": "sensorData-1784991039576-f37650a8808d41dea629031ea1931128",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1784991237919-4f000f7684444beba4daea2895c58bd9",
+        "positive": 0,
+        "negative": 277,
+        "effective_negative": 1,
+        "negative_weight": 0.0036101083032490976
+      },
+      {
+        "sid": "sensorData-1784991520997-dc7b80b2552b414aa8f2bad826b062bc",
+        "positive": 49,
+        "negative": 184,
+        "effective_negative": 147,
+        "negative_weight": 0.7989130434782609
+      },
+      {
+        "sid": "sensorData-1784991552204-c5dea83a79d94da28c03a1775a39bf4f",
+        "positive": 0,
+        "negative": 268,
+        "effective_negative": 1,
+        "negative_weight": 0.0037313432835820895
+      },
+      {
+        "sid": "sensorData-1784991737097-be6c7ab12fd64c92b819f3f0cdd493df",
+        "positive": 0,
+        "negative": 277,
+        "effective_negative": 1,
+        "negative_weight": 0.0036101083032490976
+      },
+      {
+        "sid": "sensorData-1784992086746-de22d32aa19246ed8d86c380001262e3",
+        "positive": 0,
+        "negative": 277,
+        "effective_negative": 1,
+        "negative_weight": 0.0036101083032490976
+      },
+      {
+        "sid": "sensorData-1784992126870-01ce0feb26134eeb80e28ed7aebd76bb",
+        "positive": 0,
+        "negative": 261,
+        "effective_negative": 1,
+        "negative_weight": 0.0038314176245210726
+      },
+      {
+        "sid": "sensorData-1785043972661-b86b35dd7e684e958b387df3fd51a2a1",
+        "positive": 0,
+        "negative": 269,
+        "effective_negative": 1,
+        "negative_weight": 0.0037174721189591076
+      },
+      {
+        "sid": "sensorData-1785044168129-9a88c711d7a04c9da41dcbb0e07d173a",
+        "positive": 0,
+        "negative": 259,
+        "effective_negative": 1,
+        "negative_weight": 0.003861003861003861
+      },
+      {
+        "sid": "sensorData-1785044308758-140d84e52cd645ccb8ef2c7f48527a03",
+        "positive": 0,
+        "negative": 279,
+        "effective_negative": 1,
+        "negative_weight": 0.0035842293906810036
+      },
+      {
+        "sid": "sensorData-1785044310407-72e49d69765b4b2ba350dc6fbc8066b8",
+        "positive": 0,
+        "negative": 279,
+        "effective_negative": 1,
+        "negative_weight": 0.0035842293906810036
+      },
+      {
+        "sid": "sensorData-1785044312314-27d0450bcd274439bfe13e491c1b14c6",
+        "positive": 0,
+        "negative": 279,
+        "effective_negative": 1,
+        "negative_weight": 0.0035842293906810036
+      },
+      {
+        "sid": "sensorData-1785044314029-9dfd1affe1524287a906f48761a7b128",
+        "positive": 0,
+        "negative": 281,
+        "effective_negative": 1,
+        "negative_weight": 0.0035587188612099642
+      },
+      {
+        "sid": "sensorData-1785044315932-51a08f3929194579b42dd1512a20b9ad",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785051447923-9d370f2dfa2e4671be01ea604c5b9cf0",
+        "positive": 0,
+        "negative": 237,
+        "effective_negative": 1,
+        "negative_weight": 0.004219409282700422
+      },
+      {
+        "sid": "sensorData-1785059001985-5a819c6757f64e45acf3323ec15b28ad",
+        "positive": 0,
+        "negative": 203,
+        "effective_negative": 1,
+        "negative_weight": 0.0049261083743842365
+      },
+      {
+        "sid": "sensorData-1785075203251-9453ba350e6248159266004931b0c36a",
+        "positive": 0,
+        "negative": 268,
+        "effective_negative": 1,
+        "negative_weight": 0.0037313432835820895
+      },
+      {
+        "sid": "sensorData-1785075693134-40a58259b76442aa9928e870717fc617",
+        "positive": 0,
+        "negative": 258,
+        "effective_negative": 1,
+        "negative_weight": 0.003875968992248062
+      },
+      {
+        "sid": "sensorData-1785075854165-4901234c97da46c08a84b2d7e404f3b3",
+        "positive": 0,
+        "negative": 256,
+        "effective_negative": 1,
+        "negative_weight": 0.00390625
+      },
+      {
+        "sid": "sensorData-1785076717993-092d774bb90748179fa2e082a3b3f0ea",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785076909222-14b2bda0a5354812aa7a1604932edfb3",
+        "positive": 69,
+        "negative": 163,
+        "effective_negative": 163,
+        "negative_weight": 1.0
+      },
+      {
+        "sid": "sensorData-1785077110242-1da6c3fae073421199c148c7360460b2",
+        "positive": 0,
+        "negative": 279,
+        "effective_negative": 1,
+        "negative_weight": 0.0035842293906810036
+      },
+      {
+        "sid": "sensorData-1785077301100-707c0b20d5714bb6b042e690bd1d21fb",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785077482404-048436dfa5e64e8ca58fa16f7dc69061",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785077498593-dfd0497b2e7346c287bc2493d7ab1061",
+        "positive": 0,
+        "negative": 259,
+        "effective_negative": 1,
+        "negative_weight": 0.003861003861003861
+      },
+      {
+        "sid": "sensorData-1785077675156-7702dcb8a9ea424f957d286a4b541985",
+        "positive": 0,
+        "negative": 279,
+        "effective_negative": 1,
+        "negative_weight": 0.0035842293906810036
+      },
+      {
+        "sid": "sensorData-1785077750701-d29cc0d6c10e4a8bb9b3bdcc0d9be8e4",
+        "positive": 189,
+        "negative": 47,
+        "effective_negative": 47,
+        "negative_weight": 1.0
+      },
+      {
+        "sid": "sensorData-1785077870117-6b9df5afe28e4f95b7b4174183531e33",
+        "positive": 0,
+        "negative": 248,
+        "effective_negative": 1,
+        "negative_weight": 0.004032258064516129
+      },
+      {
+        "sid": "sensorData-1785077927785-24c235d36fc7473ca668c7d3bf6a0e2d",
+        "positive": 0,
+        "negative": 277,
+        "effective_negative": 1,
+        "negative_weight": 0.0036101083032490976
+      },
+      {
+        "sid": "sensorData-1785078113526-15f623c3acbd40ea93e41354a8ba2e9d",
+        "positive": 0,
+        "negative": 277,
+        "effective_negative": 1,
+        "negative_weight": 0.0036101083032490976
+      },
+      {
+        "sid": "sensorData-1785078299189-7044dd8c771c491c967f100ab90969d0",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785078481289-f6543bd6da374224bc57f65d6ef9304d",
+        "positive": 0,
+        "negative": 277,
+        "effective_negative": 1,
+        "negative_weight": 0.0036101083032490976
+      },
+      {
+        "sid": "sensorData-1785078664381-a65f314973b1465ebef65fbf451d2d33",
+        "positive": 0,
+        "negative": 277,
+        "effective_negative": 1,
+        "negative_weight": 0.0036101083032490976
+      },
+      {
+        "sid": "sensorData-1785078856380-6a3929f4c48146d29e7d8d1a468218a0",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785079026737-7bc13eb20220403d98977e7a8d86e563",
+        "positive": 53,
+        "negative": 172,
+        "effective_negative": 159,
+        "negative_weight": 0.9244186046511628
+      },
+      {
+        "sid": "sensorData-1785079209832-0b2ee9a4f3ae4e0c904dcc638088eca7",
+        "positive": 0,
+        "negative": 277,
+        "effective_negative": 1,
+        "negative_weight": 0.0036101083032490976
+      },
+      {
+        "sid": "sensorData-1785079389099-b743c1768d1f414badba7fcf78104c31",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785079570742-d828254fe1df4119ad36c93f51dc842e",
+        "positive": 0,
+        "negative": 277,
+        "effective_negative": 1,
+        "negative_weight": 0.0036101083032490976
+      },
+      {
+        "sid": "sensorData-1785079753543-5cdf304c7c054f6cb8be78069c98d8f8",
+        "positive": 0,
+        "negative": 258,
+        "effective_negative": 1,
+        "negative_weight": 0.003875968992248062
+      },
+      {
+        "sid": "sensorData-1785149809349-6db9911a93494e7f9c44bd4328c7bb1d",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785150042561-7a8f0c14df6b4a4eb7664daccebce9df",
+        "positive": 0,
+        "negative": 277,
+        "effective_negative": 1,
+        "negative_weight": 0.0036101083032490976
+      },
+      {
+        "sid": "sensorData-1785152460067-443da0786d1b41e9ac27f316272bc4f0",
+        "positive": 0,
+        "negative": 73,
+        "effective_negative": 1,
+        "negative_weight": 0.0136986301369863
+      },
+      {
+        "sid": "sensorData-1785152873045-8fddcace067946c5a0fdb93e26a9e9f2",
+        "positive": 0,
+        "negative": 268,
+        "effective_negative": 1,
+        "negative_weight": 0.0037313432835820895
+      },
+      {
+        "sid": "sensorData-1785152951436-9098d95bb65a430c8c36e177753c90d5",
+        "positive": 0,
+        "negative": 277,
+        "effective_negative": 1,
+        "negative_weight": 0.0036101083032490976
+      },
+      {
+        "sid": "sensorData-1785153088383-6f83ab4d89a14d4bb2e48dab20eb7386",
+        "positive": 0,
+        "negative": 277,
+        "effective_negative": 1,
+        "negative_weight": 0.0036101083032490976
+      },
+      {
+        "sid": "sensorData-1785153368339-1f31f6808b744c3c93fc04e8ce836c23",
+        "positive": 0,
+        "negative": 277,
+        "effective_negative": 1,
+        "negative_weight": 0.0036101083032490976
+      },
+      {
+        "sid": "sensorData-1785153703326-5c6c313542954627829a6d4cc61496f2",
+        "positive": 0,
+        "negative": 277,
+        "effective_negative": 1,
+        "negative_weight": 0.0036101083032490976
+      },
+      {
+        "sid": "sensorData-1785153880714-9d256edd5c6049ac9bf2842af059280c",
+        "positive": 0,
+        "negative": 267,
+        "effective_negative": 1,
+        "negative_weight": 0.003745318352059925
+      },
+      {
+        "sid": "sensorData-1785155687143-cee58f1fc77241168ddea124cadaf507",
+        "positive": 0,
+        "negative": 45,
+        "effective_negative": 1,
+        "negative_weight": 0.022222222222222223
+      },
+      {
+        "sid": "sensorData-1785156932773-764dae60cc1a48b9a6e2656b28f93ed7",
+        "positive": 0,
+        "negative": 169,
+        "effective_negative": 1,
+        "negative_weight": 0.005917159763313609
+      },
+      {
+        "sid": "sensorData-1785157045933-00ce70c111514a618423aee4f1e9bd38",
+        "positive": 0,
+        "negative": 279,
+        "effective_negative": 1,
+        "negative_weight": 0.0035842293906810036
+      },
+      {
+        "sid": "sensorData-1785157236001-7cf31f172624431bbd3f1ab691685af9",
+        "positive": 0,
+        "negative": 258,
+        "effective_negative": 1,
+        "negative_weight": 0.003875968992248062
+      },
+      {
+        "sid": "sensorData-1785157286738-1bca13a0b84a4949bb612844df483423",
+        "positive": 118,
+        "negative": 85,
+        "effective_negative": 85,
+        "negative_weight": 1.0
+      },
+      {
+        "sid": "sensorData-1785157432622-c931aca113d3409b9dc0bf136eb6728b",
+        "positive": 0,
+        "negative": 270,
+        "effective_negative": 1,
+        "negative_weight": 0.003703703703703704
+      },
+      {
+        "sid": "sensorData-1785157629802-092b080ffc5141f19783cd0f4c6c0d5a",
+        "positive": 0,
+        "negative": 280,
+        "effective_negative": 1,
+        "negative_weight": 0.0035714285714285713
+      },
+      {
+        "sid": "sensorData-1785157638961-9ae2c5ffbaa843778ff0b53c51f63ec5",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785157824984-89e7bba3b5394b5ca6dca6624a42088a",
+        "positive": 0,
+        "negative": 269,
+        "effective_negative": 1,
+        "negative_weight": 0.0037174721189591076
+      },
+      {
+        "sid": "sensorData-1785158004903-71436d03e1f240089e7a40a3e77aa530",
+        "positive": 0,
+        "negative": 269,
+        "effective_negative": 1,
+        "negative_weight": 0.0037174721189591076
+      },
+      {
+        "sid": "sensorData-1785158008519-56406f9a3ca645dbadb0cf57678f4045",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785158427745-eb58857778404fc892b862e085ae409e",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785159844198-20cbc8c32a2f4bed917839b99a89bf88",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785160707702-dfb2ca736ce54da3811780dd6341850c",
+        "positive": 48,
+        "negative": 167,
+        "effective_negative": 144,
+        "negative_weight": 0.8622754491017964
+      },
+      {
+        "sid": "sensorData-1785161720053-fe30ec1576954b6bbb66dd1bbf596cab",
+        "positive": 0,
+        "negative": 11,
+        "effective_negative": 1,
+        "negative_weight": 0.09090909090909091
+      },
+      {
+        "sid": "sensorData-1785163205450-fb0d6764921a433d9b28525d184ce02d",
+        "positive": 0,
+        "negative": 261,
+        "effective_negative": 1,
+        "negative_weight": 0.0038314176245210726
+      },
+      {
+        "sid": "sensorData-1785163895312-77935e53820748cb97db7d30c404e1ce",
+        "positive": 73,
+        "negative": 161,
+        "effective_negative": 161,
+        "negative_weight": 1.0
+      },
+      {
+        "sid": "sensorData-1785235910746-36242c47846a4f89a086ca78f3df4bbc",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785236336110-428e523d39e3459184a83591c703d367",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785237234445-09224c6428a849acab4955a7bff4113d",
+        "positive": 0,
+        "negative": 257,
+        "effective_negative": 1,
+        "negative_weight": 0.0038910505836575876
+      },
+      {
+        "sid": "sensorData-1785238614629-928b7e4644a94c8da08d9233ed2515af",
+        "positive": 85,
+        "negative": 84,
+        "effective_negative": 84,
+        "negative_weight": 1.0
+      },
+      {
+        "sid": "sensorData-1785238948640-1897f1bf0acd45229757c89cd0934cc8",
+        "positive": 0,
+        "negative": 60,
+        "effective_negative": 1,
+        "negative_weight": 0.016666666666666666
+      },
+      {
+        "sid": "sensorData-1785238995649-1c0a187028e54d0c9976817f99a31238",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785335239745-f722e0f705d74d418c1da62b1c243527",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785335240072-a1d5d07684844b069980aa69351fb1d2",
+        "positive": 0,
+        "negative": 279,
+        "effective_negative": 1,
+        "negative_weight": 0.0035842293906810036
+      },
+      {
+        "sid": "sensorData-1785335241054-d58e65b9782e4dfe81d0159ef1784e9a",
+        "positive": 45,
+        "negative": 185,
+        "effective_negative": 135,
+        "negative_weight": 0.7297297297297297
+      },
+      {
+        "sid": "sensorData-1785335242077-f7056a9fd5ad49718c57a1b866969073",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785335243144-9fbf09d38e4d442e8484c4d2e16f051f",
+        "positive": 0,
+        "negative": 280,
+        "effective_negative": 1,
+        "negative_weight": 0.0035714285714285713
+      },
+      {
+        "sid": "sensorData-1785417027341-20fed6c8fad54e64819f3c0a06ac12c9",
+        "positive": 0,
+        "negative": 268,
+        "effective_negative": 1,
+        "negative_weight": 0.0037313432835820895
+      },
+      {
+        "sid": "sensorData-1785417027978-0ab8d686780b49a28d80e75476fc6749",
+        "positive": 45,
+        "negative": 185,
+        "effective_negative": 135,
+        "negative_weight": 0.7297297297297297
+      },
+      {
+        "sid": "sensorData-1785417029511-31c624db544a47d4b6702c2d6f1e0ff4",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785417035177-a674a1d9b08d4921a1d173e3523f5543",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785417035409-88fabf0765914c22a42b90e5ae8ab007",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785417035785-cdaec9aef01e4b2489d059f55ee63684",
+        "positive": 0,
+        "negative": 268,
+        "effective_negative": 1,
+        "negative_weight": 0.0037313432835820895
+      },
+      {
+        "sid": "sensorData-1785417036164-bb6ae9a6321d46a58f9d18aa55000d0c",
+        "positive": 92,
+        "negative": 145,
+        "effective_negative": 145,
+        "negative_weight": 1.0
+      },
+      {
+        "sid": "sensorData-1785417044363-cac87f488f8d416f8cc6f330871bba0d",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785417072281-040ee0f805a949d69c9837b0958cf9e7",
+        "positive": 0,
+        "negative": 265,
+        "effective_negative": 1,
+        "negative_weight": 0.0037735849056603774
+      },
+      {
+        "sid": "sensorData-1785505302218-1a9aadfc3d5a446d9dd17708e7fb569b",
+        "positive": 0,
+        "negative": 268,
+        "effective_negative": 1,
+        "negative_weight": 0.0037313432835820895
+      },
+      {
+        "sid": "sensorData-1785505303147-efff5d195ca04806a2f6029b40e82929",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785505303981-9602f928d5b54c0caa6ef9e6926e5989",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785505304940-0fb2a9ee4538423ca2e7ffe622a80997",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785505306199-fe7bdda166644c539c662fcc92bb7963",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785505307079-195184ccdfb34b08b11e02198f1bd4e6",
+        "positive": 36,
+        "negative": 215,
+        "effective_negative": 108,
+        "negative_weight": 0.5023255813953489
+      },
+      {
+        "sid": "sensorData-1785505308448-cbaa546b4fd94f758a8a17d36beeeffc",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785505309297-7893f04e732043d59544be1b9e3479d7",
+        "positive": 0,
+        "negative": 41,
+        "effective_negative": 1,
+        "negative_weight": 0.024390243902439025
+      },
+      {
+        "sid": "sensorData-1785654138872-b6513810497e4b31be9c40c31e31670d",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785654139842-00cf7c6ce56d43c0b83378b9fd2aa9ce",
+        "positive": 108,
+        "negative": 104,
+        "effective_negative": 104,
+        "negative_weight": 1.0
+      },
+      {
+        "sid": "sensorData-1785654141055-62776a54bbd648ba889c7fc7d612f4bd",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785654142014-a7ea939246cf425cad79b419ce6f3e1d",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785654143102-1b626a1623bf4cdda273933e35cd096b",
+        "positive": 0,
+        "negative": 268,
+        "effective_negative": 1,
+        "negative_weight": 0.0037313432835820895
+      },
+      {
+        "sid": "sensorData-1785654144241-6050bc6f1ad248738808212d33e52273",
+        "positive": 0,
+        "negative": 268,
+        "effective_negative": 1,
+        "negative_weight": 0.0037313432835820895
+      },
+      {
+        "sid": "sensorData-1785671591655-1fae96dbc61d461f89d00fa1626bdcee",
+        "positive": 0,
+        "negative": 205,
+        "effective_negative": 1,
+        "negative_weight": 0.004878048780487805
+      },
+      {
+        "sid": "sensorData-1785671974755-29c4439703494ba5bdc498a58c3d234f",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785672317337-2a36b200c9a94d3ab14f0d753eb68abb",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785672588034-ac718079fb8e4cdda5bb3be64bbed446",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785672919238-ba5839e062ee452c816726d72e42c281",
+        "positive": 116,
+        "negative": 96,
+        "effective_negative": 96,
+        "negative_weight": 1.0
+      },
+      {
+        "sid": "sensorData-1785673514206-c8c667b85bb14b78adfac67d6ccab644",
+        "positive": 0,
+        "negative": 278,
+        "effective_negative": 1,
+        "negative_weight": 0.0035971223021582736
+      },
+      {
+        "sid": "sensorData-1785673956756-001a2ce7d38c4bd8b7bd5674436560b4",
+        "positive": 0,
+        "negative": 258,
+        "effective_negative": 1,
+        "negative_weight": 0.003875968992248062
+      }
+    ]
+  }
+}
