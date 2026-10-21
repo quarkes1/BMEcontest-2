@@ -1,0 +1,37 @@
+{
+  "state": "COMPLETE",
+  "evidence_kind": "FROZEN_COMPONENT_MAX_FUSION_DEVELOPMENT_ONLY",
+  "cohort": "t24",
+  "passed": false,
+  "aggregate": {
+    "A": {
+      "tp": 89,
+      "fp": 62,
+      "fn": 71,
+      "predictions": 151,
+      "truths": 160,
+      "f1": 0.572347266881029,
+      "ppv": 0.5894039735099338,
+      "recall": 0.55625
+    },
+    "G": {
+      "tp": 82,
+      "fp": 54,
+      "fn": 78,
+      "predictions": 136,
+      "truths": 160,
+      "f1": 0.5540540540540541,
+      "ppv": 0.6029411764705882,
+      "recall": 0.5125
+    }
+  },
+  "delta_f1": -0.018293212826974936,
+  "positive_folds": 1,
+  "delta_tp": -7,
+  "delta_fp": -8,
+  "model_fits": 0,
+  "component_score_recomputations": 0,
+  "formula": "max(lr,lgbm)",
+  "protected_unchanged": true,
+  "elapsed_seconds": 4.25926530000288
+}

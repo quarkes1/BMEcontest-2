@@ -23,3 +23,5 @@ Pre-flight：score生产器只提供已封存LR/LGBM与几何，融合不拟合�
 Ruling：旧任务书禁止重启adaptive融合搜索；本次不启动该学习型方案，而对修复训练后的冻结分量实施一个固定无参数公式。若无效关闭，不扩为手工outer融合搜索。代价：不能代表所有融合架构的结论。
 
 实施：4项新测试与geometry合计13项通过，含不同预测数的fusion gate；相关41项通过。Luna medium一次审查无Critical/Important。Final: minor (deferred): 保存的fusion policy祖先图沿用已冻结A policy，未再显式连接三个分量score文件节点；每个输入文件的完整祖先与精确角色均独立核对，且SHA冻结，当前未发现泄漏，但图形审计不够直接。
+
+结果：18bf329封存三组threshold后评分，A89/62/71、F1=.572347267；M82/54/78、F1=.554054054（−.018293213、1/3组提高、TP−7/FP−8），失败。没有五折、没有新EXE；关闭固定max，不改公式抢救。
