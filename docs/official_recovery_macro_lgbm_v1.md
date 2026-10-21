@@ -36,3 +36,5 @@ Pre-flight：load_pools的features已含时间先验，fit不可再次追加；�
 同一入口支持T24/five；T24所有9个L分区fit并封存三份policy才health，五折所有15个L分区fit封存才outer。五折另须T24事件门真实通过、parent源/protected核验。原A源JSON/Data/cache SHA对照，加载及两阶段间eligibility t_acc/imu_valid指纹；输入代码/本文/窗口探针证据SHA封存。T24预计120窗口/24meta fit，五折200窗口/40meta fit，均≤2h、RSS≤12GiB、证据≤128MiB、余量≥10GiB；只保存分数/身份，不保存探针权重/特征缓存。所有结果明确重复开发，不修改正式release/第一试测。
 
 实现`scripts/research/official_recovery/macro_lgbm_event.py`，增加factory透传/默认恒等、parent失败拒绝、gate完整人口测试；一位Luna medium只读审查后执行。通过事件两门才登记部署合同；失败关闭工厂，不按health修改树参数或AP门。
+
+审查修复：窗口parent原仅检查结果数字/保护身份，不能证明来自本轮源；增加固定plan SHA `2b6c1d8fc33ac0462c1e6a516163af79c57289bb8a12a2f79d76d1639a457e3a`与代码24aa4667597483a9eea144bf14d5a2986a9c485a，逐项核对parent原source SHA。仅允许本文M1追加与已测试的crossfit factory注入两处预期源差异；新增事件代码由新plan完整冻结。`test_window_parent_requires_exact_reviewed_plan_and_live_source`观察拒绝缺失RED后修复GREEN。eligibility在数据加载前后及fit后核对，不只在fit前后取样。一次审查其余无严重问题；事件结果未产生。

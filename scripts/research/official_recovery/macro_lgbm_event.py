@@ -1,0 +1,183 @@
+"""Exploratory M1: nested macro-LGBM event validation against frozen A."""
+from __future__ import annotations
+
+import argparse
+from dataclasses import asdict,replace
+import gc
+from pathlib import Path
+import shutil
+import subprocess
+import time
+
+import numpy as np
+from threadpoolctl import threadpool_limits
+
+from .consistent_validation import fit_verifiers,_save_scores
+from .eligibility_provenance import eligibility_inputs
+from .event_probe import check_graph,choose_complete_policy,complete_metrics,decode,partition_truths
+from .geometry_probe import load_context as baseline_context,T24_SOURCE,FIVE_SOURCE
+from .macro_lgbm_probe import macro_estimator,SPEC
+from .max_fusion_probe import fusion_gate
+from .negative_clean import prepare_train
+from .negative_clean_probe import _read,_write,protected_sources,load_context as train_context,_inputs,validate_policy_population
+from .scope_audit import _sha
+from scripts.research.representation_v2.crossfit import build_candidate_ledgers
+from src.pipeline import runner
+
+T24_OUTPUT='outputs/official_recovery/macro_lgbm_v1_t24'
+WINDOW_SOURCE='outputs/official_recovery/macro_lgbm_v1_window'
+WINDOW_PARENT_PLAN_SHA='2b6c1d8fc33ac0462c1e6a516163af79c57289bb8a12a2f79d76d1639a457e3a'
+WINDOW_PARENT_CODE_SHA='24aa4667597483a9eea144bf14d5a2986a9c485a'
+
+
+def verify_window_parent(directory,protected,root=None):
+    root=Path(root) if root is not None else Path(directory)
+    state=_read(directory/'state.json');summary=_read(directory/'summary.json');plan=_read(directory/'plan.json')
+    if _sha(directory/'plan.json')!=WINDOW_PARENT_PLAN_SHA or plan.get('code_sha')!=WINDOW_PARENT_CODE_SHA:
+        raise ValueError('reviewed window parent plan/code differs')
+    allowed={SPEC,'scripts/research/representation_v2/crossfit.py'}
+    for name,digest in plan['source_sha256'].items():
+        if name.replace('\\','/') not in allowed and _sha(root/name)!=digest:
+            raise ValueError('window parent source differs: '+name)
+    if (state['state']!='COMPLETE' or summary['state']!='COMPLETE' or summary['passed'] is not False
+        or abs(summary['delta_ap']-.018877746493557)>1e-12 or summary['positive_folds']!=2
+        or summary['protected_unchanged'] is not True or plan['id']!='MACRO-LGBM-V1-WINDOW'
+        or plan['protected']!=protected):
+        raise ValueError('explicit M1 window parent identity differs')
+
+
+def fingerprints(root,cohort):
+    hashes=_inputs(root)
+    files={root/SPEC};files.update((root/WINDOW_SOURCE).glob('*'))
+    files.update((root/T24_SOURCE).glob('*.json'))
+    if cohort=='five':
+        from .negative_clean_validation import inputs as five_inputs
+        hashes.update(five_inputs(root));files.update((root/FIVE_SOURCE).glob('*.json'));files.update((root/T24_OUTPUT).glob('*.json'))
+    hashes.update({str(p.relative_to(root)):_sha(p) for p in files if p.is_file()})
+    return hashes
+
+
+def fit_score(data,config,train,score,excluded,truths,output,prefix,source):
+    train,score,excluded=map(set,(train,score,excluded))
+    if train&(score|excluded) or score&excluded: raise ValueError('producer roles overlap')
+    prepared,sampling=prepare_train(data,train,truths,'A')
+    scoring=replace(data,window_train=prepared.window_train,micro_window_train=prepared.micro_window_train)
+    graph={};seed=config.seed+2
+    t,v=build_candidate_ledgers(scoring,replace(config,seed=seed),train,score,fit_audit=graph,
+        macro_estimator_factory=lambda:macro_estimator(seed))
+    frozen=_read(source/f'{prefix}_training.json')
+    # Window sampling and micro-only learned threshold must remain precisely the baseline contract.
+    if sampling!=frozen['A'] or t.micro_threshold!=frozen['A_meta']['micro_threshold']:
+        raise ValueError('single-factor sampling or micro threshold differs')
+    p,components=fit_verifiers(t.features,t.labels,v.features,config,.1,.25)
+    graph['verifier']=dict(fit_subjects=sorted(train),parents=['candidates'])
+    graph['score']=dict(fit_subjects=[],parents=['verifier']);check_graph(graph,'score',score|excluded,train)
+    _save_scores(output/f'{prefix}_L_scores.json',v.candidates,p,components,v.groups,graph,train,score)
+    _write(output/f'{prefix}_training.json',dict(sample=sampling,micro_threshold=t.micro_threshold,
+        meta_rows=len(t.labels),meta_positive=int(np.count_nonzero(t.labels==1))))
+    gc.collect();return v,p,graph
+
+
+def execute(root,output,phase='policy',cohort='t24'):
+    root,output=Path(root).resolve(),Path(output).resolve();completed=0;started=time.perf_counter()
+    if phase=='policy': output.mkdir(parents=True,exist_ok=False)
+    elif phase!='score': raise ValueError('unknown event phase')
+    try:
+        if subprocess.check_output(['git','status','--porcelain'],cwd=root,text=True).strip():
+            raise RuntimeError('commit source/evidence before event training')
+        protected=protected_sources(root);verify_window_parent(root/WINDOW_SOURCE,protected,root)
+        if phase=='policy':
+            hashes=fingerprints(root,cohort)
+            plan=dict(id='MACRO-LGBM-EVENT-M1',cohort=cohort,source_sha256=hashes,protected=protected,
+                started_epoch=time.time(),code_sha=subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip(),
+                window_gate_failed=True,exploratory_amendment='M1',expected_window_fits=120 if cohort=='t24' else 200,
+                expected_meta_fits=24 if cohort=='t24' else 40)
+            _write(output/'plan.json',plan)
+        else:
+            plan=_read(output/'plan.json');hashes=plan['source_sha256']
+            if plan['cohort']!=cohort or plan['protected']!=protected or _read(output/'state.json')['state']!='POLICY_FROZEN':
+                raise ValueError('matching frozen policy phase required')
+            if any(_sha(output/n)!=h for n,h in _read(output/'policy_seal.json')['sha256'].items()): raise ValueError('event seal differs')
+        def guard():
+            if time.time()-plan['started_epoch']>7200 or shutil.disk_usage(root).free<10*1024**3: raise RuntimeError('event wall/disk limit')
+            peak=runner.peak_working_set_bytes()
+            if peak is None or peak>12*1024**3: raise RuntimeError('Windows memory measurement required within budget')
+            if sum(p.stat().st_size for p in output.rglob('*') if p.is_file())>128*1024**2: raise RuntimeError('event evidence limit')
+        def unchanged():
+            if hashes!=fingerprints(root,cohort) or protected!=protected_sources(root): raise ValueError('event input/protection changed')
+        guard();unchanged()
+        truths,mapping,_,wrappers=baseline_context(root,cohort,parent_directory=T24_OUTPUT,parent_gate=fusion_gate)
+        population={s for w in wrappers for s in (*w['train'],*w['score'])}
+        before_eligibility=eligibility_inputs(root,{sid for sid,s in mapping.items() if s in population})
+        if cohort=='t24':
+            config,data,loaded_truths,manifest,forbidden=train_context(root)
+            configs={w['id']:config for w in manifest['wrappers']}
+            parts={w['id']:[(s['train'],s['score']) for s in w['policy_splits']] for w in manifest['wrappers']}
+        elif cohort=='five':
+            from .negative_clean_validation import load_context as five_context
+            cs,data,loaded_truths,subject_fold,_=five_context(root)
+            configs={i:c for i,c in enumerate(cs)};forbidden=set()
+            parts={int(k):v for k,v in _read(root/FIVE_SOURCE/'plan.json')['policy_partitions'].items()}
+            if subject_fold!={r['subject']:r['fold'] for r in _read(root/'outputs/official_recovery/scope_audit_confirmed/summary.json')['per_subject']}:
+                raise ValueError('fivefold fit population differs')
+        else: raise ValueError('unknown event cohort')
+        if set(loaded_truths)!=set(truths) or any(mapping[sid]!=s for sid,s in data.subject_by_session.items()):
+            raise ValueError('baseline/fitting population identity differs')
+        eligibility=eligibility_inputs(root,data.subject_by_session)
+        if eligibility!={sid:before_eligibility[sid] for sid in data.subject_by_session}:
+            raise ValueError('eligibility changed during loading')
+        if phase=='policy': _write(output/'eligibility_inputs.json',eligibility)
+        elif eligibility!=_read(output/'eligibility_inputs.json'): raise ValueError('eligibility changed since selection')
+        source=root/(T24_SOURCE if cohort=='t24' else FIVE_SOURCE);records=[]
+        for w in wrappers:
+            guard();fold=w['id'];train=set(w['train']);score=set(w['score']);config=configs[fold]
+            if phase=='policy':
+                candidates=[];probabilities=[];groups=[];graph={};seen=[]
+                for i,(fit,valid) in enumerate(parts[fold]):
+                    guard()
+                    if set(fit)&set(valid) or set(fit)|set(valid)!=train: raise ValueError('policy partition differs')
+                    print(f'macro-event {cohort} policy {fold}/{i}: train{len(fit)} score{len(valid)}',flush=True)
+                    ledger,p,parent=fit_score(data,config,fit,valid,score|forbidden,truths,output,f'fold{fold}_policy{i}',source)
+                    candidates.extend(ledger.candidates);probabilities.extend(p);groups.extend(ledger.groups);seen.extend(valid)
+                    for name,node in parent.items():
+                        graph[f'p{i}_{name}']=dict(fit_subjects=node['fit_subjects'],parents=[f'p{i}_{p}' for p in node['parents']])
+                    completed+=1;del ledger,p,parent;gc.collect()
+                validate_policy_population(seen,groups,train)
+                graph['policy']=dict(fit_subjects=sorted(train),parents=[f'p{i}_score' for i in range(3)])
+                check_graph(graph,'policy',score|forbidden,train)
+                policy=choose_complete_policy(candidates,np.asarray(probabilities),groups,partition_truths(truths,train),mapping,config)
+                _write(output/f'fold{fold}_policy.json',dict(policy=policy,graph=graph))
+                print(f'macro-event {cohort} fold{fold} policy frozen',flush=True);continue
+            frozen=_read(output/f'fold{fold}_policy.json');check_graph(frozen['graph'],'policy',score|forbidden,train)
+            role='health' if cohort=='t24' else 'outer'
+            print(f'macro-event {cohort} score {fold}: train{len(train)} score{len(score)}',flush=True)
+            ledger,p,graph=fit_score(data,config,train,score,forbidden,truths,output,f'fold{fold}_{role}',source)
+            events={'A':w['health_events'],'G':decode(ledger.candidates,p,ledger.groups,frozen['policy'])};targets=partition_truths(truths,score)
+            row=dict(fold=fold,events={a:complete_metrics(es,mapping,targets) for a,es in events.items()},truths=targets,
+                predictions={a:[asdict(e) for e in es] for a,es in events.items()},score_graph=graph,policy_graph=frozen['graph'],
+                subject_events=[dict(subject=s,events={a:complete_metrics([e for e in es if mapping[e.sid]==s],mapping,partition_truths(targets,{s}))
+                    for a,es in events.items()}) for s in sorted(score)])
+            records.append(row);completed+=1;_write(output/f'fold{fold}_report.json',row)
+            print('macro-event counts '+str(row['events']),flush=True);del ledger,p,graph;gc.collect()
+        guard();unchanged()
+        if eligibility!=eligibility_inputs(root,data.subject_by_session): raise ValueError('eligibility changed during fitting')
+        if phase=='policy':
+            _write(output/'policy_seal.json',dict(sha256={p.name:_sha(p) for p in output.glob('*.json') if p.name not in ('state.json','policy_seal.json')}))
+            result=dict(state='POLICY_FROZEN',completed_splits=completed)
+        else:
+            result=dict(state='COMPLETE',evidence_kind='EXPLORATORY_MACRO_CLASSIFIER_EVENT_DEVELOPMENT_ONLY',cohort=cohort,
+                **fusion_gate(records,cohort),protected_unchanged=True,window_gate_failed=True,exploratory_amendment='M1',
+                window_fits=120 if cohort=='t24' else 200,meta_fits=24 if cohort=='t24' else 40,
+                elapsed_seconds=time.time()-plan['started_epoch'])
+            _write(output/'summary.json',result)
+        _write(output/'state.json',{'state':result['state']});return result
+    except BaseException as exc:
+        if output.is_dir(): _write(output/'state.json',dict(state='INCOMPLETE',error=repr(exc),completed_splits=completed))
+        raise
+
+
+if __name__=='__main__':
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--output',type=Path,required=True)
+    parser.add_argument('--phase',choices=('policy','score'),default='policy');parser.add_argument('--cohort',choices=('t24','five'),default='t24')
+    args=parser.parse_args()
+    with threadpool_limits(limits=8): print(execute(Path(__file__).resolve().parents[3],args.output,args.phase,args.cohort),flush=True)

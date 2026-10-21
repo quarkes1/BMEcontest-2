@@ -71,7 +71,8 @@ class CandidateLedger:
 
 
 def build_candidate_ledgers(data: OuterTrainOnlyData, config: object, train_subjects: Iterable[str],
-                            score_subjects: Iterable[str], *, fit_audit: dict | None = None) -> tuple[CandidateLedger, CandidateLedger | None]:
+                            score_subjects: Iterable[str], *, fit_audit: dict | None = None,
+                            macro_estimator_factory=None) -> tuple[CandidateLedger, CandidateLedger | None]:
     """Build T OOF and optional V candidates with T-only learned ancestors.
 
     The micro threshold is selected from T truth only. V truth is consulted only
@@ -114,7 +115,7 @@ def build_candidate_ledgers(data: OuterTrainOnlyData, config: object, train_subj
     macro_t, macro_v = _fit_and_score(
         t.window_train, t.candidate_train, v.candidate_train if v is not None else None,
         np.asarray(t.window_train.labels) >= 0,
-        lambda: _runner._window_estimator(config.seed), time_prior=True)
+        macro_estimator_factory if macro_estimator_factory is not None else lambda: _runner._window_estimator(config.seed), time_prior=True)
     micro_t, micro_v = _fit_and_score(
         t.micro_window_train, t.micro_candidate_train, v.micro_candidate_train if v is not None else None,
         _runner._micro_training_keep(t.micro_window_train, t.train_truths, config.micro_positive_middle_fraction),

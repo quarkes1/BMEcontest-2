@@ -90,3 +90,21 @@ def test_training_only_ledger_matches_oof_without_validation_refit():
     np.testing.assert_array_equal(actual.labels, reference.labels)
     assert actual.micro_threshold == reference.micro_threshold
     assert all(set(node['fit_subjects']) <= train for node in audit.values())
+
+
+def test_explicit_macro_factory_matches_default_without_touching_micro():
+    from src.pipeline import runner
+    from threadpoolctl import threadpool_limits
+    data=_data();config=replace(registered_e03_config(0,workers=1),micro_positive_middle_fraction=None)
+    train={f'person{i}' for i in range(6)};score={'person6','person7'};calls=[]
+    def factory():
+        calls.append(config.seed)
+        return runner._window_estimator(config.seed)
+    with threadpool_limits(limits=2):
+        a,b=build_candidate_ledgers(data,config,train,score)
+        x,y=build_candidate_ledgers(data,config,train,score,macro_estimator_factory=factory)
+    assert len(calls)==config.inner_splits+1
+    assert a.candidates==x.candidates and b.candidates==y.candidates
+    np.testing.assert_array_equal(a.features,x.features)
+    np.testing.assert_array_equal(b.features,y.features)
+    assert a.micro_threshold==x.micro_threshold
