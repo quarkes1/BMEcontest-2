@@ -1,0 +1,119 @@
+{
+  "statistics": {
+    "positive_truths": 65,
+    "positive_bags": 64,
+    "negative_bags": 2359,
+    "untrainable_truths": [
+      [
+        "HNU21032",
+        1784953346000,
+        1784954646000,
+        0
+      ]
+    ],
+    "bag_identity_sha256": "94383fd153fcf07a4b66e8e65a5b80e7bf39776e5cd7c8a2662aef5b4b2ca2b1",
+    "subjects": {
+      "HNU21002": {
+        "0": 228,
+        "1": 6
+      },
+      "HNU21003": {
+        "0": 240,
+        "1": 6
+      },
+      "HNU21006": {
+        "0": 235,
+        "1": 6
+      },
+      "HNU21008": {
+        "0": 277,
+        "1": 6
+      },
+      "HNU21012": {
+        "0": 195,
+        "1": 5
+      },
+      "HNU21015": {
+        "0": 266,
+        "1": 6
+      },
+      "HNU21023": {
+        "0": 271,
+        "1": 8
+      },
+      "HNU21024": {
+        "0": 199,
+        "1": 6
+      },
+      "HNU21031": {
+        "0": 223,
+        "1": 7
+      },
+      "HNU21032": {
+        "0": 225,
+        "1": 8
+      }
+    },
+    "steps": 1000,
+    "seed": 20261122,
+    "train_subjects": [
+      "HNU21002",
+      "HNU21003",
+      "HNU21006",
+      "HNU21008",
+      "HNU21012",
+      "HNU21015",
+      "HNU21023",
+      "HNU21024",
+      "HNU21031",
+      "HNU21032"
+    ],
+    "parameters": 65665,
+    "chunks": 1063,
+    "last50_train_loss": 0.0036525421557598746,
+    "elapsed_seconds": 25.147796700010076,
+    "cuda_peak_bytes": 191737344,
+    "normalizer_sha256": "68a6ee1cd77f4391ea066048b9317ac449ee2799dbda1a3a0aa1a2cf2d517be3"
+  },
+  "graph": {
+    "normalizer": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21006",
+        "HNU21008",
+        "HNU21012",
+        "HNU21015",
+        "HNU21023",
+        "HNU21024",
+        "HNU21031",
+        "HNU21032"
+      ],
+      "parents": []
+    },
+    "encoder": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21006",
+        "HNU21008",
+        "HNU21012",
+        "HNU21015",
+        "HNU21023",
+        "HNU21024",
+        "HNU21031",
+        "HNU21032"
+      ],
+      "parents": [
+        "normalizer"
+      ]
+    },
+    "score": {
+      "fit_subjects": [],
+      "parents": [
+        "encoder"
+      ]
+    }
+  },
+  "proposal_count": 327
+}
