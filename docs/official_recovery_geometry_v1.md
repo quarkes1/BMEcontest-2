@@ -5,7 +5,7 @@
 ## 训练前合同
 
 - 每个最终接受事件仅做同一全局仿射变换：duration倍率∈{1/2,3/4,1,5/4,3/2}，中心偏移∈{−60s,0,+60s}，共15组合。不得加参数、分人规则或候选源条件。
-- 整数毫秒：new_length=(num×length+den//2)//den，至少1ms且不超过sid权威session长度；new_start=(start+end−new_length)//2+shift，平移至session内以保留new_length，new_end=new_start+new_length。原事件须在权威bounds内，不默默修正输入。恒等配置逐事件精确回放；顺序/事件数不变，不再NMS/去重或重评分。官方接口本身不自动合并或去重，重复事件按原评估计FP。
+- 整数毫秒：new_length=(num×length+den//2)//den，至少1ms且不超过sid有效session长度；new_start=(start+end−new_length)//2+shift，平移至session内以保留new_length，new_end=new_start+new_length。有效bounds固定为索引与该sid所有已观测macro/micro窗口时间包络的并集，不使用预测或GT扩边界。原事件须在此bounds内，不默默修正输入。恒等配置逐事件精确回放；顺序/事件数不变，不再NMS/去重或重评分。官方接口本身不自动合并或去重，重复事件按原评估计FP。
 - 参数只用当前train的冻结OOF接受事件与完整train GT选。目标F1最高，tie优先更接近恒等倍率、较小绝对偏移、稳定数值顺序。固定参数作用于score事件；GT不参与逐事件变换。
 - T24：使用NEGATIVE-CLEAN-V1冻结A（89TP/62FP/71FN，160完整GT），其3×3 policy-score OOF按原冻结A policy解码；health逐事件精确回放。先3组参数全部seal/提交，后统一health评分。gate≥+.02、≥2/3组提高、TP不减少。
 - 仅T24过门才做39主体254餐原五折：控制为NEGATIVE-CLEAN-FIVEFOLD-V1冻结A（138/80/116，F1=.584745763），不是原153餐release headline，也不把它与早期.590164跨合同混比。每折参数只用其outer-train三份A policy-score OOF，按已封存A policy解码；控制outer事件完全回放。五折参数全部seal/提交，再统一score。gate≥+.02、≥3/5折提高、TP不减。
@@ -20,7 +20,7 @@
 
 ## 实现任务与审查重点
 
-1. `scripts/research/official_recovery/geometry.py`提供纯整数非破坏性transform/15选1，测试`tests/research/test_official_recovery_geometry.py`先RED→GREEN：恒等、整数边界、clip平移、未知sid/非法策略、事件数与输入不变、GT仅参与train selection。
+1. `src/pipeline/event_geometry.py`提供无训练依赖的纯整数非破坏性transform，尚不启用推理开关；研究入口提供15选1。测试`tests/research/test_official_recovery_geometry.py`先RED→GREEN：恒等、整数边界、clip平移、未知sid/非法策略、事件数与输入不变、GT仅参与train selection。
 2. `geometry_probe.py`复用frozen baseline回放、角色图与完整GT；T24 policy→seal→score，过门才five-policy→seal→score。所有score保持原存储值，不重算LR/LGBM或混合。
 3. 一次Luna medium只读审查、严重问题RED→GREEN、完整证据后才判断门；更新README/报告、提交。当前并行回归是301ff95代码快照，新增geometry测试独立补跑，交付runtime修改后仍需最新全套。
 
@@ -29,3 +29,5 @@
 - 2026-10-21：已阅读S6旧审计，它只把dual-source区间与micro支持相交，在旧协议没有增加TP。当前是修复训练后的完整餐次、小网格全局宽度/中心校准，两者不等价。
 - Ruling: 保持session内、全局同一变换——避免跨文件或按GT修边界带来的新自由度；代价是无法修复真正跨session的长餐。
 - Ruling: 五折以最近冻结A为严格配对控制——保持原分数/事件完全固定；它不是第一试测EXE的逐位CV复现，不能据此报告官方增益或宣称已超过所有历史开发结果。
+- 预检修正（尚未选择任何参数）：30个冻结事件出现次数的起点早于索引几秒，原索引裁剪无法恒等回放；采用GT无关的已观测窗口包络，并哈希十份val缓存，仅读取wid元数据。部署也须使用其输入实际窗口的同一定义。30是重复wrapper内事件次数，不是30个独立GT。
+- Luna medium一次审查：两项Important均以失败测试后修复：五折须核对scope的meals/index来源SHA；须核对上一T24阶段的66份保护快照。旧baseline历史seal未自动追溯是Minor，当前额外要求COMPLETE与逐事件/计数精确回放，保留来源文件SHA。
