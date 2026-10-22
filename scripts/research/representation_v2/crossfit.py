@@ -72,7 +72,8 @@ class CandidateLedger:
 
 def build_candidate_ledgers(data: OuterTrainOnlyData, config: object, train_subjects: Iterable[str],
                             score_subjects: Iterable[str], *, fit_audit: dict | None = None,
-                            macro_estimator_factory=None,macro_fit_sample_weight=None) -> tuple[CandidateLedger, CandidateLedger | None]:
+                            macro_estimator_factory=None,macro_fit_sample_weight=None,
+                            micro_threshold_selector=None) -> tuple[CandidateLedger, CandidateLedger | None]:
     """Build T OOF and optional V candidates with T-only learned ancestors.
 
     The micro threshold is selected from T truth only. V truth is consulted only
@@ -127,11 +128,12 @@ def build_candidate_ledgers(data: OuterTrainOnlyData, config: object, train_subj
         t.micro_window_train, t.micro_candidate_train, v.micro_candidate_train if v is not None else None,
         _runner._micro_training_keep(t.micro_window_train, t.train_truths, config.micro_positive_middle_fraction),
         lambda: _runner._micro_window_estimator(config.seed + 10), time_prior=False)
-    selected = _runner.select_micro_candidate_threshold(
+    selector=_runner.select_micro_candidate_threshold if micro_threshold_selector is None else micro_threshold_selector
+    selected = selector(
         micro_t, t.train_truths, config.micro_threshold_grid, config.micro_candidate)
     if fit_audit is not None:
         fit_audit['threshold'] = {
-            'fit_subjects': sorted({str(t.subject_by_session[truth.sid]) for truth in t.train_truths}),
+            'fit_subjects': sorted(train) if micro_threshold_selector is not None else sorted({str(t.subject_by_session[truth.sid]) for truth in t.train_truths}),
             'parents': [key for key in fit_audit if key.startswith('micro_oof')]}
         fit_audit['candidates'] = {'fit_subjects': [], 'parents': list(fit_audit)}
 

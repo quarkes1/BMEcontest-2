@@ -130,3 +130,21 @@ def test_macro_weights_are_subject_sliced_then_fold_sliced_and_never_reach_micro
     for macro,rows,kwargs in seen:
         if macro: np.testing.assert_array_equal(kwargs['model__sample_weight'],rows+1)
         else: assert not kwargs
+
+
+def test_custom_micro_selector_uses_only_train_oof_and_none_is_legacy():
+    from src.pipeline import runner
+    from threadpoolctl import threadpool_limits
+    data=_data();config=replace(registered_e03_config(0,workers=1),micro_positive_middle_fraction=None)
+    train={f'person{i}' for i in range(6)};score={'person6','person7'};seen=[];audit={}
+    def select(windows,truths,grid,micro_config):
+        assert set(windows)<={'sid'+str(i) for i in range(6)}
+        assert {t.sid for t in truths}=={'sid0'}
+        seen.append(True)
+        return runner.select_micro_candidate_threshold(windows,truths,grid,micro_config)
+    with threadpool_limits(limits=2):
+        a,b=build_candidate_ledgers(data,config,train,score)
+        x,y=build_candidate_ledgers(data,config,train,score,micro_threshold_selector=select,fit_audit=audit)
+    assert seen==[True] and a.candidates==x.candidates and b.candidates==y.candidates
+    np.testing.assert_array_equal(a.features,x.features);np.testing.assert_array_equal(b.features,y.features)
+    assert set(audit['threshold']['fit_subjects'])==train
