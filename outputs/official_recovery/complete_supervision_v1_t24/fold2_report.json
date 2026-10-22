@@ -1,0 +1,1905 @@
+{
+  "fold": 2,
+  "events": {
+    "A": {
+      "tp": 29,
+      "fp": 22,
+      "fn": 22,
+      "predictions": 51,
+      "truths": 51,
+      "recall": 0.5686274509803921,
+      "ppv": 0.5686274509803921,
+      "f1": 0.5686274509803921
+    },
+    "G": {
+      "tp": 31,
+      "fp": 28,
+      "fn": 20,
+      "predictions": 59,
+      "truths": 51,
+      "recall": 0.6078431372549019,
+      "ppv": 0.5254237288135594,
+      "f1": 0.5636363636363636
+    }
+  },
+  "truths": [
+    [
+      "HNU21005",
+      1784600654000,
+      1784601326000
+    ],
+    [
+      "HNU21005",
+      1784605037000,
+      1784605689000
+    ],
+    [
+      "HNU21005",
+      1784627692000,
+      1784629111000
+    ],
+    [
+      "HNU21005",
+      1784687632000,
+      1784689014000
+    ],
+    [
+      "HNU21005",
+      1784696136000,
+      1784696642000
+    ],
+    [
+      "HNU21005",
+      1784714858000,
+      1784715831000
+    ],
+    [
+      "HNU21008",
+      1784543121000,
+      1784543742000
+    ],
+    [
+      "HNU21008",
+      1784604490000,
+      1784605620000
+    ],
+    [
+      "HNU21008",
+      1784627365000,
+      1784627717000
+    ],
+    [
+      "HNU21008",
+      1784691920000,
+      1784692465000
+    ],
+    [
+      "HNU21008",
+      1784714263000,
+      1784715190000
+    ],
+    [
+      "HNU21008",
+      1784778221000,
+      1784778824000
+    ],
+    [
+      "HNU21012",
+      1784604051000,
+      1784606336000
+    ],
+    [
+      "HNU21012",
+      1784690769000,
+      1784691906000
+    ],
+    [
+      "HNU21012",
+      1784723920000,
+      1784728154000
+    ],
+    [
+      "HNU21012",
+      1784778975000,
+      1784780224000
+    ],
+    [
+      "HNU21012",
+      1784799820000,
+      1784801162000
+    ],
+    [
+      "HNU21016",
+      1784632043000,
+      1784633078000
+    ],
+    [
+      "HNU21016",
+      1784720535000,
+      1784720538876
+    ],
+    [
+      "HNU21016",
+      1784780590774,
+      1784780594134
+    ],
+    [
+      "HNU21016",
+      1784881930410,
+      1784881932186
+    ],
+    [
+      "HNU21021",
+      1784630011000,
+      1784631442000
+    ],
+    [
+      "HNU21021",
+      1784692219000,
+      1784692940000
+    ],
+    [
+      "HNU21021",
+      1784720532000,
+      1784721120000
+    ],
+    [
+      "HNU21021",
+      1784778578000,
+      1784779274000
+    ],
+    [
+      "HNU21021",
+      1784801863000,
+      1784802342000
+    ],
+    [
+      "HNU21021",
+      1784865447000,
+      1784866224000
+    ],
+    [
+      "HNU21023",
+      1784626975000,
+      1784628907000
+    ],
+    [
+      "HNU21023",
+      1784695059000,
+      1784696707000
+    ],
+    [
+      "HNU21023",
+      1784720549000,
+      1784721080000
+    ],
+    [
+      "HNU21023",
+      1784780308000,
+      1784781582000
+    ],
+    [
+      "HNU21023",
+      1784802708000,
+      1784803659000
+    ],
+    [
+      "HNU21023",
+      1784813870000,
+      1784814160000
+    ],
+    [
+      "HNU21023",
+      1784868533000,
+      1784871106000
+    ],
+    [
+      "HNU21023",
+      1784901345000,
+      1784903356000
+    ],
+    [
+      "HNU21031",
+      1784890595000,
+      1784891437000
+    ],
+    [
+      "HNU21031",
+      1784975625000,
+      1784976020000
+    ],
+    [
+      "HNU21031",
+      1785026545000,
+      1785026768000
+    ],
+    [
+      "HNU21031",
+      1785040326000,
+      1785040648000
+    ],
+    [
+      "HNU21031",
+      1785063616000,
+      1785067148000
+    ],
+    [
+      "HNU21031",
+      1785111935000,
+      1785112343000
+    ],
+    [
+      "HNU21031",
+      1785124180000,
+      1785125451000
+    ],
+    [
+      "HNU21032",
+      1784897701000,
+      1784899174000
+    ],
+    [
+      "HNU21032",
+      1784953346000,
+      1784954646000
+    ],
+    [
+      "HNU21032",
+      1784975835000,
+      1784977719000
+    ],
+    [
+      "HNU21032",
+      1784998403000,
+      1785000161000
+    ],
+    [
+      "HNU21032",
+      1785045102000,
+      1785046379000
+    ],
+    [
+      "HNU21032",
+      1785065726000,
+      1785066813000
+    ],
+    [
+      "HNU21032",
+      1785070318000,
+      1785074851000
+    ],
+    [
+      "HNU21032",
+      1785124882000,
+      1785126357000
+    ],
+    [
+      "HNU21032",
+      1785158253000,
+      1785162653000
+    ]
+  ],
+  "predictions": {
+    "A": [
+      {
+        "sid": "sensorData-1784599444232-4060d2879b7147c3903acfb996bd5ad0",
+        "start_ms": 1784596096078,
+        "end_ms": 1784597356078
+      },
+      {
+        "sid": "sensorData-1784600038141-7074f1ea05b64c6a883214f493402da0",
+        "start_ms": 1784543136828,
+        "end_ms": 1784543549328
+      },
+      {
+        "sid": "sensorData-1784639182182-adba7e6c96914013914536ea2282dd33",
+        "start_ms": 1784629058315,
+        "end_ms": 1784629883315
+      },
+      {
+        "sid": "sensorData-1784640098080-a30e6e9ad9614c0a98d6274dfb370b29",
+        "start_ms": 1784626957569,
+        "end_ms": 1784628262569
+      },
+      {
+        "sid": "sensorData-1784641624819-a63db5209d324428abc8776f7c58e35f",
+        "start_ms": 1784541594372,
+        "end_ms": 1784541984372
+      },
+      {
+        "sid": "sensorData-1784641624819-a63db5209d324428abc8776f7c58e35f",
+        "start_ms": 1784543034372,
+        "end_ms": 1784543544372
+      },
+      {
+        "sid": "sensorData-1784642567997-89b7a183ca244958939540655b524082",
+        "start_ms": 1784630744319,
+        "end_ms": 1784631929319
+      },
+      {
+        "sid": "sensorData-1784642567997-89b7a183ca244958939540655b524082",
+        "start_ms": 1784632199319,
+        "end_ms": 1784632529319
+      },
+      {
+        "sid": "sensorData-1784642567997-89b7a183ca244958939540655b524082",
+        "start_ms": 1784632626819,
+        "end_ms": 1784633151819
+      },
+      {
+        "sid": "sensorData-1784642567997-89b7a183ca244958939540655b524082",
+        "start_ms": 1784633444319,
+        "end_ms": 1784633834319
+      },
+      {
+        "sid": "sensorData-1784648844109-fcdc924fd9b54c5ea0f3a1ecec689bea",
+        "start_ms": 1784627313940,
+        "end_ms": 1784628843940
+      },
+      {
+        "sid": "sensorData-1784651869233-b2d70acf18dd448e97786809b1ec66fa",
+        "start_ms": 1784627197713,
+        "end_ms": 1784627602713
+      },
+      {
+        "sid": "sensorData-1784653020535-a8e8eb0098c244949901a7d1ccbaff74",
+        "start_ms": 1784604761332,
+        "end_ms": 1784605526332
+      },
+      {
+        "sid": "sensorData-1784728035814-25c998f6813c4784affaeb46a4b2b58e",
+        "start_ms": 1784720501545,
+        "end_ms": 1784720734045
+      },
+      {
+        "sid": "sensorData-1784732991403-0c69d9f379724d569503b7ecb4c704bd",
+        "start_ms": 1784714699358,
+        "end_ms": 1784715734358
+      },
+      {
+        "sid": "sensorData-1784733282635-bf3eff30c84d4d02817699bbdf768fa2",
+        "start_ms": 1784720597734,
+        "end_ms": 1784721017734
+      },
+      {
+        "sid": "sensorData-1784734045800-92f98639b07b49358c55370d2fbd43e4",
+        "start_ms": 1784695110475,
+        "end_ms": 1784696775475
+      },
+      {
+        "sid": "sensorData-1784734073566-2e48cff9450a48cb89c3906b24ace89d",
+        "start_ms": 1784695767081,
+        "end_ms": 1784696562081
+      },
+      {
+        "sid": "sensorData-1784734127402-c3b933d043e4421aa5ddd3c7d09f830d",
+        "start_ms": 1784719774458,
+        "end_ms": 1784720224458
+      },
+      {
+        "sid": "sensorData-1784734127402-c3b933d043e4421aa5ddd3c7d09f830d",
+        "start_ms": 1784720494458,
+        "end_ms": 1784721004458
+      },
+      {
+        "sid": "sensorData-1784734149944-7d0508799a4742f79adbe8c5bf78d48d",
+        "start_ms": 1784714525083,
+        "end_ms": 1784715095083
+      },
+      {
+        "sid": "sensorData-1784734235808-644bc7427e3245d2b61a90654d233f25",
+        "start_ms": 1784690617575,
+        "end_ms": 1784692492575
+      },
+      {
+        "sid": "sensorData-1784735509636-47eb94eaf06d4d059cea474975a66e9a",
+        "start_ms": 1784690149681,
+        "end_ms": 1784690494681
+      },
+      {
+        "sid": "sensorData-1784735509636-47eb94eaf06d4d059cea474975a66e9a",
+        "start_ms": 1784692032181,
+        "end_ms": 1784692497181
+      },
+      {
+        "sid": "sensorData-1784774595128-b7669dbac781401187a7fb80e8a74dcf",
+        "start_ms": 1784603860125,
+        "end_ms": 1784605015125
+      },
+      {
+        "sid": "sensorData-1784774845707-c0b72e5234b744f483de392e7a302f65",
+        "start_ms": 1784546858923,
+        "end_ms": 1784548808923
+      },
+      {
+        "sid": "sensorData-1784778022938-a64127d37edc4fe58d8d95f6a0a41df1",
+        "start_ms": 1784689243355,
+        "end_ms": 1784690113355
+      },
+      {
+        "sid": "sensorData-1784793371599-9e63d9c7f28344849a467efe6247eb2f",
+        "start_ms": 1784778347221,
+        "end_ms": 1784778849721
+      },
+      {
+        "sid": "sensorData-1784806341849-302ed8ede9a0440d8c2fc82e292d646b",
+        "start_ms": 1784801131394,
+        "end_ms": 1784802226394
+      },
+      {
+        "sid": "sensorData-1784807646419-b23e7d280802471aa62b46ed4288f02f",
+        "start_ms": 1784778192162,
+        "end_ms": 1784779182162
+      },
+      {
+        "sid": "sensorData-1784819582866-79caccdeedaf4382a24bdcb767e2cbb2",
+        "start_ms": 1784801849721,
+        "end_ms": 1784803409721
+      },
+      {
+        "sid": "sensorData-1784883113531-6531e6d7eed34693b78d0a76cde11b44",
+        "start_ms": 1784868166495,
+        "end_ms": 1784869636495
+      },
+      {
+        "sid": "sensorData-1784883436772-b6884ccfcce44e2195894e03e7e9e32a",
+        "start_ms": 1784867318726,
+        "end_ms": 1784868683726
+      },
+      {
+        "sid": "sensorData-1784903478787-f83e0b4b19654b828d73f2f84fbdb6a8",
+        "start_ms": 1784888116554,
+        "end_ms": 1784889781554
+      },
+      {
+        "sid": "sensorData-1784903767555-4a2d9de0df674962b1ea3b229fae6bab",
+        "start_ms": 1784902086769,
+        "end_ms": 1784903241769
+      },
+      {
+        "sid": "sensorData-1784984857103-f9cd0b587a0a462d98e806703789119b",
+        "start_ms": 1784975742282,
+        "end_ms": 1784976027282
+      },
+      {
+        "sid": "sensorData-1784986441377-c13fafe5e4d64eb0ae12032486f23924",
+        "start_ms": 1784948963801,
+        "end_ms": 1784950013801
+      },
+      {
+        "sid": "sensorData-1784993349142-6cbfa594bd0842c3a025aac973220a57",
+        "start_ms": 1784977516731,
+        "end_ms": 1784977764231
+      },
+      {
+        "sid": "sensorData-1784993611174-1ae6939309a54b2c90b793f413bd5d0a",
+        "start_ms": 1784975723985,
+        "end_ms": 1784977343985
+      },
+      {
+        "sid": "sensorData-1784995203475-45068dab6f4c498d9921477be44cfec6",
+        "start_ms": 1784897525591,
+        "end_ms": 1784899010591
+      },
+      {
+        "sid": "sensorData-1785071384135-ac0034a8f1f447ce8031cd55c94b9a9a",
+        "start_ms": 1785056694299,
+        "end_ms": 1785057504299
+      },
+      {
+        "sid": "sensorData-1785072283615-02dfe400816649f8b633a72a77fa41cd",
+        "start_ms": 1785039043431,
+        "end_ms": 1785040198431
+      },
+      {
+        "sid": "sensorData-1785077669166-e95a309ce40d4cfc8a63c6c316dbda49",
+        "start_ms": 1785065760003,
+        "end_ms": 1785066720003
+      },
+      {
+        "sid": "sensorData-1785079462038-2c80b49496b04a89aff11d4ac02c69c6",
+        "start_ms": 1784998334855,
+        "end_ms": 1784999039855
+      },
+      {
+        "sid": "sensorData-1785079462038-2c80b49496b04a89aff11d4ac02c69c6",
+        "start_ms": 1784998604855,
+        "end_ms": 1785000029855
+      },
+      {
+        "sid": "sensorData-1785142561473-98376eea92224a2995b9f3bc8fc5c524",
+        "start_ms": 1785124114713,
+        "end_ms": 1785125329713
+      },
+      {
+        "sid": "sensorData-1785142567344-980d158e381d482b8c9c93bfbbe8df2b",
+        "start_ms": 1785112045815,
+        "end_ms": 1785112353315
+      },
+      {
+        "sid": "sensorData-1785142569073-1329006b35bd47c295efbf21bb3f30ee",
+        "start_ms": 1785065765791,
+        "end_ms": 1785067040791
+      },
+      {
+        "sid": "sensorData-1785142980704-d917203d8ab84dad890de22af8951dd6",
+        "start_ms": 1785136832377,
+        "end_ms": 1785138624877
+      },
+      {
+        "sid": "sensorData-1785172061768-a5b8171597a84bc589e0e4c605a58153",
+        "start_ms": 1785146067200,
+        "end_ms": 1785147747200
+      },
+      {
+        "sid": "sensorData-1785173829319-bb43c0fb75c34678839d44e6b6213017",
+        "start_ms": 1785124822121,
+        "end_ms": 1785126217121
+      }
+    ],
+    "G": [
+      {
+        "sid": "sensorData-1784599848452-e7eccb902527407298c3fe077e6cfc1c",
+        "start_ms": 1784543553314,
+        "end_ms": 1784543770814
+      },
+      {
+        "sid": "sensorData-1784600038141-7074f1ea05b64c6a883214f493402da0",
+        "start_ms": 1784543136828,
+        "end_ms": 1784543549328
+      },
+      {
+        "sid": "sensorData-1784639182182-adba7e6c96914013914536ea2282dd33",
+        "start_ms": 1784629043315,
+        "end_ms": 1784629883315
+      },
+      {
+        "sid": "sensorData-1784639182182-adba7e6c96914013914536ea2282dd33",
+        "start_ms": 1784630273315,
+        "end_ms": 1784631038315
+      },
+      {
+        "sid": "sensorData-1784640098080-a30e6e9ad9614c0a98d6274dfb370b29",
+        "start_ms": 1784626417569,
+        "end_ms": 1784629027569
+      },
+      {
+        "sid": "sensorData-1784641149983-728e73a00aed4117a86ca6446192928a",
+        "start_ms": 1784607594871,
+        "end_ms": 1784607962371
+      },
+      {
+        "sid": "sensorData-1784641624819-a63db5209d324428abc8776f7c58e35f",
+        "start_ms": 1784541594372,
+        "end_ms": 1784542059372
+      },
+      {
+        "sid": "sensorData-1784641624819-a63db5209d324428abc8776f7c58e35f",
+        "start_ms": 1784543034372,
+        "end_ms": 1784543544372
+      },
+      {
+        "sid": "sensorData-1784642567997-89b7a183ca244958939540655b524082",
+        "start_ms": 1784630714319,
+        "end_ms": 1784631929319
+      },
+      {
+        "sid": "sensorData-1784642567997-89b7a183ca244958939540655b524082",
+        "start_ms": 1784632199319,
+        "end_ms": 1784632529319
+      },
+      {
+        "sid": "sensorData-1784642567997-89b7a183ca244958939540655b524082",
+        "start_ms": 1784632626819,
+        "end_ms": 1784633151819
+      },
+      {
+        "sid": "sensorData-1784648844109-fcdc924fd9b54c5ea0f3a1ecec689bea",
+        "start_ms": 1784627313940,
+        "end_ms": 1784628843940
+      },
+      {
+        "sid": "sensorData-1784649038773-e1cfc20ecd7a44698fca92f0f45cbac6",
+        "start_ms": 1784624097363,
+        "end_ms": 1784625282363
+      },
+      {
+        "sid": "sensorData-1784650814190-58a821d245b34644ab5cbf7111696502",
+        "start_ms": 1784605874413,
+        "end_ms": 1784606144413
+      },
+      {
+        "sid": "sensorData-1784651869233-b2d70acf18dd448e97786809b1ec66fa",
+        "start_ms": 1784627197713,
+        "end_ms": 1784627602713
+      },
+      {
+        "sid": "sensorData-1784653020535-a8e8eb0098c244949901a7d1ccbaff74",
+        "start_ms": 1784604761332,
+        "end_ms": 1784605526332
+      },
+      {
+        "sid": "sensorData-1784728035814-25c998f6813c4784affaeb46a4b2b58e",
+        "start_ms": 1784720501545,
+        "end_ms": 1784720734045
+      },
+      {
+        "sid": "sensorData-1784732991403-0c69d9f379724d569503b7ecb4c704bd",
+        "start_ms": 1784714699358,
+        "end_ms": 1784715734358
+      },
+      {
+        "sid": "sensorData-1784733282635-bf3eff30c84d4d02817699bbdf768fa2",
+        "start_ms": 1784720597734,
+        "end_ms": 1784721017734
+      },
+      {
+        "sid": "sensorData-1784734045800-92f98639b07b49358c55370d2fbd43e4",
+        "start_ms": 1784695110475,
+        "end_ms": 1784696775475
+      },
+      {
+        "sid": "sensorData-1784734073566-2e48cff9450a48cb89c3906b24ace89d",
+        "start_ms": 1784695782081,
+        "end_ms": 1784696562081
+      },
+      {
+        "sid": "sensorData-1784734127402-c3b933d043e4421aa5ddd3c7d09f830d",
+        "start_ms": 1784719774458,
+        "end_ms": 1784721004458
+      },
+      {
+        "sid": "sensorData-1784734127402-c3b933d043e4421aa5ddd3c7d09f830d",
+        "start_ms": 1784721446958,
+        "end_ms": 1784721806958
+      },
+      {
+        "sid": "sensorData-1784734149944-7d0508799a4742f79adbe8c5bf78d48d",
+        "start_ms": 1784714525083,
+        "end_ms": 1784715095083
+      },
+      {
+        "sid": "sensorData-1784735509636-47eb94eaf06d4d059cea474975a66e9a",
+        "start_ms": 1784692032181,
+        "end_ms": 1784692497181
+      },
+      {
+        "sid": "sensorData-1784774595128-b7669dbac781401187a7fb80e8a74dcf",
+        "start_ms": 1784601115125,
+        "end_ms": 1784601752625
+      },
+      {
+        "sid": "sensorData-1784775195088-9fcd7e3d884c4df39073c37d1c8c0325",
+        "start_ms": 1784541429342,
+        "end_ms": 1784541894342
+      },
+      {
+        "sid": "sensorData-1784776702036-5a51c2ab4ade46fc8d7e9b8a49f8e410",
+        "start_ms": 1784712624323,
+        "end_ms": 1784713044323
+      },
+      {
+        "sid": "sensorData-1784793371599-9e63d9c7f28344849a467efe6247eb2f",
+        "start_ms": 1784777627221,
+        "end_ms": 1784778234721
+      },
+      {
+        "sid": "sensorData-1784793371599-9e63d9c7f28344849a467efe6247eb2f",
+        "start_ms": 1784778347221,
+        "end_ms": 1784778849721
+      },
+      {
+        "sid": "sensorData-1784806341849-302ed8ede9a0440d8c2fc82e292d646b",
+        "start_ms": 1784801131394,
+        "end_ms": 1784802226394
+      },
+      {
+        "sid": "sensorData-1784807646419-b23e7d280802471aa62b46ed4288f02f",
+        "start_ms": 1784778177162,
+        "end_ms": 1784779182162
+      },
+      {
+        "sid": "sensorData-1784809174380-773081b4763f4d4191d031d355b61938",
+        "start_ms": 1784804271730,
+        "end_ms": 1784804406730
+      },
+      {
+        "sid": "sensorData-1784809528133-b19c7ce06b4a4ffaaf5c9187e644c917",
+        "start_ms": 1784800774813,
+        "end_ms": 1784801479813
+      },
+      {
+        "sid": "sensorData-1784819582866-79caccdeedaf4382a24bdcb767e2cbb2",
+        "start_ms": 1784801864721,
+        "end_ms": 1784803544721
+      },
+      {
+        "sid": "sensorData-1784820342384-453d353397ba46de954975666ae5cb51",
+        "start_ms": 1784780103251,
+        "end_ms": 1784780958251
+      },
+      {
+        "sid": "sensorData-1784856048297-6ba5e294231b4d4b99ad56d65efd4eba",
+        "start_ms": 1784803180918,
+        "end_ms": 1784803630918
+      },
+      {
+        "sid": "sensorData-1784883113531-6531e6d7eed34693b78d0a76cde11b44",
+        "start_ms": 1784868181495,
+        "end_ms": 1784869636495
+      },
+      {
+        "sid": "sensorData-1784883436772-b6884ccfcce44e2195894e03e7e9e32a",
+        "start_ms": 1784867318726,
+        "end_ms": 1784868698726
+      },
+      {
+        "sid": "sensorData-1784884489460-06c9750a52ab4dde8d0be7682151e518",
+        "start_ms": 1784777623153,
+        "end_ms": 1784779333153
+      },
+      {
+        "sid": "sensorData-1784899788968-97707bb9322948ebb679029c9b1712b7",
+        "start_ms": 1784890842556,
+        "end_ms": 1784891382556
+      },
+      {
+        "sid": "sensorData-1784903478787-f83e0b4b19654b828d73f2f84fbdb6a8",
+        "start_ms": 1784888116554,
+        "end_ms": 1784889751554
+      },
+      {
+        "sid": "sensorData-1784903767555-4a2d9de0df674962b1ea3b229fae6bab",
+        "start_ms": 1784902041769,
+        "end_ms": 1784903241769
+      },
+      {
+        "sid": "sensorData-1784908228522-c5a983efe8c149b5810f2305b4854602",
+        "start_ms": 1784802944432,
+        "end_ms": 1784803476932
+      },
+      {
+        "sid": "sensorData-1784984857103-f9cd0b587a0a462d98e806703789119b",
+        "start_ms": 1784975742282,
+        "end_ms": 1784976027282
+      },
+      {
+        "sid": "sensorData-1784986209342-e26c19d0cacf400491c6c58703ee3856",
+        "start_ms": 1784955317083,
+        "end_ms": 1784955594583
+      },
+      {
+        "sid": "sensorData-1784993349142-6cbfa594bd0842c3a025aac973220a57",
+        "start_ms": 1784977516731,
+        "end_ms": 1784977764231
+      },
+      {
+        "sid": "sensorData-1784993611174-1ae6939309a54b2c90b793f413bd5d0a",
+        "start_ms": 1784975723985,
+        "end_ms": 1784977343985
+      },
+      {
+        "sid": "sensorData-1784993870196-92edfa5a3afb4db7b56771e5d72a50f3",
+        "start_ms": 1784968396385,
+        "end_ms": 1784968756385
+      },
+      {
+        "sid": "sensorData-1785071168990-4f7d355dfc7f4f288278e538b6546fd6",
+        "start_ms": 1785063900662,
+        "end_ms": 1785065235662
+      },
+      {
+        "sid": "sensorData-1785072283615-02dfe400816649f8b633a72a77fa41cd",
+        "start_ms": 1785039043431,
+        "end_ms": 1785040198431
+      },
+      {
+        "sid": "sensorData-1785072283615-02dfe400816649f8b633a72a77fa41cd",
+        "start_ms": 1785040438431,
+        "end_ms": 1785040655931
+      },
+      {
+        "sid": "sensorData-1785077669166-e95a309ce40d4cfc8a63c6c316dbda49",
+        "start_ms": 1785065550003,
+        "end_ms": 1785066720003
+      },
+      {
+        "sid": "sensorData-1785079462038-2c80b49496b04a89aff11d4ac02c69c6",
+        "start_ms": 1784998334855,
+        "end_ms": 1784999039855
+      },
+      {
+        "sid": "sensorData-1785079462038-2c80b49496b04a89aff11d4ac02c69c6",
+        "start_ms": 1784998604855,
+        "end_ms": 1785000029855
+      },
+      {
+        "sid": "sensorData-1785142561473-98376eea92224a2995b9f3bc8fc5c524",
+        "start_ms": 1785124114713,
+        "end_ms": 1785125329713
+      },
+      {
+        "sid": "sensorData-1785142567344-980d158e381d482b8c9c93bfbbe8df2b",
+        "start_ms": 1785112045815,
+        "end_ms": 1785112353315
+      },
+      {
+        "sid": "sensorData-1785172061768-a5b8171597a84bc589e0e4c605a58153",
+        "start_ms": 1785146052200,
+        "end_ms": 1785147747200
+      },
+      {
+        "sid": "sensorData-1785173829319-bb43c0fb75c34678839d44e6b6213017",
+        "start_ms": 1785124822121,
+        "end_ms": 1785126217121
+      }
+    ]
+  },
+  "score_graph": {
+    "macro_oof0": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21011",
+        "HNU21014",
+        "HNU21015",
+        "HNU21017",
+        "HNU21022",
+        "HNU21029",
+        "HNU21037",
+        "HNU21038",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "macro_oof1": {
+      "fit_subjects": [
+        "HNU21003",
+        "HNU21006",
+        "HNU21017",
+        "HNU21022",
+        "HNU21024",
+        "HNU21026",
+        "HNU21029",
+        "HNU21034",
+        "HNU21037",
+        "HNU21038",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "macro_oof2": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21006",
+        "HNU21011",
+        "HNU21014",
+        "HNU21015",
+        "HNU21024",
+        "HNU21026",
+        "HNU21029",
+        "HNU21034",
+        "HNU21037",
+        "HNU21038",
+        "HNU21041"
+      ],
+      "parents": []
+    },
+    "macro_oof3": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21006",
+        "HNU21011",
+        "HNU21014",
+        "HNU21015",
+        "HNU21017",
+        "HNU21022",
+        "HNU21024",
+        "HNU21026",
+        "HNU21034",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "macro_refit": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21006",
+        "HNU21011",
+        "HNU21014",
+        "HNU21015",
+        "HNU21017",
+        "HNU21022",
+        "HNU21024",
+        "HNU21026",
+        "HNU21029",
+        "HNU21034",
+        "HNU21037",
+        "HNU21038",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "micro_oof0": {
+      "fit_subjects": [
+        "HNU21003",
+        "HNU21011",
+        "HNU21014",
+        "HNU21015",
+        "HNU21017",
+        "HNU21022",
+        "HNU21029",
+        "HNU21034",
+        "HNU21037",
+        "HNU21038",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "micro_oof1": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21006",
+        "HNU21014",
+        "HNU21015",
+        "HNU21022",
+        "HNU21024",
+        "HNU21026",
+        "HNU21037",
+        "HNU21038",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "micro_oof2": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21006",
+        "HNU21011",
+        "HNU21014",
+        "HNU21015",
+        "HNU21017",
+        "HNU21022",
+        "HNU21024",
+        "HNU21026",
+        "HNU21029",
+        "HNU21034",
+        "HNU21037"
+      ],
+      "parents": []
+    },
+    "micro_oof3": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21006",
+        "HNU21011",
+        "HNU21017",
+        "HNU21024",
+        "HNU21026",
+        "HNU21029",
+        "HNU21034",
+        "HNU21038",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "micro_refit": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21006",
+        "HNU21011",
+        "HNU21014",
+        "HNU21015",
+        "HNU21017",
+        "HNU21022",
+        "HNU21024",
+        "HNU21026",
+        "HNU21029",
+        "HNU21034",
+        "HNU21037",
+        "HNU21038",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "threshold": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21006",
+        "HNU21011",
+        "HNU21014",
+        "HNU21015",
+        "HNU21017",
+        "HNU21022",
+        "HNU21024",
+        "HNU21026",
+        "HNU21029",
+        "HNU21034",
+        "HNU21037",
+        "HNU21038",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": [
+        "micro_oof0",
+        "micro_oof1",
+        "micro_oof2",
+        "micro_oof3"
+      ]
+    },
+    "candidates": {
+      "fit_subjects": [],
+      "parents": [
+        "macro_oof0",
+        "macro_oof1",
+        "macro_oof2",
+        "macro_oof3",
+        "macro_refit",
+        "micro_oof0",
+        "micro_oof1",
+        "micro_oof2",
+        "micro_oof3",
+        "micro_refit",
+        "threshold"
+      ]
+    },
+    "verifier": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21006",
+        "HNU21011",
+        "HNU21014",
+        "HNU21015",
+        "HNU21017",
+        "HNU21022",
+        "HNU21024",
+        "HNU21026",
+        "HNU21029",
+        "HNU21034",
+        "HNU21037",
+        "HNU21038",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": [
+        "candidates"
+      ]
+    },
+    "score": {
+      "fit_subjects": [],
+      "parents": [
+        "verifier"
+      ]
+    }
+  },
+  "policy_graph": {
+    "p0_macro_oof0": {
+      "fit_subjects": [
+        "HNU21006",
+        "HNU21011",
+        "HNU21014",
+        "HNU21015",
+        "HNU21017",
+        "HNU21022",
+        "HNU21037",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p0_macro_oof1": {
+      "fit_subjects": [
+        "HNU21006",
+        "HNU21014",
+        "HNU21015",
+        "HNU21022",
+        "HNU21024",
+        "HNU21026",
+        "HNU21037",
+        "HNU21041"
+      ],
+      "parents": []
+    },
+    "p0_macro_oof2": {
+      "fit_subjects": [
+        "HNU21006",
+        "HNU21011",
+        "HNU21017",
+        "HNU21024",
+        "HNU21026",
+        "HNU21037",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p0_macro_oof3": {
+      "fit_subjects": [
+        "HNU21011",
+        "HNU21014",
+        "HNU21015",
+        "HNU21017",
+        "HNU21022",
+        "HNU21024",
+        "HNU21026",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p0_macro_refit": {
+      "fit_subjects": [
+        "HNU21006",
+        "HNU21011",
+        "HNU21014",
+        "HNU21015",
+        "HNU21017",
+        "HNU21022",
+        "HNU21024",
+        "HNU21026",
+        "HNU21037",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p0_micro_oof0": {
+      "fit_subjects": [
+        "HNU21006",
+        "HNU21011",
+        "HNU21014",
+        "HNU21015",
+        "HNU21017",
+        "HNU21022",
+        "HNU21037",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p0_micro_oof1": {
+      "fit_subjects": [
+        "HNU21006",
+        "HNU21017",
+        "HNU21022",
+        "HNU21024",
+        "HNU21026",
+        "HNU21037",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p0_micro_oof2": {
+      "fit_subjects": [
+        "HNU21006",
+        "HNU21011",
+        "HNU21014",
+        "HNU21015",
+        "HNU21022",
+        "HNU21024",
+        "HNU21026",
+        "HNU21037"
+      ],
+      "parents": []
+    },
+    "p0_micro_oof3": {
+      "fit_subjects": [
+        "HNU21011",
+        "HNU21014",
+        "HNU21015",
+        "HNU21017",
+        "HNU21024",
+        "HNU21026",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p0_micro_refit": {
+      "fit_subjects": [
+        "HNU21006",
+        "HNU21011",
+        "HNU21014",
+        "HNU21015",
+        "HNU21017",
+        "HNU21022",
+        "HNU21024",
+        "HNU21026",
+        "HNU21037",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p0_threshold": {
+      "fit_subjects": [
+        "HNU21006",
+        "HNU21011",
+        "HNU21014",
+        "HNU21015",
+        "HNU21017",
+        "HNU21022",
+        "HNU21024",
+        "HNU21026",
+        "HNU21037",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": [
+        "p0_micro_oof0",
+        "p0_micro_oof1",
+        "p0_micro_oof2",
+        "p0_micro_oof3"
+      ]
+    },
+    "p0_candidates": {
+      "fit_subjects": [],
+      "parents": [
+        "p0_macro_oof0",
+        "p0_macro_oof1",
+        "p0_macro_oof2",
+        "p0_macro_oof3",
+        "p0_macro_refit",
+        "p0_micro_oof0",
+        "p0_micro_oof1",
+        "p0_micro_oof2",
+        "p0_micro_oof3",
+        "p0_micro_refit",
+        "p0_threshold"
+      ]
+    },
+    "p0_verifier": {
+      "fit_subjects": [
+        "HNU21006",
+        "HNU21011",
+        "HNU21014",
+        "HNU21015",
+        "HNU21017",
+        "HNU21022",
+        "HNU21024",
+        "HNU21026",
+        "HNU21037",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": [
+        "p0_candidates"
+      ]
+    },
+    "p0_score": {
+      "fit_subjects": [],
+      "parents": [
+        "p0_verifier"
+      ]
+    },
+    "p1_macro_oof0": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21015",
+        "HNU21024",
+        "HNU21034",
+        "HNU21037",
+        "HNU21038",
+        "HNU21041"
+      ],
+      "parents": []
+    },
+    "p1_macro_oof1": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21017",
+        "HNU21022",
+        "HNU21024",
+        "HNU21029",
+        "HNU21034",
+        "HNU21037",
+        "HNU21038"
+      ],
+      "parents": []
+    },
+    "p1_macro_oof2": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21015",
+        "HNU21017",
+        "HNU21022",
+        "HNU21024",
+        "HNU21029",
+        "HNU21041"
+      ],
+      "parents": []
+    },
+    "p1_macro_oof3": {
+      "fit_subjects": [
+        "HNU21015",
+        "HNU21017",
+        "HNU21022",
+        "HNU21029",
+        "HNU21034",
+        "HNU21037",
+        "HNU21038",
+        "HNU21041"
+      ],
+      "parents": []
+    },
+    "p1_macro_refit": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21015",
+        "HNU21017",
+        "HNU21022",
+        "HNU21024",
+        "HNU21029",
+        "HNU21034",
+        "HNU21037",
+        "HNU21038",
+        "HNU21041"
+      ],
+      "parents": []
+    },
+    "p1_micro_oof0": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21015",
+        "HNU21022",
+        "HNU21024",
+        "HNU21034",
+        "HNU21037",
+        "HNU21038"
+      ],
+      "parents": []
+    },
+    "p1_micro_oof1": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21015",
+        "HNU21017",
+        "HNU21022",
+        "HNU21024",
+        "HNU21029",
+        "HNU21034",
+        "HNU21041"
+      ],
+      "parents": []
+    },
+    "p1_micro_oof2": {
+      "fit_subjects": [
+        "HNU21003",
+        "HNU21015",
+        "HNU21017",
+        "HNU21029",
+        "HNU21034",
+        "HNU21037",
+        "HNU21038",
+        "HNU21041"
+      ],
+      "parents": []
+    },
+    "p1_micro_oof3": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21017",
+        "HNU21022",
+        "HNU21024",
+        "HNU21029",
+        "HNU21037",
+        "HNU21038",
+        "HNU21041"
+      ],
+      "parents": []
+    },
+    "p1_micro_refit": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21015",
+        "HNU21017",
+        "HNU21022",
+        "HNU21024",
+        "HNU21029",
+        "HNU21034",
+        "HNU21037",
+        "HNU21038",
+        "HNU21041"
+      ],
+      "parents": []
+    },
+    "p1_threshold": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21015",
+        "HNU21017",
+        "HNU21022",
+        "HNU21024",
+        "HNU21029",
+        "HNU21034",
+        "HNU21037",
+        "HNU21038",
+        "HNU21041"
+      ],
+      "parents": [
+        "p1_micro_oof0",
+        "p1_micro_oof1",
+        "p1_micro_oof2",
+        "p1_micro_oof3"
+      ]
+    },
+    "p1_candidates": {
+      "fit_subjects": [],
+      "parents": [
+        "p1_macro_oof0",
+        "p1_macro_oof1",
+        "p1_macro_oof2",
+        "p1_macro_oof3",
+        "p1_macro_refit",
+        "p1_micro_oof0",
+        "p1_micro_oof1",
+        "p1_micro_oof2",
+        "p1_micro_oof3",
+        "p1_micro_refit",
+        "p1_threshold"
+      ]
+    },
+    "p1_verifier": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21015",
+        "HNU21017",
+        "HNU21022",
+        "HNU21024",
+        "HNU21029",
+        "HNU21034",
+        "HNU21037",
+        "HNU21038",
+        "HNU21041"
+      ],
+      "parents": [
+        "p1_candidates"
+      ]
+    },
+    "p1_score": {
+      "fit_subjects": [],
+      "parents": [
+        "p1_verifier"
+      ]
+    },
+    "p2_macro_oof0": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21006",
+        "HNU21011",
+        "HNU21029",
+        "HNU21034",
+        "HNU21038",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p2_macro_oof1": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21014",
+        "HNU21026",
+        "HNU21034",
+        "HNU21038",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p2_macro_oof2": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21006",
+        "HNU21011",
+        "HNU21014",
+        "HNU21026",
+        "HNU21029",
+        "HNU21034"
+      ],
+      "parents": []
+    },
+    "p2_macro_oof3": {
+      "fit_subjects": [
+        "HNU21003",
+        "HNU21006",
+        "HNU21011",
+        "HNU21014",
+        "HNU21026",
+        "HNU21029",
+        "HNU21038",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p2_macro_refit": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21006",
+        "HNU21011",
+        "HNU21014",
+        "HNU21026",
+        "HNU21029",
+        "HNU21034",
+        "HNU21038",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p2_micro_oof0": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21006",
+        "HNU21011",
+        "HNU21014",
+        "HNU21034",
+        "HNU21038",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p2_micro_oof1": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21006",
+        "HNU21026",
+        "HNU21029",
+        "HNU21034",
+        "HNU21038"
+      ],
+      "parents": []
+    },
+    "p2_micro_oof2": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21006",
+        "HNU21011",
+        "HNU21014",
+        "HNU21026",
+        "HNU21029",
+        "HNU21034",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p2_micro_oof3": {
+      "fit_subjects": [
+        "HNU21003",
+        "HNU21011",
+        "HNU21014",
+        "HNU21026",
+        "HNU21029",
+        "HNU21038",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p2_micro_refit": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21006",
+        "HNU21011",
+        "HNU21014",
+        "HNU21026",
+        "HNU21029",
+        "HNU21034",
+        "HNU21038",
+        "HNU212020"
+      ],
+      "parents": []
+    },
+    "p2_threshold": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21006",
+        "HNU21011",
+        "HNU21014",
+        "HNU21026",
+        "HNU21029",
+        "HNU21034",
+        "HNU21038",
+        "HNU212020"
+      ],
+      "parents": [
+        "p2_micro_oof0",
+        "p2_micro_oof1",
+        "p2_micro_oof2",
+        "p2_micro_oof3"
+      ]
+    },
+    "p2_candidates": {
+      "fit_subjects": [],
+      "parents": [
+        "p2_macro_oof0",
+        "p2_macro_oof1",
+        "p2_macro_oof2",
+        "p2_macro_oof3",
+        "p2_macro_refit",
+        "p2_micro_oof0",
+        "p2_micro_oof1",
+        "p2_micro_oof2",
+        "p2_micro_oof3",
+        "p2_micro_refit",
+        "p2_threshold"
+      ]
+    },
+    "p2_verifier": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21006",
+        "HNU21011",
+        "HNU21014",
+        "HNU21026",
+        "HNU21029",
+        "HNU21034",
+        "HNU21038",
+        "HNU212020"
+      ],
+      "parents": [
+        "p2_candidates"
+      ]
+    },
+    "p2_score": {
+      "fit_subjects": [],
+      "parents": [
+        "p2_verifier"
+      ]
+    },
+    "policy": {
+      "fit_subjects": [
+        "HNU21002",
+        "HNU21003",
+        "HNU21006",
+        "HNU21011",
+        "HNU21014",
+        "HNU21015",
+        "HNU21017",
+        "HNU21022",
+        "HNU21024",
+        "HNU21026",
+        "HNU21029",
+        "HNU21034",
+        "HNU21037",
+        "HNU21038",
+        "HNU21041",
+        "HNU212020"
+      ],
+      "parents": [
+        "p0_score",
+        "p1_score",
+        "p2_score"
+      ]
+    }
+  },
+  "subject_events": [
+    {
+      "subject": "HNU21005",
+      "events": {
+        "A": {
+          "tp": 3,
+          "fp": 2,
+          "fn": 3,
+          "predictions": 5,
+          "truths": 6,
+          "recall": 0.5,
+          "ppv": 0.6,
+          "f1": 0.5454545454545454
+        },
+        "G": {
+          "tp": 3,
+          "fp": 3,
+          "fn": 3,
+          "predictions": 6,
+          "truths": 6,
+          "recall": 0.5,
+          "ppv": 0.5,
+          "f1": 0.5
+        }
+      }
+    },
+    {
+      "subject": "HNU21008",
+      "events": {
+        "A": {
+          "tp": 6,
+          "fp": 2,
+          "fn": 0,
+          "predictions": 8,
+          "truths": 6,
+          "recall": 1.0,
+          "ppv": 0.75,
+          "f1": 0.8571428571428571
+        },
+        "G": {
+          "tp": 6,
+          "fp": 2,
+          "fn": 0,
+          "predictions": 8,
+          "truths": 6,
+          "recall": 1.0,
+          "ppv": 0.75,
+          "f1": 0.8571428571428571
+        }
+      }
+    },
+    {
+      "subject": "HNU21012",
+      "events": {
+        "A": {
+          "tp": 1,
+          "fp": 2,
+          "fn": 4,
+          "predictions": 3,
+          "truths": 5,
+          "recall": 0.2,
+          "ppv": 0.3333333333333333,
+          "f1": 0.25
+        },
+        "G": {
+          "tp": 0,
+          "fp": 5,
+          "fn": 5,
+          "predictions": 5,
+          "truths": 5,
+          "recall": 0.0,
+          "ppv": 0.0,
+          "f1": 0.0
+        }
+      }
+    },
+    {
+      "subject": "HNU21016",
+      "events": {
+        "A": {
+          "tp": 1,
+          "fp": 5,
+          "fn": 3,
+          "predictions": 6,
+          "truths": 4,
+          "recall": 0.25,
+          "ppv": 0.16666666666666666,
+          "f1": 0.2
+        },
+        "G": {
+          "tp": 1,
+          "fp": 7,
+          "fn": 3,
+          "predictions": 8,
+          "truths": 4,
+          "recall": 0.25,
+          "ppv": 0.125,
+          "f1": 0.16666666666666666
+        }
+      }
+    },
+    {
+      "subject": "HNU21021",
+      "events": {
+        "A": {
+          "tp": 3,
+          "fp": 3,
+          "fn": 3,
+          "predictions": 6,
+          "truths": 6,
+          "recall": 0.5,
+          "ppv": 0.5,
+          "f1": 0.5
+        },
+        "G": {
+          "tp": 4,
+          "fp": 4,
+          "fn": 2,
+          "predictions": 8,
+          "truths": 6,
+          "recall": 0.6666666666666666,
+          "ppv": 0.5,
+          "f1": 0.5714285714285714
+        }
+      }
+    },
+    {
+      "subject": "HNU21023",
+      "events": {
+        "A": {
+          "tp": 6,
+          "fp": 1,
+          "fn": 2,
+          "predictions": 7,
+          "truths": 8,
+          "recall": 0.75,
+          "ppv": 0.8571428571428571,
+          "f1": 0.8
+        },
+        "G": {
+          "tp": 7,
+          "fp": 1,
+          "fn": 1,
+          "predictions": 8,
+          "truths": 8,
+          "recall": 0.875,
+          "ppv": 0.875,
+          "f1": 0.875
+        }
+      }
+    },
+    {
+      "subject": "HNU21031",
+      "events": {
+        "A": {
+          "tp": 4,
+          "fp": 4,
+          "fn": 3,
+          "predictions": 8,
+          "truths": 7,
+          "recall": 0.5714285714285714,
+          "ppv": 0.5,
+          "f1": 0.5333333333333333
+        },
+        "G": {
+          "tp": 6,
+          "fp": 2,
+          "fn": 1,
+          "predictions": 8,
+          "truths": 7,
+          "recall": 0.8571428571428571,
+          "ppv": 0.75,
+          "f1": 0.8
+        }
+      }
+    },
+    {
+      "subject": "HNU21032",
+      "events": {
+        "A": {
+          "tp": 5,
+          "fp": 3,
+          "fn": 4,
+          "predictions": 8,
+          "truths": 9,
+          "recall": 0.5555555555555556,
+          "ppv": 0.625,
+          "f1": 0.5882352941176471
+        },
+        "G": {
+          "tp": 4,
+          "fp": 4,
+          "fn": 5,
+          "predictions": 8,
+          "truths": 9,
+          "recall": 0.4444444444444444,
+          "ppv": 0.5,
+          "f1": 0.47058823529411764
+        }
+      }
+    }
+  ]
+}
