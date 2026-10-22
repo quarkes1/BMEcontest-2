@@ -1,0 +1,41 @@
+{
+  "state": "COMPLETE",
+  "evidence_kind": "FROZEN_MODEL_DEPLOYMENT_POLICY_DEVELOPMENT_TRIAL_ONLY",
+  "actual_exe_cv": false,
+  "cohort": "five",
+  "passed": true,
+  "aggregate": {
+    "A": {
+      "tp": 123,
+      "fp": 36,
+      "fn": 131,
+      "predictions": 159,
+      "truths": 254,
+      "f1": 0.5956416464891041,
+      "ppv": 0.7735849056603774,
+      "recall": 0.484251968503937
+    },
+    "G": {
+      "tp": 139,
+      "fp": 79,
+      "fn": 115,
+      "predictions": 218,
+      "truths": 254,
+      "f1": 0.5889830508474576,
+      "ppv": 0.6376146788990825,
+      "recall": 0.547244094488189
+    }
+  },
+  "delta_f1": -0.006658595641646503,
+  "positive_folds": 2,
+  "delta_tp": 16,
+  "delta_fp": 43,
+  "nonworse_recall_folds": 5,
+  "observed_f1_improvement": false,
+  "trial_only": true,
+  "mode": "deploy_f15",
+  "model_fits": 0,
+  "component_score_recomputations": 0,
+  "protected_unchanged": true,
+  "elapsed_seconds": 6.286134900001343
+}
