@@ -1,0 +1,23 @@
+{
+  "raw_width": 86,
+  "model_width": 87,
+  "pooling": "mean12,std12",
+  "batches": {
+    "window_train": {
+      "rows": 17459,
+      "paired": 17458,
+      "missing": 1,
+      "micro_count_min": 1,
+      "micro_count_max": 31,
+      "feature_sha256": "23265986aa2133ce252d05a796272d02e051f70b85b26673f19d7efe738b0ac3"
+    },
+    "candidate_train": {
+      "rows": 179878,
+      "paired": 179877,
+      "missing": 1,
+      "micro_count_min": 1,
+      "micro_count_max": 31,
+      "feature_sha256": "8a6fad91a604496fde63a99877906b4c5966885d42a288feeab0a50399ef2d0e"
+    }
+  }
+}
