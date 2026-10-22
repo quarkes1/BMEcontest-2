@@ -1,0 +1,27 @@
+{
+  "state": "PASS",
+  "version": "official_deployment_f1_policy_v3",
+  "exe_sha256": "fa6987b6244fe73c76ee741ea352fcc74e8e4de06de332812e99b1f1d963aa44",
+  "threshold": 0.4582664763345077,
+  "self_check": "PASS",
+  "empty_input": "PASS",
+  "malformed_input_preserves_output": "PASS",
+  "missing_input": "PASS",
+  "chinese_exe_only_neutral_cwd": "PASS",
+  "real_multifile_python_exe_csv_byte_parity": "PASS",
+  "result": {
+    "subjects": 1,
+    "input_files": 3,
+    "eating_events": 1,
+    "missing_info": [],
+    "conflicting_info": []
+  },
+  "fixture_sha256": {
+    "collect_data1_1784539509_1784544161.txt": "f261eb4680cd0ed88dfa24bad83b411fab4e1f485f64bc82fd0dd7a08549f445",
+    "collect_data2_1784544161_1784548552.txt": "3e863e60ea359b86eb0a96736dcbe84d22046bf02acb3ba28bd08077de0e54ef"
+  },
+  "protected_unchanged": true,
+  "official_original_sample": "NOT_AVAILABLE_NOT_TESTED",
+  "no_official_score": true,
+  "elapsed_seconds": 64.65586140000232
+}
