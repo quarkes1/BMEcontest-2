@@ -10,12 +10,12 @@
 
 每个宏窗[s,e)只取相同sid、start>=s且end<=e的完整微窗。固定取列35:47，按微窗等权计算12D mean及12D population std(ddof=0)，顺序[mean12,std12]。至少2个有效微窗，否则24D全NaN；输入微窗统计要求有限，禁止跨sid补齐或读取GT、概率、subject标签。完全不依赖微窗training labels，ignored微窗只要输入有效也可汇总。NaN只由当前fit imputer学习填补。
 
-输入宏窗原62D先用原_time_prior增加为63D，再追加24D，固定87D；原63D严格逐值保留。prefix sums在每sid内按start排序、end单调且无重复，范围包含两端等号，O(rows log rows+47×rows)；浮点方差负舍入截0。无需持久化增强特征，在内存构建后按原角色slice。score subject自己的固定特征聚合是推理输入，不是训练或adaptation，不参与任何fit统计。
+输入宏窗原62D追加24D后为86D，现有runner._with_time_prior原样追加时间先验，模型固定87D，顺序[base62,mean12,std12,time_prior]。原63个特征的值严格保留，只有时间先验位置从62移到86；新模型按新顺序训练，不能拿旧模型直接读新列。每sid按start排序、end单调且无重复，二分定位完全包含范围，两端含等号，再对每个小区间用float64直接mean/std；不用大数prefix平方相减，以免能量特征消减误差产生虚假std。复杂度O(rows log rows+12×包含的微窗总数)。无需持久化增强特征，在内存构建后按原角色slice。score subject自己的固定特征聚合是推理输入，不是训练或adaptation，不参与任何fit统计。
 
 ## 学习与验证不变项
 
 - HGB原150trees/15leaf/depth4/minleaf100及seed不变；micro原LGBM47D及标签/训练sample/threshold完全同A；meta116D、原LR/LGBM、C=.1、.25/.75融合、policy网格不变。唯一改动宏窗输入63→87D，宏窗概率及其候选可能改变，不声称冻结分数/候选。
-- macro/micro canonical每sid负窗≤max(1,3npos)、seed20260901采样一次，原标签。所有拟合/选择仅train；四折window subject OOF。加入可选macro input adapter到crossfit helper，None精确沿用原_with_time_prior。新adapter只接受87D并恒等返回，防止重复增加时间先验。
+- macro/micro canonical每sid负窗≤max(1,3npos)、seed20260901采样一次，原标签。所有拟合/选择仅train；四折window subject OOF。不改crossfit接口或原_with_time_prior；增强函数只接受62D原宏窗，避免重复增强。
 - macro_lgbm_event.py新增hypothesis='gyro_pool'，纯汇总函数gyro_pool_macro.py；先全候选数据确定性增强，再由现有prepare_train/train/score切分和OOF拟合，不增加标签依赖。实际sample身份/micro threshold逐fit与A精确核对。
 - T24原三组16train/8health，9个policy fit全部seal/commit再统一health；冻结A89/62/71、完整160GT。gate固定F1差≥.01、≥2/3严格提高、TP不减，FP增加时deltaTP>deltaFP。通过才39主体254GT五折，15个policy fit先seal/commit，A138/80/116，同门但3/5严格提高。父级须匹配新hypothesis通过。反复开发证据，不称新独立外层或官方分数。
 - 失败关闭此24D宏窗表示，不在相同health选择pool列、分位数、窗口半径、模型或阈值。两门通过才另登记全目标refit及新增87D runtime schema/导出版本，至少真实session的研究/推理汇总逐值等价、最新冻结全套和EXE-only接口验收后交付。研究阶段不改变canonical推理或正式bundle身份。
@@ -24,6 +24,17 @@
 
 输出outputs/official_recovery/gyro_pool_macro_v1_t24及_five；T24 120窗口/24meta、五折200窗口/40meta。CPU8线程；单cohort≤2h/RSS12GiB/新证据128MiB/空闲≥10GiB。只保存原分数/策略/图/覆盖分布/源及资格指纹，不保存失败增强缓存/模型。原66保护文件SHA核对，拒绝覆盖，异常INCOMPLETE；全部代码/spec在policy到评分期间冻结。
 
-TDD步骤：手算两列mean/std、sid隔离/完全包含/边界、缺失微窗NaN、行顺序独立、重复/非法width拒绝；原62+时间63逐值保留、标签不变、修改score sid不影响train sid特征；crossfit默认恒等以及新adapter真实fit/score路径。相关测试后Luna medium一次只读review，严重项一次RED→GREEN，小项延期；提交再训练。单个本文兼设计/实施ledger，避免散落临时计划。
+TDD步骤：手算两列mean/std、sid隔离/完全包含/边界、缺失微窗NaN、行顺序独立、重复/非法width拒绝；原62+时间值逐值保留、标签不变、修改score sid不影响train sid特征；现有crossfit对87D输入的真实fit/score路径。相关测试后Luna medium一次只读review，严重项一次RED→GREEN，小项延期；提交再训练。单个本文兼设计/实施ledger，避免散落临时计划。
 
 Ruling：从监督/分类器变更转向固定增量表示——此前失败不足以证明IMU信息无效，只说明既有表示上这些合同未改善；代价是若87D成功还需额外runtime/schema验收才能成为EXE，不能用研究脚本直接替代生产。
+
+Ruling：训练前核查发现现有_with_time_prior已支持任意宽度追加先验，因此采用[base62,pool24,time]而非另加adapter——减少共享接口改动；代价是新87D必须有独立列序schema，不能与原63D模型混用。此变更在任何真实训练前完成。
+
+Ruling：常量高能量测试复现prefix E[x²]−E[x]²产生虚假std约173392，改为float64逐小区间直接std——数学定义不变，避免数值伪信号；代价是多几个秒级聚合循环，需真实预检计时。该测试先红后绿，尚未启动真实模型训练。
+
+### 训练前验证
+
+- 新模块缺失测试RED→GREEN 3项；高能量常量std测试RED→GREEN；真实crossfit 87D宏窗/47D微窗和116D事件矩阵回归通过。相关55 passed（8.88s），diff --check通过。未宣称当前完整回归。
+- 真实T24聚合预检3.929秒：window_train17459行中17458配对/1缺失，full candidate179878行中179877配对/1缺失，微窗数1–31。无模型训练，无新增特征缓存。
+- Luna medium最终只读审查无Critical/Important。Final: minor (deferred)：尚无gyro_pool专属gate/父级绑定直接测试，已静态检查复用分支正确，公共gate/父级回归已有覆盖；不扩本轮参数面。
+- Final: Ruling：研究效果、runtime/schema及官方EXE尚不可判断——先完成两门，成功后单独注册导出/推理验收；代价是研究通过也不保证隐藏测试提高，不提前声称已有第二份改进EXE。

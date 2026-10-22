@@ -26,6 +26,29 @@ def _data():
     )
 
 
+def test_gyro_pool_actual_crossfit_uses_87_macro_columns_and_original_micro(monkeypatch):
+    from scripts.research.official_recovery.gyro_pool_macro import augment_data
+    from sklearn.pipeline import Pipeline
+    from sklearn.ensemble import HistGradientBoostingClassifier
+    from threadpoolctl import threadpool_limits
+    data=_data();base=data.candidate_train
+    base=replace(base,features=np.zeros((len(base.windows),62)))
+    refs=tuple(EventRef(w.sid,w.start_ms+j*5000,w.start_ms+(j+1)*5000) for w in base.windows for j in range(2))
+    micro=WindowBatch(np.ones((len(refs),47)),np.tile([0,1],len(base.windows)),refs)
+    data=replace(data,window_train=base,candidate_train=base,micro_window_train=micro,micro_candidate_train=micro)
+    enhanced,stats=augment_data(data);seen=[];original=Pipeline.fit
+    def tracked(self,x,y,**kwargs):
+        seen.append((isinstance(self.named_steps['model'],HistGradientBoostingClassifier),np.asarray(x).shape[1]))
+        return original(self,x,y,**kwargs)
+    monkeypatch.setattr(Pipeline,'fit',tracked)
+    config=replace(registered_e03_config(0,workers=1),micro_positive_middle_fraction=None)
+    with threadpool_limits(limits=2):
+        t,v=build_candidate_ledgers(enhanced,config,{f'person{i}' for i in range(6)},{'person6','person7'})
+    assert stats['batches']['candidate_train']['paired']==8
+    assert seen and all(width==(87 if macro else 47) for macro,width in seen)
+    assert t.features.shape[1]==v.features.shape[1]==116
+
+
 def test_slice_removes_held_out_subject_from_every_train_input():
     sliced = slice_outer_train(_data(), {"person0", "person1"})
     assert {x.sid for x in sliced.window_train.windows} == {"sid0", "sid1"}

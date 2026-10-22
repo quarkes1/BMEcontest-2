@@ -51,6 +51,8 @@ def macro_contract(hypothesis):
         'extra_trees':dict(id='EXTRA-TREES-VERIFIER-V1',t24='outputs/official_recovery/extra_trees_verifier_v1_t24',
             spec='docs/official_recovery_extra_trees_verifier_v1.md',factory=runner._window_estimator,
             verifier_fit=fit_extra_trees,member_fits=2),
+        'gyro_pool':dict(id='GYRO-POOL-MACRO-V1',t24='outputs/official_recovery/gyro_pool_macro_v1_t24',
+            spec='docs/official_recovery_gyro_pool_macro_v1.md',factory=runner._window_estimator,member_fits=2),
     }
     if hypothesis not in contracts: raise ValueError('unknown macro hypothesis')
     return contracts[hypothesis]
@@ -59,7 +61,7 @@ def macro_contract(hypothesis):
 def event_gate(records,cohort,hypothesis='lgbm'):
     macro_contract(hypothesis)
     result=fusion_gate(records,cohort)
-    if hypothesis in ('ensemble','full_weight','full_labels','extra_trees'):
+    if hypothesis in ('ensemble','full_weight','full_labels','extra_trees','gyro_pool'):
         result['passed']=bool(result['delta_f1']>=.01-1e-12 and result['positive_folds']>=(2 if cohort=='t24' else 3)
             and result['delta_tp']>=0 and (result['delta_fp']<=0 or result['delta_tp']>result['delta_fp']))
     return result
@@ -163,7 +165,7 @@ def fit_score(data,config,train,score,excluded,truths,output,prefix,source,*,fac
 
 def execute(root,output,phase='policy',cohort='t24',hypothesis='lgbm'):
     contract=macro_contract(hypothesis);factory=contract['factory'];parent_directory=contract['t24']
-    arm={'lgbm':'L','ensemble':'E','full_weight':'W','full_labels':'C','extra_trees':'X'}[hypothesis]
+    arm={'lgbm':'L','ensemble':'E','full_weight':'W','full_labels':'C','extra_trees':'X','gyro_pool':'P'}[hypothesis]
     window_fits=contract['member_fits']*(60 if cohort=='t24' else 100)
     root,output=Path(root).resolve(),Path(output).resolve();completed=0;started=time.perf_counter()
     if phase=='policy': output.mkdir(parents=True,exist_ok=False)
@@ -216,6 +218,11 @@ def execute(root,output,phase='policy',cohort='t24',hypothesis='lgbm'):
         else: raise ValueError('unknown event cohort')
         if set(loaded_truths)!=set(truths) or any(mapping[sid]!=s for sid,s in data.subject_by_session.items()):
             raise ValueError('baseline/fitting population identity differs')
+        if hypothesis=='gyro_pool':
+            from .gyro_pool_macro import augment_data
+            data,coverage=augment_data(data)
+            if phase=='policy': _write(output/'gyro_pool_coverage.json',coverage)
+            elif coverage!=_read(output/'gyro_pool_coverage.json'): raise ValueError('gyro pool features changed')
         eligibility=eligibility_inputs(root,data.subject_by_session)
         if eligibility!={sid:before_eligibility[sid] for sid in data.subject_by_session}:
             raise ValueError('eligibility changed during loading')
@@ -275,6 +282,6 @@ def execute(root,output,phase='policy',cohort='t24',hypothesis='lgbm'):
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--phase',choices=('policy','score'),default='policy');parser.add_argument('--cohort',choices=('t24','five'),default='t24')
-    parser.add_argument('--hypothesis',choices=('lgbm','ensemble','full_weight','full_labels','extra_trees'),default='lgbm')
+    parser.add_argument('--hypothesis',choices=('lgbm','ensemble','full_weight','full_labels','extra_trees','gyro_pool'),default='lgbm')
     args=parser.parse_args()
     with threadpool_limits(limits=8): print(execute(Path(__file__).resolve().parents[3],args.output,args.phase,args.cohort,args.hypothesis),flush=True)
