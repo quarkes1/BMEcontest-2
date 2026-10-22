@@ -27,3 +27,5 @@
 TDD：同主体手算logit公式、permutation/跨主体独立、0/1/空/非法分数；原p准入而非r、完全相同原admission集合；train-only threshold、严格IoU边界/GT一次计数；新gate/父级身份、防止未seal或dirty source评分。专项回归后Luna medium一次只读审查，严重项一次RED→GREEN，小项延期。先提交代码/任务书，policy封存提交，再统一评分；源冻结，结束才更新文档。
 
 Ruling：暂停新模型拟合，优先固定主体决策的低成本机制检验——当前模型/监督/增量表示探索均未可靠改善；代价是无标签anchor仍可能放大无餐主体噪声，因此必须计FP且原准入保持冻结，失败不投送。
+
+实施与review记录统一见official_recovery_aggressive_recall_v2.md；新授权下先执行两档召回目标，relative保留原严格F1门，不借召回试测资格改写其通过条件。

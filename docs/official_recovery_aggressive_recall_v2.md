@@ -34,3 +34,10 @@
 每无训练phase≤10min/RSS12GiB/证据16MiB/余量10GiB；两档最多两次独立编译，每次30min上限；不增加模型或特征缓存。过门失败关闭对应beta，不追加隐藏搜索。
 
 Ruling：最新授权扩大的是试测风险容忍度，不是数据泄漏或结果措辞——允许送明确标记的召回探索程序，但正式发布不动；代价是新EXE官方F1仍可能下降，因此提供精确版本/hash与本地FP成本，允许官方对照，不伪称已提高。
+
+## 实施ledger
+
+- 默认relative五测试缺模块RED→GREEN；召回两测试缺beta/mode接口RED→GREEN。原p准入、固定目标与完整GT匹配通过；一处测试扩展候选后漏扩groups的fixture错误已修正，未改生产校验绕过。
+- Luna medium一次只读review指出Important：成功seal→score及漂移/父级门的直接覆盖不足。一次修复pass：新增三mode实际受控I/O流程、输入/保护/封存漂移拒绝；父级报告变更复算测试先失败，verify_parent现在显式复算对应mode的gate并与summary逐项比较，随后41相关测试通过（5.09s）。无Minor。项目最新冻结全套尚待最终打包阶段，不冒充已通过。
+- Final: Ruling：review未判断实际效果/最终runtime及全套状态——这些是后续阶段而非代码审查可证明的事项；研究门/EXE验收分别执行，代价是通过审查不等于官方改善。
+- Ruling：按新限时授权优先执行recall125、recall150，再视结果执行relative；公式均已固定，不因先看到另一档结果改变beta。代价是相对分数探索可延期，不阻塞召回送测交付。
