@@ -247,3 +247,5 @@ F1-policy前三组D71/27/89、.550387597，G86/44/74、.593103448，差+.0427158
 全部比较固定部署准入cap6/NMS.3/admission.2、blend.25；无新fit或组件score重算，保护66文件一致。源fold模型不是全目标部署权重，D又来自先前全队policy聚合，因此actual_exe_cv=False，不能把该表记为无偏CV或官方收益。官方最新仍用户转述49/27/63、.521277，新程序效果必须等送检反馈。
 
 两档结果分别保存在deployment_f1_policy_v3_five_attempt2和deployment_f15_policy_v3_five_attempt2。主档优先、较低阈值仅为高召回对照；复制模型、独立EXE及验证门见[交付记录](../../docs/official_recovery_policy_delivery_v3.md)。正式release/submission及前端不改。相对分数研究已实现但未运行，不应记为失败或成功实验。
+
+两档export/build均COMPLETE、实际EXE-only验收均PASS，路径分别dist/official_trials/deployment_f1_policy_v3和deployment_f15_policy_v3。每档约60MiB；真实同人双文件+空文件产生1个事件且与Python CSV逐字节相同，中文路径/无开发PATH/neutralcwd及空错输入保护通过。官方原样例缺失仍未测试。四模型和feature_schema逐字节一致，66保护文件不变；新build/accept scratch自动清理。d527b1c冻结源码后全仓回归仍在运行，暂不写完整通过。官方新效果未知，没有正式promotion、前端替换、自动push或邮件发送。
