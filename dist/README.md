@@ -11,6 +11,7 @@ dist/
 ├── visual/         # 团队可视化应用（React+TS+Vite）：源码在 visual/app/，
 │                   # 生产构建为自包含单文件 index.html（双击即用，无任何依赖）
 ├── submission/     # 官方EXE + 模型源码/权重 + visual/独立应用 + 无Python依赖start.bat
+├── official_trials/ # 独立送测EXE：与正式发布隔离，版本与风险见各目录README
 ├── examples/       # 合成安全示例 example_prediction.json（符合 schema，无真实数据）
 ├── schema/         # 稳定契约 prediction.schema.json（v1.0）
 ├── start.bat       # 竞赛一键启动器：本地推理服务 + 浏览器
@@ -19,7 +20,25 @@ dist/
 
 发布线：`160afaf81debf1ee`（严格 subject-disjoint nested 五折开发 F1 = 0.6514285714，
 TP/eligible/pred = 114/153/197）。发布证据与模型在 `models/event_stack/<run_key>/`，
-指针在 `release/event_stack_incumbent.json`；`dist/` 内的任何包都必须与它们一致。
+指针在 `release/event_stack_incumbent.json`；正式发布包必须与它们一致。`official_trials/`
+是明确隔离的试测例外，不会改写正式发布指针或自动接入前端。
+
+## 独立送测（2026-10-22）
+
+本轮只需向组委会发送选定目录内的 `EatingDetection.exe`，不用附源码或模型。无参数官方
+接口与下文一致，CPU单文件自包含；不是传统所有库静态链接，运行时会解包内置依赖。
+
+- `official_trials/consistent_refit_v1/`：上一轮一致性重训试测版，保持不变；最新用户转述
+  官方反馈49TP/27FP/63FN、F1=.521277，收件SHA及隐藏主体一致性未独立核验。
+- [deployment_f1_policy_v3](official_trials/deployment_f1_policy_v3/README.md)：本轮主试测，
+  最终阈值 .45827，优先此版。
+- `official_trials/deployment_f15_policy_v3/`：阈值 .26383 的高召回风险对照；本地F1下降，
+  不是性能升级或正式提交替换。
+
+两份新EXE的模型字节均与上一轮试测相同，只更改最终事件阈值。完整五折政策开发诊断中，
+主档TP+10/FP+23、F1+.00077（基本持平）；高召回档TP+16/FP+43、F1−.00666。
+这些不是最终EXE的无偏CV成绩；两份新EXE官方效果均未知。交付检查以
+[R3交付记录](../docs/official_recovery_policy_delivery_v3.md)为准，不因目录存在而视为完成。
 
 ## 重建命令（均需仓库根目录运行）
 
