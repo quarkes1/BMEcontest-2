@@ -30,3 +30,9 @@ T24三组16train/8health；每组三policy split，每producer四window OOF。�
 - 本文兼实施ledger，避免为小研究阶段散落额外计划/临时脚本。代码/本文在policy到评分期间冻结，全部完成再更新README和总记录。最终新EXE前最新冻结全套仍必须；之前376c369的1108项不冒充本轮验收。
 
 Ruling：在前项失败后自主启动新的单一verifier合同——符合用户限时自主探索授权；代价是继续使用重复开发集的选择偏差，只有配对五折支持且明确标注开发证据后才建议独立送检，隐藏测试改善不作保证。
+
+## 实施ledger
+
+- 新测试先因缺少工厂/fit模块失败，再实现通过3项；连同窗口/元模型/OOF/采样相关回归50 passed（7.71s），git diff --check通过。无当前全套声明。
+- Luna medium一次只读审查无Critical/Important。Final: minor (deferred)：fit_score注入路径尚无直接集成测试；参数工厂与真实fit已测试，policy/health两处调用经静态核对，不额外扩大本轮测试/调参。
+- Final: Ruling：审查未判断尚不存在的T24/五折收益与延期打包行为——本轮先完成研究门，不能把代码通过当效果通过；两门失败不打包，成功则另注册并验证。代价是研究通过仍不保证隐藏测试改善。

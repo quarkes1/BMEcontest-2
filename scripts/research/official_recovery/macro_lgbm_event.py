@@ -40,6 +40,7 @@ def macro_ensemble_factory(seed):
 
 
 def macro_contract(hypothesis):
+    from .extra_trees_verifier import fit_verifiers as fit_extra_trees
     contracts={
         'lgbm':dict(id='MACRO-LGBM-EVENT-M1',t24=T24_OUTPUT,spec=SPEC,factory=macro_estimator,member_fits=2),
         'ensemble':dict(id='MACRO-SOFT-ENSEMBLE-V1',t24=ENSEMBLE_T24,spec=ENSEMBLE_SPEC,factory=macro_ensemble_factory,member_fits=3),
@@ -47,6 +48,9 @@ def macro_contract(hypothesis):
             spec='docs/official_recovery_weighted_full_negative_v1.md',factory=runner._window_estimator,member_fits=2),
         'full_labels':dict(id='COMPLETE-SUPERVISION-V1',t24='outputs/official_recovery/complete_supervision_v1_t24',
             spec='docs/official_recovery_complete_supervision_v1.md',factory=runner._window_estimator,member_fits=2),
+        'extra_trees':dict(id='EXTRA-TREES-VERIFIER-V1',t24='outputs/official_recovery/extra_trees_verifier_v1_t24',
+            spec='docs/official_recovery_extra_trees_verifier_v1.md',factory=runner._window_estimator,
+            verifier_fit=fit_extra_trees,member_fits=2),
     }
     if hypothesis not in contracts: raise ValueError('unknown macro hypothesis')
     return contracts[hypothesis]
@@ -55,7 +59,7 @@ def macro_contract(hypothesis):
 def event_gate(records,cohort,hypothesis='lgbm'):
     macro_contract(hypothesis)
     result=fusion_gate(records,cohort)
-    if hypothesis in ('ensemble','full_weight','full_labels'):
+    if hypothesis in ('ensemble','full_weight','full_labels','extra_trees'):
         result['passed']=bool(result['delta_f1']>=.01-1e-12 and result['positive_folds']>=(2 if cohort=='t24' else 3)
             and result['delta_tp']>=0 and (result['delta_fp']<=0 or result['delta_tp']>result['delta_fp']))
     return result
@@ -115,7 +119,7 @@ def fingerprints(root,cohort,hypothesis='lgbm'):
     return hashes
 
 
-def fit_score(data,config,train,score,excluded,truths,output,prefix,source,*,factory=macro_estimator,arm='L',weighted=False,complete=False):
+def fit_score(data,config,train,score,excluded,truths,output,prefix,source,*,factory=macro_estimator,arm='L',weighted=False,complete=False,verifier_fit=None):
     train,score,excluded=map(set,(train,score,excluded))
     if train&(score|excluded) or score&excluded: raise ValueError('producer roles overlap')
     weights=None;weight_stats=None
@@ -146,7 +150,7 @@ def fit_score(data,config,train,score,excluded,truths,output,prefix,source,*,fac
     if complete:
         from .event_probe import full_candidate_labels
         labels=full_candidate_labels(t.candidates,prepared.subject_by_session,targets)
-    p,components=fit_verifiers(t.features,labels,v.features,config,.1,.25)
+    p,components=(fit_verifiers if verifier_fit is None else verifier_fit)(t.features,labels,v.features,config,.1,.25)
     graph['verifier']=dict(fit_subjects=sorted(train),parents=['candidates'])
     graph['score']=dict(fit_subjects=[],parents=['verifier']);check_graph(graph,'score',score|excluded,train)
     _save_scores(output/f'{prefix}_{arm}_scores.json',v.candidates,p,components,v.groups,graph,train,score)
@@ -159,7 +163,7 @@ def fit_score(data,config,train,score,excluded,truths,output,prefix,source,*,fac
 
 def execute(root,output,phase='policy',cohort='t24',hypothesis='lgbm'):
     contract=macro_contract(hypothesis);factory=contract['factory'];parent_directory=contract['t24']
-    arm={'lgbm':'L','ensemble':'E','full_weight':'W','full_labels':'C'}[hypothesis]
+    arm={'lgbm':'L','ensemble':'E','full_weight':'W','full_labels':'C','extra_trees':'X'}[hypothesis]
     window_fits=contract['member_fits']*(60 if cohort=='t24' else 100)
     root,output=Path(root).resolve(),Path(output).resolve();completed=0;started=time.perf_counter()
     if phase=='policy': output.mkdir(parents=True,exist_ok=False)
@@ -176,6 +180,7 @@ def execute(root,output,phase='policy',cohort='t24',hypothesis='lgbm'):
                 hypothesis=hypothesis,cohort=cohort,source_sha256=hashes,protected=protected,
                 started_epoch=time.time(),code_sha=subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip(),
                 window_gate_failed=hypothesis in ('lgbm','ensemble'),exploratory_amendment=hypothesis,expected_window_fits=window_fits,
+                nonlinear_estimator='ExtraTreesClassifier' if hypothesis=='extra_trees' else 'LGBMClassifier',
                 expected_meta_fits=24 if cohort=='t24' else 40)
             _write(output/'plan.json',plan)
         else:
@@ -226,7 +231,7 @@ def execute(root,output,phase='policy',cohort='t24',hypothesis='lgbm'):
                     if set(fit)&set(valid) or set(fit)|set(valid)!=train: raise ValueError('policy partition differs')
                     print(f'macro-event {cohort} policy {fold}/{i}: train{len(fit)} score{len(valid)}',flush=True)
                     ledger,p,parent=fit_score(data,config,fit,valid,score|forbidden,truths,output,f'fold{fold}_policy{i}',source,
-                        factory=factory,arm=arm,weighted=hypothesis=='full_weight',complete=hypothesis=='full_labels')
+                        factory=factory,arm=arm,weighted=hypothesis=='full_weight',complete=hypothesis=='full_labels',verifier_fit=contract.get('verifier_fit'))
                     candidates.extend(ledger.candidates);probabilities.extend(p);groups.extend(ledger.groups);seen.extend(valid)
                     for name,node in parent.items():
                         graph[f'p{i}_{name}']=dict(fit_subjects=node['fit_subjects'],parents=[f'p{i}_{p}' for p in node['parents']])
@@ -241,7 +246,7 @@ def execute(root,output,phase='policy',cohort='t24',hypothesis='lgbm'):
             role='health' if cohort=='t24' else 'outer'
             print(f'macro-event {cohort} score {fold}: train{len(train)} score{len(score)}',flush=True)
             ledger,p,graph=fit_score(data,config,train,score,forbidden,truths,output,f'fold{fold}_{role}',source,
-                factory=factory,arm=arm,weighted=hypothesis=='full_weight',complete=hypothesis=='full_labels')
+                factory=factory,arm=arm,weighted=hypothesis=='full_weight',complete=hypothesis=='full_labels',verifier_fit=contract.get('verifier_fit'))
             events={'A':w['health_events'],'G':decode(ledger.candidates,p,ledger.groups,frozen['policy'])};targets=partition_truths(truths,score)
             row=dict(fold=fold,events={a:complete_metrics(es,mapping,targets) for a,es in events.items()},truths=targets,
                 predictions={a:[asdict(e) for e in es] for a,es in events.items()},score_graph=graph,policy_graph=frozen['graph'],
@@ -270,6 +275,6 @@ def execute(root,output,phase='policy',cohort='t24',hypothesis='lgbm'):
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--phase',choices=('policy','score'),default='policy');parser.add_argument('--cohort',choices=('t24','five'),default='t24')
-    parser.add_argument('--hypothesis',choices=('lgbm','ensemble','full_weight','full_labels'),default='lgbm')
+    parser.add_argument('--hypothesis',choices=('lgbm','ensemble','full_weight','full_labels','extra_trees'),default='lgbm')
     args=parser.parse_args()
     with threadpool_limits(limits=8): print(execute(Path(__file__).resolve().parents[3],args.output,args.phase,args.cohort,args.hypothesis),flush=True)
