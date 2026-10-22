@@ -1,0 +1,62 @@
+{
+  "sample": {
+    "macro": {
+      "labels": {
+        "rows": 76796,
+        "positive": 4279,
+        "negative": 70327,
+        "ignored": 2190,
+        "old0_to_new1": 1849,
+        "old1_to_new0": 0,
+        "label_sha256": "1e58602e5dbfe9dd43260e246a24a7ab0f4d1694a5947ee4e25d7ad36be88e15"
+      },
+      "sample": {
+        "seed": 20260901,
+        "negative_ratio": 3,
+        "rows": 11922,
+        "positive": 4279,
+        "positive_ratio": 0.3589162892132193,
+        "sample_identity_sha256": "b96e3d98b486f525c6d7aa6acbcc9fa8b38ad009a0b4a650a582ddedb12adf12"
+      }
+    },
+    "micro": {
+      "labels": {
+        "rows": 167348,
+        "positive": 9672,
+        "negative": 153792,
+        "ignored": 3884,
+        "old0_to_new1": 4343,
+        "old1_to_new0": 0,
+        "label_sha256": "9632edf6b84c31995f56e8f6532421e0483ee13a4ec349b599bc5edec79450e2"
+      },
+      "sample": {
+        "seed": 20260901,
+        "negative_ratio": 3,
+        "rows": 28443,
+        "positive": 9672,
+        "positive_ratio": 0.3400485180888092,
+        "sample_identity_sha256": "019e02f969f8bd40b731e36bb3fedf07dea2b3983675b0093281781c3d546e80"
+      }
+    }
+  },
+  "micro_threshold": 0.1,
+  "meta_rows": 965,
+  "meta_positive": 65,
+  "weighted_macro": null,
+  "complete_micro_selection": {
+    "threshold": 0.1,
+    "metrics": {
+      "tp": 56,
+      "fp": 752,
+      "fn": 9,
+      "predictions": 808,
+      "truths": 65,
+      "recall": 0.8615384615384616,
+      "ppv": 0.06930693069306931,
+      "f1": 0.12829324169530354
+    },
+    "candidate_count": 808,
+    "budget": 195
+  },
+  "meta_label_sha256": "1bbf818554d11f8bf8989268fef0d89a37eee2ceb1938f8238affc5c506e37e9"
+}
