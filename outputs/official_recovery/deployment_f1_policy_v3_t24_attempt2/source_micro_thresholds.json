@@ -1,0 +1,14 @@
+{
+  "fold0_health_training.json": 0.1,
+  "fold0_policy0_training.json": 0.1,
+  "fold0_policy1_training.json": 0.1,
+  "fold0_policy2_training.json": 0.1,
+  "fold1_health_training.json": 0.1,
+  "fold1_policy0_training.json": 0.1,
+  "fold1_policy1_training.json": 0.5,
+  "fold1_policy2_training.json": 0.1,
+  "fold2_health_training.json": 0.1,
+  "fold2_policy0_training.json": 0.1,
+  "fold2_policy1_training.json": 0.1,
+  "fold2_policy2_training.json": 0.1
+}
