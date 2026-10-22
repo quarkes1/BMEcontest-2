@@ -249,3 +249,5 @@ F1-policy前三组D71/27/89、.550387597，G86/44/74、.593103448，差+.0427158
 两档结果分别保存在deployment_f1_policy_v3_five_attempt2和deployment_f15_policy_v3_five_attempt2。主档优先、较低阈值仅为高召回对照；复制模型、独立EXE及验证门见[交付记录](../../docs/official_recovery_policy_delivery_v3.md)。正式release/submission及前端不改。相对分数研究已实现但未运行，不应记为失败或成功实验。
 
 两档export/build均COMPLETE、实际EXE-only验收均PASS，路径分别dist/official_trials/deployment_f1_policy_v3和deployment_f15_policy_v3。每档约60MiB；真实同人双文件+空文件产生1个事件且与Python CSV逐字节相同，中文路径/无开发PATH/neutralcwd及空错输入保护通过。官方原样例缺失仍未测试。四模型和feature_schema逐字节一致，66保护文件不变；新build/accept scratch自动清理。d527b1c冻结源码后全仓回归仍在运行，暂不写完整通过。官方新效果未知，没有正式promotion、前端替换、自动push或邮件发送。
+
+最终回归已结束：1148 passed/7 skipped/39 warnings、1164.84秒，exit0；src/scripts/tests相对d527b1c全程及事后无更改。结束后两档EXE与模型来源、66保护再次核对通过；原正式交付及前端未改。警告含旧Windows子进程日志解码等，skip含符号链接权限/缺官方样例，不称无条件全覆盖。新pytest遗留约134KiB文件删除被执行策略拒绝，未绕过；新build/accept scratch均已清理。门完成后优先交付主试测，高召回只作风险对照，官方成绩仍未知。完整命令及日志SHA见policy_v3_frozen_regression.json。

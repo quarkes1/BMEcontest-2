@@ -65,3 +65,13 @@ Ruling：独立试测代替正式升级——满足用户限时送检且保留�
 | 4 | 29/6/25 | 31/11/23 | −.005852 | 33/15/21 | −.004627 |
 
 逐折表解释了为什么“所有折TP增加”仍不能称稳定F1提升：部分主体组增加的误报抵消召回收益。不能据此重新选择部署阈值、去掉差折或改变两档身份；官方反馈也只能归属于实际收到的EXE版本，送测时应保留SHA和发送日期。
+
+## 最终验证与交付结论
+
+冻结d527b1c源码的完整pytest以exit0结束：1148 passed、7 skipped、39 warnings、1164.84秒，无失败。验证期间及结束后`git diff --quiet d527b1c -- src scripts tests`通过；期间只提交产物/证据/文档。日志SHA与命令见outputs/official_recovery/policy_v3_frozen_regression.json，日志保留本机。skip的已知环境限制包括Windows符号链接权限与缺失官方原样例，不能称所有场景已测试；警告包括旧测试的Windows子进程stderr UTF-8解码异常、退化合成特征与缺失列插补等，不称无警告。新两档验收使用errors=replace捕获日志并独立核对CSV原字节，均PASS，不靠测试日志文本代替结果校验。
+
+结束后两档validated_export再次通过，全部66保护文件不变，两EXE SHA与构建/验收一致。正式submission、release、inference及visual相对863ed3a无更改。交付门完成：建议优先送F1-policy主档，高召回档仅作可选风险对照；新官方F1未知，不作正式promotion。
+
+清理：两次新build与accept的mkdtemp已自动删除。完整pytest只余383个文件、136841字节（约134KiB）；核对精确路径后删除被执行策略拒绝，未重试、未换工具绕过，留在cache/delivery_build/policy-v3-full-pytest-20261022，不进入dist。此前约1.71GiB旧scratch仍保留，亦未再尝试。没有不必要的训练权重/特征缓存，本轮两份模型复制与EXE为交付所需。
+
+收尾按原授权在main提交，工作目录保留；不新建分支、PR、自动push或邮件，不要求用户重复审批已经授权的执行流程。科学结论仍是“召回/FP风险试测”，而非“.70突破”。
