@@ -1,0 +1,9 @@
+{
+  "sha256": {
+    "fold0_policy.json": "7e859220681321d72255fdb05f6ab18e5d63c1d85239ec5c935cfc05ba16eb0b",
+    "fold1_policy.json": "7094057dcfc57f361fd8680b2911290512056aa7b9eafa4f21d47568502c8c1d",
+    "fold2_policy.json": "e1162ce3b7792a7eb1e59ce3b974d72ea4421f9d4d0826eab57da328d20f94e9",
+    "plan.json": "b0a989d3d01223dd675f5145f1bbbba208e6bfff7acd0742b2e724b79bf0e404",
+    "source_micro_thresholds.json": "fd5845b82548211af43edeb6c02d1c23b0093425204a3085ea0d98aba70b5dd0"
+  }
+}
