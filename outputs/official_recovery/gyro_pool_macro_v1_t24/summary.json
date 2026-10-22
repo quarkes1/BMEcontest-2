@@ -1,0 +1,39 @@
+{
+  "state": "COMPLETE",
+  "evidence_kind": "EXPLORATORY_MACRO_CLASSIFIER_EVENT_DEVELOPMENT_ONLY",
+  "cohort": "t24",
+  "passed": false,
+  "aggregate": {
+    "A": {
+      "tp": 89,
+      "fp": 62,
+      "fn": 71,
+      "predictions": 151,
+      "truths": 160,
+      "f1": 0.572347266881029,
+      "ppv": 0.5894039735099338,
+      "recall": 0.55625
+    },
+    "G": {
+      "tp": 82,
+      "fp": 51,
+      "fn": 78,
+      "predictions": 133,
+      "truths": 160,
+      "f1": 0.5597269624573379,
+      "ppv": 0.6165413533834586,
+      "recall": 0.5125
+    }
+  },
+  "delta_f1": -0.012620304423691109,
+  "positive_folds": 1,
+  "delta_tp": -7,
+  "delta_fp": -11,
+  "hypothesis": "gyro_pool",
+  "protected_unchanged": true,
+  "window_gate_failed": false,
+  "exploratory_amendment": "gyro_pool",
+  "window_fits": 120,
+  "meta_fits": 24,
+  "elapsed_seconds": 344.7394874095917
+}
