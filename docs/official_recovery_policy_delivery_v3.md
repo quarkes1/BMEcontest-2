@@ -38,3 +38,5 @@ Ruling：独立试测代替正式升级——满足用户限时送检且保留�
 - Luna medium一次只读review指出Important：exists()==False的dangling link会跳过路径guard。Windows权限限制下对link-detection边界构造失败测试，确认先红；移除exists前置条件，逐component始终检查link/reparse。
 - Final: minor (deferred)：bundle原子发布后，最后漂移检查/summary落盘失败可能留新模型目录并阻止同名重试。不自动删该目录防覆盖与丢证据；如发生，仅在确认该新版本INCOMPLETE且无送测使用后，人工核对该精确目录再选择保留或清理重试。模型目录存在绝不算交付成功，必须export COMPLETE、build COMPLETE、accept PASS及冻结全套均通过。
 - Final: Ruling：review未判断真实EXE/官方效果及完整回归——分别执行后续验收，最终官方未知；代价是开发诊断不能保证正式竞赛收益。当前不宣称已完成。
+
+- 修复后专项30项通过（16.44秒），包含两档真实五折证据复算和临时目录中的真实模型复制字节核查。d527b1c冻结源码后启动最新全套；全套完成前不修改源码或测试，不以此前1108项替代本次验证。
