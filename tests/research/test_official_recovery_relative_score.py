@@ -92,16 +92,43 @@ def test_recall_trial_gate_accepts_bounded_fp_tradeoff_but_not_formal_improvemen
     with pytest.raises(ValueError): mode_contract('recall200')
 
 
+def test_deployment_modes_change_reference_and_keep_fixed_objectives():
+    from scripts.research.official_recovery.relative_score_probe import mode_contract
+    f1=mode_contract('deploy_f1');f15=mode_contract('deploy_f15')
+    assert f1['deployment_reference'] and f15['deployment_reference']
+    assert f1['beta']==1. and f15['beta']==1.5 and not f1['use_relative']
+
+
+def test_deployment_reference_is_exact_accepted_bundle_and_rejects_modified_copy(tmp_path):
+    from pathlib import Path
+    import shutil
+    from scripts.research.official_recovery.relative_score_probe import deployment_reference
+    root=Path(__file__).resolve().parents[2]
+    bundle='models/event_stack/official_consistent_refit_v1/deployment'
+    report='outputs/official_recovery/consistent_refit_v1/summary.json'
+    if not (root/bundle).is_dir(): pytest.skip('accepted first trial bundle unavailable')
+    shutil.copytree(root/bundle,tmp_path/bundle)
+    (tmp_path/report).parent.mkdir(parents=True);shutil.copyfile(root/report,tmp_path/report)
+    policy,evidence=deployment_reference(tmp_path)
+    assert policy['threshold']==.6595272837359293
+    assert policy['admission']==dict(nms_iou=.3,threshold=.2,max_candidates_per_subject=6)
+    assert len(evidence['source_sha256'])==9
+    (tmp_path/bundle/'policy.json').write_text('{}')
+    with pytest.raises(ValueError): deployment_reference(tmp_path)
+
+
 @pytest.fixture
 def sealed_probe_fixture(tmp_path,monkeypatch):
     from scripts.research.official_recovery import relative_score_probe as probe
     from scripts.research.official_recovery.negative_clean_probe import _write
+    from src.pipeline.event_stack import EventRef
     root=tmp_path;subjects=[f'S{i}' for i in range(9)];mapping={f's{i}':s for i,s in enumerate(subjects)}
     truths=[];wrappers=[];manifest=dict(wrappers=[],identities=dict(v7=[],outer=[]))
     for fold,total in enumerate((54,55,51)):
         score=set(subjects[fold*3:fold*3+3]);train=set(subjects)-score
         truths.extend((sorted(score)[j%3],(j//3)*200,(j//3)*200+100) for j in range(total))
-        wrappers.append(dict(id=fold,train=sorted(train),score=sorted(score),health_events=[]))
+        sid=next(k for k,v in mapping.items() if v==sorted(score)[0])
+        wrappers.append(dict(id=fold,train=sorted(train),score=sorted(score),health_events=[EventRef(sid,999999,1000000)]))
         partitions=[]
         for i in range(3):
             valid=set(sorted(train)[i*2:i*2+2]);partitions.append(dict(train=sorted(train-valid),score=sorted(valid)))
@@ -125,16 +152,24 @@ def sealed_probe_fixture(tmp_path,monkeypatch):
     monkeypatch.setattr(probe,'protected_sources',lambda r:{'protected.bin':probe._sha(protected)})
     monkeypatch.setattr(probe,'load_context',lambda *a,**k:(truths,mapping,{},wrappers))
     monkeypatch.setattr(probe.subprocess,'check_output',lambda args,**kwargs:'' if args[1]=='status' else 'revision')
+    path=root/probe.DEPLOY_SPEC;path.write_text('registered')
+    reference=dict(admission=dict(nms_iou=.3,threshold=.2,max_candidates_per_subject=6),threshold=.99)
+    monkeypatch.setattr(probe,'deployment_reference',lambda r:(reference,dict(source_sha256={'input.txt':probe._sha(external)})))
     return probe,root,external,protected
 
 
-@pytest.mark.parametrize('mode',['relative','recall125','recall150'])
+@pytest.mark.parametrize('mode',['relative','recall125','recall150','deploy_f1','deploy_f15'])
 def test_real_policy_seal_score_and_mode_parent_reject_changed_report(sealed_probe_fixture,mode):
     probe,root,_,_=sealed_probe_fixture
     output=root/probe.mode_contract(mode)['t24']
     assert probe.execute(root,output,mode=mode)['state']=='POLICY_FROZEN'
     result=probe.execute(root,output,'score',mode=mode)
     assert result['state']=='COMPLETE' and result['passed']
+    if mode.startswith('deploy_'):
+        assert result['evidence_kind']=='FROZEN_MODEL_DEPLOYMENT_POLICY_DEVELOPMENT_TRIAL_ONLY'
+        assert result['actual_exe_cv'] is False
+        assert result['aggregate']['A']['fp']==0
+        assert probe._read(output/'fold0_report.json')['events']['source_A']['fp']==1
     probe.verify_parent(output,mode)
     other='relative' if mode!='relative' else 'recall125'
     with pytest.raises(ValueError): probe.verify_parent(output,other)

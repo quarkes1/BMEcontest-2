@@ -29,3 +29,9 @@ T24完整160GT，过门才39主体254GT五折。外部试测资格沿用R2：T24
 每phase≤10min/RSS12GiB/证据16MiB/余量10GiB，零模型fit、无新权重/特征缓存；source报告包含完整微窗选择列表和D policy来源SHA。第一版数据训练/模型没有被视为“泄漏”，这里是决策目标不一致，不声称修复后官方必然达.7。
 
 Ruling：对准实际已送EXE的政策参考，而不是继续以已经更换政策的A作为唯一送检基准——避免把算法创新门误当部署政策修复门；代价是该参考来自已使用全队数据的既有policy，只能作工程开发诊断，不称独立确认。
+
+## 训练/评分前实施ledger
+
+- 模式/首bundle加载器缺失RED→GREEN；实际首bundle临时副本SHA校验、两部署模式完整seal→score、D与source_A分离、模式父级复算、输入/保护/封存漂移拒绝已覆盖。45相关项通过（5.24s）。一处测试误数8文件+summary为10，纠正为9；未放宽实际SHA集合校验。
+- Luna medium单次只读review指出Important：R3 summary沿用R2 evidence_kind，易误读。新增断言先失败，修正为FROZEN_MODEL_DEPLOYMENT_POLICY_DEVELOPMENT_TRIAL_ONLY，actual_exe_cv=False并明确旧参考policy来自先前全队聚合、非outer-isolated；随后45项通过。无Minor，不重复review。
+- Final: Ruling：review未判断实际EXE效果/验收及最新全套状态——这些后续步骤分别验证，代价是研究代码审查不能证明程序提高。当前无新EXE/当前全套通过声明。

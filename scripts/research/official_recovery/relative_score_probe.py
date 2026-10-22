@@ -23,15 +23,38 @@ from src.pipeline import runner
 SPEC='docs/official_recovery_relative_score_v1.md'
 T24_OUTPUT='outputs/official_recovery/relative_score_v1_t24'
 RECALL_SPEC='docs/official_recovery_aggressive_recall_v2.md'
+DEPLOY_SPEC='docs/official_recovery_deployment_policy_v3.md'
 
 
 def mode_contract(mode):
     options={
         'relative':dict(id='RELATIVE-SCORE-V1',t24=T24_OUTPUT,beta=1.,use_relative=True),
         'recall125':dict(id='RECALL125-POLICY-V2',t24='outputs/official_recovery/recall125_policy_v2_t24',beta=1.25,use_relative=False),
-        'recall150':dict(id='RECALL150-POLICY-V2',t24='outputs/official_recovery/recall150_policy_v2_t24',beta=1.5,use_relative=False)}
+        'recall150':dict(id='RECALL150-POLICY-V2',t24='outputs/official_recovery/recall150_policy_v2_t24',beta=1.5,use_relative=False),
+        'deploy_f1':dict(id='DEPLOY-F1-POLICY-V3',t24='outputs/official_recovery/deployment_f1_policy_v3_t24',beta=1.,use_relative=False,deployment_reference=True),
+        'deploy_f15':dict(id='DEPLOY-F15-POLICY-V3',t24='outputs/official_recovery/deployment_f15_policy_v3_t24',beta=1.5,use_relative=False,deployment_reference=True)}
     if mode not in options: raise ValueError('unregistered decision mode')
     return options[mode]
+
+
+def deployment_reference(root):
+    from src.pipeline.artifacts import load_event_stack_bundle
+    version='official_consistent_refit_v1'
+    folder=root/'models/event_stack'/version/'deployment'
+    report=root/'outputs/official_recovery/consistent_refit_v1/summary.json';summary=_read(report)
+    if summary.get('state')!='COMPLETE' or summary.get('version')!=version or summary.get('protected_unchanged') is not True:
+        raise ValueError('accepted first-trial model evidence required')
+    actual={p.name:_sha(p) for p in folder.iterdir() if p.is_file()}
+    if actual!=summary['bundle_sha256']: raise ValueError('accepted source bundle SHA differs')
+    bundle=load_event_stack_bundle(folder,expected_role='deployment');p=bundle.policy
+    if (bundle.run_config.get('trial_version')!=version or p['blend_weight']!=.25 or p['max_events_per_group'] is not None
+        or not np.isfinite(p['threshold']) or not 0<=p['threshold']<=1): raise ValueError('unsupported deployment policy')
+    admission=dict(nms_iou=p['nms_iou'],threshold=p['admission_threshold'],max_candidates_per_subject=p['max_candidates_per_subject'])
+    CandidateAdmissionConfig(**admission)
+    files={str((folder/name).relative_to(root)):_sha(folder/name) for name in actual}
+    files[str(report.relative_to(root))]=_sha(report)
+    return dict(admission=admission,threshold=p['threshold']),dict(source_sha256=files,
+        trial_version=version,micro_threshold=bundle.run_config['micro_threshold'])
 
 
 def relative_scores(probabilities,groups):
@@ -119,11 +142,14 @@ def execute(root,output,phase='policy',cohort='t24',mode='relative'):
     def fingerprints():
         result=inputs(root,cohort,parent_directory=parent);result[SPEC]=_sha(root/SPEC)
         result[RECALL_SPEC]=_sha(root/RECALL_SPEC)
+        if contract.get('deployment_reference'):
+            _,reference=deployment_reference(root);result.update(reference['source_sha256']);result[DEPLOY_SPEC]=_sha(root/DEPLOY_SPEC)
         return result
     try:
         if subprocess.check_output(['git','status','--porcelain'],cwd=root,text=True).strip():
             raise RuntimeError('commit code and evidence before relative selection')
         if cohort=='five': verify_parent(root/parent,mode)
+        deployment,reference=deployment_reference(root) if contract.get('deployment_reference') else (None,None)
         if phase=='policy':
             hashes=fingerprints();protected=protected_sources(root)
             _write(output/'plan.json',dict(id=contract['id'],mode=mode,cohort=cohort,source_sha256=hashes,protected=protected,
@@ -131,6 +157,10 @@ def execute(root,output,phase='policy',cohort='t24',mode='relative'):
                 model_fits=0,component_score_recomputations=0,beta=contract['beta'],use_relative=contract['use_relative'],
                 quantile=.9 if contract['use_relative'] else None,alpha=.5 if contract['use_relative'] else None,
                 admission_score='original',event_score=mode,eligibility='inherited frozen baseline evidence'))
+            if deployment is not None:
+                plan=_read(output/'plan.json');plan.update(deployment_policy=deployment,deployment_reference=reference,
+                    reference_policy_scope='prior full-cohort aggregate; not outer-isolated',actual_exe_cv=False)
+                _write(output/'plan.json',plan)
         else:
             plan=_read(output/'plan.json');hashes=plan['source_sha256'];protected=plan['protected']
             if plan['id']!=contract['id'] or plan.get('mode','relative')!=mode or plan['cohort']!=cohort or _read(output/'state.json')['state']!='POLICY_FROZEN':
@@ -146,6 +176,12 @@ def execute(root,output,phase='policy',cohort='t24',mode='relative'):
         guard();truths,mapping,_,wrappers=load_context(root,cohort,parent_directory=parent,
             parent_gate=lambda rows,kind:gate(rows,kind,mode))
         source=root/(T24_SOURCE if cohort=='t24' else FIVE_SOURCE)
+        if deployment is not None:
+            choices={p.name:_read(p)['A_meta']['micro_threshold'] for p in source.glob('*training.json')}
+            if any(v!=reference['micro_threshold'] for name,v in choices.items() if '_outer_' in name):
+                raise ValueError('outer micro policy differs from source deployment')
+            if phase=='policy': _write(output/'source_micro_thresholds.json',choices)
+            elif choices!=_read(output/'source_micro_thresholds.json'): raise ValueError('micro provenance changed')
         if cohort=='t24':
             manifest=_read(root/MANIFEST)
             parts={w['id']:[(s['train'],s['score']) for s in w['policy_splits']] for w in manifest['wrappers']}
@@ -156,6 +192,7 @@ def execute(root,output,phase='policy',cohort='t24',mode='relative'):
         for w in wrappers:
             fold=w['id'];train=set(w['train']);score=set(w['score'])
             frozen=_read(source/f'fold{fold}_policies.json')['policies']['A']
+            admission=deployment['admission'] if deployment is not None else frozen['admission']
             if phase=='policy':
                 candidates=[];raw=[];groups=[];seen=[];graph={}
                 for i,(fit,valid) in enumerate(parts[fold]):
@@ -168,15 +205,17 @@ def execute(root,output,phase='policy',cohort='t24',mode='relative'):
                 validate_policy_population(seen,groups,train)
                 graph['policy']=dict(fit_subjects=sorted(train),parents=[f'p{i}_decision_score' for i in range(3)])
                 check_graph(graph,'policy',score|forbidden,train)
-                policy=choose_threshold(candidates,np.asarray(raw),groups,frozen['admission'],mapping,partition_truths(truths,train),
+                policy=choose_threshold(candidates,np.asarray(raw),groups,admission,mapping,partition_truths(truths,train),
                     beta=contract['beta'],use_relative=contract['use_relative'])
                 _write(output/f'fold{fold}_policy.json',dict(policy=policy,graph=graph));completed+=1
                 print(f'relative policy {fold} frozen',flush=True);continue
             selected=_read(output/f'fold{fold}_policy.json');check_graph(selected['graph'],'policy',score|forbidden,train)
-            if selected['policy']['admission']!=frozen['admission']: raise ValueError('relative admission changed')
+            if selected['policy']['admission']!=admission: raise ValueError('relative admission changed')
             role='health' if cohort=='t24' else 'outer'
             cs,ps,gs,graph=load_scores(source/f'fold{fold}_{role}_A_scores.json',mapping,train,score,forbidden)
             events={'A':w['health_events'],'G':decode_relative(cs,ps,gs,selected['policy'],use_relative=contract['use_relative'])};targets=partition_truths(truths,score)
+            if deployment is not None:
+                events['source_A']=events['A'];events['A']=decode_relative(cs,ps,gs,deployment,use_relative=False)
             row=dict(fold=fold,events={a:complete_metrics(es,mapping,targets) for a,es in events.items()},truths=targets,
                 predictions={a:[asdict(e) for e in es] for a,es in events.items()},policy=selected['policy'],
                 score_graph=graph,policy_graph=selected['graph'],
@@ -189,8 +228,9 @@ def execute(root,output,phase='policy',cohort='t24',mode='relative'):
             _write(output/'policy_seal.json',dict(sha256={p.name:_sha(p) for p in output.glob('*.json') if p.name not in ('state.json','policy_seal.json')}))
             result=dict(state='POLICY_FROZEN',completed_folds=completed)
         else:
-            result=dict(state='COMPLETE',evidence_kind=('FROZEN_MODEL_RELATIVE_DECISION_DEVELOPMENT_ONLY' if contract['use_relative']
-                else 'FROZEN_MODEL_RECALL_POLICY_TRIAL_ONLY'),cohort=cohort,
+            kind=('FROZEN_MODEL_DEPLOYMENT_POLICY_DEVELOPMENT_TRIAL_ONLY' if deployment is not None else
+                'FROZEN_MODEL_RELATIVE_DECISION_DEVELOPMENT_ONLY' if contract['use_relative'] else 'FROZEN_MODEL_RECALL_POLICY_TRIAL_ONLY')
+            result=dict(state='COMPLETE',evidence_kind=kind,actual_exe_cv=False,cohort=cohort,
                 **gate(records,cohort,mode),mode=mode,model_fits=0,component_score_recomputations=0,protected_unchanged=True,
                 elapsed_seconds=time.perf_counter()-started)
             _write(output/'summary.json',result)
@@ -203,5 +243,5 @@ def execute(root,output,phase='policy',cohort='t24',mode='relative'):
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--phase',choices=('policy','score'),default='policy');parser.add_argument('--cohort',choices=('t24','five'),default='t24')
-    parser.add_argument('--mode',choices=('relative','recall125','recall150'),default='relative')
+    parser.add_argument('--mode',choices=('relative','recall125','recall150','deploy_f1','deploy_f15'),default='relative')
     args=parser.parse_args();print(execute(Path(__file__).resolve().parents[3],args.output,args.phase,args.cohort,args.mode),flush=True)
