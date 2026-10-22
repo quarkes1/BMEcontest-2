@@ -29,3 +29,7 @@ TDD：按session有效正/负质量等于canonical sample，零正/零负/ignore
 Pre-flight：权重数组与data.window_train原序严格对齐，subject切片后再按labels>=0切片；每个OOF fit只收到其train行权重。per-sid规则不跨subject拟合统计，因此当前被评分subject的标签不影响其他fit subject的权重。
 
 实施：纯权重与macro传递三项先RED→GREEN；真实Pipeline-fit spy验证subject/OOF切片的逐行权重等于原行身份且micro kwargs为空。真实常量HGB验证100行原正类比例.02，在权重下回到canonical质量2/(2+6)=.25；这是现有HGB sample_weight能力的额外验证，不冒称新功能RED。新的full_weight工厂/父级namespace/gate测试RED→GREEN。一次Luna medium审查无Critical/Important或Minor。代码冻结后运行事件实验与最新全套，在全套结束前不再扩展研究代码，以避免旧一次回归的混合快照问题。
+
+结果：7e7ba06封存后完整160餐A89/62/71、F1=.572347267；W81/48/79、F1=.560553633（−.011793634、TP−8/FP−14、1/3提高），失败。120窗口/24meta fit、1058.17秒，源/资格/66保护不变，无五折/模型/EXE。只读匹配迁移诊断：失去13个原匹配GT（7旧eligible、6旧遗漏），新增5个（3旧eligible、2旧遗漏）；不是官方63FN归因。
+
+全套：冻结376c369的代码全程不变，1108 passed/7 skipped/39 warnings，1326.80秒；7 skip为5符号链接权限、2原官方样例缺失。专项66项通过。没有新增特征缓存或失败权重；关闭本权重合同，不在health调整ratio。
