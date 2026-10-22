@@ -40,3 +40,16 @@ Ruling：独立试测代替正式升级——满足用户限时送检且保留�
 - Final: Ruling：review未判断真实EXE/官方效果及完整回归——分别执行后续验收，最终官方未知；代价是开发诊断不能保证正式竞赛收益。当前不宣称已完成。
 
 - 修复后专项30项通过（16.44秒），包含两档真实五折证据复算和临时目录中的真实模型复制字节核查。d527b1c冻结源码后启动最新全套；全套完成前不修改源码或测试，不以此前1108项替代本次验证。
+
+## 实际构建与独立验收
+
+两档导出COMPLETE，4个模型及feature_schema SHA与首版完全一致；主档构建73.79秒，高召回档56.28秒。主档验收64.66秒，高召回64.28秒，均PASS：中文路径、仅EXE、移除开发PATH、其他cwd、自检、缺失/空/错误输入及真实双文件+空文件CSV byte parity，真实结果均1个事件；66保护文件不变。只证明接口/实现一致，不证明官方召回收益。
+
+| 目录 dist/official_trials/ 下 | 字节数 | EXE SHA-256 |
+|---|---:|---|
+| deployment_f1_policy_v3 | 62893974 | fa6987b6244fe73c76ee741ea352fcc74e8e4de06de332812e99b1f1d963aa44 |
+| deployment_f15_policy_v3 | 62894337 | 7f0d29ce914b1be4472b7cd12f7a6b2fac9d389605934ada2269a1f365fd03db |
+
+高召回第一次export在主档构建刚落盘、产物尚未commit时被clean-tree检查拒绝，没有复制模型或评分。将仅含state.json的目录原样移动保存到deployment_f15_policy_v3_export_preflight1后提交，重新从干净树导出成功；未改源码/参数/研究证据。该失败记录保留，不隐去。
+
+新build/accept自建scratch均自动清理，源码与测试继续冻结；全套尚待结束，暂不写“整套通过”。正式release、submission、前端及首试测EXE均未替换，无自动邮件或push。
