@@ -1,0 +1,5 @@
+{
+  "state": "INCOMPLETE",
+  "error": "TypeError(\"unsupported operand type(s) for /: 'WindowsPath' and 'dict'\")",
+  "completed_folds": 5
+}

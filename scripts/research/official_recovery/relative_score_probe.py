@@ -31,8 +31,8 @@ def mode_contract(mode):
         'relative':dict(id='RELATIVE-SCORE-V1',t24=T24_OUTPUT,beta=1.,use_relative=True),
         'recall125':dict(id='RECALL125-POLICY-V2',t24='outputs/official_recovery/recall125_policy_v2_t24',beta=1.25,use_relative=False),
         'recall150':dict(id='RECALL150-POLICY-V2',t24='outputs/official_recovery/recall150_policy_v2_t24',beta=1.5,use_relative=False),
-        'deploy_f1':dict(id='DEPLOY-F1-POLICY-V3',t24='outputs/official_recovery/deployment_f1_policy_v3_t24',beta=1.,use_relative=False,deployment_reference=True),
-        'deploy_f15':dict(id='DEPLOY-F15-POLICY-V3',t24='outputs/official_recovery/deployment_f15_policy_v3_t24',beta=1.5,use_relative=False,deployment_reference=True)}
+        'deploy_f1':dict(id='DEPLOY-F1-POLICY-V3',t24='outputs/official_recovery/deployment_f1_policy_v3_t24_attempt2',beta=1.,use_relative=False,deployment_reference=True),
+        'deploy_f15':dict(id='DEPLOY-F15-POLICY-V3',t24='outputs/official_recovery/deployment_f15_policy_v3_t24_attempt2',beta=1.5,use_relative=False,deployment_reference=True)}
     if mode not in options: raise ValueError('unregistered decision mode')
     return options[mode]
 
@@ -135,12 +135,12 @@ def load_scores(path,mapping,train,score,excluded):
 
 
 def execute(root,output,phase='policy',cohort='t24',mode='relative'):
-    contract=mode_contract(mode);parent=contract['t24']
+    contract=mode_contract(mode);parent_directory=contract['t24']
     root,output=Path(root).resolve(),Path(output).resolve();started=time.perf_counter();completed=0
     if phase=='policy': output.mkdir(parents=True,exist_ok=False)
     elif phase!='score': raise ValueError('unknown phase')
     def fingerprints():
-        result=inputs(root,cohort,parent_directory=parent);result[SPEC]=_sha(root/SPEC)
+        result=inputs(root,cohort,parent_directory=parent_directory);result[SPEC]=_sha(root/SPEC)
         result[RECALL_SPEC]=_sha(root/RECALL_SPEC)
         if contract.get('deployment_reference'):
             _,reference=deployment_reference(root);result.update(reference['source_sha256']);result[DEPLOY_SPEC]=_sha(root/DEPLOY_SPEC)
@@ -148,7 +148,7 @@ def execute(root,output,phase='policy',cohort='t24',mode='relative'):
     try:
         if subprocess.check_output(['git','status','--porcelain'],cwd=root,text=True).strip():
             raise RuntimeError('commit code and evidence before relative selection')
-        if cohort=='five': verify_parent(root/parent,mode)
+        if cohort=='five': verify_parent(root/parent_directory,mode)
         deployment,reference=deployment_reference(root) if contract.get('deployment_reference') else (None,None)
         if phase=='policy':
             hashes=fingerprints();protected=protected_sources(root)
@@ -173,7 +173,7 @@ def execute(root,output,phase='policy',cohort='t24',mode='relative'):
             if peak is None or peak>12*1024**3: raise RuntimeError('relative RSS budget')
             if time.perf_counter()-started>600 or shutil.disk_usage(root).free<10*1024**3: raise RuntimeError('relative wall/disk budget')
             if sum(p.stat().st_size for p in output.rglob('*') if p.is_file())>16*1024**2: raise RuntimeError('relative evidence budget')
-        guard();truths,mapping,_,wrappers=load_context(root,cohort,parent_directory=parent,
+        guard();truths,mapping,_,wrappers=load_context(root,cohort,parent_directory=parent_directory,
             parent_gate=lambda rows,kind:gate(rows,kind,mode))
         source=root/(T24_SOURCE if cohort=='t24' else FIVE_SOURCE)
         if deployment is not None:

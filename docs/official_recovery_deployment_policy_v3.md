@@ -35,3 +35,9 @@ Ruling：对准实际已送EXE的政策参考，而不是继续以已经更换�
 - 模式/首bundle加载器缺失RED→GREEN；实际首bundle临时副本SHA校验、两部署模式完整seal→score、D与source_A分离、模式父级复算、输入/保护/封存漂移拒绝已覆盖。45相关项通过（5.24s）。一处测试误数8文件+summary为10，纠正为9；未放宽实际SHA集合校验。
 - Luna medium单次只读review指出Important：R3 summary沿用R2 evidence_kind，易误读。新增断言先失败，修正为FROZEN_MODEL_DEPLOYMENT_POLICY_DEVELOPMENT_TRIAL_ONLY，actual_exe_cv=False并明确旧参考policy来自先前全队聚合、非outer-isolated；随后45项通过。无Minor，不重复review。
 - Final: Ruling：review未判断实际EXE效果/验收及最新全套状态——这些后续步骤分别验证，代价是研究代码审查不能证明程序提高。当前无新EXE/当前全套通过声明。
+
+### 评分前修复与attempt2
+
+原T24两档已完成：D71/27/89、F1=.550388；C86/44/74、.593103（+.042716，3/3组提高）；R86/48/74、.585034（+.034646，2/3组提高）。原五折F1 policy阶段完成5组后，在末尾来源核查报TypeError：parent目录变量被producer图同名覆盖，尚未运行outer score、未seal成功。保留deployment_f1_policy_v3_five/为INCOMPLETE，不覆盖。
+
+Ruling：区分parent_directory与producer parent graph，测试边界Path(parent_directory)先复现8个失败后修复，算法/模型/采样/目标/阈值选择不改。由于源SHA变化，两个T24均从新快照原规则重跑到*_t24_attempt2，五折用*_five_attempt2；不放宽原父级SHA检查、不改写旧结果。代价是约一分钟额外零训练重放，换取一致代码证据。预期T24旧/新事件须逐位一致，差异即停而非重新选参数。

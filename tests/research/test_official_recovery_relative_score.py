@@ -148,7 +148,12 @@ def sealed_probe_fixture(tmp_path,monkeypatch):
     path=root/probe.MANIFEST;path.parent.mkdir(parents=True,exist_ok=True);_write(path,manifest)
     external=root/'input.txt';external.write_text('frozen')
     protected=root/'protected.bin';protected.write_bytes(b'original')
-    monkeypatch.setattr(probe,'inputs',lambda *a,**k:{'input.txt':probe._sha(external)})
+    def fingerprint_inputs(*args,**kwargs):
+        from pathlib import Path
+        # In fivefold, the real function joins this parameter to root.
+        Path(kwargs['parent_directory'])
+        return {'input.txt':probe._sha(external)}
+    monkeypatch.setattr(probe,'inputs',fingerprint_inputs)
     monkeypatch.setattr(probe,'protected_sources',lambda r:{'protected.bin':probe._sha(protected)})
     monkeypatch.setattr(probe,'load_context',lambda *a,**k:(truths,mapping,{},wrappers))
     monkeypatch.setattr(probe.subprocess,'check_output',lambda args,**kwargs:'' if args[1]=='status' else 'revision')

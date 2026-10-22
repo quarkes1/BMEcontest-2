@@ -1,0 +1,22 @@
+{
+  "fold0_outer_training.json": 0.1,
+  "fold0_policy0_training.json": 0.1,
+  "fold0_policy1_training.json": 0.1,
+  "fold0_policy2_training.json": 0.1,
+  "fold1_outer_training.json": 0.1,
+  "fold1_policy0_training.json": 0.1,
+  "fold1_policy1_training.json": 0.1,
+  "fold1_policy2_training.json": 0.1,
+  "fold2_outer_training.json": 0.1,
+  "fold2_policy0_training.json": 0.5,
+  "fold2_policy1_training.json": 0.1,
+  "fold2_policy2_training.json": 0.1,
+  "fold3_outer_training.json": 0.1,
+  "fold3_policy0_training.json": 0.1,
+  "fold3_policy1_training.json": 0.1,
+  "fold3_policy2_training.json": 0.1,
+  "fold4_outer_training.json": 0.1,
+  "fold4_policy0_training.json": 0.1,
+  "fold4_policy1_training.json": 0.1,
+  "fold4_policy2_training.json": 0.1
+}
