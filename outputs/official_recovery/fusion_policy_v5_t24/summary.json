@@ -1,0 +1,37 @@
+{
+  "state": "COMPLETE",
+  "cohort": "t24",
+  "passed": false,
+  "aggregate": {
+    "A": {
+      "tp": 86,
+      "fp": 44,
+      "fn": 74,
+      "predictions": 130,
+      "truths": 160,
+      "f1": 0.593103448275862,
+      "ppv": 0.6615384615384615,
+      "recall": 0.5375
+    },
+    "G": {
+      "tp": 77,
+      "fp": 32,
+      "fn": 83,
+      "predictions": 109,
+      "truths": 160,
+      "f1": 0.5724907063197026,
+      "ppv": 0.7064220183486238,
+      "recall": 0.48125
+    }
+  },
+  "delta_f1": -0.020612741956159475,
+  "delta_tp": -9,
+  "delta_fp": -12,
+  "nonworse_folds": 1,
+  "evidence_kind": "REPEATED_FROZEN_MODEL_FUSION_POLICY_DEVELOPMENT_ONLY",
+  "actual_exe_cv": false,
+  "model_fits": 0,
+  "protected_unchanged": true,
+  "user_edits_unchanged": true,
+  "elapsed_seconds": 5.485692299989751
+}
