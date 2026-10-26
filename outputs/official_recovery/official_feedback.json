@@ -1,0 +1,18 @@
+{
+  "source": "user_transcribed_official_feedback",
+  "latest_reported_date": "2026-10-26",
+  "official_best_version": "official_deployment_f1_policy_v3",
+  "tp": 56,
+  "fp": 42,
+  "fn": 56,
+  "truths": 112,
+  "predictions": 98,
+  "f1": 0.5333333333333333,
+  "recall": 0.5,
+  "ppv": 0.5714285714285714,
+  "expected_local_exe_sha256": "fa6987b6244fe73c76ee741ea352fcc74e8e4de06de332812e99b1f1d963aa44",
+  "official_received_sha_independently_verified": false,
+  "formal_release_changed": false,
+  "previous": {"tp":49,"fp":27,"fn":63,"f1":0.5212765957446809},
+  "final_submission_user_target": "2026-10-28 or at latest 2026-10-29"
+}
