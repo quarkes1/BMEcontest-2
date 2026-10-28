@@ -3,7 +3,7 @@ import { duration, fmtTime } from '../data/format';
 
 type Props = { prediction: Prediction; demo: boolean; onOpen: (event: Event) => void };
 
-/** All detected events across the loaded dataset; a record opens its session on Monitor. */
+/** 展示载入数据中的全部检出事件；点击记录可在监测页打开对应会话。 */
 export default function EventsPage({ prediction, demo, onOpen }: Props) {
   return (
     <section className="panel events-page">

@@ -1,4 +1,4 @@
-"""Deterministic subject-disjoint cross-fitting primitives."""
+"""确定性的受试者互斥交叉拟合操作。"""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from sklearn.model_selection import GroupKFold
 
 @dataclass(frozen=True)
 class GroupFold:
-    """Row and subject membership for one group-disjoint fold."""
+    """一个组间互斥折的行索引和受试者成员信息。"""
 
     index: int
     train_rows: np.ndarray
@@ -23,7 +23,7 @@ class GroupFold:
 
 @dataclass(frozen=True)
 class OOFProbabilities:
-    """Cross-fitted probabilities and their audit trail."""
+    """交叉拟合概率及其可追溯记录。"""
 
     probabilities: np.ndarray
     score_counts: np.ndarray
@@ -38,7 +38,7 @@ def _one_dimensional_groups(groups: np.ndarray, name: str) -> np.ndarray:
 
 
 def make_group_folds(groups: np.ndarray, n_splits: int) -> tuple[GroupFold, ...]:
-    """Create deterministic folds in which a subject occurs on one side only."""
+    """创建确定性划分，确保同一受试者只出现在一侧。"""
 
     group_values = _one_dimensional_groups(groups, "groups")
     unique_groups = np.unique(group_values)
@@ -90,7 +90,7 @@ def validate_fit_sample_weight(
     fit_sample_weight: np.ndarray,
     row_count: int,
 ) -> np.ndarray:
-    """Validate the frozen E03 verifier-weight contract before any fit starts."""
+    """开始拟合前校验冻结的 E03 复核权重约定。"""
 
     sample_weight = np.asarray(fit_sample_weight)
     if sample_weight.dtype != np.float64:
@@ -113,7 +113,7 @@ def crossfit_predict_proba(
     *,
     fit_sample_weight: np.ndarray | None = None,
 ) -> OOFProbabilities:
-    """Score each requested row with a model that excluded its subject."""
+    """每行由未使用该受试者数据训练的模型打分。"""
 
     train_x = np.asarray(train_features)
     labels = np.asarray(train_labels)

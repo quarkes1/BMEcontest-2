@@ -1,13 +1,8 @@
-"""Documented entry point: strict subject-disjoint nested-CV evaluation of the event stack.
+"""事件模型的受试者隔离嵌套交叉验证入口。
 
-Thin wrapper — the evaluation implementation lives in
-``scripts/crossfit_event_stack.py``; this module only exists to give the
-competition repository one obvious evaluation entry point.
-
-Usage:
-  python scripts/evaluate_event_stack.py --fold 0     # one outer fold
-  (pass --help for the full option set)
-"""
+具体评估逻辑位于 scripts/crossfit_event_stack.py。
+示例：python scripts/evaluate_event_stack.py --fold 0
+完整参数见 --help。"""
 
 from __future__ import annotations
 

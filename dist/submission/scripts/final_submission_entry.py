@@ -1,4 +1,4 @@
-"""Run the selected competition model with the official input/output contract."""
+"""按官方输入输出接口运行所选竞赛模型。"""
 from __future__ import annotations
 
 import argparse

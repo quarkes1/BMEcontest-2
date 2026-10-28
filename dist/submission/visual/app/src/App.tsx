@@ -15,11 +15,7 @@ const DEMO_SESSION = demoPrediction.timeline!.session_ids[0];
 const demoDataset: Dataset = { prediction: demoPrediction, motions: { [demoMotion.manifest.session_id]: demoMotion }, label: 'Demo data', demo: true };
 const demoSelection: Range = { start_ms: demoPrediction.events[0].start_ms + 60_000, end_ms: demoPrediction.events[0].start_ms + 72_400 };
 
-/**
- * Application shell: page routing, the loaded dataset (one prediction plus per-session
- * motion telemetry), the selected session/interval, and the single playback clock that
- * drives Timeline, Raw IMU, Orientation, and Motion Replay.
- */
+/** 应用主框架：管理页面路由、预测与会话运动数据、所选会话和区间，以及各视图共用的回放时钟。 */
 export default function App() {
   const [page, setPage] = useState<Page>('Monitor');
   const [dataset, setDataset] = useState<Dataset>(demoDataset);

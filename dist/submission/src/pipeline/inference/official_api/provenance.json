@@ -1,7 +1,7 @@
 {
-  "source": "User-provided official competition topic-2 interface package",
+  "source": "竞赛组委会发布的赛题二输入输出接口文件",
   "received": "2026-10-15",
-  "modifications": "None; Git may normalize input.py CRLF to LF. Normalized hashes remain identical.",
+  "modifications": "输入输出代码未修改；Git 可将 input.py 的 CRLF 换行为 LF，统一换行后的哈希保持一致。",
   "api_sha256_lf": {
     "input.py": "05aa45a6906fcba09a4b46c39c099de85cd85f31ceb4bfa9d897d3cdac378e3b",
     "output.py": "801cd33962cdb8af97f0f0d3621e7f116a7b62e5c23c27de5dcfa40b637795b0"

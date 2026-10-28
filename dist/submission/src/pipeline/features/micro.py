@@ -1,4 +1,4 @@
-"""Canonical gap-safe 47-D micro IMU window producer."""
+"""不跨采集缺口的统一 47 维微窗惯性特征提取器。"""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ class MicroWindowBatch:
 
 
 def extract_micro_windows(session, *, session_id: str, config: MicroFeatureConfig) -> MicroWindowBatch:
-    """Create the frozen gravity-aligned micro features without crossing gaps."""
+    """按冻结定义提取重力对齐后的微窗特征，不跨采集缺口。"""
     rows: list[np.ndarray] = []
     windows: list[EventRef] = []
     for span in valid_imu_spans(session):

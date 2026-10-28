@@ -14,11 +14,11 @@ function capsule(x:number,y:number,z:number,a:V,b:V,ra:number,rb:number) {
   const h=THREE.MathUtils.clamp(((x-a[0])*dx+(y-a[1])*dy+(z-a[2])*dz)/(dx*dx+dy*dy+dz*dz),0,1);
   return Math.hypot(x-a[0]-dx*h,y-a[1]-dy*h,z-a[2]-dz*h)-(ra+(rb-ra)*h);
 }
-/** One continuous implicit surface: palm pads, thumb web, and tapered relaxed digits. */
+/** 使用连续隐式曲面构造掌垫、虎口及自然放松的渐细手指。 */
 function handGeometry() {
   const n=88, mc=new MarchingCubes(n,new THREE.MeshBasicMaterial(),false,false,70000);
   const bones:{a:V;b:V;ra:number;rb:number}[]=[];
-  // Little, ring, middle, index. Distal joints relax toward the palm.
+  // 依次为小指、无名指、中指、食指；远端关节自然朝掌心弯曲。
   for(const [z,length,radius,spread] of [[-.365,.72,.105,-.09],[-.13,1.01,.12,-.025],[.13,1.13,.125,.015],[.375,.98,.12,.065]]) {
     const root:V=[1.08,.015,z],knuckle:V=[1.39,.01,z+spread*.25],joint:V=[1.39+length*.52,-.075,z+spread*.7],tip:V=[1.39+length,-.21,z+spread];
     bones.push({a:root,b:knuckle,ra:radius*1.25,rb:radius},{a:knuckle,b:joint,ra:radius,rb:radius*.88},{a:joint,b:tip,ra:radius*.88,rb:radius*.68});

@@ -1,4 +1,4 @@
-"""Pure event-level primitives shared by training and evaluation commands."""
+"""训练和评估命令共用的无副作用事件级操作。"""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from src.eval.metrics import event_iou
 
 @dataclass(frozen=True)
 class EventRef:
-    """One event on one sensor session's millisecond time axis."""
+    """传感器会话毫秒时间轴上的一个事件。"""
 
     sid: str
     start_ms: int
@@ -28,7 +28,7 @@ class EventRef:
 
 @dataclass(frozen=True)
 class EventMetrics:
-    """Global event counts and official sensitivity/PPV/F1 ratios."""
+    """全局事件计数及灵敏度、阳性预测率和 F1。"""
 
     n_tp: int
     n_pred: int
@@ -40,7 +40,7 @@ class EventMetrics:
 
 @dataclass(frozen=True)
 class ThresholdSelection:
-    """The deterministic threshold choice and its event-level metrics."""
+    """确定性的阈值选择及对应事件指标。"""
 
     threshold: float
     metrics: EventMetrics
@@ -48,7 +48,7 @@ class ThresholdSelection:
 
 @dataclass(frozen=True)
 class EventSelectionPolicy:
-    """A score threshold with an optional per-group event budget."""
+    """分数阈值，以及可选的分组事件数量上限。"""
 
     threshold: float
     max_events_per_group: int | None
@@ -57,7 +57,7 @@ class EventSelectionPolicy:
 
 @dataclass(frozen=True)
 class MicroCandidateSelection:
-    """A registered micro threshold and its inner-fold candidate metrics."""
+    """一个已登记微窗阈值及其内层折候选指标。"""
 
     threshold: float
     metrics: EventMetrics
@@ -69,7 +69,7 @@ def compute_event_metrics(
     truths: Sequence[EventRef],
     iou_threshold: float = 0.25,
 ) -> EventMetrics:
-    """Compute greedy one-to-one metrics, matching only within a session."""
+    """仅在同会话内执行贪心一对一事件匹配并计算指标。"""
 
     pairs: list[tuple[float, int, int]] = []
     for pred_idx, prediction in enumerate(predictions):
@@ -108,7 +108,7 @@ def select_event_threshold(
     truths: Sequence[EventRef],
     iou_threshold: float = 0.25,
 ) -> ThresholdSelection:
-    """Select one threshold by event F1, then PPV, then strictness."""
+    """依次按事件 F1、阳性预测率及阈值严格程度选择阈值。"""
 
     scores = np.asarray(scores, dtype=np.float64)
     if scores.ndim != 1 or len(scores) != len(candidates):
@@ -166,7 +166,7 @@ def apply_event_policy(
     threshold: float,
     max_events_per_group: int | None = None,
 ) -> list[EventRef]:
-    """Apply a threshold and keep only each group's highest-scored K events."""
+    """应用阈值，并仅保留各组得分最高的 K 个事件。"""
 
     score_values, group_values = _policy_inputs(candidates, scores, groups)
     if max_events_per_group is not None and (
@@ -200,7 +200,7 @@ def select_event_policy(
     max_events_options: Sequence[int | None],
     iou_threshold: float = 0.25,
 ) -> EventSelectionPolicy:
-    """Select a threshold and registered group budget using only supplied truths."""
+    """仅根据传入真实事件选择阈值和已登记的分组数量上限。"""
 
     score_values, group_values = _policy_inputs(candidates, scores, groups)
     options = tuple(max_events_options)
@@ -240,7 +240,7 @@ def select_event_policy(
 
 @dataclass(frozen=True)
 class DensityConfig:
-    """All parameters that define candidate-generation semantics."""
+    """定义候选生成行为的全部参数。"""
 
     stride_ms: int = 15_000
     window_ms: int = 240_000
@@ -256,7 +256,7 @@ class DensityConfig:
 
 @dataclass(frozen=True)
 class MicroCandidateConfig:
-    """Parameters for gap-safe, high-resolution candidate construction."""
+    """避免跨采集缺口的高分辨率候选生成参数。"""
 
     stride_ms: int = 7_500
     window_ms: int = 15_000
@@ -269,7 +269,7 @@ class MicroCandidateConfig:
 
 @dataclass(frozen=True)
 class CandidateEvent:
-    """One density candidate and the data-quality context that produced it."""
+    """一个密度候选及生成它的数据质量信息。"""
 
     event: EventRef
     probabilities: tuple[float, ...]
@@ -282,7 +282,7 @@ class CandidateEvent:
 
 @dataclass(frozen=True)
 class MultiScaleCandidate:
-    """A candidate supported by macro, micro, or both score streams."""
+    """由宏窗、微窗或两种概率序列共同支持的候选。"""
 
     event: EventRef
     macro: CandidateEvent | None
@@ -290,7 +290,7 @@ class MultiScaleCandidate:
 
 
 def _candidate_canonical_key(item: CandidateEvent) -> tuple[object, ...]:
-    """Order every candidate field to make geometry ties deterministic."""
+    """按全部候选字段排序，使边界相同时的处理确定。"""
 
     return (
         item.event.sid,
@@ -310,7 +310,7 @@ def union_candidates(
     micro: Sequence[CandidateEvent],
     merge_iou: float = 0.25,
 ) -> list[MultiScaleCandidate]:
-    """Pair each micro candidate with at most one overlapping macro candidate."""
+    """每个微窗候选最多配对一个重叠的宏窗候选。"""
 
     macro_sorted = sorted(macro, key=_candidate_canonical_key)
     micro_sorted = sorted(
@@ -420,7 +420,7 @@ def density_candidates(
     windows_by_sid: Mapping[str, Sequence[tuple[int, int, float]]],
     config: DensityConfig | None = None,
 ) -> list[CandidateEvent]:
-    """Convert window probabilities into density candidates without file I/O."""
+    """将窗口概率转换为密度候选，不执行文件读写。"""
 
     config = config or DensityConfig()
     candidates: list[CandidateEvent] = []
@@ -629,7 +629,7 @@ def _micro_candidate(
     centers: np.ndarray,
     config: MicroCandidateConfig,
 ) -> CandidateEvent:
-    """Construct one micro candidate from an inclusive support-index range."""
+    """根据包含两端的支持窗口索引范围构建一个微窗候选。"""
 
     event_start = int(starts[first])
     event_end = int(ends[last])
@@ -655,7 +655,7 @@ def micro_candidates(
     threshold: float,
     config: MicroCandidateConfig | None = None,
 ) -> list[CandidateEvent]:
-    """Build smoothed micro candidates without crossing acquisition gaps."""
+    """构建平滑后的微窗候选，不跨越采集缺口。"""
 
     config = config or MicroCandidateConfig()
     _validate_micro_config(config)
@@ -775,7 +775,7 @@ def select_micro_candidate_threshold(
     thresholds: Sequence[float],
     config: MicroCandidateConfig | None = None,
 ) -> MicroCandidateSelection:
-    """Select a registered micro threshold using only supplied inner truths."""
+    """仅使用传入内层真实事件选择已登记的微窗阈值。"""
 
     try:
         options = tuple(float(value) for value in thresholds)
@@ -828,7 +828,7 @@ def verifier_features(
     include_coverage: bool = False,
     tcn_scores_by_sid: Mapping[str, Sequence[tuple[int, float]]] | None = None,
 ) -> np.ndarray:
-    """Build the existing verifier feature surface plus optional gap features."""
+    """构建既有复核特征，并可选附加缺口特征。"""
 
     rows: list[list[float]] = []
     for candidate in candidates:
@@ -940,7 +940,7 @@ def _scores_for_event(
     event: EventRef,
     windows_by_sid: Mapping[str, Sequence[tuple[int, int, float]]],
 ) -> np.ndarray:
-    """Return scores whose window centers fall inside an event."""
+    """返回窗口中心位于事件内部的分数。"""
 
     return np.asarray(
         [
@@ -957,7 +957,7 @@ def _context_scores(
     windows_by_sid: Mapping[str, Sequence[tuple[int, int, float]]],
     context_ms: int,
 ) -> np.ndarray:
-    """Return same-session scores from the context surrounding an event."""
+    """返回事件周围同一会话的上下文分数。"""
 
     return np.asarray(
         [
@@ -975,7 +975,7 @@ def _legacy_multiscale_verifier_features(
     macro_windows_by_sid: Mapping[str, Sequence[tuple[int, int, float]]],
     micro_windows_by_sid: Mapping[str, Sequence[tuple[int, int, float]]],
 ) -> np.ndarray:
-    """Build the fixed 56-feature verifier surface for fused candidates."""
+    """为融合候选构建固定 56 维复核特征。"""
 
     rows = []
     for candidate in candidates:
@@ -1044,7 +1044,7 @@ def multiscale_verifier_features(
     context_features_version: str | None = None,
     session_bounds_by_sid: Mapping[str, tuple[int, int]] | None = None,
 ) -> np.ndarray:
-    """Build legacy verifier features, optionally appending a versioned context."""
+    """构建历史复核特征，并可选附加带版本标识的上下文特征。"""
 
     legacy = _legacy_multiscale_verifier_features(
         candidates, macro_windows_by_sid, micro_windows_by_sid
@@ -1078,7 +1078,7 @@ def aggregate_candidate_features(
     window_features: np.ndarray,
     context_ms: int = 1_200_000,
 ) -> np.ndarray:
-    """Summarize aligned raw window features inside and around each candidate."""
+    """汇总每个候选内部及周围已对齐的原始窗口特征。"""
 
     features = np.asarray(window_features, dtype=np.float64)
     if features.ndim != 2:

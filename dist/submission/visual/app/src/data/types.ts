@@ -35,7 +35,7 @@ export type MotionManifest = {
 export type Imu = { t: Float64Array; ax: Float32Array; ay: Float32Array; az: Float32Array; gx: Float32Array; gy: Float32Array; gz: Float32Array };
 export type MotionData = { manifest: MotionManifest; imu: Imu };
 
-/** Everything the application displays: one prediction plus per-session motion telemetry. */
+/** 界面展示数据：一份预测结果及各会话的运动数据。 */
 export type Dataset = {
   prediction: Prediction;
   motions: Record<string, MotionData>;

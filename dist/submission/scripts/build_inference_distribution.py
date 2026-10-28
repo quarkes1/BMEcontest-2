@@ -1,13 +1,7 @@
-"""Build the standalone raw-data inference distribution from canonical source.
+"""从统一源码构建可独立运行的原始数据推理包。
 
-The generated ``dist/inference`` tree is deliberately a build product.  Its
-``event_stack`` package is copied from, and mechanically import-rewritten from,
-the canonical implementation; it is never a hand-maintained second algorithm.
-
-The staging/manifest/probe/atomic-replace core is shared with the competition
-submission builder (``scripts/build_submission.py``), which parameterizes the
-entrypoint and vendored import closure instead of forking this machinery.
-"""
+生成的 dist/inference 目录属于构建产物，其中 event_stack 包由统一实现复制并改写导入路径得到。
+暂存、清单校验、探针检查和原子替换机制由推理包与竞赛提交包共用，通过参数指定入口和依赖范围。"""
 
 from __future__ import annotations
 
@@ -57,7 +51,7 @@ def _json_bytes(value: object) -> bytes:
 
 
 def _module_path(root: Path, module: str) -> Path | None:
-    """Return an existing repository-local source file for an absolute module."""
+    """查找绝对模块名对应的仓库内源码文件。"""
     parts = module.split(".")
     if not parts or parts[0] != "src":
         return None
@@ -77,13 +71,10 @@ def _module_name(root: Path, source: Path) -> str:
 
 
 def _top_level_local_imports(root: Path, source: Path) -> set[Path]:
-    """Resolve only import-time local dependencies of a canonical module.
+    """仅解析模块导入时需要的本地依赖。
 
-    Imports nested inside diagnostic-only functions are intentionally excluded:
-    they are not part of raw predictor runtime closure and would drag research
-    loaders/caches into the distribution.  Every module copied here is still
-    discovered by recursively parsing its own import-time imports.
-    """
+不纳入仅在诊断函数内部导入的模块，以免将研究数据加载器和缓存带入推理包。
+每个复制的模块仍会递归解析其顶层导入。"""
     tree = ast.parse(source.read_text(encoding="utf-8"), filename=str(source))
     current = _module_name(root, source).split(".")
     if source.name != "__init__.py":
@@ -117,7 +108,7 @@ def _top_level_local_imports(root: Path, source: Path) -> set[Path]:
 
 def runtime_source_closure(repository_root: Path, *,
                            roots: Sequence[str] = _RUNTIME_ROOT_MODULES) -> tuple[Path, ...]:
-    """Compute the complete import-time canonical source closure for the given roots."""
+    """计算指定入口在导入时需要的完整源码依赖集合。"""
     root = Path(repository_root).resolve()
     pending = [path for module in roots if (path := _module_path(root, module))]
     if len(pending) != len(roots):
@@ -131,8 +122,8 @@ def runtime_source_closure(repository_root: Path, *,
             raise ValueError(f"canonical runtime source may not be a symlink: {source}")
         closure.add(source)
         pending.extend(sorted(_top_level_local_imports(root, source), key=str))
-    # Packages must be explicit files in the generated closure, not accidental
-    # namespace packages supplied by a repository parent.
+    # 生成的依赖集合必须显式包含包初始化文件。
+    # 不能依赖仓库父目录偶然提供的命名空间包。
     for source in tuple(closure):
         relative = source.relative_to(root)
         for parent in relative.parents:
@@ -156,7 +147,7 @@ def _destination_for_source(repository_root: Path, source: Path, runtime_root: P
 
 
 def _rewrite_imports(text: str) -> str:
-    """Mechanically rewrite canonical imports for the vendored package name."""
+    """按内置包名统一改写源码的导入路径。"""
     return (
         text.replace("from src.pipeline.", "from event_stack.")
         .replace("import src.pipeline.", "import event_stack.")
@@ -169,7 +160,7 @@ def _rewrite_imports(text: str) -> str:
 
 def copy_canonical_runtime_source(repository_root: Path, destination: Path, *,
                                   roots: Sequence[str] = _RUNTIME_ROOT_MODULES) -> tuple[str, ...]:
-    """Vendor exactly the parsed canonical closure under ``event_stack``."""
+    """仅将已解析的源码依赖集合复制到 event_stack 包。"""
     root = Path(repository_root).resolve()
     destination.mkdir(parents=True, exist_ok=False)
     copied: list[str] = []
@@ -195,7 +186,7 @@ def _requirements(bundle_path: Path) -> str:
     return "\n".join(lines) + "\n"
 
 
-_PREDICT_ENTRYPOINT = '''"""Standalone raw event-stack inference."""
+_PREDICT_ENTRYPOINT = '''"""独立原始数据事件检测推理入口。"""
 from __future__ import annotations
 import argparse
 import json
@@ -236,12 +227,10 @@ if __name__ == "__main__":
 '''
 
 
-_SERVE_ENTRYPOINT = '''"""Local inference bridge entry: canonical inference API + static visual application.
+_SERVE_ENTRYPOINT = '''"""本地推理服务入口：统一推理接口及静态可视化页面。
 
-Serves the visualization at http://127.0.0.1:PORT/ (default 4173) and the bridge API
-under /api/*. Raw TXT selections from the browser are analyzed by the canonical
-Predictor shipped in this package; numbers, events, and telemetry are never computed
-in the browser.
+默认在本机 4173 端口提供页面，推理接口位于 /api/ 下。
+浏览器上传的原始 TXT 由包内 Predictor 分析；数值、事件和运动数据均不在浏览器中计算。
 """
 from __future__ import annotations
 import argparse
@@ -257,7 +246,7 @@ from event_stack.inference import local_server
 
 
 def _package_root() -> Path:
-    """serve.py sits at the package root (dist/inference) or in app/ (submission)."""
+    """serve.py 位于独立推理包根目录，或历史提交包的 app/ 目录。"""
     for base in (_ROOT, _ROOT.parent):
         if (base / "manifest.json").is_file() or (base / "meta" / "manifest.json").is_file():
             return base
@@ -273,8 +262,8 @@ def _manifest() -> dict:
 
 
 def _default_bundle() -> Path | None:
-    """Bundle layout differs per package: dist/inference has models/ flat at the root;
-    dist/submission nests models/event_stack/<run_key>/deployment."""
+    """不同包使用不同模型布局：独立推理包在根目录下保存 models/；
+    提交包采用 models/event_stack/<run_key>/deployment。"""
     flat = _package_root() / "models"
     if (flat / "manifest.json").is_file():
         return flat
@@ -376,18 +365,16 @@ EXE同级ACC_test_data，输出results.csv三列externalid,beforeTime,afterTime�
 
 
 def _generated_paths(meta_dir: str, entrypoint: str, extra_entries: Sequence[str]) -> set[str]:
-    """Package-relative paths of the generated (and entry) files that must exist.
+    """返回必须存在的生成文件及入口文件的包内相对路径。
 
-    README and requirements.txt always sit at the package root; the manifest and
-    feature schema live under ``meta_dir`` when one is configured.
-    """
+README 和 requirements.txt 位于包根目录；配置了 meta_dir 时，清单和特征模式位于该子目录。"""
     prefix = f"{meta_dir}/" if meta_dir else ""
     return {"requirements.txt", "README.md", f"{prefix}feature_schema.json",
             f"{prefix}manifest.json", entrypoint, *extra_entries}
 
 
 def _distribution_files(root: Path) -> dict[str, str]:
-    """Every shipped file except the manifest itself; local bytecode never counts."""
+    """枚举清单以外的全部交付文件，不计本地字节码缓存。"""
     return {
         path.relative_to(root).as_posix(): _sha256(path)
         for path in sorted(root.rglob("*"), key=lambda item: item.as_posix())
@@ -397,7 +384,7 @@ def _distribution_files(root: Path) -> dict[str, str]:
 
 
 def _resolve_meta_dir(package: Path, meta_dir: str) -> str:
-    """Accept the meta/ layout automatically so callers need not know the flavour."""
+    """自动识别 meta/ 布局，调用方无需区分包类型。"""
     if meta_dir:
         return meta_dir
     return "meta" if (package / "meta" / "manifest.json").is_file() else ""
@@ -407,14 +394,10 @@ def verify_distribution_manifest(package: Path, *, entrypoint: str = "predict.py
                                  extra_entries: Sequence[str] = (),
                                  required_roots: Sequence[str] = ("event_stack", "models"),
                                  meta_dir: str = "") -> None:
-    """Reject hash drift, symlinks and undeclared runtime files.
+    """拒绝文件哈希漂移、符号链接和未声明的运行文件。
 
-    ``source_files`` covers every declared file outside ``models/`` (vendored
-    runtime, reproduction source, docs, visualization assets); ``model_files``
-    covers everything under ``models/``.  ``meta_dir`` is where the generated
-    ``manifest.json``/``feature_schema.json`` live ("meta" for the submission,
-    "" for the inference distribution).
-    """
+source_files 覆盖 models/ 外的所有声明文件，model_files 覆盖 models/ 内的文件。
+meta_dir 指定 manifest.json 和 feature_schema.json 所在位置。"""
     package = Path(package)
     if package.is_symlink() or not package.is_dir():
         raise ValueError("distribution package must be a real directory")
@@ -454,8 +437,8 @@ def _atomic_replace(staging: Path, destination: Path) -> Path:
         published = True
         return destination
     except Exception:
-        # A failed first rename leaves the ORIGINAL directory in place.
-        # Never remove it unless its successful backup move was observed.
+        # 首次重命名失败时，原目录仍在原位置。
+        # 只有确认原目录已成功移入备份后，才允许清理原位置。
         if moved and backup.exists():
             if destination.exists() and not destination.is_symlink():
                 shutil.rmtree(destination)
@@ -476,12 +459,9 @@ _TEXT_SUFFIXES = frozenset({
 
 
 def _copy_file(source: Path, target: Path) -> None:
-    """Copy one file; text files are normalized to LF.
+    """复制单个文件，并将文本统一为 LF 换行。
 
-    Byte stability matters: the distribution manifest hashes worktree bytes,
-    and git checks these files out with LF (``* text=auto eol=lf``).  Copying
-    CRLF worktree bytes would make a fresh clone fail manifest verification.
-    """
+清单以工作区实际字节计算哈希；Git 检出规则采用 LF，因此复制时也须统一换行，保证新检出内容可通过校验。"""
     source = Path(source)
     target = Path(target)
     if source.suffix.lower() in _TEXT_SUFFIXES:
@@ -497,7 +477,7 @@ def _copy_file(source: Path, target: Path) -> None:
 
 
 def _copy_tree(source: Path, target: Path, *, extra_ignore: Sequence[str] = ()) -> None:
-    """Copy a file or directory into the staging tree without bytecode."""
+    """将文件或目录复制到暂存区，排除字节码缓存。"""
     source = Path(source)
     target = Path(target)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -518,12 +498,9 @@ def build_distribution(*, repository_root: Path, bundle_path: Path, destination:
                        extra_trees: Sequence[tuple[Path, str]] = (),
                        required_roots: Sequence[str] = ("event_stack", "models"),
                        meta_dir: str = "", runtime_dir: str = "") -> Path:
-    """Atomically construct a verified distribution package for the active release.
+    """通过原子替换构建当前版本的已校验推理包。
 
-    Shared by the inference distribution (``predict.py``) and the competition
-    submission (``main.py``; the submission supplies the full model root as
-    ``models_source`` plus reproduction-source and visualization ``extra_trees``).
-    """
+推理入口 predict.py 与竞赛入口 main.py 共用此流程；竞赛包额外指定完整模型目录、复现源码和可视化资源。"""
     root = Path(repository_root).resolve()
     release = load_current_promoted_release(root)
     bundle = Path(bundle_path).resolve()
@@ -582,8 +559,8 @@ def build_distribution(*, repository_root: Path, bundle_path: Path, destination:
             )
             if probe.returncode != 0:
                 raise RuntimeError(f"isolated distribution import probe failed ({probe_entry}): " + probe.stderr.strip())
-        # A distribution is source/model only.  The isolated import probe must
-        # not make bytecode a generated runtime dependency.
+        # 推理包仅包含源码和模型。
+        # 隔离导入检查不得生成字节码并使其成为运行依赖。
         for cache in staging.rglob("__pycache__"):
             shutil.rmtree(cache)
         verify_distribution_manifest(staging, entrypoint=entrypoint, extra_entries=extra_names,
@@ -596,7 +573,7 @@ def build_distribution(*, repository_root: Path, bundle_path: Path, destination:
 
 
 def build_inference_distribution(*, repository_root: Path, bundle_path: Path, destination: Path) -> Path:
-    """Atomically construct a verified raw-inference package for the active release."""
+    """以原子替换方式构建当前版本的原始数据推理包。"""
     return build_distribution(
         repository_root=repository_root, bundle_path=bundle_path, destination=destination,
         entrypoint="predict.py", entrypoint_text=_PREDICT_ENTRYPOINT, readme_text=_README,

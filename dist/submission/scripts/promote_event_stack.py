@@ -1,10 +1,7 @@
-"""Gate event-stack artifact promotion on a registered aggregate experiment.
+"""依据已登记实验的聚合证据控制模型发布。
 
-This command intentionally does not synthesize a full-target training dataset.
-That would be an unreviewable leakage risk.  Task 6 must register a
-``PromotionTrainer`` implementation and call :func:`promote_summary` after the
-five-fold experiment has passed its strict gate.
-"""
+本命令不自行拼接全量目标训练数据。训练实现必须注册为 PromotionTrainer，
+在五折实验通过严格门槛后，调用 promote_summary 完成发布。"""
 
 from __future__ import annotations
 
@@ -72,23 +69,21 @@ _REGISTERED_EXPERIMENTS = {
     experiment_key(configs): configs
     for configs in (_registered_configs(), _registered_configs("v1"))
 }
-# Retain the legacy symbol for callers/tests that identify the baseline run.
+# 保留历史符号，兼容按基线运行标识调用的程序和测试。
 _REGISTERED_EXPERIMENT_KEY = experiment_key(_registered_configs())
 
 
 def _canonical_mode(values: Sequence[object], name: str) -> object:
-    """Equal-fold mode with a documented deterministic tie break.
+    """各折等权计票，并按固定规则处理并列。
 
-    This function deliberately receives only fields selected inside each outer
-    fold's training partition.  It must never be passed outer metrics.
-    """
+仅接收各外层折训练分区内选出的字段，不得传入外层验证指标。"""
 
     if not values:
         raise ValueError(f"{name} needs at least one selected fold value")
     counts = Counter(values)
     maximum = max(counts.values())
     tied = [value for value, count in counts.items() if count == maximum]
-    # ``None`` denotes no cap and is ordered before finite canonical values.
+    # None 表示不限数量，排序时位于有限的标准取值之前。
     return min(tied, key=lambda value: (value is not None, value))
 
 
@@ -104,12 +99,10 @@ def _canonical_median(values: Sequence[object], name: str) -> float:
 def canonical_deployment_policy(
     fold_records: Sequence[Mapping[str, object]],
 ) -> dict[str, object]:
-    """Aggregate frozen fold policies without inspecting validation performance.
+    """不读取验证表现，按固定规则汇总各折冻结策略。
 
-    Fixed rule: all five folds receive equal weight; modes select discrete
-    fields, the upper median selects the continuous event threshold, and ties
-    choose the smallest canonical value (``None`` before integer caps).
-    """
+五折等权；离散字段取众数，连续事件阈值取上中位数。
+并列时选择最小标准值，数量上限中的 None 排在整数前。"""
 
     if len(fold_records) != 5:
         raise ValueError("deployment policy needs exactly five frozen fold records")
@@ -163,7 +156,7 @@ def _model_mapping(fit: object) -> dict[str, object]:
 
 
 def _terminal_estimator(model: object) -> object:
-    """Return the fitted estimator behind a sklearn-style pipeline."""
+    """取出 sklearn 风格管线中已拟合的估计器。"""
 
     steps = getattr(model, "steps", None)
     if steps:
@@ -185,7 +178,7 @@ def _validated_feature_schema(
     *,
     context_features_version: str | None = None,
 ) -> dict[str, object]:
-    """Bind fitted estimators to the configured, versioned feature contract."""
+    """将已拟合模型与配置中的带版本特征规范绑定。"""
 
     if config is None:
         config = RunConfig(
@@ -269,7 +262,7 @@ def _same_selected_policy(result: object, record: Mapping[str, object]) -> bool:
 
 
 def _assert_evidence_equal(expected: object, observed: object, name: str) -> None:
-    """Compare JSON evidence exactly, permitting only arithmetic roundoff."""
+    """精确比较 JSON 证据，仅容许浮点算术舍入误差。"""
 
     if isinstance(expected, Mapping) and isinstance(observed, Mapping):
         if set(expected) != set(observed):
@@ -362,8 +355,8 @@ def _registered_fold_records(summary: Mapping[str, object]) -> tuple[tuple[RunCo
         config = by_fold.get(fold["outer_fold"])
         if config is None:
             raise PromotionContractError("registered summary fold records do not match configurations")
-        # The selected settings live in the compact fold evidence written beside
-        # the canonical aggregate summary, not in outer metrics.
+        # 所选参数来自聚合结果旁保存的折内训练证据。
+        # 不能使用外层验证指标选择这些参数。
         evidence_path = project_config.OUTPUT_DIR / "crossfit" / f"fold{config.outer_fold}_{fold['config_hash']}.json"
         try:
             record = json.loads(evidence_path.read_text(encoding="utf-8"))
@@ -394,7 +387,7 @@ def _registered_fold_records(summary: Mapping[str, object]) -> tuple[tuple[RunCo
 
 
 def registered_filesystem_trainer(summary: Mapping[str, object]) -> Mapping[str, EventStackBundle]:
-    """The sole Task-6 trainer registered for the approved experiment summary."""
+    """为已登记实验结果提供全量目标数据训练实现。"""
 
     configs, records = _registered_fold_records(summary)
     source = FilesystemDataSource(project_config.ROOT_DIR)
@@ -418,8 +411,8 @@ def registered_filesystem_trainer(summary: Mapping[str, object]) -> Mapping[str,
     deployment_policy = canonical_deployment_policy(records)
     full_target = build_full_target_dataset(configs, source, expected_truth_count=153)
     fit, full_candidate_count = fit_full_target_deployment(configs[0], full_target, deployment_policy)
-    # Deployment uses the canonical held-out aggregate as promotion evidence;
-    # full-target fit metrics are intentionally not reported as a new test score.
+    # 部署发布使用冻结的外层留出聚合证据。
+    # 不将全量目标数据的训练指标报告为新测试成绩。
     aggregate_metrics = dict(summary["outer_metrics"])
     aggregate_metrics["full_target_candidate_count"] = full_candidate_count
     bundles["deployment"] = EventStackBundle(
@@ -472,8 +465,8 @@ def main(argv: list[str] | None = None) -> int:
             raise PromotionContractError(
                 f"aggregate F1 must be strictly greater than {PROMOTION_F1_FLOOR:.10f}; got {claimed_f1:.10f}"
             )
-        # Validate before ``promote_summary`` evaluates its F1 gate: the gate
-        # must be fed re-derived fold evidence, never a self-reported summary.
+        # 在 promote_summary 判断 F1 门槛前重新校验训练证据。
+        # 门槛输入必须由各折证据重算，不能直接信任汇总自报值。
         _registered_fold_records(payload)
         promote_summary(
             args.summary,

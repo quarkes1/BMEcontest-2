@@ -1,4 +1,4 @@
-"""Deterministic, train-only candidate admission primitives."""
+"""仅由训练域选择的确定性候选准入操作。"""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from src.eval.metrics import event_iou
 
 @dataclass(frozen=True)
 class CandidateAdmissionConfig:
-    """One registered candidate-admission configuration."""
+    """一个已登记的候选准入配置。"""
 
     nms_iou: float = 0.5
     threshold: float = 0.5
@@ -49,7 +49,7 @@ class CandidateAdmissionConfig:
 
 @dataclass(frozen=True)
 class CandidateAdmissionSelection:
-    """The train-only selected admission policy and its event diagnostics."""
+    """仅在训练域选出的准入策略及其事件诊断结果。"""
 
     config: CandidateAdmissionConfig
     metrics: EventMetrics
@@ -139,7 +139,7 @@ def suppress_overlapping_candidates(
     scores: np.ndarray,
     iou_threshold: float,
 ) -> tuple[int, ...]:
-    """Return original row indices after stable same-session greedy NMS."""
+    """稳定执行同会话贪心非极大值抑制，返回原始行索引。"""
 
     threshold = _validate_iou_threshold(iou_threshold)
     values = _validate_scores(candidates, scores)
@@ -175,7 +175,7 @@ def admit_candidates(
     groups: Sequence[object],
     config: CandidateAdmissionConfig,
 ) -> tuple[int, ...]:
-    """Apply NMS, score threshold, and optional per-subject budget."""
+    """依次执行非极大值抑制、分数阈值及可选受试者数量上限。"""
 
     if not isinstance(config, CandidateAdmissionConfig):
         raise TypeError("config must be a CandidateAdmissionConfig")
@@ -225,7 +225,7 @@ def select_candidate_admission(
     minimum_recall: float = 0.88,
     iou_threshold: float = 0.25,
 ) -> CandidateAdmissionSelection:
-    """Select one policy using only the supplied train candidates and truths."""
+    """仅使用传入的训练候选和真实事件选择一个策略。"""
 
     values = _validate_scores(candidates, scores)
     _validate_labels(candidates, labels)

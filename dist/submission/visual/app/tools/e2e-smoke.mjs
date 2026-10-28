@@ -1,5 +1,5 @@
-// file:// end-to-end smoke: the standalone page must render without a server.
-// Uses the system Edge via playwright-core (no browser download).
+// 本地文件端到端冒烟检查：独立页面无需服务即可渲染。
+// 使用系统 Edge 和 playwright-core，不额外下载浏览器。
 import { chromium } from 'playwright-core';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';

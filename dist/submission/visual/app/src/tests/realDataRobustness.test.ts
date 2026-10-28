@@ -27,15 +27,15 @@ describe('real data robustness', () => {
 
   it('anchors a rewound run immediately instead of dropping its samples', () => {
     const times: number[] = [];
-    for (let i = 0; i <= 10; i++) times.push(i * 100);        // first run 0..1000 ms
-    for (let i = 1; i <= 10; i++) times.push(i * 100);        // rewound run 100..1000 ms
+    for (let i = 0; i <= 10; i++) times.push(i * 100);        // 首个时间片段为 0 至 1000 毫秒。
+    for (let i = 1; i <= 10; i++) times.push(i * 100);        // 时钟回退后的片段为 100 至 1000 毫秒。
     const bytes = new ArrayBuffer(times.length * 32), view = new DataView(bytes);
     times.forEach((time, i) => { view.setFloat64(i * 32, time, true); view.setFloat32(i * 32 + 16, 100, true); });
     const motion = parseMotion({ ...manifest, sample_count: times.length }, bytes);
     const points = reconstructOrientation(motion.imu, manifest);
     expect(points).not.toBeNull();
-    // the rewound run must start a new segment at its first sample (t=100), not be
-    // silently skipped until its clock overtakes the previous maximum
+    // 回退片段必须从其首个样本（100 毫秒）开始新片段，
+    // 不能丢弃中间样本直到时钟超过先前最大值。
     expect(points!.some(point => point.segment === 1 && point.t <= 500)).toBe(true);
     expect(points!.some(point => point.t === 100 && point.segment === 1)).toBe(true);
   });

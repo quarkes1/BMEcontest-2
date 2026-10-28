@@ -1,4 +1,4 @@
-"""Stable, raw-session inference entry point for the frozen event-stack."""
+"""冻结事件模型的稳定原始会话推理入口。"""
 
 from .predictor import InferenceTrace, PredictionOptions, Predictor
 

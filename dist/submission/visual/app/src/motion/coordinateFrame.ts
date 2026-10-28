@@ -1,7 +1,7 @@
 import type { MotionManifest } from '../data/types';
 import { fromAxisAngle, identity, type Quaternion } from './quaternion';
 
-/** A valid sensor→viewer frame is a proper rotation: orthonormal rows, determinant +1. */
+/** 合法的传感器到视图映射必须是行向量正交归一、行列式为 +1 的旋转矩阵。 */
 export function validMapping(matrix: number[]): boolean {
   if (!Array.isArray(matrix) || matrix.length !== 9 || matrix.some(v => !Number.isFinite(v))) return false;
   const rows = [matrix.slice(0, 3), matrix.slice(3, 6), matrix.slice(6, 9)];
@@ -15,10 +15,7 @@ export function validMapping(matrix: number[]): boolean {
     && Math.abs(determinant - 1) < 1e-5;
 }
 
-/**
- * Gravity-only replay requires calibrated acceleration and a proper signed mapping.
- * Unknown gyro scale is allowed, but gyro integration must then be disabled.
- */
+/** 仅使用重力的回放也需要已标定加速度及合法的有符号坐标映射；角速度量程未知时必须关闭角速度积分。 */
 export function canOrient(m: MotionManifest): boolean {
   const c = m.calibration;
   return !!c && validMapping(c.viewer_from_sensor)
@@ -33,7 +30,7 @@ export function mapVector(v: [number, number, number], m: number[]): [number, nu
   ];
 }
 
-/** Quaternion that tilts the viewer "up" axis (Y) onto the measured gravity direction. */
+/** 构造将视图向上轴（Y）转到测得重力方向的四元数。 */
 export function gravityTilt(up: [number, number, number]): Quaternion {
   const n = Math.hypot(...up);
   if (n < 1e-8) return identity;

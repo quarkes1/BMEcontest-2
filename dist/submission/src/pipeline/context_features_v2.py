@@ -1,9 +1,6 @@
-"""Pure, fixed Context-v2 features for raw multiscale candidates.
+"""为原始多尺度候选计算固定的 Context-v2 特征。
 
-This module intentionally knows nothing about labels, fitted models, or
-verifier scores.  It only summarizes raw candidate evidence and raw window
-probabilities within each acquisition session.
-"""
+本模块不读取标签、已拟合模型或复核分数，仅在采集会话内汇总原始候选证据与窗口概率。"""
 
 from __future__ import annotations
 
@@ -49,16 +46,16 @@ CONTEXT_V2_SCHEMA_HASH = hashlib.sha256(
 
 _MAD_FLOOR = 0.05
 _TWENTY_MINUTES_S = 1_200.0
-# The sensor index records whole-second bounds, while cached candidate windows
-# retain stride-aligned millisecond timestamps.  A macro candidate can therefore
-# start up to one 15 s grid step outside the nominal index endpoint without
-# leaving its acquisition session.  This is a data-format tolerance, not a
-# learned or tuneable Context-v2 parameter.
+# 传感器索引以整秒记录会话边界，候选缓存则保留按步长对齐的毫秒时间。
+# 因此宏窗候选的起点可能超出索引端点一个网格步长。
+# 该步长为 15 秒，但候选仍属于同一个采集会话。
+# 这是对数据格式精度的容差。
+# 不属于可学习或可调的 Context-v2 参数。
 _SESSION_BOUNDARY_QUANTIZATION_MS = 15_000
 
 
 def context_schema_descriptor(version: str) -> dict[str, object]:
-    """Return the immutable, non-learned Context-v2 schema contract."""
+    """返回不可变且不依赖学习的 Context-v2 特征规范。"""
 
     if version != "v2":
         raise ValueError("only Context-v2 has a descriptor in this module")
@@ -81,12 +78,10 @@ def context_v2_features(
     micro_windows_by_sid: Mapping[str, Sequence[tuple[int, int, float]]],
     session_bounds_by_sid: Mapping[str, tuple[int, int]],
 ) -> np.ndarray:
-    """Build the fixed 25D Context-v2 append block in caller candidate order.
+    """按调用方候选顺序构建固定 25 维 Context-v2 附加特征。
 
-    Candidates are validated as complete members of the already-built raw union;
-    they are never deduplicated or scored here.  The internal view is sorted only
-    to make all comparison populations deterministic.
-    """
+候选必须是已构建原始并集中的完整成员；本函数不去重、不打分。
+内部排序仅用于使比较样本集合保持确定性。"""
 
     records = [_validate_candidate(candidate, index, session_bounds_by_sid)
                for index, candidate in enumerate(candidates)]

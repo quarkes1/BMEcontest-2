@@ -1,4 +1,4 @@
-"""Leakage-safe nested runner for the event verification stack."""
+"""受试者隔离的嵌套事件复核评估流程。"""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Callable, Mapping, Sequence
 
 def _physical_cpu_count() -> int:
-    """Prefer physical cores, with a conservative limit when detection is absent."""
+    """优先使用物理核心数，无法检测时采用保守上限。"""
     try:
         import psutil
 
@@ -27,9 +27,9 @@ def _physical_cpu_count() -> int:
     return max(1, (os.cpu_count() or 1) // 2)
 
 
-# Set the limit before sklearn initializes joblib. Loky skips WMIC detection
-# only below the logical count, including machines without hyperthreading.
-# Keep a positive floor and preserve a caller's explicit worker limit.
+# 在 sklearn 初始化 joblib 之前设置核心数上限。
+# Loky 仅在上限小于逻辑核心数时跳过 WMIC 检测。
+# 保持上限为正数，并保留调用方显式设置的工作进程数量。
 os.environ.setdefault(
     "LOKY_MAX_CPU_COUNT",
     str(max(1, min(_physical_cpu_count(), (os.cpu_count() or 1) - 1))),
@@ -117,7 +117,7 @@ RUNNER_SCHEMA_VERSION = 5
 def _validate_registered_probability_grid(
     values: tuple[float, ...], name: str, *, lower_exclusive: bool = False
 ) -> tuple[float, ...]:
-    """Reject noncanonical stacked-control probability grids at the boundary."""
+    """在接口边界拒绝非标准的组合候选控制概率网格。"""
     if not values:
         raise ValueError(f"{name} must be a nonempty grid")
     if any(
@@ -236,11 +236,9 @@ class RunConfig:
 def expected_feature_dimensions(
     config: RunConfig, *, macro_width: int = 63
 ) -> tuple[int, ...]:
-    """Return fitted-model widths for one run configuration.
+    """返回配置对应的已拟合模型特征宽度。
 
-    Filesystem runs use the registered 63-column macro surface. In-memory
-    fixtures can supply their already-derived macro width.
-    """
+文件系统运行采用登记的 63 维宏窗特征；内存测试样本可提供已经确定的宏窗宽度。"""
 
     if config.micro_enabled:
         verifier = 56 + (
@@ -250,9 +248,9 @@ def expected_feature_dimensions(
         return macro_width, verifier, 47
     verifier = 42 if config.density.coverage_fix else 37
     if config.verifier_feature_mode == "raw_summary":
-        # ``aggregate_candidate_features`` emits five statistics per raw
-        # input column plus two sample-count fields. ``macro_width`` includes
-        # the runner's one-column time prior.
+        # aggregate_candidate_features 为每列原始特征生成五项统计。
+        # 另附两个样本计数字段；macro_width 已包含
+        # 运行流程添加的一维时间先验。
         verifier += (macro_width - 1) * 5 + 2
     return macro_width, verifier
 
@@ -297,7 +295,7 @@ class FoldResult:
 
 
 def peak_working_set_bytes() -> int | None:
-    """Return the Windows process peak working set, or ``None`` if unavailable."""
+    """返回 Windows 进程峰值工作集，无法获取时返回 None。"""
 
     if os.name != "nt":
         return None
@@ -320,10 +318,10 @@ def peak_working_set_bytes() -> int | None:
                 ("PrivateUsage", ctypes.c_size_t),
             ]
 
-        # Without explicit ctypes signatures, the pseudo-handle returned by
-        # GetCurrentProcess is truncated to a signed 32-bit integer on 64-bit
-        # Python, so Psapi rejects it.  Bind the documented HANDLE/pointer/DWORD
-        # signature before making the call.
+        # 若不显式声明 ctypes 函数签名，64 位 Python 中
+        # GetCurrentProcess 的伪句柄会被截断为有符号 32 位整数。
+        # 此时 Psapi 会拒绝调用，因此须按接口声明
+        # 预先绑定 HANDLE、指针和 DWORD 参数类型。
         kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
         psapi = ctypes.WinDLL("psapi", use_last_error=True)
         kernel32.GetCurrentProcess.restype = wintypes.HANDLE
@@ -347,7 +345,7 @@ def peak_working_set_bytes() -> int | None:
 def _runtime_diagnostics(
     peak_provider: Callable[[], int | None] | None = None,
 ) -> dict[str, object]:
-    """Record runtime evidence without inventing unavailable measurements."""
+    """记录可获得的运行证据，不虚构不可用的测量值。"""
 
     peak = (peak_provider or peak_working_set_bytes)()
     return {
@@ -368,7 +366,7 @@ def _runtime_diagnostics(
 
 @dataclass(frozen=True)
 class WindowBatch:
-    """One in-memory NPZ-equivalent window batch."""
+    """与 NPZ 缓存结构等价的一批内存窗口。"""
 
     features: np.ndarray
     labels: np.ndarray
@@ -377,7 +375,7 @@ class WindowBatch:
 
 @dataclass(frozen=True)
 class FoldDataset:
-    """All arrays and truth metadata required for one untouched outer fold."""
+    """一个完整留出外层折所需的数组与真实事件元数据。"""
 
     window_train: WindowBatch
     candidate_train: WindowBatch
@@ -386,8 +384,8 @@ class FoldDataset:
     validation_truths: tuple[EventRef, ...]
     subject_by_session: Mapping[str, str]
     outer_subjects: frozenset[str]
-    # Filesystem datasets carry index.csv's authoritative acquisition bounds.
-    # ``None`` is only the in-memory test-fixture compatibility path.
+    # 文件系统数据以 index.csv 的采集边界为准。
+    # None 仅供内存测试样本兼容使用。
     session_bounds_by_sid: Mapping[str, tuple[int, int]] | None = None
     validation_truth_slices: Mapping[str, tuple[EventRef, ...]] = field(
         default_factory=dict
@@ -400,10 +398,9 @@ class FoldDataset:
 
 @dataclass(frozen=True)
 class OuterTrainOnlyData:
-    """The strictly outer-train-only payload used for E02 inner selection.
+    """E02 内层选择仅可访问的不可变外层训练数据。
 
-    Deliberately has no validation windows, labels, truth, or subject fields.
-    """
+不包含外层验证窗口、标签、真实事件或受试者字段。"""
 
     window_train: WindowBatch
     candidate_train: WindowBatch
@@ -417,7 +414,7 @@ class OuterTrainOnlyData:
 
 @dataclass(frozen=True)
 class InnerOOFResult:
-    """Train-only policy-selection evidence; no outer score is representable."""
+    """仅包含训练域策略选择证据，不能表达外层得分。"""
 
     inner_metrics: EventMetrics
     verifier_feature_count: int
@@ -427,7 +424,7 @@ class InnerOOFResult:
 
 
 def reject_challenger_runtime(config: RunConfig) -> None:
-    """Keep E02 research-only features out of the approved runtime ABI."""
+    """防止 E02 研究特征进入正式运行时接口。"""
 
     if config.context_features_version == "v2":
         raise ValueError(
@@ -436,7 +433,7 @@ def reject_challenger_runtime(config: RunConfig) -> None:
 
 
 def _concatenate_window_batches(batches: Sequence[WindowBatch]) -> WindowBatch:
-    """Join batches only after callers have established their partition invariants."""
+    """调用方确认各分区不变量后，才合并窗口批次。"""
 
     if not batches:
         raise ValueError("at least one window batch is required")
@@ -457,7 +454,7 @@ def _event_key(event: EventRef) -> tuple[str, int, int]:
 def _validate_imputable_features(
     values: np.ndarray, name: str, *, allow_all_missing_columns: bool = False
 ) -> None:
-    """Accept NaN only where the registered ``SimpleImputer`` can consume it."""
+    """仅在已登记 SimpleImputer 可处理的位置接受 NaN。"""
 
     try:
         numeric = np.asarray(values, dtype=np.float64)
@@ -473,7 +470,7 @@ def _validate_imputable_features(
 
 
 def _validate_tristate_labels(values: np.ndarray, name: str) -> None:
-    """Enforce the documented -1/0/1 label contract before filtering -1 rows."""
+    """过滤模糊样本前，执行 -1/0/1 标签约定校验。"""
 
     try:
         numeric = np.asarray(values, dtype=np.float64)
@@ -495,7 +492,7 @@ def _validate_full_target_batch(batch: WindowBatch, name: str, width: int) -> se
 
 
 def _validate_full_target_partition(partition: FoldDataset) -> tuple[set[str], set[str]]:
-    """Validate one raw held-out partition before it joins the deployment union."""
+    """原始留出分区加入部署数据并集前进行校验。"""
 
     macro_sessions = _validate_full_target_batch(partition.validation, "validation", 62)
     missing_sessions = macro_sessions - set(partition.subject_by_session)
@@ -530,7 +527,7 @@ def _validate_full_target_partition(partition: FoldDataset) -> tuple[set[str], s
 
 
 def _validate_full_target_dataset(data: FoldDataset) -> None:
-    """Revalidate the deployment union before its models are fit."""
+    """拟合部署模型前再次校验合并后的数据。"""
 
     for name in ("window_train", "candidate_train", "validation"):
         sessions = _validate_full_target_batch(getattr(data, name), name, 62)
@@ -555,13 +552,10 @@ def build_full_target_dataset(
     *,
     expected_truth_count: int = 153,
 ) -> FoldDataset:
-    """Build the deployment universe from the five disjoint held-out partitions.
+    """用五个互斥留出分区构建部署训练数据全集。
 
-    The source is intentionally used only for ``validation``/``micro_validation``
-    fields.  It may load an outer fold internally, but no outer-train batch is
-    copied into the returned all-target data set.  This is the boundary that
-    prevents accidental five-fold train-set concatenation during promotion.
-    """
+只读取数据源的 validation 和 micro_validation 字段，返回数据不复制任何外层训练批次。
+此边界用于防止发布时误将五份相互重叠的训练集直接拼接。"""
 
     ordered = tuple(sorted(configs, key=lambda item: item.outer_fold))
     if not ordered or len({item.outer_fold for item in ordered}) != len(ordered):
@@ -658,13 +652,10 @@ def build_full_target_dataset(
 
 @dataclass(frozen=True)
 class _FinalModelFit:
-    """Private fitted state retained during one outer-fold evaluation.
+    """单次外层折评估内部保留的已拟合模型状态。
 
-    Keeping model objects with their train-only selected decoding policy makes
-    artifact extraction possible without widening ``run_outer_fold``'s public
-    ``FoldResult`` contract.  A legal full-target trainer is deliberately not
-    constructed here.
-    """
+将模型与仅由训练域选出的解码策略一起保存，以便导出模型，无需扩展公开 FoldResult 接口。
+此处不创建全量目标数据训练器。"""
 
     macro: Pipeline
     micro: Pipeline | None
@@ -677,7 +668,7 @@ class _FinalModelFit:
 
 @dataclass(frozen=True)
 class _OuterRun:
-    """One evaluated fold plus the fitted train-only state used for evidence."""
+    """一个已评估折及其作为证据保存的训练域模型状态。"""
 
     result: FoldResult
     fit: _FinalModelFit
@@ -698,7 +689,7 @@ def cache_key(
     input_files: Sequence[Path] = (),
     model_parameters: Mapping[str, object] | None = None,
 ) -> str:
-    """Hash every setting and input identity that can change fold predictions."""
+    """对所有可能改变折内预测的参数和输入标识计算哈希。"""
 
     models = model_parameters or {
         "window": WINDOW_MODEL_PARAMETERS,
@@ -749,15 +740,15 @@ def _groups_for(
 
 
 def _with_time_prior(features: np.ndarray, windows: Sequence[EventRef]) -> np.ndarray:
-    """Legacy model-boundary name retained for frozen caller compatibility."""
+    """保留历史模型边界名称，兼容冻结版本调用。"""
     matrix = np.asarray(features)
     if matrix.ndim != 2 or len(matrix) != len(windows):
         raise ValueError("time-prior adapter requires aligned two-dimensional features and windows")
 
-    # The canonical primitive intentionally accepts only the release-frozen
-    # 62-D macro matrix.  Historical runner callers also pass synthetic or
-    # already-selected in-memory matrices, for which the old boundary helper
-    # appended the same prior regardless of width.
+    # 统一特征函数只接受发布时冻结的 62 维宏窗矩阵。
+    # 历史调用方也可能传入合成数据或已选列的内存矩阵。
+    # 为保持这些调用的兼容性，旧接口继续
+    # 为任意宽度的矩阵添加相同时间先验。
     if matrix.shape[1] != 62:
         from src.pipeline.event_stack import _GLOBAL_PRIOR
 
@@ -819,7 +810,7 @@ def _verifier_estimator(seed: int, regularization_c: float) -> Pipeline:
 
 
 def _verifier_lgbm_estimator(seed: int) -> Pipeline:
-    """Return the registered single-threaded nonlinear candidate verifier."""
+    """返回已登记的单线程非线性候选复核器。"""
     from lightgbm import LGBMClassifier
 
     parameters = dict(VERIFIER_LGBM_PARAMETERS)
@@ -847,7 +838,7 @@ def _fit_final_models(
     blend_weight: float | None,
     verifier_sample_weight: np.ndarray | None = None,
 ) -> _FinalModelFit:
-    """Fit the frozen outer-train models after all OOF choices are final."""
+    """全部折外策略确定后，拟合冻结的外层训练模型。"""
 
     sample_weight = (
         None
@@ -904,7 +895,7 @@ def _windows_by_session(
 def _test_only_session_bounds_by_sid(
     *window_groups: Sequence[EventRef],
 ) -> dict[str, tuple[int, int]]:
-    """Compatibility bounds for synthetic in-memory fixtures only."""
+    """仅为合成内存测试样本提供兼容边界。"""
 
     bounds: dict[str, tuple[int, int]] = {}
     for windows in window_groups:
@@ -925,7 +916,7 @@ def _context_session_bounds(
     candidates: Sequence[MultiScaleCandidate],
     *window_groups: Sequence[EventRef],
 ) -> Mapping[str, tuple[int, int]]:
-    """Return authoritative bounds, with a clearly isolated fixture fallback."""
+    """返回权威采集边界，并隔离测试样本的回退逻辑。"""
 
     if data_source.session_bounds_by_sid is None:
         return _test_only_session_bounds_by_sid(*window_groups)
@@ -1006,7 +997,7 @@ def _micro_training_keep(
     truths: Sequence[EventRef],
     middle_fraction: float | None,
 ) -> np.ndarray:
-    """Exclude ambiguous labels and optionally retain pure positive centers."""
+    """排除模糊标签，并可选仅保留纯正类中心窗口。"""
     keep = np.asarray(batch.labels) >= 0
     if middle_fraction is None:
         return keep
@@ -1031,12 +1022,10 @@ def run_outer_train_inner_oof(
     data: OuterTrainOnlyData,
     config: RunConfig,
 ) -> InnerOOFResult:
-    """Select E02 policy from outer-train data without an outer-data handle.
+    """仅从外层训练数据选择 E02 策略，不提供外层验证访问入口。
 
-    The function deliberately accepts the narrow immutable payload instead of
-    ``FoldDataset``.  This makes a validation array, label, or truth
-    inaccessible to all inner OOF fitting and policy selection code.
-    """
+使用范围受限的不可变数据载荷而非 FoldDataset，
+使全部内层折外拟合和策略选择代码无法获取外层验证数组、标签或真实事件。"""
 
     if not isinstance(data, OuterTrainOnlyData):
         raise TypeError("inner OOF requires OuterTrainOnlyData")
@@ -1167,7 +1156,7 @@ def _execute_outer_dataset(
     *,
     peak_provider: Callable[[], int | None] | None = None,
 ) -> FoldResult:
-    """Run nested OOF threshold selection and one untouched outer evaluation."""
+    """运行嵌套折外阈值选择，并完成一次未参与选择的外层验证。"""
 
     if config.device not in {"auto", "cpu", "cuda"}:
         raise ValueError("device must be one of: auto, cpu, cuda")
@@ -1773,7 +1762,7 @@ def _run_outer_dataset(
     config: RunConfig,
     data_source: FoldDataset,
 ) -> FoldResult:
-    """Public evaluation compatibility wrapper around the artifact-capable run."""
+    """保留公开评估接口，内部调用可导出模型的实现。"""
 
     return _execute_outer_dataset(config, data_source).result
 
@@ -1782,12 +1771,10 @@ def fit_outer_fold_for_promotion(
     config: RunConfig,
     source: object,
 ) -> tuple[FoldResult, _FinalModelFit, FoldDataset]:
-    """Retrain one outer fold and retain only its train-selected fitted state.
+    """重新训练一个外层折，仅保留训练域选出的模型状态。
 
-    Promotion calls this instead of loading a cached result so each evidence
-    bundle is a fresh fit.  The returned outer metrics are evidence metadata,
-    never policy-selection input for deployment.
-    """
+发布时不直接复用缓存结果，保证各证据包来自重新拟合。
+返回的外层指标仅用于证据记录，不能用于部署策略选择。"""
 
     reject_challenger_runtime(config)
     loader = getattr(source, "load_outer_fold", None)
@@ -1805,12 +1792,10 @@ def fit_full_target_deployment(
     data: FoldDataset,
     frozen_policy: Mapping[str, object],
 ) -> tuple[_FinalModelFit, int]:
-    """Fit deployment models on one validated held-out-partition union.
+    """在已校验的留出分区并集上拟合部署模型。
 
-    ``frozen_policy`` has already been aggregated from five train-only outer
-    policies.  This routine uses target labels to train models, but never
-    searches an event threshold, blend, admission setting, or budget.
-    """
+frozen_policy 已由五个外层训练策略汇总，本函数使用标签拟合模型，
+但不搜索事件阈值、融合比例、准入设置或数量上限。"""
 
     reject_challenger_runtime(config)
     required = {
@@ -1853,9 +1838,9 @@ def fit_full_target_deployment(
     _validate_binary(micro_labels, "deployment micro window training")
     micro_features = data.micro_window_train.features[micro_keep]
 
-    # Candidate feature construction needs window probabilities.  The final fit
-    # below repeats these deterministic registered fits after labels/features
-    # are frozen, so the serialized macro/micro models exactly match them.
+    # 候选特征构建需要窗口概率。标签和特征冻结后，
+    # 下方最终拟合会重复相同的确定性配置，
+    # 使序列化的宏窗和微窗模型与特征构建时使用的模型完全一致。
     macro_probe = _window_estimator(config.seed + 2).fit(macro_features, macro_labels)
     micro_probe = _micro_window_estimator(config.seed + 12).fit(micro_features, micro_labels)
     candidate_macro_features = _with_time_prior(
@@ -1914,7 +1899,7 @@ def fit_full_target_deployment(
 
 
 class FilesystemDataSource:
-    """Load the existing slide NPZ artifacts once for one outer fold."""
+    """为一个外层折一次性读取已有滑窗 NPZ 文件。"""
 
     def __init__(self, root: Path | None = None) -> None:
         if root is None:
@@ -1964,12 +1949,10 @@ class FilesystemDataSource:
         return tuple(sorted(set(paths), key=lambda path: str(path)))
 
     def deployment_input_files(self, configs: Sequence[RunConfig]) -> tuple[Path, ...]:
-        """Fingerprint only the files permitted in the full-target union.
+        """仅对允许进入全量目标数据并集的文件计算指纹。
 
-        Unlike :meth:`input_files`, this deliberately excludes every
-        ``train``/``meal_train``/``no_meal_train`` cache.  The returned inputs
-        document the held-out partition union used by the deployment models.
-        """
+与 input_files 不同，不包含 train、meal_train 或 no_meal_train 缓存。
+返回的输入记录用于说明部署模型所用留出分区并集。"""
 
         from src.data import manifests
 
@@ -1988,7 +1971,7 @@ class FilesystemDataSource:
 
     @staticmethod
     def _deployment_file_state(path: Path) -> dict[str, object]:
-        """Return a canonical, content-sensitive source-state record."""
+        """返回内容敏感的标准源文件状态记录。"""
 
         canonical = Path(path).resolve()
         if not canonical.exists():
@@ -2008,14 +1991,10 @@ class FilesystemDataSource:
     def deployment_input_state(
         self, configs: Sequence[RunConfig]
     ) -> tuple[dict[str, object], ...]:
-        """Fingerprint every artifact read while fitting the deployment union.
+        """对拟合部署数据并集时读取的每个文件计算指纹。
 
-        Required validation caches and manifests must exist, but session caches
-        are intentionally represented even when absent: ``_eligible_truths``
-        legally skips them.  This records both that decision and any later
-        change in content or availability without passing missing paths to the
-        outer-fold cache-key code path.
-        """
+所需验证缓存和清单必须存在；即使会话缓存缺失，也显式记录其状态。
+_eligible_truths 允许跳过缺失会话，此记录用于追踪该选择及后续文件可用性变化。"""
 
         required = self.deployment_input_files(configs)
         session_paths: list[Path] = []
@@ -2026,10 +2005,10 @@ class FilesystemDataSource:
             validation_sessions = manifest["val_sessions"]
             if not isinstance(validation_sessions, list):
                 raise ValueError(f"deployment split manifest has invalid val_sessions: {manifest_path}")
-            # ``_eligible_truths`` uses the validation cache's window IDs,
-            # rather than trusting the manifest alone.  Bind that exact read
-            # set too, so a stale or inconsistent cache cannot hide a session
-            # state change from the deployment provenance.
+            # _eligible_truths 使用验证缓存中的窗口标识，
+            # 不能仅信任清单；因此还需绑定实际读取的会话集合。
+            # 这样可防止陈旧或不一致的缓存
+            # 掩盖部署来源中的会话状态变化。
             validation_sessions = [
                 *validation_sessions,
                 *(window.sid for window in self._load_batch(
@@ -2186,8 +2165,8 @@ class FilesystemDataSource:
             micro_batches["candidate_train"] = self._combine_batches(
                 micro_batches["meal_train"], micro_batches["no_meal_train"]
             )
-            # Macro coverage defines the frozen evaluation session universe.
-            # Micro extraction can retain sessions with no eligible macro rows.
+            # 冻结评估的会话范围由宏窗覆盖定义。
+            # 微窗提取可能保留没有合格宏窗行的会话。
             for split, macro_batch in (
                 ("train", window_train),
                 ("candidate_train", candidate_train),
@@ -2246,12 +2225,10 @@ class FilesystemDataSource:
         )
 
     def load_outer_train_only(self, config: RunConfig) -> OuterTrainOnlyData:
-        """Read only canonical outer-train roles for inner OOF selection.
+        """仅读取标准外层训练数据角色，供内层折外选择使用。
 
-        This intentionally does not delegate to ``load_outer_fold``: that
-        loader opens held-out NPZs and is therefore not legal for the E02
-        inner gate, even when callers promise to ignore the result.
-        """
+不调用 load_outer_fold，因为该加载器会打开留出 NPZ 文件，
+即使后续忽略返回值，也不应进入 E02 内层门槛流程。"""
 
         from src.data import manifests
 
@@ -2304,10 +2281,10 @@ class FilesystemDataSource:
         }
         if any(end < start for start, end in all_session_bounds_by_sid.values()):
             raise ValueError("sensor index contains unordered session bounds")
-        # The outer-train-only seam cross-fits both the broad window stream and
-        # candidate streams.  Their session sets are normally identical but
-        # must not be assumed to be: every train-role batch needs a subject and
-        # authoritative acquisition bound before it can enter inner OOF.
+        # 仅外层训练数据的接口会同时交叉拟合完整窗口流与候选窗口流。
+        # 两者通常包含相同会话，但不能依赖这一假设。
+        # 进入内层折外评估前，每个训练批次都必须具有受试者标识
+        # 以及权威采集边界。
         candidate_train_sids = {window.sid for window in candidate_train.windows}
         train_sids = {window.sid for window in window_train.windows} | candidate_train_sids
         if micro_window_train is not None:
@@ -2466,7 +2443,7 @@ def _fold_result_from_dict(payload: Mapping[str, object]) -> FoldResult:
 
 
 def experiment_key(configs: Sequence[RunConfig]) -> str:
-    """Identify registered settings independently of fold numbers and outcomes."""
+    """独立于折号和评估结果，识别已登记的参数配置。"""
     normalized = sorted(
         json.dumps(asdict(replace(config, outer_fold=-1)), sort_keys=True, separators=(",", ":"))
         for config in configs
@@ -2480,7 +2457,7 @@ def aggregate_fold_results(
     *,
     diagnostic_payloads: Sequence[Mapping[str, object]] | None = None,
 ) -> dict[str, object]:
-    """Pool event counts and truth-weight candidate recall across outer folds."""
+    """汇总外层各折事件计数，并按真实事件数加权候选召回率。"""
     if not configs or len(configs) != len(results):
         raise ValueError("configs and results must have equal nonzero lengths")
     if len({config.outer_fold for config in configs}) != len(configs):
@@ -2568,9 +2545,9 @@ def write_json_atomic(path: Path, payload: Mapping[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
     try:
-        # Use raw LF bytes so diagnostics have the exact canonical stream that
-        # promotion attests, including on Windows where text mode translates
-        # newlines to CRLF.
+        # 使用原始 LF 字节保存诊断证据流。
+        # 这样在 Windows 上也能与发布校验的标准字节一致，
+        # 避免文本模式自动将换行转换为 CRLF。
         temporary.write_bytes(
             (json.dumps(payload, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode("utf-8")
         )
@@ -2585,7 +2562,7 @@ def run_outer_fold(
     data_source: FoldDataset | FilesystemDataSource | None = None,
     force: bool = False,
 ) -> FoldResult:
-    """Resolve a data source, reuse a valid cache, and run one nested fold."""
+    """解析数据源、复用有效缓存并运行一个嵌套评估折。"""
 
     if config.external_fd_weight_grid != (0.0,):
         raise ValueError("external_fd_weight_grid must be (0.0,) in the target-domain runner")
@@ -2621,7 +2598,7 @@ def _run_outer_fold_limited(config: RunConfig, force: bool) -> FoldResult:
 def run_folds(
     configs: Sequence[RunConfig], workers: int = 1, force: bool = False
 ) -> list[FoldResult]:
-    """Run folds inline or in bounded processes without BLAS oversubscription."""
+    """在当前进程或数量受限的子进程中运行各折，避免 BLAS 线程过量。"""
 
     configs = tuple(configs)
     if not configs:

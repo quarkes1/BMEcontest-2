@@ -1,6 +1,6 @@
 import type { MotionData, Prediction, Range, SessionTimeline } from './types';
 
-/** Parse and validate the published prediction contract (schema v1.0). */
+/** 解析并校验第一版公开预测结果规范。 */
 export function parsePrediction(value: unknown): Prediction {
   if (!value || typeof value !== 'object') throw new Error('Prediction must be a JSON object.');
   const p = value as Prediction;
@@ -38,7 +38,7 @@ export function boundsFor(p: Prediction, sessionId: string): Range | null {
   return { start_ms: Math.min(...rows.map(r => r.start_ms)), end_ms: Math.max(...rows.map(r => r.end_ms)) };
 }
 
-/** Ordered session identifiers: contract order where available, else the union of records. */
+/** 生成有序会话标识列表：优先采用规范中的顺序，否则取所有记录的并集。 */
 export function sessionIds(p: Prediction, motions: Record<string, MotionData> = {}): string[] {
   const ids = new Set<string>();
   for (const id of p.timeline?.session_ids || []) ids.add(id);

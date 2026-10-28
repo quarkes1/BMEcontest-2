@@ -1,4 +1,4 @@
-"""Optional integer event-box calibration, independent of model training."""
+"""独立于模型训练的可选整数事件边界校准。"""
 from __future__ import annotations
 
 from numbers import Integral
@@ -10,7 +10,7 @@ GEOMETRY_SHIFTS=(-60000,0,60000)
 
 
 def observed_session_bounds(index_bounds,windows):
-    """Union metadata bounds with observed window support, never with predictions or GT."""
+    """合并元数据边界与实际窗口覆盖范围，不使用预测或真实事件。"""
     result={str(s):tuple(map(int,b)) for s,b in index_bounds.items()}
     if any(a>=b for a,b in result.values()): raise ValueError('invalid index bounds')
     for window in windows:

@@ -1,4 +1,4 @@
-"""Official competition inference entry."""
+"""竞赛正式推理入口。"""
 import sys
 sys.dont_write_bytecode = True
 from pathlib import Path

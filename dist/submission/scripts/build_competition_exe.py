@@ -1,4 +1,4 @@
-"""Build the Windows executable and self-contained current-model source package."""
+"""构建 Windows 可执行程序及当前模型的自包含源码包。"""
 from __future__ import annotations
 
 import argparse
@@ -24,8 +24,8 @@ RUNTIME_PACKAGES = ('numpy','scipy','scikit-learn','lightgbm','joblib','threadpo
 
 
 def build_platform():
-    # platform.machine() may be empty when the execution host strips optional
-    # PROCESSOR_ARCHITECTURE env vars; sysconfig describes this interpreter ABI.
+    # 宿主环境缺少可选处理器环境变量时，platform.machine() 可能为空。
+    # 使用 sysconfig 获取当前解释器的 ABI 信息。
     target = sysconfig.get_platform()
     if os.name != 'nt' or target != 'win-amd64':
         raise ValueError('build the Windows x64 EXE using Windows x64 Python')
@@ -105,7 +105,7 @@ def copy_licenses(target):
     python_license = Path(sys.base_prefix)/'LICENSE_PYTHON.txt'
     if not python_license.is_file(): raise ValueError('CPython license not found')
     def copy_text(source, dest):
-        # License text must have the same hashes after Git's LF checkout.
+        # 许可证文本在 Git 统一为 LF 换行后，哈希仍须一致。
         dest.write_bytes(source.read_bytes().replace(b'\r\n', b'\n').replace(b'\r', b'\n'))
     copy_text(python_license, target/'Python.txt')
     for name in (*RUNTIME_PACKAGES, 'pyinstaller'):
@@ -126,8 +126,8 @@ def release_preflight(root):
     from src.pipeline.artifacts import load_current_promoted_release, load_event_stack_bundle
     release = load_current_promoted_release(root)
     bundle = Path(root)/'models/event_stack'/str(release['run_key'])/'deployment'
-    # Bundle manifests identify their role-directory (deployment); the parent
-    # experiment key is independently attested by load_current_promoted_release.
+    # 模型清单标识自身用途目录（deployment）。
+    # 上级实验标识由 load_current_promoted_release 独立校验。
     load_event_stack_bundle(bundle, expected_role='deployment', expected_run_key='deployment')
     return release, bundle
 
@@ -197,7 +197,7 @@ def build(root=ROOT, destination=None, *, reuse_exe=False):
             result = subprocess.run(args, cwd=root, env=env, capture_output=True, text=True, errors='replace', timeout=1800)
             (logs/'pyinstaller.log').write_text(result.stdout+'\n'+result.stderr, encoding='utf-8')
             if result.returncode: raise RuntimeError('PyInstaller failed; see outputs/delivery/official_20261015/pyinstaller.log')
-        # Keep submission-specific README edits; the template serves new exports.
+        # 保留提交目录已有的 README 修改；模板仅用于新导出。
         readme = dest/'README.md' if (dest/'README.md').is_file() else root/'scripts/official_submission_readme.md'
         shutil.copyfile(readme, staging/'README.md')
         copy_licenses(staging/'licenses')
@@ -232,7 +232,7 @@ def build(root=ROOT, destination=None, *, reuse_exe=False):
         print(f'EXE: {(staging/EXE).stat().st_size/1024**2:.2f} MiB; self-check passed',flush=True)
         return _atomic_replace(staging, dest)
     finally:
-        # Both targets were created by this invocation below validated task-owned parents.
+        # 这两个目录均由本次构建在已校验的暂存父目录下创建。
         if work.parent != parent or not work.name.startswith('official-exe-'): raise RuntimeError('unexpected build cleanup target')
         shutil.rmtree(work)
         if staging.exists(): shutil.rmtree(staging)

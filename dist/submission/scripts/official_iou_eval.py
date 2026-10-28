@@ -71,7 +71,7 @@ def official_metrics(preds, gts):
         for _, i, j in tp_pairs:
             (ps, pe) = preds[i][1]; (gs, ge) = gts[j][1]
             errs.extend([abs(ps - gs), abs(pe - ge)])
-        mae = float(np.mean(errs) / 1000.0)   # ms → s
+        mae = float(np.mean(errs) / 1000.0)   # 将毫秒转换为秒。
     return {"f1": f1, "sensitivity": sens, "ppv": ppv,
             "n_tp": n_tp, "n_pred": n_pred, "n_true": n_true, "mae_s": mae}
 

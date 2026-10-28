@@ -10,7 +10,7 @@ type Props = {
   bounds: Range | null;
 };
 
-/** Compact dataset/session selector that lives in the Monitor header workspace. */
+/** 位于监测页顶部工作区的紧凑数据集与会话选择器。 */
 export default function SessionBrowser({ label, demo, sessions, sessionId, onSession, bounds }: Props) {
   return (
     <div className="session-browser">

@@ -14,11 +14,7 @@ type Props = {
   onResetDemo: () => void;
 };
 
-/**
- * Raw TXT files and folders are the primary competition workflow; they are analyzed by
- * the local canonical-inference bridge. Loading already-produced artifacts stays
- * available for debugging, replay, and development.
- */
+/** 竞赛主要流程通过本地统一推理服务分析原始 TXT 文件或文件夹；也支持载入已有结果用于调试和回放。 */
 export default function DataLoader({ capabilities, prediction, onDataset, onError, onStatus, onAnalyzing, onResetDemo }: Props) {
   const txtInput = useRef<HTMLInputElement>(null);
   const folderInput = useRef<HTMLInputElement>(null);

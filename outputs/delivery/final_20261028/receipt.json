@@ -20,11 +20,11 @@
   "exe_sha256": "fa6987b6244fe73c76ee741ea352fcc74e8e4de06de332812e99b1f1d963aa44",
   "exe_bytes": 62893974,
   "binary_recompiled": false,
-  "root_submission_contains_only_exe": true,
+  "root_submission_contains_only_exe": false,
   "hashed_package_files_excluding_manifest": 205,
   "total_package_files": 206,
-  "package_bytes": 78727701,
-  "manifest_sha256": "44e3934fa00d4f16d84cd3cd0d11326fd7456ac60e2a25d9a9119444dce356ad",
+  "package_bytes": 78722779,
+  "manifest_sha256": "e38271676db382004b07420d4b4c78e5c89ca1302d1b72c75b31d0998c64df0b",
   "agent_oriented_wording_scan": "NO_MATCHES_IN_SHIPPED_SOURCE_AND_DOCUMENTS",
   "scan_exemptions": [
     "upstream third-party legal notices",
@@ -114,5 +114,27 @@
     "all_link_targets_verified_after_reopen": true,
     "all_12_page_text_and_pixels_unchanged": true,
     "temporary_files_created": false
-  }
+  },
+  "source_annotation_localization": {
+    "algorithm_changed": false,
+    "executable_recompiled": false,
+    "frontend_comments_translated": 77,
+    "frontend_files": 43,
+    "language": "zh-CN",
+    "python_comments_translated": 134,
+    "python_docstrings_translated": 250,
+    "python_files": 61,
+    "remaining_conversational_wording": 0,
+    "remaining_english_explanatory_comments": 0,
+    "scope": "项目源码注释、文档字符串和生成说明；类型检查指令、技术标识及第三方声明保留原格式",
+    "validation": "Python与前端语法树对比；允许说明字符串和命令行帮助中文化",
+    "python_and_frontend_ast_parity": "PASS",
+    "generated_python_entries_compile": "PASS",
+    "source_self_check": "PASS official_deployment_f1_policy_v3 cpu",
+    "complete_package_verification": "PASS",
+    "official_api_original_code_hashes": "UNCHANGED",
+    "third_party_notices": "UNCHANGED",
+    "temporary_files_created": false
+  },
+  "root_submission_note": "根目录EXE已在本次操作前被删除，本次保留该工作区变动；dist/submission/EatingDetection.exe不变。"
 }

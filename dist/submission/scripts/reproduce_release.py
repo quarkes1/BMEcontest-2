@@ -1,16 +1,9 @@
-"""Verify the promoted release chain without retraining anything.
+"""不重新训练，校验已发布模型的完整证据链。
 
-Checks, in order: the incumbent registry and its promotion attestation, every
-outer-fold evidence bundle and the deployment bundle, the frozen aggregate
-metrics, and (when present) the built ``dist/inference`` and ``dist/submission``
-distributions against their manifests.  Prints the frozen metrics for release
-reporting.
-
-Usage:
-  python scripts/reproduce_release.py [--run-key 160afaf81debf1ee]
-
-Exit codes: 0 = the release chain verifies; 2 = a verification problem was found.
-"""
+依次检查版本登记及发布证明、外层各折证据模型、部署模型和冻结聚合指标。
+若存在 dist/inference 或 dist/submission，也按清单检查构建包，并打印冻结指标。
+用法：python scripts/reproduce_release.py [--run-key 160afaf81debf1ee]
+退出码：0 表示校验通过，2 表示发现校验问题。"""
 
 from __future__ import annotations
 
@@ -30,7 +23,7 @@ from src.pipeline.artifacts import (  # noqa: E402
 
 
 def verify_release_chain(root: Path, *, expected_run_key: str | None = None) -> tuple[list[str], dict[str, object]]:
-    """Return (problems, summary) for the active promoted release."""
+    """返回当前已发布版本的校验问题及结果摘要。"""
     root = Path(root)
     problems: list[str] = []
     release = load_current_promoted_release(root)
@@ -48,7 +41,7 @@ def verify_release_chain(root: Path, *, expected_run_key: str | None = None) -> 
 
 
 def verify_distributions(root: Path) -> list[str]:
-    """Verify built distributions when they exist; their manifests are hash ledgers."""
+    """按各自的哈希清单校验已经构建的推理包。"""
     from scripts.build_inference_distribution import verify_distribution_manifest
 
     problems: list[str] = []
@@ -56,8 +49,8 @@ def verify_distributions(root: Path) -> list[str]:
         package = Path(root) / "dist" / name
         if not package.is_dir():
             continue
-        # The submission ships its runtime in app/ (metadata in meta/); the inference
-        # distribution keeps both at the package root.
+        # 提交包的运行时位于 app/，元数据位于 meta/。
+        # 独立推理包则将两者放在包根目录。
         required = ("app", "meta", "models") if (package / "app" / "event_stack").is_dir() else ("event_stack", "models")
         try:
             if name == "submission" and (package / "build_manifest.json").is_file():

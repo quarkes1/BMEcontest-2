@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Legacy cache-aware session loader backed by canonical raw parsing."""
+"""基于统一原始数据解析器的历史会话加载器，支持缓存。"""
 
 import os
 import re
@@ -22,7 +22,7 @@ def detect_binary(path, head=512):
 
 
 def _find_collect_data(path):
-    """Return the first legacy legal collect-data input in one session directory."""
+    """返回会话目录内第一个符合历史命名约定的原始数据文件。"""
     names = [name for name in os.listdir(path) if re.match(r"collect_data\d+_\d+_\d+\.txt$", name)]
     if not names:
         raise FileNotFoundError(f"no collect_data txt in {path}")
@@ -30,12 +30,12 @@ def _find_collect_data(path):
 
 
 def load_session_tsv(txt_path) -> SessionData:
-    """Legacy compatibility wrapper around the side-effect-free canonical parser."""
+    """对无副作用的统一解析器提供历史接口兼容。"""
     return _parse_collect_data_tsv(txt_path)
 
 
 def load_session(session_id: str) -> SessionData:
-    """Load cache if available; this is the sole legacy API that writes cache files."""
+    """优先读取已有缓存；此历史接口允许写入缓存文件。"""
     bin_path = config.CACHE_DIR / "sessions" / f"{session_id}.npz"
     if bin_path.exists():
         data = np.load(bin_path)

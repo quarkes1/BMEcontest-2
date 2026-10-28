@@ -1,6 +1,6 @@
 import type { Imu, MotionData, MotionManifest } from './types';
 
-/** Motion telemetry record. Segment boundaries may contain timestamp regressions. */
+/** 运动数据记录；片段边界可能出现时间戳回退。 */
 export function parseMotion(manifestValue: unknown, buffer: ArrayBuffer): MotionData {
   const m = manifestValue as MotionManifest;
   if (!m || m.telemetry_version !== '1.0' || m.record_format !== 'f64_ms_6xf32_le' || !Number.isSafeInteger(m.sample_count) || m.sample_count < 0 || buffer.byteLength !== m.sample_count * 32) throw new Error('Invalid motion telemetry manifest or binary size.');

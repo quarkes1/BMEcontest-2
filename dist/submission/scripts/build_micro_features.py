@@ -1,4 +1,4 @@
-"""Build versioned 15-second ACC+GYRO feature caches."""
+"""构建带版本标识的 15 秒加速度及角速度特征缓存。"""
 
 import argparse
 from pathlib import Path

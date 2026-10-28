@@ -1,18 +1,9 @@
-"""Local inference bridge for the visualization application (stdlib only).
+"""可视化应用的本地推理服务，仅使用标准库提供 HTTP 接口。
 
-A thin HTTP adapter around the canonical :class:`Predictor`: it accepts uploaded raw
-``collect_data*.txt`` sessions plus optional static visualization files, runs the
-canonical pipeline, and returns the published prediction contract together with
-visualization-only motion telemetry (``motion.bin``, record format
-``f64_ms_6xf32_le``).  It never re-implements parsing, features, candidates,
-verification, or decoding — the dependency direction is strictly
-
-    local inference bridge -> canonical Predictor
-
-Security posture (single user, localhost only): binds 127.0.0.1, stages uploads in
-collision-safe temporary directories, sanitizes every client-provided name, refuses
-path traversal, and never modifies the user's original files.
-"""
+接收上传的 collect_data*.txt 原始会话，调用统一 Predictor，返回预测结果与仅用于可视化的
+motion.bin 运动数据，其记录格式为 f64_ms_6xf32_le。
+解析、特征、候选、复核和解码均复用统一实现。
+服务仅监听 127.0.0.1；上传内容置于防冲突临时目录，检查文件名并拒绝路径穿越，不修改原始文件。"""
 
 from __future__ import annotations
 
@@ -45,13 +36,13 @@ SERVICE_NAME = "eatingsense-local-inference"
 
 
 def sanitize_segment(name: str, *, fallback: str = "session", limit: int = 80) -> str:
-    """Client-provided names never reach the filesystem unsanitized."""
+    """所有客户端文件名必须先规范化才能用于文件系统访问。"""
     cleaned = SEGMENT_UNSAFE.sub("_", str(name)).strip("._")
     return cleaned[:limit] or fallback
 
 
 def safe_relative(relative: str | None) -> list[str]:
-    """Split a browser-provided relative path into safe segments (traversal refused)."""
+    """将浏览器相对路径拆为安全路径段，拒绝路径穿越。"""
     if not relative:
         return []
     parts = [part for part in re.split(r"[\\/]+", str(relative)) if part not in ("", ".", "..")]
@@ -59,11 +50,9 @@ def safe_relative(relative: str | None) -> list[str]:
 
 
 def motion_records(session: object) -> tuple[bytes, int]:
-    """Little-endian records: float64 timestamp (ms) + six float32 raw IMU channels.
+    """生成小端运动记录：毫秒时间戳为 float64，六轴原始惯性数据为 float32。
 
-    Mirrors ``dist/visual/tools/export-motion.mjs`` (ACC_TIME timestamps, gyro paired
-    by source row, raw ADC values passed through unchanged).
-    """
+与 export-motion.mjs 一致，采用 ACC_TIME 时间戳，角速度按原始行配对，保留原始 ADC 数值。"""
     acc = np.asarray(getattr(session, "acc"), dtype=np.float32)
     gyro = np.asarray(getattr(session, "gyro"), dtype=np.float32)
     timestamps = np.asarray(getattr(session, "t_acc"))
@@ -84,7 +73,7 @@ def motion_records(session: object) -> tuple[bytes, int]:
 
 
 def estimate_gravity_calibration(session: object) -> dict[str, object] | None:
-    """Estimate raw ACC counts/g from at least three nonoverlapping quiet 10 s spans."""
+    """利用至少三个互不重叠的静止 10 秒片段估计每重力加速度对应的原始计数。"""
     acc = np.asarray(session.acc, dtype=np.float64)
     estimates: list[float] = []
     for span in valid_imu_spans(session):
@@ -107,7 +96,7 @@ def estimate_gravity_calibration(session: object) -> dict[str, object] | None:
 
 
 class LocalInferenceService:
-    """Owns the canonical Predictor, staging directories, and per-analysis artifacts."""
+    """管理统一 Predictor、暂存目录及每次分析的结果文件。"""
 
     def __init__(self, bundle_path: Path, *, run_key: str, visual_dir: Path | None = None,
                  temp_root: Path | None = None) -> None:
@@ -122,7 +111,7 @@ class LocalInferenceService:
         self._lock = threading.Lock()
         self._predictor: Predictor | None = None
 
-    # ------------------------------------------------------------- inference
+    # ------------------------------ 推理 ------------------------------
     def predictor(self) -> Predictor:
         if self._predictor is None:
             self._predictor = Predictor.from_bundle(self.bundle_path, device="cpu", run_key=self.run_key)
@@ -170,8 +159,8 @@ class LocalInferenceService:
             folder_path = root.joinpath(*segments)
             target = folder_path / name
             if target.exists():
-                # Keep the canonical filename intact (discovery depends on it) and
-                # disambiguate by isolating the duplicate in its own folder instead.
+                # 保留标准文件名，因为文件发现依赖该命名。
+                # 重名文件放入独立目录以区分，不直接改名。
                 folder_path = folder_path.with_name(f"{folder_path.name}-{uuid.uuid4().hex[:4]}")
                 target = folder_path / name
                 warnings.append(f"Duplicate name {name} stored in {folder_path.name}/.")
@@ -268,10 +257,10 @@ class _Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     service: LocalInferenceService
 
-    def log_message(self, format: str, *args: object) -> None:  # quiet, instrument-style
+    def log_message(self, format: str, *args: object) -> None:  # 采用简洁安静的服务日志。
         return
 
-    # ------------------------------------------------------------ utilities
+    # ------------------------------ 工具函数 ------------------------------
     def _json(self, status: int, payload: object) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
@@ -330,8 +319,8 @@ class _Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
-    # ------------------------------------------------------------- routing
-    def do_GET(self) -> None:  # noqa: N802 (stdlib naming)
+    # ------------------------------ 请求路由 ------------------------------
+    def do_GET(self) -> None:  # noqa: N802  # 标准库规定的方法名
         path = self.path.split("?", 1)[0]
         if path == "/api/health":
             self._json(HTTPStatus.OK, {"status": "ok", "service": SERVICE_NAME, "run_key": self.service.run_key})
@@ -384,15 +373,15 @@ class _Handler(BaseHTTPRequestHandler):
                 result = self.service.analyze([str(token) for token in tokens])
                 self._json(HTTPStatus.OK, result)
             else:
-                # The request body of an unknown route was never read; under HTTP/1.1
-                # keep-alive those bytes would be parsed as the next request line, so
-                # end the connection instead (the response carries Connection: close).
+                # 未知路由的请求体尚未被读取；HTTP/1.1 长连接若继续复用，
+                # 剩余请求体可能被当作下一条请求行解析。
+                # 因此结束连接，并在响应中声明 Connection: close。
                 self.close_connection = True
                 self._error(HTTPStatus.NOT_FOUND, f"Unknown API route: {path}")
         except ValueError as exc:
-            self.close_connection = True          # may fire before the body is consumed
+            self.close_connection = True          # 请求体读取完成之前也可能触发此异常。
             self._error(HTTPStatus.BAD_REQUEST, str(exc))
-        except Exception as exc:  # keep the service alive; report restrained detail
+        except Exception as exc:  # 保持服务可用，并限制错误响应中的细节。
             self.close_connection = True
             self._error(HTTPStatus.INTERNAL_SERVER_ERROR, f"Inference failed: {exc}")
 

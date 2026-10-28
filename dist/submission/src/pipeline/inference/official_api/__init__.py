@@ -1,1 +1,1 @@
-"""Unmodified competition-provided input.py and output.py (2026-10-15)."""
+"""竞赛提供的原始输入输出接口（2026-10-15），input.py 和 output.py 保持原样。"""

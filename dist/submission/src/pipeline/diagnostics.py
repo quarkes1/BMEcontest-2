@@ -1,4 +1,4 @@
-"""Canonical per-subject event diagnostics for promoted experiments."""
+"""发布实验使用的标准受试者级事件诊断。"""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ DIAGNOSTICS_SCHEMA_VERSION = 1
 
 
 def _linear_percentile(values: Sequence[float], percentile: float) -> float | None:
-    """Return the explicitly defined linear-interpolated percentile."""
+    """按明确约定的线性插值方式计算百分位数。"""
 
     ordered = sorted(float(value) for value in values)
     if not ordered:
@@ -33,12 +33,10 @@ def subject_diagnostics(
     *,
     runtime: Mapping[str, object] | None = None,
 ) -> dict[str, object]:
-    """Compute official event metrics per subject with explicit empty semantics.
+    """逐受试者计算事件指标，并明确空样本含义。
 
-    A subject with neither predictions nor truths has no defined F1 and is
-    excluded from the F1 distribution.  Subjects with false positives or false
-    negatives remain included with F1 zero.
-    """
+既无预测也无真实事件的受试者，其 F1 未定义，不计入分布。
+仅有误报或漏检的受试者仍计入，F1 为零。"""
 
     grouped: dict[str, dict[str, list[EventRef]]] = {
         str(subject): {"predictions": [], "truths": []}
@@ -80,7 +78,7 @@ def subject_diagnostics(
 def paired_subject_diagnostics(
     incumbent: Mapping[str, object], candidate: Mapping[str, object]
 ) -> dict[str, int]:
-    """Compare subject F1 values over the union of both diagnostic records."""
+    """在两份诊断记录的受试者并集上比较 F1。"""
 
     old_rows = incumbent.get("subjects", {})
     new_rows = candidate.get("subjects", {})
@@ -106,7 +104,7 @@ def paired_subject_diagnostics(
 def aggregate_subject_diagnostics(
     diagnostics: Sequence[Mapping[str, object]],
 ) -> dict[str, object]:
-    """Merge disjoint fold subject rows and recompute distribution statistics."""
+    """合并互斥折的受试者记录并重算分布统计。"""
 
     subjects: dict[str, object] = {}
     for payload in diagnostics:
@@ -137,6 +135,6 @@ def aggregate_subject_diagnostics(
 
 
 def canonical_diagnostics_bytes(payload: Mapping[str, object]) -> bytes:
-    """Serialize a diagnostic record once for cache, CLI, and promotion use."""
+    """统一序列化诊断结果，供缓存、命令行及发布流程使用。"""
 
     return (json.dumps(payload, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode("utf-8")

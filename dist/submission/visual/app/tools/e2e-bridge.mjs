@@ -1,10 +1,10 @@
-// End-to-end: launcher path — the local inference bridge serves the page and a real
-// collect_data*.txt selection flows through the canonical Predictor into the UI.
+// 端到端检查启动路径：由本地推理服务提供页面，
+// 真实 collect_data*.txt 经统一 Predictor 推理后进入界面。
 //
-// Spawns dist/inference/serve.py (needs the Python environment), opens the page over
-// http://127.0.0.1, feeds a REAL session file through the hidden TXT input, and
-// asserts the status line reaches Ready, the session appears, and events render —
-// with zero page errors.
+// 启动 dist/inference/serve.py，需要对应 Python 环境，
+// 通过本机 HTTP 页面向隐藏 TXT 输入框载入真实会话。
+// 确认状态就绪、会话出现且事件正常渲染，
+// 同时要求页面没有运行错误。
 import { spawn } from 'node:child_process';
 import { readdir, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -19,8 +19,8 @@ const repo = submission ? dist : resolve(dist, '..');
 const PORT = 4199;
 const python = process.env.BME_PYTHON || 'python';
 
-// A real recorded session that the promoted release detects at least one event in
-// (fold-1 validation subject); keeps the end-to-end assertion meaningful.
+// 使用可检出至少一个事件的真实记录会话，
+// 对应外层第一折验证受试者，使端到端断言具有实际意义。
 const session_id = process.env.BME_E2E_SESSION || 'sensorData-1784562356253-23edff73a65e4e9583c963c5a6ee26dd';
 const dataDir = process.env.BME_E2E_DATA_ROOT || resolve(repo, 'Data');
 const batchDirs = await readdir(dataDir);
@@ -46,7 +46,7 @@ async function waitForHealth(deadlineMs = 30000) {
     try {
       const response = await fetch(`http://127.0.0.1:${PORT}/api/health`);
       if (response.ok && (await response.json()).status === 'ok') return;
-    } catch { /* not up yet */ }
+    } catch { /** 服务尚未就绪。 */ }
     await new Promise(resolveWait => setTimeout(resolveWait, 500));
   }
   throw new Error('inference bridge did not become ready in time');
@@ -65,7 +65,7 @@ try {
   const txtButton = page.locator('button:has-text("Select TXT files")');
   if (await txtButton.isDisabled()) throw new Error('TXT selection should be enabled while the bridge is online');
   await page.setInputFiles('.data-loader input[accept=".txt,text/plain"]', sessionPath);
-  // the timeline area must switch to an explicit analyzing state (old curves hidden)
+  // 分析期间时间轴应明确显示分析状态，并隐藏旧曲线。
   await page.waitForSelector('.timeline-analyzing', { timeout: 30000 });
   const analyzingText = (await page.locator('.timeline-analyzing strong').innerText()).trim();
   if (analyzingText !== 'Analyzing…') throw new Error(`unexpected analyzing overlay text: ${analyzingText}`);

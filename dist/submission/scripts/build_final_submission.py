@@ -1,4 +1,4 @@
-"""Assemble the final source package around the exact officially evaluated EXE."""
+"""围绕官方已评测的原始 EXE 组装最终源码包。"""
 from __future__ import annotations
 
 import argparse
@@ -33,7 +33,7 @@ def final_executable(root):
 
 
 def copy_selected_bundle(source,target):
-    """Preserve signed model bytes, including JSON line endings."""
+    """保留已校验模型文件的原始字节，包括 JSON 换行符。"""
     source,target=Path(source),Path(target)
     if target.exists(): raise FileExistsError('model copy destination already exists')
     if source.is_symlink() or any(p.is_symlink() for p in source.rglob('*')):
@@ -42,7 +42,7 @@ def copy_selected_bundle(source,target):
 
 
 def install_notices(root,package):
-    """Reassembly reuses the complete notices shipped with the frozen binary."""
+    """重新组装时复用冻结程序附带的完整第三方声明。"""
     root,package=Path(root),Path(package)
     for source in (root/'THIRD_PARTY_NOTICES.txt',root/'dist/submission/THIRD_PARTY_NOTICES.txt'):
         if source.is_file():
@@ -79,7 +79,7 @@ def final_output(root):
 
 
 def publish_final(staging,dest,root):
-    """Publish the fixed root EXE first; restore its absence if package install fails."""
+    """先发布固定版本的根目录 EXE；源码包安装失败时撤销本次新增的 EXE。"""
     staging,dest=Path(staging),Path(dest);target,output=final_output(root)
     created=False;temporary=None
     try:
@@ -94,7 +94,7 @@ def publish_final(staging,dest,root):
         _atomic_replace(staging,dest)
         return dest
     except BaseException:
-        # A pre-existing correct EXE is immutable and never touched by a rebuild.
+        # 已有且正确的 EXE 保持不变，重新组装时不覆盖。
         completed=(not staging.exists() and (dest/'EatingDetection.exe').is_file()
             and sha(dest/'EatingDetection.exe')==EXPECTED_EXE)
         if created and not completed and output.is_file() and sha(output)==EXPECTED_EXE:
@@ -122,13 +122,13 @@ def build(root=ROOT):
         for name in FINAL_FILES: copy_file(root/'scripts'/name,staging/'scripts'/name)
         copy_file(root/'release/final_submission.json',staging/'release/final_submission.json')
         copy_file(root/'scripts/final_submission_readme.md',staging/'README.md')
-        # Source and visualization entry points select the same model as the EXE.
-        (staging/'main.py').write_text('"""Official competition inference entry."""\nimport sys\n'
+        # 源码和可视化入口选择与 EXE 相同的模型。
+        (staging/'main.py').write_text('"""竞赛正式推理入口。"""\nimport sys\n'
             'sys.dont_write_bytecode = True\nfrom pathlib import Path\n'
             'sys.path.insert(0,str(Path(__file__).resolve().parent))\n'
             'from scripts.final_submission_entry import main\n'
             'if __name__ == "__main__": raise SystemExit(main())\n',encoding='utf-8',newline='\n')
-        (staging/'serve.py').write_text('"""Local visualization source entry."""\nimport sys\n'
+        (staging/'serve.py').write_text('"""本地可视化服务源码入口。"""\nimport sys\n'
             'sys.dont_write_bytecode = True\nfrom pathlib import Path\n'
             'sys.path.insert(0,str(Path(__file__).resolve().parent))\n'
             'from scripts.final_submission_entry import main\n'
@@ -147,7 +147,7 @@ def build(root=ROOT):
             score_scope='official feedback distinct from historical local cross-validation',
             no_new_training=True)
         write_manifest(staging,metadata);verify_final(staging)
-        # Fail closed before replacing the old package if source and binary select different models.
+        # 替换旧包前检查源码与程序的模型选择，不一致时停止发布。
         for command in ([str(staging/'EatingDetection.exe'),'--self-check'],[sys.executable,'-B',str(staging/'main.py'),'--self-check']):
             result=subprocess.run(command,cwd=root,env=clean_environment(),capture_output=True,text=True,encoding='utf-8',errors='replace',timeout=180)
             if result.returncode or json.loads(result.stdout.strip().splitlines()[-1]).get('run_key')!=VERSION:

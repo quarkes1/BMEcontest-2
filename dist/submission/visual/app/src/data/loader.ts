@@ -2,7 +2,7 @@ import { parsePrediction } from './prediction';
 import { parseMotion } from './telemetry';
 import type { MotionManifest, Prediction } from './types';
 
-/** Minimal duck-typed input so classification stays testable outside the browser. */
+/** 使用最小结构化输入，使文件分类逻辑可在浏览器外测试。 */
 export type FileLike = { name: string; text(): Promise<string>; arrayBuffer(): Promise<ArrayBuffer> };
 
 export type Selection = {
@@ -13,7 +13,7 @@ export type Selection = {
   ignored: string[];
 };
 
-/** Canonical raw-session convention: `collect_data*.txt`. */
+/** 统一原始会话文件命名约定：collect_data*.txt。 */
 export function isSessionTxt(name: string): boolean {
   return /^collect_data.*\.txt$/i.test(name);
 }
@@ -23,8 +23,8 @@ export function classifySelection(files: FileLike[]): Selection {
   for (const file of files) {
     const lower = file.name.toLowerCase();
     if (lower.endsWith('.json')) {
-      // Prediction and motion manifests share the .json extension; the caller decides by
-      // inspecting the parsed object, so both buckets keep every JSON file.
+      // 预测清单和运动清单都使用 .json 扩展名。
+      // 调用方读取内容后区分类型，因此两组均保留全部 JSON 文件。
       selection.predictionFiles.push(file);
       selection.motionManifests.push(file);
     } else if (lower.endsWith('.bin')) {
@@ -40,11 +40,7 @@ export function classifySelection(files: FileLike[]): Selection {
 
 export type ExistingArtifacts = { prediction: Prediction | null; motion: { manifest: MotionManifest; imu: import('./types').Imu } | null };
 
-/**
- * Advanced workflow: load already-produced artifacts (`prediction.json`,
- * `motion.json` + `motion.bin`). Unrelated files are ignored; the motion binary must
- * accompany its manifest and must describe a session present in the prediction.
- */
+/** 载入已有 prediction.json 及 motion.json、motion.bin；忽略无关文件，运动二进制必须与清单配套，且对应预测中已有会话。 */
 export async function loadExistingArtifacts(files: FileLike[], current: Prediction | null): Promise<ExistingArtifacts> {
   const selection = classifySelection(files);
   let prediction: Prediction | null = null;

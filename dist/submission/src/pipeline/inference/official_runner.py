@@ -1,4 +1,4 @@
-"""Official no-argument Windows competition runner (2026-10-15 contract)."""
+"""实现 2026-10-15 官方接口的 Windows 无参数运行入口。"""
 from __future__ import annotations
 
 import argparse
@@ -71,7 +71,7 @@ def run(base: Path, bundle: Path, *, predictor=None) -> dict:
             csv.writer(f).writerow(HEADER)
         with threadpool_limits(limits=min(8, os.cpu_count() or 1)):
             for directory, subject in subjects:
-                rows = info.read_info(subject)  # Official interface; never infer hand from metadata.
+                rows = info.read_info(subject)  # 按官方接口读取信息，不根据元数据推断佩戴侧。
                 if not rows: summary['missing_info'].append(subject)
                 if len(rows) > 1: summary['conflicting_info'].append(subject)
                 def records():

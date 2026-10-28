@@ -1,4 +1,4 @@
-"""Canonical, side-effect-free raw session input."""
+"""统一且无副作用的原始会话输入实现。"""
 
 from .raw_session import RawSessionSource, SessionData, discover_raw_sessions, load_raw_session
 

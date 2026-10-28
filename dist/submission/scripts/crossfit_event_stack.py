@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Run leakage-safe nested event-stack evaluation on one or all outer folds."""
+"""对单个或全部外层折运行受试者隔离的嵌套事件评估。"""
 
 from __future__ import annotations
 
@@ -230,7 +230,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def _summary_alias_path(alias: Path | None, output_directory: Path) -> Path | None:
-    """Resolve a requested alias without allowing writes outside crossfit output."""
+    """解析输出别名，并限制写入范围为交叉拟合结果目录。"""
 
     if alias is None:
         return None

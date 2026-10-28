@@ -1,4 +1,4 @@
-"""Source entry point for the packaged visualization and local inference API."""
+"""打包后可视化界面及本地推理接口的源码入口。"""
 from pathlib import Path
 import sys
 

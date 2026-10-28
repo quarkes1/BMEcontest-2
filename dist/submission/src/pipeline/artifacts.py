@@ -1,10 +1,7 @@
-"""Verified, atomic persistence for fitted event-stack model bundles.
+"""对已拟合的事件模型包进行校验和原子持久化。
 
-The module deliberately knows nothing about training data.  A caller must supply
-already-fitted models and the exact train-only policy that produced them.  This
-keeps artifact writing separate from evaluation and makes promotion callers
-provide an explicit, auditable training implementation.
-"""
+本模块不读取训练数据。调用方必须提供已拟合模型，以及仅由训练域选出的固定策略。
+模型写入与评估分离，发布调用方需显式提供可核验的训练实现。"""
 
 from __future__ import annotations
 
@@ -58,7 +55,7 @@ def _is_canonical_absolute_path(value: object) -> bool:
 
 
 def _is_source_fingerprint(item: object) -> bool:
-    """Accept exactly one canonical present or absent input-state record."""
+    """仅接受一种标准的输入状态记录：文件存在或文件缺失。"""
 
     if not isinstance(item, dict) or not _is_canonical_absolute_path(item.get("path")):
         return False
@@ -83,7 +80,7 @@ def _is_source_fingerprint(item: object) -> bool:
 
 
 class PromotionContractError(RuntimeError):
-    """Promotion cannot proceed without a qualifying, explicit training contract."""
+    """模型发布必须满足明确且合规的训练实现约定。"""
 
 
 def _valid_widths(value: object) -> dict[str, int] | None:
@@ -102,7 +99,7 @@ def _valid_widths(value: object) -> dict[str, int] | None:
 
 
 def normalize_feature_schema(value: object) -> dict[str, object]:
-    """Validate schema-v1 width maps and schema-v2 Context-v1 metadata."""
+    """校验第一版模式宽度映射及第二版 Context-v1 元数据。"""
 
     legacy = _valid_widths(value)
     if legacy is not None:
@@ -143,7 +140,7 @@ def normalize_feature_schema(value: object) -> dict[str, object]:
 
 @dataclass(frozen=True)
 class EventStackBundle:
-    """Fitted models plus immutable inference and evidence metadata."""
+    """已拟合模型及不可变的推理、评估证据元数据。"""
 
     models: Mapping[str, object]
     policy: Mapping[str, object]
@@ -196,7 +193,7 @@ class EventStackBundle:
 
 
 class PromotionTrainer(Protocol):
-    """Legal training implementation supplied by Task 6, not this persistence layer."""
+    """由训练模块提供的全量训练实现，持久化层不负责训练。"""
 
     def __call__(self, summary: Mapping[str, object]) -> Mapping[str, EventStackBundle]: ...
 
@@ -231,7 +228,7 @@ def _sha256(path: Path) -> str:
 
 
 def _diagnostic_set_sha256(run_root: Path) -> str:
-    """Hash the canonical complete outer-fold diagnostic evidence set."""
+    """计算完整外层各折诊断证据集合的标准哈希。"""
 
     entries: dict[str, str] = {}
     for fold in range(5):
@@ -244,7 +241,7 @@ def _diagnostic_set_sha256(run_root: Path) -> str:
 
 
 def incumbent_registry_payload(run_root: Path) -> dict[str, object]:
-    """Derive the canonical registry payload from an already verified run root."""
+    """从已校验的运行目录生成标准版本登记内容。"""
 
     root = Path(run_root)
     problems = verify_promotion_attestation(root, expected_run_key=root.name)
@@ -270,7 +267,7 @@ def incumbent_registry_payload(run_root: Path) -> dict[str, object]:
 def load_incumbent_registry(
     path: Path, *, run_root: Path | None = None
 ) -> dict[str, object]:
-    """Load a tracked release floor only when it still matches verified evidence."""
+    """仅在登记的发布下限仍与已校验证据一致时读取。"""
 
     registry_path = Path(path)
     try:
@@ -303,12 +300,9 @@ def load_incumbent_registry(
 
 
 def verify_current_promoted_release(root: Path) -> tuple[str, ...]:
-    """Return problems found in the tracked, active promoted release.
+    """返回当前登记发布版本存在的校验问题。
 
-    This is intentionally a read-only release lock: it validates the registry,
-    its attested run, and the exact active run key without consulting training
-    data or rebuildable caches.
-    """
+此只读版本锁检查登记内容、发布证明和精确运行标识，不读取训练数据或可重建缓存。"""
     base = Path(root)
     try:
         registry_path = base / "release" / "event_stack_incumbent.json"
@@ -326,7 +320,7 @@ def verify_current_promoted_release(root: Path) -> tuple[str, ...]:
 
 
 def load_current_promoted_release(root: Path) -> Mapping[str, object]:
-    """Load the immutable promoted release summary after release-lock checks."""
+    """通过版本锁检查后读取不可变的发布结果摘要。"""
     base = Path(root)
     problems = verify_current_promoted_release(base)
     if problems:
@@ -340,7 +334,7 @@ def load_current_promoted_release(root: Path) -> Mapping[str, object]:
 def validate_candidate_against_incumbent(
     candidate_f1: float, incumbent_f1: float
 ) -> None:
-    """Require a strict aggregate F1 improvement over the active release."""
+    """要求聚合 F1 严格优于当前版本。"""
 
     try:
         candidate = float(candidate_f1)
@@ -356,7 +350,7 @@ def validate_candidate_against_incumbent(
 
 
 def issue_release_transaction_token() -> str:
-    """Create a single-use in-process capability for the release orchestrator."""
+    """为发布事务创建仅在当前进程内有效的一次性写入凭证。"""
 
     token = uuid.uuid4().hex
     _RELEASE_TOKENS.add(token)
@@ -364,7 +358,7 @@ def issue_release_transaction_token() -> str:
 
 
 def consume_release_transaction_token(token: object) -> None:
-    """Consume a capability exactly once, refusing direct active-release writes."""
+    """一次性消费写入凭证，拒绝直接修改当前版本。"""
 
     if not isinstance(token, str) or token not in _RELEASE_TOKENS:
         raise PromotionContractError(
@@ -402,7 +396,7 @@ def _dependency_versions() -> dict[str, str | None]:
 
 
 def _is_link_or_reparse_point(path: Path) -> bool:
-    """Identify link-like paths without resolving a caller-controlled path."""
+    """不解析调用方控制的路径目标，直接识别链接类路径。"""
 
     if path.is_symlink():
         return True
@@ -410,11 +404,11 @@ def _is_link_or_reparse_point(path: Path) -> bool:
         attributes = path.stat(follow_symlinks=False).st_file_attributes
     except (AttributeError, OSError):
         return False
-    return bool(attributes & 0x400)  # Windows FILE_ATTRIBUTE_REPARSE_POINT
+    return bool(attributes & 0x400)  # Windows 文件重解析点属性 FILE_ATTRIBUTE_REPARSE_POINT。
 
 
 def _trusted_event_stack_root(event_stack_root: Path) -> Path:
-    """Normalize an explicit caller-authorized root without accepting symlinks."""
+    """规范化调用方显式指定的根目录，并拒绝符号链接。"""
 
     root = Path(event_stack_root).absolute()
     if root.name != "event_stack":
@@ -430,7 +424,7 @@ def _trusted_event_stack_root(event_stack_root: Path) -> Path:
 
 
 def _event_stack_parent(destination: Path, *, event_stack_root: Path) -> Path:
-    """Validate that a bundle destination is anchored below one trusted root."""
+    """校验模型包目标始终位于同一个可信根目录下。"""
 
     root = _trusted_event_stack_root(event_stack_root)
     destination = Path(destination).absolute()
@@ -453,7 +447,7 @@ def _event_stack_parent(destination: Path, *, event_stack_root: Path) -> Path:
 
 
 def _safe_remove(path: Path) -> None:
-    """Remove exactly one known temporary/backup entry without traversing links."""
+    """仅删除一个已知临时或备份条目，不遍历链接。"""
 
     if _is_link_or_reparse_point(path) or path.is_file():
         path.unlink()
@@ -464,7 +458,7 @@ def _safe_remove(path: Path) -> None:
 def cleanup_stale_bundle_temporary_directories(
     destination: Path, *, event_stack_root: Path
 ) -> tuple[Path, ...]:
-    """Remove only this run key's sibling temp/backup paths; never traverse links."""
+    """仅清理本运行标识对应的同级临时和备份路径，不遍历链接。"""
 
     destination = Path(destination)
     parent = _event_stack_parent(destination, event_stack_root=event_stack_root)
@@ -525,7 +519,7 @@ def _write_bundle_contents(
 def verify_bundle_manifest(
     destination: Path, *, expected_run_key: str | None = None
 ) -> tuple[str, ...]:
-    """Return deterministic validation messages; an empty tuple means verified."""
+    """返回顺序固定的校验信息；空元组表示通过。"""
 
     destination = Path(destination)
     problems: list[str] = []
@@ -621,7 +615,7 @@ def verify_bundle_manifest(
 def write_event_stack_bundle(
     destination: Path, bundle: EventStackBundle, *, event_stack_root: Path
 ) -> None:
-    """Write a complete verified bundle then atomically install it at *destination*."""
+    """写入并校验完整模型包，再原子安装到目标路径。"""
 
     destination = Path(destination)
     root = _trusted_event_stack_root(event_stack_root)
@@ -666,7 +660,7 @@ def write_event_stack_bundle(
 def load_event_stack_bundle(
     destination: Path, *, expected_role: str | None = None, expected_run_key: str | None = None
 ) -> EventStackBundle:
-    """Load a bundle only after all serialized files pass manifest verification."""
+    """全部序列化文件通过清单校验后，才加载模型包。"""
 
     destination = Path(destination)
     problems = verify_bundle_manifest(destination, expected_run_key=expected_run_key)
@@ -703,7 +697,7 @@ def load_event_stack_bundle(
 def _verify_run_bundles(
     run_root: Path, bundles: Mapping[str, EventStackBundle]
 ) -> None:
-    """Verify and deserialize every staged bundle before a run-root install."""
+    """安装运行目录前，校验并反序列化暂存的每个模型包。"""
 
     for key in sorted(bundles):
         bundle_path = run_root / key
@@ -716,7 +710,7 @@ def _verify_run_bundles(
 
 
 def _promotion_summary_contract(summary: Mapping[str, object]) -> tuple[str, float]:
-    """Validate the immutable aggregate evidence required for a promotion."""
+    """校验发布所需的不可变聚合证据。"""
 
     try:
         run_key = str(summary["experiment_key"])
@@ -755,7 +749,7 @@ def _write_promotion_attestation(
     *,
     expected_run_key: str | None = None,
 ) -> None:
-    """Bind canonical aggregate evidence and every staged bundle to one run key."""
+    """将标准聚合证据及全部暂存模型包绑定到同一运行标识。"""
 
     run_key, f1 = _promotion_summary_contract(summary)
     if expected_run_key is not None and expected_run_key != run_key:
@@ -787,7 +781,7 @@ def _write_promotion_attestation(
 def verify_promotion_attestation(
     run_root: Path, *, expected_run_key: str | None = None
 ) -> tuple[str, ...]:
-    """Verify structural promotion provenance; this is not a cryptographic signature."""
+    """校验发布来源的结构一致性；此检查不构成密码学签名。"""
 
     root = Path(run_root)
     if not root.is_dir() or _is_link_or_reparse_point(root):
@@ -854,7 +848,7 @@ def _install_run_root(
     staging: Path,
     bundles: Mapping[str, EventStackBundle],
 ) -> None:
-    """Atomically replace a complete run root, restoring any verified predecessor."""
+    """原子替换完整运行目录，失败时恢复已校验的原版本。"""
 
     parent = destination.parent
     backup = parent / f".{destination.name}.backup-{uuid.uuid4().hex}"
@@ -897,17 +891,15 @@ def promote_summary(
     release_token: str | None = None,
     active_release: bool = False,
 ) -> tuple[Path, ...]:
-    """Promote only a strictly improved summary through an injected legal trainer.
+    """通过显式提供的合规训练器，仅发布严格改善的结果。
 
-    This function creates no paths before both the F1 gate and trainer contract
-    have succeeded.  The trainer must return five outer-fold evidence bundles and
-    exactly one ``deployment`` bundle; Task 6 owns the legal all-target trainer.
-    """
+F1 门槛和训练约定均通过之前，不创建任何路径。
+训练器须返回五个外层折证据包及一个 deployment 部署包。"""
 
     summary = json.loads(Path(summary_path).read_text(encoding="utf-8"))
     if not isinstance(summary, Mapping):
         raise PromotionContractError("summary must be a JSON object")
-    # Keep the gate first: malformed/non-improving inputs still cause no writes.
+    # 先检查门槛，格式错误或无改善的输入不得产生写入。
     try:
         f1 = float(summary["outer_metrics"]["f1"])  # type: ignore[index]
     except (KeyError, TypeError, ValueError) as exc:

@@ -1,4 +1,4 @@
-"""Small, dependency-free contract shared by inference and visualization."""
+"""推理和可视化共用的轻量、无额外依赖结果规范。"""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ PREDICTION_SCHEMA_VERSION = "1.0"
 
 def make_prediction_result(*, run_key: str, source: str, duration_seconds: float,
                            events: Sequence[Mapping[str, object]]) -> dict[str, object]:
-    """Create the minimum public prediction document."""
+    """创建最小公开预测结果文档。"""
     return {
         "schema_version": PREDICTION_SCHEMA_VERSION,
         "model": {"name": "event-stack", "run_key": str(run_key)},
@@ -21,7 +21,7 @@ def make_prediction_result(*, run_key: str, source: str, duration_seconds: float
 
 
 def validate_prediction(value: Mapping[str, object]) -> None:
-    """Validate the stable public envelope without requiring jsonschema at runtime."""
+    """校验稳定的公开结果结构，运行时不要求 jsonschema。"""
     required = {"schema_version", "model", "input", "events", "diagnostics"}
     allowed = required | {"timeline", "candidates", "gaps"}
     if not isinstance(value, Mapping) or not required <= set(value) or not set(value) <= allowed:

@@ -9,8 +9,7 @@ export type ModelReleaseMetadata = {
   outer_metrics?: ReleaseMetrics;
 };
 
-/** Promoted-release evidence, inlined at build time from generated runtime metadata
- * (single source of truth: tools/prepare-release.mjs) so the standalone page needs no fetch. */
+/** 构建时从 prepare-release.mjs 统一生成的元数据内嵌发布证据，独立页面无需额外请求。 */
 export default function ModelPage({ prediction, release = RELEASE_METADATA as ModelReleaseMetadata }: { prediction: Prediction; release?: ModelReleaseMetadata }) {
   const historical = release.historical_reproduction ?? (release.outer_metrics
     ? { run_key: release.run_key, outer_metrics: release.outer_metrics }

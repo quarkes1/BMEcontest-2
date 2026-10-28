@@ -1,10 +1,7 @@
-"""Atomically advance the active event-stack release from registered evidence.
+"""依据登记证据，以原子事务更新当前事件检测版本。
 
-This is deliberately the only command which may replace both ``dist/event_stack``
-and ``release/event_stack_incumbent.json``.  Its journal is durable enough to
-finish a transaction after an interrupted process without ever trusting a
-self-reported metric.
-"""
+本命令统一替换 dist/event_stack 和 release/event_stack_incumbent.json。
+事务日志支持进程中断后恢复，指标必须依据证据重新校验。"""
 
 from __future__ import annotations
 
@@ -51,13 +48,13 @@ def _tree_hash(root: Path) -> str:
 
 
 def _fsync_file(path: Path) -> None:
-    # Windows rejects ``fsync`` for a read-only CRT descriptor.
+    # Windows 不支持对只读 CRT 文件描述符调用 fsync。
     with path.open("r+b") as handle:
         os.fsync(handle.fileno())
 
 
 def _fsync_parent(path: Path) -> None:
-    """Best-effort directory durability; Windows may not expose directory FDs."""
+    """尽可能持久化目录；Windows 可能不提供可用的目录文件描述符。"""
     try:
         descriptor = os.open(str(path.parent), os.O_RDONLY)
     except OSError:
@@ -95,7 +92,7 @@ def _write_journal(root: Path, payload: Mapping[str, object]) -> None:
 
 
 def make_dist_journal_callback(root: Path, journal: dict[str, object]):
-    """Return the sole fsynced callback used before every package replacement."""
+    """返回包替换前唯一使用的、带持久化同步的回调。"""
 
     root = Path(root)
     def before_dist_replace(action: str, backup: Path) -> None:
@@ -119,7 +116,7 @@ def _load_journal(root: Path) -> dict[str, object] | None:
 
 
 def _active_dist_matches_candidate(root: Path, candidate: Mapping[str, object]) -> bool:
-    """Recognize a fully copied candidate even before its tree hash is journaled."""
+    """即使树哈希尚未写入日志，也识别已完整复制的候选版本。"""
 
     run_key = candidate.get("run_key")
     if not isinstance(run_key, str):
@@ -159,7 +156,7 @@ def _restore_backup(root: Path, journal: Mapping[str, object], registry_path: Pa
     verify_packaged_bundle(backup)
     _atomic_write(registry_path, _stable_json_bytes(previous))
     rollback = {**journal, "phase": "prepared"}
-    _write_journal(root, rollback)  # fsync immediately before rollback replace
+    _write_journal(root, rollback)  # 回滚替换前立即执行持久化同步。
     if destination.exists():
         raise PromotionContractError("cannot restore backup over an unexpected active dist")
     os.replace(backup, destination)
@@ -167,7 +164,7 @@ def _restore_backup(root: Path, journal: Mapping[str, object], registry_path: Pa
 
 
 def recover_release_transaction(root: Path = _ROOT) -> None:
-    """Complete a verified interrupted transaction, or retain the old registry."""
+    """完成已校验的中断事务，或保留旧版本登记。"""
 
     root = Path(root)
     journal = _load_journal(root)
@@ -188,9 +185,9 @@ def recover_release_transaction(root: Path = _ROOT) -> None:
         raise PromotionContractError("release journal registry payload is invalid")
     registry_path = root / "release" / "event_stack_incumbent.json"
     if phase == "prepared":
-        # An interruption may happen after the package's own atomic swap but
-        # before this orchestrator records its tree hash.  Finish that new
-        # release only when the copied deployment manifest identifies it.
+        # 包完成原子替换后，事务控制器可能尚未来得及记录树哈希。
+        # 此时必须通过复制的部署清单确认新版本身份。
+        # 只有身份匹配才能完成新版本发布。
         if not _active_dist_matches_candidate(root, candidate):
             if (root / "dist" / "event_stack").is_dir():
                 verify_packaged_bundle(root / "dist" / "event_stack")
@@ -206,9 +203,9 @@ def recover_release_transaction(root: Path = _ROOT) -> None:
     active_dist = root / "dist" / "event_stack"
     expected_tree = journal["candidate_dist_sha256"]
     if expected_tree is None and not _active_dist_matches_candidate(root, candidate):
-        # The packager may have rolled back after a post-copy verification
-        # failure.  Its callback left a durable journal, but the old verified
-        # package is now active again, so retain the old registry and finish.
+        # 复制后的校验失败时，打包流程可能已回滚。
+        # 即使回调留下持久化日志，当前激活的仍可能是旧包。
+        # 此时保留旧版本登记并结束恢复。
         if active_dist.is_dir():
             verify_packaged_bundle(active_dist)
             _atomic_write(registry_path, _stable_json_bytes(previous))
@@ -217,9 +214,9 @@ def recover_release_transaction(root: Path = _ROOT) -> None:
         _restore_backup(root, journal, registry_path, previous)
         return
     if expected_tree is not None and _tree_hash(active_dist) != expected_tree:
-        # We cannot prove whether this is the old package or a corrupted
-        # partially replaced candidate.  Retain the journal and fail closed;
-        # deleting it would make a mixed dist/registry pair look completed.
+        # 无法确认当前包是旧版本还是替换中损坏的候选版本时，
+        # 保留事务日志并停止恢复。
+        # 删除日志会掩盖部署包与版本登记不一致的问题。
         if not active_dist.exists():
             _restore_backup(root, journal, registry_path, previous)
             return
@@ -242,7 +239,7 @@ def recover_release_transaction(root: Path = _ROOT) -> None:
 
 
 def release_summary(summary_path: Path, *, root: Path = _ROOT) -> Path:
-    """Promote, package and atomically record one strictly improved summary."""
+    """将严格改善的实验结果完成模型发布、打包和版本登记。"""
 
     root = Path(root)
     recover_release_transaction(root)
@@ -262,7 +259,7 @@ def release_summary(summary_path: Path, *, root: Path = _ROOT) -> Path:
         )
     validate_candidate_against_incumbent(candidate_f1, float(incumbent["f1"]))
 
-    # The trainer re-validates fold evidence before producing the candidate run.
+    # 生成候选版本前，训练器会重新校验各折证据。
     written = promote_summary(
         Path(summary_path), output_root=root / "models",
         trainer=registered_filesystem_trainer,

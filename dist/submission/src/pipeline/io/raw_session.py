@@ -1,4 +1,4 @@
-"""Raw ``collect_data*.txt`` parsing without cache side effects."""
+"""解析 collect_data*.txt 原始文件，不产生缓存副作用。"""
 
 from __future__ import annotations
 
@@ -37,12 +37,9 @@ class RawSessionSource:
 
 
 def discover_raw_sessions(path: Path) -> tuple[RawSessionSource, ...]:
-    """Discover sorted raw files; a multi-file directory shares one subject, not one session.
+    """按顺序发现原始文件；同一目录内多个文件共享受试者标识，但各自属于独立会话。
 
-    A directory may also hold one level of ``sensorData-*``-style subdirectories (the
-    competition dataset layout, e.g. the batch root passed as ``--official-input``);
-    each subdirectory is then expanded with the same rules as a direct hit.
-    """
+也支持一层 sensorData-* 子目录的竞赛数据布局，每个子目录按同样规则展开。"""
     path = Path(path)
     if path.is_file():
         if not _SESSION_NAME.fullmatch(path.name):
@@ -60,7 +57,7 @@ def discover_raw_sessions(path: Path) -> tuple[RawSessionSource, ...]:
 
 
 def _discover_in_directory(path: Path) -> list[RawSessionSource]:
-    """One directory's direct sessions; a one-file directory names the session after it."""
+    """读取目录直接包含的会话；仅有一个文件时按该文件命名会话。"""
     files = sorted(child for child in path.iterdir() if child.is_file() and _SESSION_NAME.fullmatch(child.name))
     if not files:
         return []
@@ -70,7 +67,7 @@ def _discover_in_directory(path: Path) -> list[RawSessionSource]:
 
 
 def _parse_collect_data_tsv(path: Path, *, text: str | None = None) -> SessionData:
-    """The existing 53-column parser, retained without cache side effects."""
+    """沿用既有的 53 列解析规则，不产生缓存副作用。"""
     acc_x, acc_y, acc_z, gx, gy, gz = [], [], [], [], [], []
     t_acc, t_ppg, imu_valid, ppg_valid = [], [], [], []
     ppg = [[] for _ in range(N_PPG)]
@@ -109,7 +106,7 @@ def _parse_collect_data_tsv(path: Path, *, text: str | None = None) -> SessionDa
 
 
 def load_raw_session(source: RawSessionSource) -> SessionData:
-    """Load a raw source; reading it never creates a cache artifact."""
+    """读取原始数据源，不创建缓存文件。"""
     if source.path.is_dir():
         sources = discover_raw_sessions(source.path)
         source = sources[0]
@@ -119,7 +116,7 @@ def load_raw_session(source: RawSessionSource) -> SessionData:
 
 
 def load_raw_text(source: RawSessionSource, text: str) -> SessionData:
-    """Parse official DataReader text with exactly the canonical file parser."""
+    """使用与标准文件解析器完全相同的规则解析 DataReader 返回的文本。"""
     if not isinstance(text, str):
         raise TypeError("official TXT content must be text")
     return _parse_collect_data_tsv(source.path, text=text)

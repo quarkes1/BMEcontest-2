@@ -1,4 +1,4 @@
-"""Local visualization source entry."""
+"""本地可视化服务源码入口。"""
 import sys
 sys.dont_write_bytecode = True
 from pathlib import Path

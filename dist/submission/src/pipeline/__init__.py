@@ -1,1 +1,1 @@
-"""Reusable, leakage-safe training and event-evaluation pipelines."""
+"""可复用的受试者隔离训练及事件评估流程。"""

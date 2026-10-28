@@ -1,4 +1,4 @@
-"""Versioned 15-second IMU feature-cache construction."""
+"""构建带版本标识的 15 秒惯性窗口特征缓存。"""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ MICRO_NEGATIVE_RATIO = 3
 
 @dataclass(frozen=True)
 class MicroCacheArrays:
-    """The stable, model-facing arrays stored in one micro-window cache."""
+    """单个微窗缓存中供模型使用的固定数组结构。"""
 
     feat: np.ndarray
     label: np.ndarray
@@ -33,7 +33,7 @@ class MicroCacheArrays:
 
 
 def cache_metadata(config: MicroFeatureConfig, source_files) -> dict:
-    """Fingerprint feature semantics and every source artifact used to build them."""
+    """为特征含义及构建所用全部源文件计算指纹。"""
     sources = []
     for path in sorted((Path(value) for value in source_files), key=str):
         if not path.exists():
@@ -51,7 +51,7 @@ def cache_metadata(config: MicroFeatureConfig, source_files) -> dict:
 
 
 def write_micro_cache_atomic(path, arrays: MicroCacheArrays, metadata: dict) -> None:
-    """Atomically replace a compressed cache, leaving no partial result on errors."""
+    """原子替换压缩缓存，异常时不留下部分结果。"""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
@@ -71,13 +71,13 @@ def write_micro_cache_atomic(path, arrays: MicroCacheArrays, metadata: dict) -> 
 
 
 def read_micro_metadata(path) -> dict:
-    """Read only the JSON metadata from a cache artifact."""
+    """仅从缓存文件读取 JSON 元数据。"""
     with np.load(path, allow_pickle=False) as data:
         return json.loads(str(data["metadata"].item()))
 
 
 def read_micro_cache(path, expected_metadata=None) -> MicroCacheArrays:
-    """Load a validated cache, ignoring only non-semantic timing metadata."""
+    """加载已校验缓存，仅忽略不影响特征含义的计时元数据。"""
     path = Path(path)
     with np.load(path, allow_pickle=False) as data:
         actual = json.loads(str(data["metadata"].item()))
@@ -102,7 +102,7 @@ def read_micro_cache(path, expected_metadata=None) -> MicroCacheArrays:
 
 
 def label_micro_window(start_ms, end_ms, meals, positive_fraction=0.5, negative_buffer_ms=300_000):
-    """Return a positive, negative, or ambiguous label for one time window."""
+    """为单个时间窗返回正类、负类或模糊标签。"""
     duration = end_ms - start_ms
     overlap = max(
         (
@@ -124,7 +124,7 @@ def label_micro_window(start_ms, end_ms, meals, positive_fraction=0.5, negative_
 
 
 def sample_training_rows(labels, sessions, seed, negative_ratio=3):
-    """Keep positives and bounded, deterministic per-session negatives."""
+    """保留正样本，并为每个会话确定性保留有界数量的负样本。"""
     labels = np.asarray(labels, dtype=np.int8)
     sessions = np.asarray(sessions).astype(str)
     rng = np.random.default_rng(seed)
@@ -142,8 +142,8 @@ def sample_training_rows(labels, sessions, seed, negative_ratio=3):
 
 
 def meals_by_session(root) -> dict[str, tuple[tuple[int, int], ...]]:
-    """Return only meal intervals fully contained by each indexed session."""
-    del root  # Dataset manifests are project-global; the argument keeps this helper replaceable in tests.
+    """仅返回完全包含在各索引会话内的餐次区间。"""
+    del root  # 数据清单为项目全局配置；保留参数以便在测试中替换数据来源。
     index = manifests.load_sensor_index()
     meals = manifests.load_meals()
     by_external: dict[str, list[tuple[int, int]]] = {}
@@ -169,7 +169,7 @@ def _fold_manifest_path(root: Path, fold: int) -> Path:
 
 
 def split_sessions(root, fold: int, split: str) -> tuple[str, ...]:
-    """Resolve one leakage-safe split from its stored fold manifest."""
+    """从已保存折清单解析一个受试者隔离分区。"""
     root = Path(root)
     with _fold_manifest_path(root, fold).open(encoding="utf-8") as handle:
         manifest = json.load(handle)
@@ -196,7 +196,7 @@ def _empty_micro_arrays() -> MicroCacheArrays:
 
 
 def _session_rows(task) -> MicroCacheArrays:
-    """Extract complete, covered windows for one session; safe for process workers."""
+    """提取单个会话内完整且覆盖达标的窗口，支持进程工作单元。"""
     path, session_id, meals, config = task
     if not Path(path).exists():
         return _empty_micro_arrays()
@@ -247,7 +247,7 @@ def build_micro_split(
     limit: int = 0,
     force: bool = False,
 ) -> Path:
-    """Build or reuse one versioned fold/split cache and return its artifact path."""
+    """构建或复用一个带版本标识的折分区缓存，返回缓存路径。"""
     if workers < 1:
         raise ValueError("workers must be at least one")
     if limit < 0:

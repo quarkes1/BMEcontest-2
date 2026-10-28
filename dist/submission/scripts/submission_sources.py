@@ -1,4 +1,4 @@
-"""Export current-model inference, training and evaluation source files."""
+"""导出当前模型的推理、训练和评估源码。"""
 from __future__ import annotations
 
 from importlib.metadata import version
@@ -44,7 +44,7 @@ def copy_tree(source: Path, destination: Path):
 
 
 def consolidate_notices(package: Path):
-    """Keep complete upstream notices in one file rather than a directory tree."""
+    """将完整上游声明合并到单一文件，不保留独立目录树。"""
     notices = package/'licenses'
     sections = ['Third-party software notices\n\nUpstream license texts are reproduced below without modification.\n\n']
     for path in sorted(notices.rglob('*')):
@@ -54,7 +54,7 @@ def consolidate_notices(package: Path):
     if len(sections) == 1:
         raise ValueError('third-party notices are missing')
     (package/'THIRD_PARTY_NOTICES.txt').write_text(''.join(sections), encoding='utf-8', newline='\n')
-    # Exact task-owned staging child, never a user directory or workspace root.
+    # 仅处理当前构建创建的暂存子目录，不处理外部目录或工作区根目录。
     if notices.parent != package or notices.is_symlink():
         raise ValueError('unexpected notices directory')
     shutil.rmtree(notices)
@@ -72,8 +72,8 @@ def add_sources(root: Path, package: Path, run_key: str):
                            (root/'release', package/'release'),
                            (root/'outputs/crossfit', package/'outputs/crossfit')):
         copy_tree(source, target)
-    # A source submission keeps these siblings at its root; the repository
-    # keeps them in dist/. Both layouts must support the documented rebuild.
+    # 源码提交包在根目录保存这些相邻资源。
+    # 仓库中则位于 dist/；两种布局均须支持文档中的重新组装命令。
     assets = root if (root/'visual/index.html').is_file() else root/'dist'
     for name in ('visual', 'schema', 'examples'):
         if not (assets/name).is_dir():
@@ -86,8 +86,8 @@ def add_sources(root: Path, package: Path, run_key: str):
     if notice.is_file():
         with notice.open('a',encoding='utf-8',newline='\n') as stream:
             stream.write('\n\n'+(assets/'visual/THIRD_PARTY_NOTICES.txt').read_text(encoding='utf-8'))
-    # Root source entry follows the same official no-argument contract as the EXE.
-    entry = '"""Official competition source entry point."""\n'
+    # 源码入口采用与 EXE 相同的官方无参数运行约定。
+    entry = '"""竞赛正式推理源码入口。"""\n'
     entry += 'from pathlib import Path\nimport sys\n'
     entry += 'sys.path.insert(0, str(Path(__file__).resolve().parent))\n'
     entry += 'from scripts.competition_entry import main\n'

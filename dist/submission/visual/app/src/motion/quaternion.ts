@@ -1,5 +1,5 @@
 export type Quaternion = { x: number; y: number; z: number; w: number };
-/** A quaternion sample on the replay timeline; `segment` separates gap-broken runs. */
+/** 回放时间轴上的四元数样本；segment 标识由采集缺口分隔的片段。 */
 export type QuaternionPoint = Quaternion & { t: number; segment: number };
 
 export const identity: Quaternion = { x: 0, y: 0, z: 0, w: 1 };

@@ -1,10 +1,6 @@
 import { slerp, type Quaternion, type QuaternionPoint } from './quaternion';
 
-/**
- * Deterministic SLERP lookup on the replay timeline. Returns null outside the sampled
- * range, across segment boundaries, or when the surrounding samples straddle a data gap
- * — the replay never invents motion across missing samples.
- */
+/** 按回放时间轴确定性查询球面线性插值；超出采样范围、跨片段边界或采样缺口时返回空值，不虚构缺失运动。 */
 export function interpolateOrientation(points: QuaternionPoint[], time: number): Quaternion | null {
   if (!points.length || time < points[0].t || time > points[points.length - 1].t) return null;
   let lo = 0, hi = points.length - 1;

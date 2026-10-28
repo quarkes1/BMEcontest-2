@@ -15,11 +15,7 @@ type SessionArtifact = {
   motion?: { manifest: unknown; bin_url: string };
 };
 
-/**
- * Client for the local inference bridge (start.bat or the source serve.py entry).
- * It only transports raw TXT files and returns the published prediction contract plus
- * motion telemetry — the browser never implements model logic.
- */
+/** 本地推理服务客户端，对应 start.bat 或 serve.py 入口；仅传输原始 TXT 并接收公开预测和运动数据，浏览器不实现模型。 */
 async function ensureOk(response: Response, fallback: string): Promise<any> {
   if (response.ok) return response.json();
   let detail = fallback;
@@ -27,7 +23,7 @@ async function ensureOk(response: Response, fallback: string): Promise<any> {
     const body = await response.json();
     if (body?.error) detail = String(body.error);
   } catch {
-    /* keep fallback */
+    /** 保留默认回退值。 */
   }
   throw new Error(detail);
 }
@@ -95,15 +91,15 @@ export function mergeOutcomes(outcomes: AnalyzeOutcome[]): AnalyzeOutcome {
   return { prediction: parsePrediction(prediction), motions: Object.assign({}, ...outcomes.map(o => o.motions)), warnings };
 }
 
-/** Upload raw TXT selections (file picker or folder picker) and run canonical inference. */
+/** 上传文件或文件夹选择器中的原始 TXT，运行统一推理。 */
 export async function analyzeRawSelection(files: File[], folder: boolean, onProgress?: AnalyzeProgress): Promise<AnalyzeOutcome> {
   const total = files.length;
   const tokens: string[] = [];
   for (let i = 0; i < files.length; i++) {
     onProgress?.('preparing', i, total);
     const file = files[i];
-    // Each single-token analysis discovers a one-file folder. Give every file in a
-    // multi-file selection its own folder so session IDs cannot collide on merge.
+    // 每次独立分析会发现一个仅包含单文件的目录。
+    // 多文件选择时为各文件建立独立目录，避免合并结果的会话标识冲突。
     const relative = total > 1 ? `${file.name.replace(/\.txt$/i, '')}-${i + 1}/${file.name}`
       : folder ? (file as File & { webkitRelativePath?: string }).webkitRelativePath || null : null;
     tokens.push(await uploadSessionFile(file, relative));

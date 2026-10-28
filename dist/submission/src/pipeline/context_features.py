@@ -1,4 +1,4 @@
-"""Deterministic Context-v1 features built from complete probability streams."""
+"""根据完整概率序列计算确定性的 Context-v1 上下文特征。"""
 
 from __future__ import annotations
 
@@ -49,11 +49,9 @@ def context_v1_features(
     micro_windows_by_sid: Mapping[str, Sequence[tuple[int, int, float]]],
     session_bounds_by_sid: Mapping[str, tuple[int, int]],
 ) -> np.ndarray:
-    """Build the fixed-width Context-v1 matrix for candidate events.
+    """为候选事件构建固定宽度的 Context-v1 特征矩阵。
 
-    Session bounds are deliberately a required input: sparse probability windows
-    cannot be used to infer where a session starts or ends.
-    """
+必须显式传入会话边界，不能根据稀疏概率窗口推断会话的起止时间。"""
     rows = []
     for candidate in candidates:
         event = getattr(candidate, "event", candidate)

@@ -1,5 +1,5 @@
-// Remove previous production assets so hashed bundles never accumulate in dist/visual/.
-// Runs before `vite build` (see app/package.json prebuild); only touches generated output.
+// 清理上一次生成的生产资源，避免带哈希的旧文件持续累积。
+// 在 vite build 前运行，仅处理构建产物。
 import { readdir, rm } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 const visual = resolve(import.meta.dirname, '..');

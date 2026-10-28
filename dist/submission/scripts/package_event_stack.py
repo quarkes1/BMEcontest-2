@@ -1,4 +1,4 @@
-"""Atomically assemble a standalone event-stack deployment package."""
+"""以原子替换方式组装独立事件检测部署包。"""
 
 from __future__ import annotations
 
@@ -60,7 +60,7 @@ def _sha256(path: Path) -> str:
 
 
 def required_paths(destination: Path) -> frozenset[str]:
-    """Return the package file set excluding interpreter caches."""
+    """返回包内文件集合，排除解释器缓存。"""
 
     root = Path(destination)
     return frozenset(
@@ -75,7 +75,7 @@ def _canonical_json(payload: object) -> bytes:
 
 
 def requirements_from_manifest(manifest: object) -> str:
-    """Render exact, model-recorded package pins in a stable install order."""
+    """按固定安装顺序生成模型记录的精确依赖版本。"""
 
     if not isinstance(manifest, dict):
         raise ValueError("deployment manifest dependency_versions must be an object")
@@ -110,9 +110,9 @@ def _build_runtime_manifest(staging: Path) -> None:
     payload = {
         "package_version": 1,
         "bundle_manifest_sha256": _sha256(bundle_manifest),
-        # CUDA support can only be added through the source-controlled registry
-        # in the runtime, after an audited component release.  Package metadata
-        # must never self-declare a hardware backend.
+        # CUDA 支持必须先实现并完成组件发布校验。
+        # 随后才能加入源码管理的运行组件注册表。
+        # 包元数据不能自行声明硬件后端支持。
         "capabilities": {},
         "files": files,
     }
@@ -120,7 +120,7 @@ def _build_runtime_manifest(staging: Path) -> None:
 
 
 def verify_packaged_bundle(destination: Path) -> None:
-    """Verify the complete package and the copied Task-4 deployment manifest."""
+    """校验整个包及其复制的部署模型清单。"""
 
     destination = Path(destination)
     try:
@@ -148,9 +148,9 @@ def verify_packaged_bundle(destination: Path) -> None:
     problems = verify_bundle_manifest(destination / "bundle", expected_run_key="deployment")
     if problems:
         raise ValueError("packaged deployment bundle verification failed: " + "; ".join(problems))
-    # The package deliberately places the copied bundle below ``bundle/``;
-    # retain its original run key (``deployment``) during verification instead
-    # of asking Task-4's loader to infer a run key from that new directory name.
+    # 部署模型在包内位于 bundle/ 子目录。
+    # 校验时仍使用模型原始用途标识 deployment。
+    # 不能根据复制后的目录名称推断原始运行标识。
 
 
 def _run_smoke(script: Path, bundle: Path, payload: Path, output: Path, *, device: str = "cpu") -> bytes:
@@ -239,7 +239,7 @@ def package_event_stack(
     before_replace: Callable[[str, Path], None] | None = None,
     retain_backup: bool = False,
 ) -> Path:
-    """Package one verified deployment bundle through a same-parent atomic swap."""
+    """通过同级目录原子替换打包一个已校验的部署模型。"""
 
     bundle_path = Path(bundle_path).absolute()
     if cuda_adapter_path is not None:
@@ -248,8 +248,8 @@ def package_event_stack(
         )
     trusted_root = Path(trusted_dist_root or (_ROOT / "dist"))
     destination = _trusted_event_stack_destination(destination, trusted_root)
-    # Only the top-level release transaction may touch the checked-in package.
-    # Isolated test/package destinations remain useful for verification.
+    # 只有顶层发布事务可以替换仓库中记录的正式包。
+    # 隔离的测试与打包目录仍可用于验证。
     if active_release or destination == (_ROOT / "dist" / "event_stack").absolute():
         consume_release_transaction_token(release_token)
     problems = verify_bundle_manifest(bundle_path, expected_run_key="deployment")
@@ -258,8 +258,8 @@ def package_event_stack(
     manifest = json.loads((bundle_path / "manifest.json").read_text(encoding="utf-8"))
     requirements_from_manifest(manifest)
     bundle = load_event_stack_bundle(bundle_path, expected_role="deployment")
-    # Validate the same schema object consumed by the copied standalone runtime
-    # before any files are staged for packaging.
+    # 在暂存任何文件之前，先校验独立运行时使用的特征模式。
+    # 此处与复制后的运行时使用同一个模式对象。
     normalize_feature_schema(bundle.feature_schema)
     try:
         f1 = float(manifest["metrics"]["f1"])
@@ -320,7 +320,7 @@ def package_event_stack(
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--bundle", type=Path, required=True, help="Task-4 deployment bundle directory")
+    parser.add_argument("--bundle", type=Path, required=True, help="部署模型包目录")
     parser.add_argument("--destination", type=Path, default=_ROOT / "dist" / "event_stack")
     return parser.parse_args(argv)
 

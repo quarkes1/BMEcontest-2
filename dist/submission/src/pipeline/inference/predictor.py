@@ -1,4 +1,4 @@
-"""Canonical raw-data inference for a verified frozen event-stack bundle."""
+"""针对已校验冻结事件模型的统一原始数据推理实现。"""
 
 from __future__ import annotations
 
@@ -34,13 +34,10 @@ class PredictionOptions:
 
 @dataclass(frozen=True)
 class InferenceTrace:
-    """Read-only, layer-by-layer evidence from the frozen raw inference graph.
+    """冻结原始推理流程逐层输出的只读证据。
 
-    Threshold comparisons in the frozen policy use ``score >= threshold``.
-    The thresholds and tie rule are retained here so a score within the
-    numerical boundary neighbourhood is auditable rather than silently
-    excluded from a parity report.
-    """
+固定策略采用 score >= threshold；保留阈值及并列处理规则，
+以便检查接近数值边界的分数，而非在一致性报告中将其隐去。"""
 
     spans: tuple[tuple[str, int, int], ...]
     macro_features_62: np.ndarray
@@ -57,9 +54,9 @@ class InferenceTrace:
     event_threshold: float
     threshold_tie_rule: str = "score >= threshold"
     decision_boundary_epsilon: float = 1e-12
-    # Optional window references (session_id, start_ms, end_ms) aligned with
-    # macro/micro probabilities; used only to emit the optional, presentation-only
-    # timeline series. They never feed candidates, scoring, or the event decoder.
+    # 与宏窗、微窗概率对齐的可选窗口索引，包含会话标识及起止时间。
+    # 仅用于输出可选的展示时间轴。
+    # 这些索引不参与候选生成、打分或事件解码。
     macro_window_refs: tuple[tuple[str, int, int], ...] = ()
     micro_window_refs: tuple[tuple[str, int, int], ...] = ()
 
@@ -91,12 +88,10 @@ def _by_session(windows: Sequence[EventRef], scores: np.ndarray) -> dict[str, li
 
 
 def _timeline_series(trace: "InferenceTrace") -> list[dict[str, object]]:
-    """Optional per-timestamp probability series (presentation-only, schema v1.0).
+    """可选的逐时间戳概率序列，仅用于展示，采用第一版模式。
 
-    Macro and micro windows have different cadences; the series samples the union of
-    their window starts and holds each stream's latest value (a step function). This is
-    deterministic, label-free, and never alters candidates, scores, or decoded events.
-    """
+宏微窗口步长不同，展示序列使用两者起点的并集，并保持各自最近一次概率值。
+此过程确定且不使用标签，不改变候选、分数或解码事件。"""
     by_session: dict[str, dict[str, list[tuple[int, float]]]] = {}
     for refs, probabilities, key in (
         (trace.macro_window_refs, trace.macro_probabilities, "macro_probability"),
@@ -132,7 +127,7 @@ def _config(raw: object, cls):
 
 
 class Predictor:
-    """Inference-only facade; it never reads caches, splits, labels, or training data."""
+    """仅供推理的统一入口，不读取缓存、划分、标签或训练数据。"""
 
     def __init__(self, bundle: EventStackBundle, *, bundle_path: Path, run_key: str, device: str = "auto") -> None:
         self._bundle = bundle
@@ -167,14 +162,14 @@ class Predictor:
             raise ValueError("bundle manifest run key cannot be read") from exc
         bundle = load_event_stack_bundle(bundle_path, expected_role="deployment", expected_run_key=declared_run_key)
         if run_key is not None:
-            # Standalone distributions carry the frozen release key in the
-            # package manifest; the caller passes it explicitly.
+            # 独立运行包从清单读取冻结的发布标识。
+            # 由调用方显式传入该标识。
             if not isinstance(run_key, str) or not run_key:
                 raise ValueError("explicit run key must be a non-empty string")
             return cls(bundle, bundle_path=bundle_path, run_key=run_key, device=device)
         run_key = bundle_path.parent.name
-        # Repository use can point at dist/event_stack/bundle; its release key
-        # is tracked by the immutable registry, never inferred from features.
+        # 仓库运行可指向 dist/event_stack/bundle。
+        # 发布标识由不可变版本登记记录，不根据特征猜测。
         for parent in (bundle_path, *bundle_path.parents):
             registry = parent / "release" / "event_stack_incumbent.json"
             if registry.is_file():
@@ -195,16 +190,15 @@ class Predictor:
         return self.predict_sources((RawSessionSource(path, path.stem, subject_id),), options)
 
     def trace_file(self, path: Path, *, subject_id: str | None = None) -> InferenceTrace:
-        """Expose frozen intermediate values for parity tests and release audits."""
+        """提供冻结中间值，用于一致性测试和版本核验。"""
         path = Path(path)
         return self._trace_sources((RawSessionSource(path, path.stem, subject_id),))
 
     def trace_texts(self, records: Iterable[tuple[str, str]], *, subject_id: str) -> InferenceTrace:
-        """Stream official TXT records, sharing admission/caps across one person.
+        """流式处理官方 TXT，同一受试者的候选准入及数量上限统一计算。
 
-        Only one raw session is materialized at a time. No temporary raw copy,
-        external path read, metadata routing or independent per-file cap is used.
-        """
+一次只将一个原始会话载入内存，不复制临时原始文件、不读取外部路径、不使用元数据路由，
+也不按文件分别应用受试者数量上限。"""
         pending = {}
         seen = set()
         def sources():
@@ -228,7 +222,7 @@ class Predictor:
         if not sources:
             raise ValueError("at least one raw source is required")
         resolved_device = resolve_device(options.device)
-        # A future audited GPU adapter belongs here; cpu is the registered release runtime.
+        # 当前发布运行时仅登记 CPU；后续 GPU 适配须在此统一实现并完成校验。
         if resolved_device != self._device and self._device != "cpu":
             raise RuntimeError("Predictor device state is inconsistent")
         trace = self._trace_sources(sources)
@@ -242,8 +236,8 @@ class Predictor:
         }
         if options.include_candidates:
             admitted_keys = {(str(row["session_id"]), int(row["start_ms"]), int(row["end_ms"])) for row in trace.admitted}
-            # Public rows carry exactly the published schema keys; the internal
-            # trace keeps its wider diagnostic rows (has_macro/has_micro).
+            # 公开结果仅保留已发布模式定义的键。
+            # 内部诊断保留 has_macro、has_micro 等更完整字段。
             result["candidates"] = [
                 {
                     "session_id": str(row["session_id"]),
@@ -281,7 +275,7 @@ class Predictor:
         return total_duration, covered_duration, gap_rows
 
     def _trace_sources(self, sources: Sequence[RawSessionSource], *, session_loader=load_raw_session) -> InferenceTrace:
-        """Run the one canonical graph, optionally with a legacy raw loader for audit."""
+        """运行唯一的统一推理流程；核验时可选使用历史原始数据加载器。"""
         if not sources:
             raise ValueError("at least one raw source is required")
         macro_windows: list[EventRef] = []

@@ -2,12 +2,7 @@ import type { Imu, MotionManifest } from '../data/types';
 import { gravityTilt, canOrient, mapVector } from './coordinateFrame';
 import { fromAxisAngle, identity, multiply, normalize, rotate, type QuaternionPoint } from './quaternion';
 
-/**
- * Visualization-only orientation: a deterministic complementary gravity/gyro filter over
- * calibrated telemetry. It estimates orientation of the rigid forearm/wrist/hand/watch
- * body — never absolute position, wrist-joint articulation, or elbow motion. Runs longer
- * than the gap threshold start a new segment and are never bridged by interpolation.
- */
+/** 仅供可视化的确定性重力与角速度互补滤波。估计前臂、手腕、手及手表整体姿态，不推断绝对位置、关节运动或肘部运动；采集缺口分段后不跨段插值。 */
 export function reconstructOrientation(imu: Imu, m: MotionManifest): QuaternionPoint[] | null {
   if (!canOrient(m)) return null;
   const c = m.calibration!, basis = c.viewer_from_sensor, points: QuaternionPoint[] = [];
@@ -24,12 +19,12 @@ export function reconstructOrientation(imu: Imu, m: MotionManifest): QuaternionP
     const gyro = mapVector([imu.gx[i] * gyroFactor, imu.gy[i] * gyroFactor, imu.gz[i] * gyroFactor], basis);
     if (!acc.every(Number.isFinite) || !gyro.every(Number.isFinite)) { last = time; continue; }
     const norm = Math.hypot(...acc);
-    // A gap, the first sample, or a rewound clock all start a new segment immediately
-    // (a regression must anchor here, not silently drop samples until the clock catches up).
+    // 首个样本、采集缺口或时钟回退均立即开启新片段。
+    // 时钟回退必须在当前位置建立锚点，不能一直丢弃样本直到时间追上旧最大值。
     if (!Number.isFinite(dt) || dt > .5 || dt < 0) {
       if (last !== -Infinity) segment++;
       q = norm > .4 && norm < 1.6 ? gravityTilt(acc) : identity;
-      lastStored = -Infinity;                 // every segment boundary emits its anchor point
+      lastStored = -Infinity;                 // 每个片段边界均输出其锚点。
     } else if (!gyroAvailable) {
       if (norm > .4 && norm < 1.6) q = gravityTilt(acc);
     } else if (dt > 0) {

@@ -1,4 +1,4 @@
-"""Thin PyInstaller entry: no training or repository-path fallback in frozen mode."""
+"""PyInstaller 精简入口：冻结运行时不训练，也不回退到仓库路径。"""
 import multiprocessing
 import sys
 from src.pipeline.inference.official_runner import main

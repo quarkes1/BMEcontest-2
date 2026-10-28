@@ -4,7 +4,7 @@ import type { QuaternionPoint } from '../../motion/quaternion';
 
 type Props = { imu?: Imu; selection: Range | null; playhead: number | null; orientation: QuaternionPoint[] | null };
 
-/** Raw sensor chart for the selected interval: raw ACC / raw GYRO / derived orientation. */
+/** 绘制所选区间的原始加速度、角速度或推导姿态曲线。 */
 export default function RawImuChart({ imu, selection, playhead, orientation }: Props) {
   const [tab, setTab] = useState<'ACC' | 'GYRO' | 'Orientation'>('ACC');
   const plot = useMemo(() => {

@@ -1,12 +1,7 @@
-"""Standalone inference for a verified event-stack deployment bundle.
+"""对已校验部署包执行预计算特征推理的兼容接口。
 
-The current stack has no audited raw-session-to-63/47/56-feature runtime.  Its
-public inference contract is therefore deliberately narrow: a caller supplies
-precomputed candidate features plus the bundle feature-schema SHA-256.  This
-prevents the deployment package from silently substituting a different feature
-extractor or depending on training data.  A future raw-session adapter must
-produce this exact JSON contract before it may be registered here.
-"""
+调用方提供候选特征及对应特征模式的 SHA-256，以确保特征定义与冻结模型一致。
+本接口不读取训练数据，也不替换特征提取方法；原始数据推理统一使用 Predictor。"""
 
 from __future__ import annotations
 
@@ -45,9 +40,9 @@ _RUNTIME_DEPENDENCIES = (
     ("lightgbm", "lightgbm"),
 )
 _DEVICE_CHOICES = ("auto", "cpu", "gpu", "cuda")
-# TODO: Add an audited, source-controlled CUDA component identifier here only
-# after its implementation and release verification are available.  A package
-# file, manifest flag, or arbitrary callable is never a registration protocol.
+# 只有实现 CUDA 组件并通过发布校验后，
+# 才能在源码管理的注册表中添加其标识。
+# 任意包文件、清单标志或可调用对象均不能替代组件注册。
 _SUPPORTED_CUDA_ADAPTER_IDS = frozenset()
 _CONTEXT_V1_SUFFIXES = (
     "pre_mean", "pre_max", "pre_std", "pre_above_fraction",
@@ -93,7 +88,7 @@ def _schema_hash(schema: Mapping[str, object]) -> str:
 
 
 def _schema_widths(schema: Mapping[str, object]) -> dict[str, int]:
-    """Accept repository schema-v1 maps and validate schema-v2 Context-v1."""
+    """接受第一版模式映射，并校验第二版 Context-v1 元数据。"""
 
     def widths(value: object) -> dict[str, int] | None:
         if not isinstance(value, Mapping) or set(value) != {"macro", "micro", "verifier"}:
@@ -129,13 +124,13 @@ def _schema_widths(schema: Mapping[str, object]) -> dict[str, int]:
 
 
 def _has_registered_cuda_component() -> bool:
-    """Resolve hardware support solely from the source-controlled registry."""
+    """仅依据源码管理的组件注册表确定硬件支持。"""
 
     return bool(_SUPPORTED_CUDA_ADAPTER_IDS)
 
 
 def resolve_device(requested: str) -> str:
-    """Resolve the only currently supported device without inferring CUDA support."""
+    """解析当前唯一支持的运行设备，不推断 CUDA 可用性。"""
 
     normalized = str(requested).lower()
     if normalized not in _DEVICE_CHOICES:
@@ -160,7 +155,7 @@ def _read_json(path: Path, label: str) -> dict[str, Any]:
 
 
 def _verify_bundle(bundle_path: Path) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
-    """Validate the Task-4 bundle manifest before deserializing joblib objects."""
+    """反序列化 joblib 对象之前校验部署包清单。"""
 
     if not bundle_path.is_dir() or bundle_path.is_symlink():
         raise ValueError("bundle manifest directory is missing or unsafe")
@@ -192,7 +187,7 @@ def _verify_bundle(bundle_path: Path) -> tuple[dict[str, Any], dict[str, Any], d
 
 
 def _runtime_capabilities(bundle_path: Path) -> bool:
-    """Reject package CUDA claims; only the empty source registry can answer false."""
+    """拒绝包文件自行声明 CUDA 支持，以源码注册表为准。"""
 
     runtime_manifest = bundle_path.parent / "runtime_manifest.json"
     if not runtime_manifest.is_file():
@@ -223,7 +218,7 @@ def _runtime_capabilities(bundle_path: Path) -> bool:
 
 
 def _validate_runtime_dependencies(manifest: Mapping[str, Any]) -> None:
-    """Refuse incompatible pickle runtimes before deserializing any model."""
+    """反序列化模型前拒绝不兼容的 pickle 运行环境。"""
 
     versions = manifest.get("dependency_versions")
     expected_keys = {"python", *(key for key, _ in _RUNTIME_DEPENDENCIES)}
@@ -347,7 +342,7 @@ def _select_events(rows: list[dict[str, Any]], policy: Mapping[str, Any]) -> lis
 
 
 def predict_feature_payload(bundle_path: Path, payload: Mapping[str, Any], *, device: str = "auto") -> dict[str, Any]:
-    """Score schema-verified precomputed candidate features into canonical events."""
+    """对通过模式校验的预计算候选特征打分，并输出统一事件。"""
 
     bundle_path = Path(bundle_path)
     manifest, policy, schema = _verify_bundle(bundle_path)
@@ -427,7 +422,7 @@ def predict_feature_payload(bundle_path: Path, payload: Mapping[str, Any], *, de
 
 
 def build_smoke_fixture(schema: Mapping[str, object]) -> dict[str, Any]:
-    """Build a deterministic precomputed-feature fixture for package parity checks."""
+    """构建确定性的预计算特征样本，用于包内一致性检查。"""
 
     normalized = _schema_widths(schema)
     return {
@@ -442,7 +437,7 @@ def build_smoke_fixture(schema: Mapping[str, object]) -> dict[str, Any]:
 
 
 def _trace_runtime(bundle_path: Path):
-    """Load frozen raw-runtime state without constructing a Predictor."""
+    """不构造 Predictor，直接加载冻结的原始推理状态。"""
     bundle_path = Path(bundle_path)
     manifest = _read_json(bundle_path / "manifest.json", "bundle manifest")
     run_key = manifest.get("run_key")
@@ -487,7 +482,7 @@ def _trace_by_session(windows, scores: np.ndarray) -> dict[str, list[tuple[int, 
 
 def _compose_legacy_trace(bundle_path: Path, *, spans, bounds, macro_windows, macro_62, micro_windows,
                           micro_features, subject_by_sid: dict[str, str]):
-    """Pre-Predictor candidate, verifier and decoder composition for parity only."""
+    """保留 Predictor 引入前的候选、复核和解码组合，仅用于一致性比较。"""
     from .predictor import InferenceTrace
 
     bundle, density, micro_candidate, _, _ = _trace_runtime(bundle_path)
@@ -540,11 +535,9 @@ def _compose_legacy_trace(bundle_path: Path, *, spans, bounds, macro_windows, ma
 
 
 def canonical_trace(raw_path: Path, bundle_path: Path, *, session_id: str, subject_id: str | None = None):
-    """Trace raw inference through the canonical raw-session reader.
+    """通过统一原始会话读取器追踪推理结果。
 
-    This compatibility entry point is deliberately trace-only: it records the
-    direct source graph for release parity and is not a second inference API.
-    """
+此兼容入口仅记录发布一致性检查所需的源码调用链，不作为第二套推理接口。"""
     _, _, _, macro_config, micro_config = _trace_runtime(bundle_path)
     session = load_raw_session(RawSessionSource(Path(raw_path), session_id, subject_id))
     spans = valid_imu_spans(session)
@@ -559,22 +552,19 @@ def canonical_trace(raw_path: Path, bundle_path: Path, *, session_id: str, subje
 
 
 def legacy_trace(raw_path: Path, bundle_path: Path, *, session_id: str, subject_id: str | None = None):
-    """Trace the historical loader with the frozen canonical downstream graph.
+    """使用历史加载器及冻结的统一后级流程追踪推理。
 
-    The legacy loader remains the independent producer boundary.  Candidate,
-    verifier and decoder code are intentionally canonical; duplicating them
-    would create an unmaintainable second algorithm implementation.
-    """
+仅保留独立的数据加载边界，候选、复核和解码继续调用统一实现，避免维护重复算法。"""
     from src.data.loader import load_session_tsv
 
-    # The legacy loader and slide feature producer are deliberately retained
-    # here as an audit seam; neither enters the shipping Predictor graph.
+    # 此处保留历史加载器和滑窗特征入口用于独立核验。
+    # 它们均不进入正式 Predictor 调用链。
     session = load_session_tsv(raw_path)
     _, _, _, _, micro_config = _trace_runtime(bundle_path)
     spans = valid_imu_spans(session)
     bounds = {session_id: (min(item.start_ms for item in spans), max(item.end_ms for item in spans))}
-    # Legacy slide evidence is cache-backed and uses the original subject/session
-    # identifier.  Its window geometry is remapped to the public raw-file ID.
+    # 历史滑窗证据使用缓存中的原始受试者与会话标识。
+    # 其窗口边界会映射到公开的原始文件会话标识。
     import sys
     scripts = str(Path(__file__).resolve().parents[3] / "scripts")
     if scripts not in sys.path:

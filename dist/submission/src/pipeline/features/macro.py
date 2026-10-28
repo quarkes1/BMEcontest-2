@@ -1,4 +1,4 @@
-"""Frozen 62-D macro IMU windows and the separate 63rd time-prior adapter."""
+"""冻结的 62 维宏窗惯性特征及独立的第 63 维时间先验适配。"""
 
 from __future__ import annotations
 
@@ -98,7 +98,7 @@ def _temporal_from_env(segment: np.ndarray, sample_rate_hz: float) -> list[float
 
 
 def extract_macro_features(segment: np.ndarray, sample_rate_hz: float) -> list[float]:
-    """Exact frozen raw macro mathematics from the historic slide producer."""
+    """严格保持历史滑窗特征提取器的宏窗计算定义。"""
     magnitude = np.linalg.norm(segment, axis=0)
     x_axis, y_axis, z_axis = segment[0], segment[1], segment[2]
     jerk = np.linalg.norm(np.diff(segment, axis=1), axis=0) * sample_rate_hz
@@ -114,7 +114,7 @@ def extract_macro_features(segment: np.ndarray, sample_rate_hz: float) -> list[f
 
 
 def extract_macro_windows(session, *, session_id: str, config: MacroFeatureConfig) -> MacroWindowBatch62:
-    """Build gap-safe raw 62-D windows with historic slide boundaries/coverage."""
+    """构建不跨缺口的 62 维原始特征窗口，沿用历史边界和覆盖约定。"""
     features: list[list[float]] = []
     windows: list[EventRef] = []
     for span in valid_imu_spans(session):
@@ -144,7 +144,7 @@ def extract_macro_windows(session, *, session_id: str, config: MacroFeatureConfi
 
 
 def add_time_prior(features_62: np.ndarray, windows: Sequence[EventRef]) -> np.ndarray:
-    """Append the release-frozen hour-of-day prior at the model boundary."""
+    """在模型输入边界添加发布时冻结的日内时间先验。"""
     matrix = np.asarray(features_62)
     if matrix.ndim != 2 or matrix.shape[1] != 62 or len(matrix) != len(windows):
         raise ValueError("time-prior adapter requires aligned (n, 62) features and windows")

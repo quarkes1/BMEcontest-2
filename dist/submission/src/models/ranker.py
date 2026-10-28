@@ -82,28 +82,28 @@ class MMRanker(nn.Module):
         autocast 域内保持 fp16（TCN 卷积走 tensor core）；域外升 fp32（CPU/推理兼容）。"""
         x = imu.transpose(1, 2)
         if not torch.is_autocast_enabled():
-            x = x.float()                               # (B, 6, 2400)
+            x = x.float()                               # 张量形状：(B, 6, 2400)。
         x = self.imu_in(x)
         for blk in self.tcn:
             x = blk(x)
         # 5s 块平均池：2400 → 48
         B = x.size(0)
-        h_imu = x.view(B, -1, self.n_blocks, x.size(2) // self.n_blocks).mean(3)  # (B, d, 48)
-        h_imu = h_imu.transpose(1, 2)                   # (B, 48, d)
+        h_imu = x.view(B, -1, self.n_blocks, x.size(2) // self.n_blocks).mean(3)  # 张量形状：(B, d, 48)。
+        h_imu = h_imu.transpose(1, 2)                   # 张量形状：(B, 48, d)。
 
         if self.use_ppg:
-            h_ppg = self.ppg_in(ppg)                    # (B, 48, d)
+            h_ppg = self.ppg_in(ppg)                    # 张量形状：(B, 48, d)。
             h_ppg = self.ppg_bn(h_ppg.transpose(1, 2)).transpose(1, 2)
             gate = self.ma_gate(ma)                     # (B, 48, 1) 运动伪影低→门控大
             h_ppg = h_ppg * gate                        # 掩码降权
         else:
             h_ppg = torch.zeros_like(h_imu)             # PPG 消融（结构不变）
 
-        z = torch.cat([h_imu, h_ppg], dim=2)            # (B, 48, 2d)
-        z, _ = self.fuse(z)                             # (B, 48, 2d)
-        hm = self.meta_in(meta)                         # (B, 32)
-        pooled = torch.cat([z.mean(1), z.max(1).values, hm], dim=1)   # (B, 4d+32)
-        return self.head(pooled).squeeze(1)             # (B,)
+        z = torch.cat([h_imu, h_ppg], dim=2)            # 张量形状：(B, 48, 2d)。
+        z, _ = self.fuse(z)                             # 张量形状：(B, 48, 2d)。
+        hm = self.meta_in(meta)                         # 张量形状：(B, 32)。
+        pooled = torch.cat([z.mean(1), z.max(1).values, hm], dim=1)   # 张量形状：(B, 4d+32)。
+        return self.head(pooled).squeeze(1)             # 张量形状：(B,)。
 
 
 def focal_loss(logits, y, gamma=2.0, alpha=0.25, weights=None):
