@@ -86,7 +86,7 @@
 
 两档五折 TP 均不减，但仅两折 F1 提高；前三组的较大收益没有在五折保持。**这些是冻结折模型的政策开发诊断，不是最终 EXE 的交叉验证成绩，更不是官方新成绩。** 用户授权更激进试测后，两档按有界召回风险门进入独立构建；优先主试测，高召回档仅作风险较高的对照，不称性能升级。构建与验收状态见[交付记录](docs/official_recovery_policy_delivery_v3.md)；正式 release、`dist/submission/` 和前端均不替换。
 
-两份EXE已编译并通过真实文件独立运行验收：[主试测说明](dist/official_trials/deployment_f1_policy_v3/README.md)、[高召回对照说明](dist/official_trials/deployment_f15_policy_v3/README.md)。每档约60MiB，仅需发送所选目录内的 `EatingDetection.exe`；官方无参数输入输出接口不变。最新冻结全仓回归 **1148通过、7跳过、39警告、无失败**，1164.84秒；源码及测试全程不变，结束后66保护文件及两档EXE身份复核通过，见[回归记录](outputs/official_recovery/policy_v3_frozen_regression.json)。有Windows子进程日志解码等警告，不称零警告。新构建/验收scratch已清理；本轮pytest遗留约134KiB文件因执行策略拒绝删除而保留，不在送测目录。
+当时两份EXE已编译并通过真实文件独立运行验收；主试测后来获官方.533333反馈并被最终采用，当前说明见[最终提交包](dist/submission/README.md)。高召回对照未被采用。当时冻结回归1148通过、7跳过、39警告，见[历史回归记录](outputs/official_recovery/policy_v3_frozen_regression.json)；它不是10月28日最终收口的回归结果。旧测试缓存的清理限制见最终收口记录，不在送交目录。
 
 组委会返回：**TP42 / FP26 / FN70，F1=0.466667**。这不是本地五折成绩；隐藏数据和逐餐结果未提供，不能将差距全部归因于某一环节。
 2026-10-21收到用户转述的第二次官方反馈：**TP49 / FP27 / FN63，F1=0.521277**，召回43.75%、PPV64.47%；相对前次F1 +.054610、净TP+7/FP+1，两次均112 GT。按对话关联一致性重训试测版，但未独立核对官方收件EXE SHA和隐藏主体完全一致，不能将收益唯一归因于某一步修复。

@@ -137,3 +137,13 @@ def test_completed_two_target_publication_survives_backup_cleanup_error(tmp_path
     with pytest.raises(OSError,match='backup cleanup'): module.publish_final(staging,dest,tmp_path)
     assert (tmp_path/'submission/EatingDetection.exe').read_bytes()==content
     assert (dest/'EatingDetection.exe').read_bytes()==content
+
+
+def test_reassembly_uses_shipped_notices_without_pyinstaller_or_base_python_license(tmp_path):
+    source=tmp_path/'THIRD_PARTY_NOTICES.txt';source.write_text('complete frozen dependency notices\n')
+    target=tmp_path/'new package';target.mkdir()
+    api('build_final_submission').install_notices(tmp_path,target)
+    assert (target/'THIRD_PARTY_NOTICES.txt').read_text()=='complete frozen dependency notices\n'
+    source.unlink()
+    with pytest.raises(ValueError,match='notices'):
+        api('build_final_submission').install_notices(tmp_path,target)

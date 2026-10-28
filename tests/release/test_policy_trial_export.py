@@ -59,10 +59,34 @@ def test_policy_copy_preserves_models_and_schema_byte_for_byte_and_refuses_overw
 
 @pytest.mark.parametrize('mode,threshold',[('deploy_f1',.4582664763345077),('deploy_f15',.26383368823631487)])
 def test_completed_diagnostic_has_recomputed_gate_and_training_threshold_median(mode,threshold):
+    import json
+    import numpy as np
     from scripts.research.official_recovery.policy_trial_export import validated_diagnostic
     stem='f1' if mode=='deploy_f1' else 'f15'
     if not (ROOT/f'outputs/official_recovery/deployment_{stem}_policy_v3_five_attempt2/summary.json').is_file():
         pytest.skip('completed policy diagnostic unavailable')
+    folder=ROOT/f'outputs/official_recovery/deployment_{stem}_policy_v3_five_attempt2'
+    if (ROOT/'release/final_submission.json').is_file():
+        # Final submission replaced the formerly protected historical EXE by
+        # explicit release selection. Old experiment exports must now refuse,
+        # while their immutable scores and training thresholds remain evidence.
+        from scripts.research.official_recovery.negative_clean_probe import protected_sources
+        from scripts.research.official_recovery.relative_score_probe import gate
+        before=json.loads((folder/'plan.json').read_text())['protected']
+        current=protected_sources(ROOT)
+        assert set(current)==set(before)
+        assert {p for p in current if current[p]!=before[p]}=={'dist/submission/EatingDetection.exe'}
+        assert current['dist/submission/EatingDetection.exe']=='fa6987b6244fe73c76ee741ea352fcc74e8e4de06de332812e99b1f1d963aa44'
+        with pytest.raises(ValueError,match='protected first/formal trial changed'):
+            validated_diagnostic(ROOT,mode)
+        records=[json.loads((folder/f'fold{k}_report.json').read_text()) for k in range(5)]
+        result=gate(records,'five',mode)
+        assert result['passed'] is True
+        count=result['aggregate']['G']
+        assert (count['tp'],count['fp'],count['fn'])==((133,59,121) if mode=='deploy_f1' else (139,79,115))
+        thresholds=[json.loads((folder/f'fold{k}_policy.json').read_text())['policy']['threshold'] for k in range(5)]
+        assert float(np.median(thresholds))==threshold
+        return
     data=validated_diagnostic(ROOT,mode)
     assert data['threshold']==threshold and len(data['thresholds'])==5
     assert data['diagnostic']['passed'] and data['diagnostic']['actual_exe_cv'] is False

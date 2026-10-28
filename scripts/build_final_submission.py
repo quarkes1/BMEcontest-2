@@ -14,8 +14,8 @@ sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path: sys.path.insert(0,str(ROOT))
 
-from scripts.build_competition_exe import sha, write_manifest, verify_submission, clean_environment, copy_licenses
-from scripts.submission_sources import add_sources, consolidate_notices, copy_file, copy_tree
+from scripts.build_competition_exe import sha, write_manifest, verify_submission, clean_environment
+from scripts.submission_sources import add_sources, copy_file
 from scripts.final_submission_entry import selected_model, VERSION
 from scripts.build_inference_distribution import _atomic_replace
 
@@ -39,6 +39,16 @@ def copy_selected_bundle(source,target):
     if source.is_symlink() or any(p.is_symlink() for p in source.rglob('*')):
         raise ValueError('linked model files are not supported')
     shutil.copytree(source,target)
+
+
+def install_notices(root,package):
+    """Reassembly reuses the complete notices shipped with the frozen binary."""
+    root,package=Path(root),Path(package)
+    for source in (root/'THIRD_PARTY_NOTICES.txt',root/'dist/submission/THIRD_PARTY_NOTICES.txt'):
+        if source.is_file():
+            copy_file(source,package/'THIRD_PARTY_NOTICES.txt')
+            return
+    raise ValueError('complete shipped third-party notices are required for final reassembly')
 
 
 def verify_final(package):
@@ -106,8 +116,8 @@ def build(root=ROOT):
     staging=Path(tempfile.mkdtemp(prefix='.submission.staging-',dir=dest.parent))
     try:
         shutil.copyfile(exe,staging/'EatingDetection.exe')
-        copy_licenses(staging/'licenses');consolidate_notices(staging)
         add_sources(root,staging,historical)
+        install_notices(root,staging)
         copy_selected_bundle(bundle,staging/selection['bundle'])
         for name in FINAL_FILES: copy_file(root/'scripts'/name,staging/'scripts'/name)
         copy_file(root/'release/final_submission.json',staging/'release/final_submission.json')
