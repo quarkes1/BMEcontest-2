@@ -4,10 +4,32 @@
 
 ```text
 竞赛任务     智能手表 IMU/PPG 全天数据 → 进食事件（Episode）检测
-当前发布     event-stack / run 160afaf81debf1ee（strict nested-CV F1 = 0.6514285714）
-推理入口     dist/inference（原始 collect_data*.txt → 预测 JSON）；dist/submission（竞赛提交包）
+最终推理     official_deployment_f1_policy_v3（官方反馈 F1 = 0.533333；TP56/FP42/FN56）
+历史复现     run 160afaf81debf1ee（本地 eligible153 嵌套五折 F1 = 0.6514285714）
+提交入口     submission/EatingDetection.exe；完整源码与说明见 dist/submission/
 算法真源     src/pipeline/（唯一 canonical 实现；dist/ 全部为生成物）
 ```
+
+---
+
+## 最终提交状态（2026-10-28）
+
+项目停止实验，最终选择官方反馈最高的 **F1=0.533333** 配置，不采用后续失败变体。以下历史研究记录保留用于解释开发过程，不代表仍在继续执行计划。
+
+- [最终提交EXE](submission/EatingDetection.exe)：根目录 `submission/` 仅放EXE，不放ZIP。二进制与已送主试测版完全相同，不重新编译。
+- [完整提交包与详细说明](dist/submission/README.md)：同一EXE、当前推理源码/模型、可视化和历史训练复现。
+- [最终作品报告](Archieves/作品报告_基于智能手表传感器的进食检测算法.pdf)：保留已批准的研究过程、原封面和Monitor图，更新三次官方反馈与最终配置。
+- [收口验收与清理记录](docs/final_submission_20261028.md)。
+
+| 官方反馈 | TP | FP | FN | F1 |
+|---|---:|---:|---:|---:|
+| 第一次 | 42 | 26 | 70 | .466667 |
+| 第二次 | 49 | 27 | 63 | .521277 |
+| 最佳，最终采用 | 56 | 42 | 56 | **.533333** |
+
+三次反馈均112个有效真实事件，最终回执文件SHA及评测人群一致性未独立核验。历史本地.6514仅对应153个可评估事件，不能作为官方成绩或当前EXE的CV结果。最终选择由 `release/final_submission.json` 锁定；历史 `release/event_stack_incumbent.json` 只保留复现用途。`dist/inference/` 是历史JSON分发包，不是最终官方提交入口。
+
+最终EXE SHA-256：`fa6987b6244fe73c76ee741ea352fcc74e8e4de06de332812e99b1f1d963aa44`。不再进行新训练、阈值搜索或自动送检。
 
 ---
 
@@ -42,7 +64,7 @@
 - **目标**：官方全局口径 F1 最大化；全程真实时间戳（包级恢复 + 缺口切段），杜绝时间轴
   类评估伪影。历史发布采用eligible餐范围；召回恢复实验另按完整有效餐次评价，未覆盖餐仍保留分母，不将两种成绩直接比较。
 
-## 2. 当前发布模型（CURRENT_PROMOTED_RELEASE）
+## 2. 历史本地复现模型与开发记录
 
 ### 官方反馈与召回恢复（2026-10-22）
 
@@ -227,9 +249,9 @@ python scripts/build_inference_distribution.py
 python -m pip install -r scripts/requirements-build.txt  # 仅构建环境需要
 python scripts/build_submission.py                      # 官方自包含EXE
 
-# 生成参赛作品报告（输出至 Archieves/；截图链路需 Node + 本机 Edge/Chrome）
-node dist/visual/app/tools/capture-report-shots.mjs   # 界面截图（仅合成演示数据）
-python scripts/report/build_report.py                 # 报告 docx
+# 最终交付：原样复用官方最佳EXE，不重训或重编译
+python -B scripts/build_final_submission.py
+python -B scripts/build_final_submission.py --verify-only
 ```
 
 历史实验脚本（时间轴修复前的滑窗/对照系统开发命令）已按 §10 清理，均可从 git 历史
@@ -271,7 +293,7 @@ BMEcontest-2/
 │   ├── rank_events.py                    # 历史对照系统（依赖闭包保留）
 │   ├── rank_events_v2.py                 # 历史对照系统（依赖闭包保留）
 │   ├── release_event_stack.py            # 发布事务（原子替换）
-│   ├── report/                           # 竞赛报告生成（build_report.py + 界面截图链路）
+│   ├── build_final_submission.py          # 最终.533333代码包与EXE固化
 │   ├── reproduce_release.py              # 免训练验证发布链
 │   ├── slide_features.py                 # 历史 macro 生产器（fixture 锚定）
 │   ├── slide_verifier.py                 # 历史滑窗管线（parity 锚定）

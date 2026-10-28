@@ -1,5 +1,9 @@
 # EatingSense Visual（可视化应用）
 
+最终提交请从 `../submission/start.bat` 启动，使用官方F1=0.533333的模型。
+Model页将其与历史本地0.651428复现成绩分开显示；`release/final_submission.json`是最终模型选择。
+以下2026-10-15的独立inference接口仍保留历史本地版本，不是最终官方评分入口。
+
 2026-10-15交付说明：本应用继续使用`../inference/`的JSON推理接口与`../start.bat`。
 官方自动评分使用`../submission/EatingDetection.exe`，无参数生成三列`results.csv`；
 两者使用同一正式模型，但接口不同。官方CSV不替代可视化JSON。

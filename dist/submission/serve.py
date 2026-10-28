@@ -1,13 +1,7 @@
-"""Source entry point for the packaged visualization and local inference API."""
-from pathlib import Path
+"""Local visualization source entry."""
 import sys
-
-ROOT = Path(__file__).resolve().parent
-if not (ROOT/'src').is_dir():
-    ROOT = ROOT.parent
-sys.path.insert(0, str(ROOT))
-
-from src.pipeline.inference.official_runner import main
-
-if __name__ == '__main__':
-    raise SystemExit(main(['--visual', *sys.argv[1:]]))
+sys.dont_write_bytecode = True
+from pathlib import Path
+sys.path.insert(0,str(Path(__file__).resolve().parent))
+from scripts.final_submission_entry import main
+if __name__ == "__main__": raise SystemExit(main(["--visual",*sys.argv[1:]]))

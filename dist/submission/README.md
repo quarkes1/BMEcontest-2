@@ -1,10 +1,29 @@
-# 赛题2 提交包
+# 赛题2 最终提交包
 
-本包适配官方测试接口的提交包，EatingDetection.exe 可以独立运行
+本包提供可独立运行的 Windows EXE、与其相同模型的 Python 推理源码、离线可视化，以及历史本地评估的训练复现代码。
 
-## 运行
+## 1 版本和成绩口径
 
-将官方完整测试数据放在EXE同级，保持以下结构：
+| 用途 | 版本 | 结果 |
+|---|---|---|
+| 最终推理和可视化 | `official_deployment_f1_policy_v3` | 官方反馈 TP56、FP42、FN56；F1 **0.533333**，灵敏度0.500000，阳性预测率0.571429 |
+| 历史本地训练复现 | `160afaf81debf1ee` | 受试者互斥嵌套五折开发 F1 **0.6514285714**；TP114、FP83、FN39，153个可评估真实事件 |
+
+官方反馈使用112个有效真实事件，历史开发评估对窗口覆盖设置了准入条件。两者数据与分母不同，不能直接比较，也不能将0.65作为本提交程序的官方成绩。组委会未提供隐藏标签，源代码运行可复现同一权重的推理，但不能在缺少官方原始测试数据和标签时自行重算官方F1。
+
+最终模型选择在 `release/final_submission.json`；`release/event_stack_incumbent.json` 仅保留历史复现证据。默认 `main.py`、`serve.py`、`start.bat` 和 EXE 均用于最终推理，不能把历史复现权重替换为当前默认权重。
+
+EXE原样保留已获上述反馈的程序，未重新编译：
+
+- 大小：62,893,974字节。
+- SHA-256：`fa6987b6244fe73c76ee741ea352fcc74e8e4de06de332812e99b1f1d963aa44`。
+- 官方反馈由参赛方收到并记录；官方实际收件文件的哈希及三次测试人群一致性未独立核验。
+
+## 2 无需安装环境的官方推理
+
+适用 Windows 10/11 x64。EXE内置模型、CPython及必要依赖，CPU推理，无需Python、pip、CUDA、Node或网络。运行时会在系统临时目录解包DLL，不是所有依赖的传统静态链接；请保证临时目录及EXE目录可写，首次启动耐心等待，不要连续重复启动。
+
+将组委会完整数据放在 EXE 同级，保持官方结构：
 
 ```text
 测试目录/
@@ -15,131 +34,145 @@
 │   │   ├── collect_data0_....txt
 │   │   └── collect_data1_....txt
 │   └── HNU00002/
-└── results.csv                 # 运行成功后生成，不是提交包预置数据
+│       └── collect_data0_....txt
+└── results.csv                   # 成功运行后生成，不随包提供
 ```
 
-双击EatingDetection.exe，或在命令行直接运行，不需要参数。程序总是以EXE所在目录定位ACC_test_data和results.csv，不依赖启动时的工作目录。每个人的全部TXT通过官方DataReader.iter_data读取，InfoReader读取信息，save_result保存预测。
+双击 EXE，或在命令提示符中运行：
 
-输出只包含预测进食事件，CSV列名及顺序固定：
+```text
+EatingDetection.exe
+EatingDetection.exe --self-check
+```
+
+官方评分使用第一条无参数命令。自检不读取测试数据；输出 `run_key` 应为 `official_deployment_f1_policy_v3`，`device` 为 `cpu`。程序以 EXE 自身目录定位输入输出，不依赖启动时工作目录；同一人的全部TXT由官方 DataReader 读取，InfoReader读取信息，结果经官方 save_result 写出。
+
+输出仅包含进食事件，CSV 列名及顺序固定：
 
 ```csv
 externalid,beforeTime,afterTime
 ```
 
-编号对应个人目录并按官方规则大写/移除空白；时间为原始采集轴13位Unix毫秒整数，开始小于结束。没有进食预测也会产生表头。UTF-8 BOM便于Excel读取。
+用户编号按官方规则大写并移除空白；起止时间为原始采集轴13位 Unix 毫秒整数，开始必须小于结束。无事件时只输出表头；UTF-8 BOM便于Excel读取。每次成功运行替换整份结果，不追加旧结果。退出码0表示成功，2表示失败；失败时不发布半成品，但上次成功的results.csv可能仍在，请勿将旧结果当作本轮输出。不要让多个进程同时写同一个结果文件。
 
-每次成功运行替换本轮全部结果，不追加旧结果。退出码0为成功；退出码2为失败。失败时不会发布半成品，但之前成功的results.csv可能仍在，请勿将旧结果当作本次结果。请在命令提示符中运行以查看错误。
+核对文件：
 
-可选依赖/模型自检（不读测试数据）：
-
-```text
-EatingDetection.exe --self-check
+```powershell
+Get-FileHash .\EatingDetection.exe -Algorithm SHA256
 ```
 
-## 可视化应用
+## 3 可视化应用
 
-双击`start.bat`，即可启动本机推理服务并在浏览器打开可视化页面，无需Python、Node或联网。
-默认地址为`http://127.0.0.1:4173/`；可选择原始TXT文件/文件夹查看进食事件、证据时间轴、IMU和三维姿态回放。
-窗口需保持运行，使用控制台Ctrl+C退出。关闭网页不会关闭服务；正常退出会清理本次系统临时上传目录。
+双击 `start.bat`，启动仅绑定本机127.0.0.1的服务并打开浏览器，无需Python或联网。默认端口4173；选择原始TXT文件或文件夹后，可查看进食事件、证据时间轴、原始IMU及三维姿态回放。
 
 ```text
-start.bat                         # 一键启动
-start.bat --port 4180              # 端口冲突时切换
+start.bat
+start.bat --port 4180
 EatingDetection.exe --visual --open
 EatingDetection.exe --visual --port 0 --no-open
 ```
 
-直接打开`visual/index.html`可查看演示和已有JSON，原始TXT推理需使用start.bat。
-网页模式使用JSON/运动遥测接口，不会读写或清空官方results.csv；官方评分仍直接无参数运行EXE。
-`visual/app/src`包含前端源码，接口和重建说明见`visual/README.md`。
+保持控制台窗口运行，Ctrl+C退出；关闭网页不会关闭服务。正常退出清理本次临时上传文件。网页模式不读写官方results.csv，官方评测仍无参数运行EXE。直接打开 `visual/index.html` 可查看合成演示与已有JSON；原始TXT推理需要本地服务。Model页分别显示当前官方成绩和历史本地复现成绩，演示数据不是竞赛受试者数据。前端源码和重建方式见 `visual/README.md`。
 
-## 模型与依赖
-
-EXE采用PyInstaller onefile自包含打包，内置CPython、科学计算库、LightGBM和部署模型。运行时在Windows临时目录释放内置DLL，结束后由bootloader清理；这不是所有库的传统静态链接，也不依赖机器预装Python。首次启动解包可能需要数秒，请勿连续重复启动。需有Windows临时目录及EXE目录的写入权限。
-
-build_manifest.json记录EXE/包内文件SHA-256、正式模型文件哈希、源代码标识与依赖版本。official_api为原样官方接口来源。必要的第三方版权与许可声明已合并在THIRD_PARTY_NOTICES.txt中，无需运行；不设置单独的licenses目录。
-
-## 源代码与模型结构
-
-本包同时提供可独立运行的EXE和当前模型Python源代码
+## 4 源码与权重结构
 
 ```text
 submission/
-├── EatingDetection.exe           # 内置模型与依赖，无参数启动
-├── main.py                       # 相同官方接口的源码入口
-├── start.bat                     # 无Python依赖的一键可视化启动器
-├── serve.py                      # 可视化服务的可选Python源码入口
-├── visual/                       # 网页、React/TypeScript源码及构建工具
-├── schema/、examples/            # 预测JSON契约与合成示例
-├── requirements.txt              # 源码运行和复现的精确依赖版本
-├── src/                          # 特征、候选、评分、策略及数据读取源码
-├── scripts/                      # 当前模型训练、评估、验证与EXE构建
-├── models/event_stack/           # 当前部署权重与五折模型证据
-├── release/                      # 正式模型指针
-├── outputs/crossfit/             # 冻结评估记录，非逐样本标签
-├── official_api/                 # 官方输入输出接口与来源校验
-├── build_manifest.json           # 全包逐文件SHA-256
-└── THIRD_PARTY_NOTICES.txt        # 所用库的第三方声明文件
+├── EatingDetection.exe              # 官方最终推理，依赖和权重内置
+├── main.py                          # 同一模型的官方源码入口
+├── serve.py、start.bat               # 源码服务入口、无需Python的EXE启动器
+├── README.md、requirements.txt
+├── src/                             # 解析、特征、候选、复核与事件输出
+├── scripts/                         # 训练复现、检查和最终包重建
+├── models/event_stack/
+│   ├── official_deployment_f1_policy_v3/deployment/  # 当前最终推理模型
+│   └── 160afaf81debf1ee/             # 历史本地五折及部署复现证据
+├── release/final_submission.json     # 最终推理选择与文件SHA
+├── release/event_stack_incumbent.json # 历史本地复现指针
+├── outputs/crossfit/                 # 历史评估记录，不含原始数据
+├── official_api/                    # 原样官方输入输出接口及来源
+├── visual/、schema/、examples/       # 网页、JSON契约、合成示例
+├── build_manifest.json              # 全包文件SHA-256清单
+└── THIRD_PARTY_NOTICES.txt           # 合并的第三方声明
 ```
 
-算法为双时间尺度IMU特征模型：宏窗口HGB和微窗口LightGBM产生候选，56维基础特征与60维Context-v1组成116维事件表示，经逻辑回归/LightGBM融合评分、候选准入与冻结事件策略输出。模型权重和阈值不因接口适配变化。
+当前算法为双尺度IMU事件检测：宏窗63维HGB、微窗47维LightGBM产生候选，56维基础特征加60维Context-v1构成116维复核表示，由LR/LightGBM融合后输出事件。最终参数固定：LR权重0.25、LGBM权重0.75、候选准入0.2、NMS IoU0.3、每主体候选总上限6、事件阈值0.4582664763345077。当前不启用PPG或Transformer，不支持GPU推理；不要将设备参数伪装为GPU执行。
 
-## 源码运行与复现
+本包无训练数据、官方测试数据、缓存或旧预测结果，不含未完成实验脚本和独立licenses目录。第三方声明保留在合并文件中。必要运行模型与历史复现资产均带哈希校验。
 
-以下命令在解压后的submission目录执行。仅使用源码时需安装Python；运行EXE不需要安装依赖。
+## 5 使用源码复现最终推理
 
-### 1. 创建环境，运行相同官方推理接口
-
-使用Windows x64 Python 3.11（构建环境为3.11.15）：
+仅源码运行需要安装环境；运行EXE无需执行下面命令。使用 Windows x64 Python 3.11（原构建环境3.11.15），在包外创建虚拟环境，避免改变提交文件清单：
 
 ```powershell
-py -3.11 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe main.py --self-check
-.\.venv\Scripts\python.exe main.py
+py -3.11 -m venv ..\.venv-bme-final
+..\.venv-bme-final\Scripts\python.exe -m pip install -r requirements.txt
+..\.venv-bme-final\Scripts\python.exe -B main.py --self-check
+..\.venv-bme-final\Scripts\python.exe -B main.py
+..\.venv-bme-final\Scripts\python.exe -B serve.py --open
 ```
 
-源码同样读取本包目录下的ACC_test_data，输出本包目录下的results.csv，不依赖启动时工作目录。原始训练数据和官方测试数据均不随包提供。
+命令在解压包根目录执行。源码同样读取该目录的ACC_test_data并输出results.csv；也可以从其他工作目录用main.py绝对路径启动。入口强制校验最终模型的全部文件SHA，缺少选择文件或权重被修改会报错，不会静默退回历史模型。当前推理仅复用冻结权重，不需要也不会重新训练。
 
-### 2. 免训练验证发布证据
+检查完整最终包：
 
 ```powershell
-.\.venv\Scripts\python.exe scripts/reproduce_release.py --run-key 160afaf81debf1ee
+..\.venv-bme-final\Scripts\python.exe -B scripts/build_final_submission.py --verify-only
 ```
 
-验证发布指针、部署模型、五折模型、评估汇总与签名哈希。此命令复核已有证据，不等价于从数据重新计算指标。多次开发使用的outer结果只是开发证据，不是未接触测试集的泛化保证。
+文件清单校验要求包内容不变；运行产生的ACC_test_data/results.csv、虚拟环境、缓存等不属于交付清单。请在独立测试副本中运行数据，再对未改动的提交包做清单检查。
 
-### 3. 从原始训练数据重建特征并评估
+## 6 历史0.65本地结果复现
 
-将训练数据放在本包Data目录，组织为以下形式：
+本节仅复现 `160afaf81debf1ee` 的历史开发评估，不替换最终推理选择，不声称重新得到官方0.533333。
+
+### 6.1 不训练，核对已有证据
+
+```powershell
+..\.venv-bme-final\Scripts\python.exe -B scripts/reproduce_release.py --run-key 160afaf81debf1ee
+```
+
+核对历史指针、五折模型、部署模型、评估汇总及签名哈希。该命令复核已有证据，不等价于从数据重新计算F1；反复开发使用的外层结果也不是全新独立测试集的保证。
+
+### 6.2 从训练数据生成特征并重新评估
+
+在另一个工作副本中准备原始训练数据，避免将个人数据、缓存或运行产物混入最终提交包：
 
 ```text
 Data/
-├── t_<...>_sensororiginaldata_<...>.csv        # 会话索引（受试者 ↔ sensorData 映射）
-├── t_<...>_mealinfo_<...>.csv                  # 餐次标注（受试者 / 起止时间 / 手别）
-└── t_<...>_sensororiginaldata_system<...>/      # 会话数据
-    ├── sensorData-<时间戳>-<uuid>/
-    │   ├── collect_data<N>_<起>_<止>.txt        # 53 列 TSV：3 个时间戳 + PPG×44 + ACC×3 + GYRO×3
-    │   └── info.json
-    └── ...
+├── t_<...>_sensororiginaldata_<...>.csv
+├── t_<...>_mealinfo_<...>.csv
+└── t_<...>_sensororiginaldata_system<...>/
+    └── sensorData-<时间戳>-<uuid>/
+        ├── collect_data<N>_<起>_<止>.txt
+        └── info.json
 ```
+
+传感器TXT为53列TSV：3个时间戳、44列PPG、ACC三轴与GYRO三轴。模型不把PPG包率当作生理波形采样率；当前正式推理仅使用IMU。
 
 ```powershell
-.\.venv\Scripts\python.exe scripts/build_micro_features.py --fold all --split all --workers 8
-.\.venv\Scripts\python.exe scripts/evaluate_event_stack.py --fold all --inner-splits 4 --no-tcn --workers 5 --micro-enabled --candidate-control-enabled --admission-minimum-recall 0.80 --context-features v1 --summary-alias outputs/crossfit/context_v1_summary.json
+..\.venv-bme-final\Scripts\python.exe -B scripts/build_micro_features.py --fold all --split all --workers 8
+..\.venv-bme-final\Scripts\python.exe -B scripts/evaluate_event_stack.py --fold all --inner-splits 4 --no-tcn --workers 5 --micro-enabled --candidate-control-enabled --admission-minimum-recall 0.80 --context-features v1 --summary-alias outputs/crossfit/context_v1_summary.json
 ```
 
-评估使用严格受试者隔离nested五折。首次生成cache特征，耗时与磁盘用量依数据规模而定；不要将cache、Data目录或运行结果加入提交ZIP。仅验证交付包时无需执行本步骤。重训可能受数值差异影响，不承诺joblib文件逐字节一致。
+首次生成特征耗时并占磁盘，需自行提供相同版本的训练数据。各fold按受试者隔离，阈值在训练侧选择。重训会受数值库和环境差异影响，不保证joblib逐字节一致；更不能将历史eligible评估的F1与官方完整有效GT评分混为一谈。
 
-### 4. 重训部署模型与重建EXE（可选）
-
-在另一个工作副本中操作，避免覆盖本包冻结权重与证据：
+### 6.3 重训历史部署模型或重新组装最终包
 
 ```powershell
-.\.venv\Scripts\python.exe scripts/train_event_stack.py --summary outputs/crossfit/context_v1_summary.json --output-root models_reproduced
-.\.venv\Scripts\python.exe -m pip install -r scripts/requirements-build.txt
-.\.venv\Scripts\python.exe scripts/build_competition_exe.py
+..\.venv-bme-final\Scripts\python.exe -B scripts/train_event_stack.py --summary outputs/crossfit/context_v1_summary.json --output-root models_reproduced
 ```
 
-训练命令验证五折证据后全量重拟合模型到models_reproduced，不覆盖正式发布；上面的EXE构建仍使用正式发布指针指向的冻结权重，不会自动改用重训输出。新包生成在工作副本的dist/submission，不以工作副本根目录为清理目标。构建会校验权重、隔离环境自检并生成文件清单，无须原仓库Git历史。不同机器生成的EXE不承诺二进制哈希一致。
+这只训练历史复现模型到另一个目录，不会自动修改最终模型指针或本包EXE。当前0.533333模型的精确推理复现使用本包冻结权重；本地没有官方隐藏标签，无法从头重训保证同一官方分数。
 
+最终包重建使用：
+
+```powershell
+..\.venv-bme-final\Scripts\python.exe -B scripts/build_final_submission.py
+```
+
+应在独立工作副本中运行。该命令复用已验证SHA的原始EXE与最终模型，重新生成工作副本的dist/submission，并将相同EXE放到工作副本的submission/，不重新编译或训练。旧 `build_competition_exe.py`/`build_submission.py` 是历史0.65发布工具，不应用于重新选择最终推理模型；最终交付以本节命令及 `final_submission.json` 为准。包内容变动会改变全包清单，但原EXE必须保持上述SHA。
+
+## 7 验收范围与限制
+
+验收包含EXE与源码自检、中文路径、不同工作目录、真实同人多文件CSV逐字节一致、空输入、错误输入不覆盖已有结果以及可视化模型身份。原始官方示例已不在本机，不能声称重新跑过该示例；自检和接口一致性也不代表在新数据上保证F1。官方结果以组委会反馈为准。

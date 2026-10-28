@@ -42,14 +42,16 @@ def start_server(command, cwd, env=None):
         raise
 
 
-def exercise_bridge(base):
+def exercise_bridge(base, expected_version='160afaf81debf1ee'):
     def request(path, body=None, headers=None):
         with urllib.request.urlopen(urllib.request.Request(base+path, data=body, headers=headers or {}), timeout=60) as r:
             return r.read()
     health = json.loads(request('/api/health'))
-    assert health['status'] == 'ok' and health['run_key'] == '160afaf81debf1ee'
+    assert health['status'] == 'ok' and health['run_key'] == expected_version
     assert hashlib.sha256(request('/')).digest() == hashlib.sha256((ROOT/'dist/visual/index.html').read_bytes()).digest()
-    assert json.loads(request('/runtime/release-metadata.json'))['run_key'] == '160afaf81debf1ee'
+    metadata = json.loads(request('/runtime/release-metadata.json'))
+    assert metadata['run_key'] == 'official_deployment_f1_policy_v3'
+    assert metadata['historical_reproduction']['run_key'] == '160afaf81debf1ee'
     header = ['ACC_TIME','PPG_TIME','GYRO_TIME']+[f'PPG{i}' for i in range(1,45)]+['ACC_X','ACC_Y','ACC_Z','GYRO_X','GYRO_Y','GYRO_Z']
     rows = ['\t'.join(header)]
     for i in range(8):
@@ -59,7 +61,7 @@ def exercise_bridge(base):
                                {'Content-Type':'application/octet-stream','X-Session-Name':'collect_data1_2_3.txt'}))
     result = json.loads(request('/api/analyze', json.dumps({'tokens':[upload['token']]}).encode(),
                                {'Content-Type':'application/json'}))
-    assert result['prediction']['model']['run_key'] == '160afaf81debf1ee'
+    assert result['prediction']['model']['run_key'] == expected_version
     assert result['prediction']['events'] == []
     assert result['sessions'][0]['motion']['manifest']['sample_count'] == 8
     assert len(request(result['sessions'][0]['motion']['bin_url'])) == 8*32
@@ -108,7 +110,7 @@ def native_visual(tmp_path):
 
 def test_native_start_bat_needs_no_python_or_repository(native_visual):
     package, base = native_visual
-    exercise_bridge(base)
+    exercise_bridge(base, expected_version='official_deployment_f1_policy_v3')
     assert not (package/'results.csv').exists()
 
 

@@ -1,7 +1,7 @@
-"""Official competition source entry point."""
-from pathlib import Path
+"""Official competition inference entry."""
 import sys
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from scripts.competition_entry import main
-if __name__ == "__main__":
-    raise SystemExit(main())
+sys.dont_write_bytecode = True
+from pathlib import Path
+sys.path.insert(0,str(Path(__file__).resolve().parent))
+from scripts.final_submission_entry import main
+if __name__ == "__main__": raise SystemExit(main())

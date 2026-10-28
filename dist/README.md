@@ -1,5 +1,15 @@
 # Distribution Workspace
 
+## 最终提交（2026-10-28）
+
+最终官方推理锁定为 `official_deployment_f1_policy_v3`，反馈F1=0.533333（TP56/FP42/FN56）。
+直接送交仓库根目录 `submission/EatingDetection.exe`，不放ZIP；本目录 `submission/` 是同一EXE加
+完整源码、模型、可视化与详细复现说明。最终包重建使用 `python -B scripts/build_final_submission.py`，
+校验加 `--verify-only`，不使用历史构建命令选择模型。
+
+历史run160afaf81debf1ee的.651428仅保留本地训练复现；`inference/`、`event_stack/`仍为该历史版本，
+不是最终评分程序。最终选择见根目录 `release/final_submission.json`；以下旧发布和试测记录保留备查，不再启动实验。
+
 `dist/` 是发布与交付工作区。算法唯一真源在仓库 `src/pipeline/`；`dist/` 下的
 算法生成物由仓库脚本重建，不手工修改。`submission/README.md`允许维护提交说明；
 构建会保留其中的用户修改，其初始模板位于`scripts/official_submission_readme.md`。

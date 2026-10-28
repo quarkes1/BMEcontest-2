@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "status": "FINAL_SELECTED",
+  "selected_date": "2026-10-28",
+  "run_key": "official_deployment_f1_policy_v3",
+  "bundle": "models/event_stack/official_deployment_f1_policy_v3/deployment",
+  "executable_sha256": "fa6987b6244fe73c76ee741ea352fcc74e8e4de06de332812e99b1f1d963aa44",
+  "official_metrics": {"f1":0.5333333333333333,"ppv":0.5714285714285714,"sensitivity":0.5,"n_tp":56,"n_true":112,"n_pred":98,"fp":42,"fn":56},
+  "official_evidence_source": "Reported competition feedback; received executable SHA and hidden subject identity were not independently verified",
+  "reproduction_run_key": "160afaf81debf1ee",
+  "deployment_sha256": {
+    "feature_schema.json": "939ed3a65787abf68675a95704281490ab2519cfe1c5512a4118d5837b8aa34d",
+    "macro.joblib": "450bc1522bcd1bc5b78b18c4188e9c18a9d651fd80b112404c2e9689633cd4d7",
+    "manifest.json": "1c66ecffa292ca952581d528c49fbf895762a7ea0c6f9912cc7dc521eef6d011",
+    "micro.joblib": "9f2d89bd2091f2b0f5b8952954de9a33a79be7f56ecc046719d4bbdb3042e352",
+    "policy.json": "0f6b93ec89f2c3120e34ea0f7b4f291d0eda222eb23f0d2eeabea33200badcd7",
+    "run_config.json": "45658537bc32a0ce3301b5f0cef0f610a8b2d136247afa0c1bae891116b7aad3",
+    "verifier_lgbm.joblib": "2ebcef1468fd2dd4f2cd32b33bbe9cd9b2fa76c4053406442a82666043f2e4cb",
+    "verifier_logistic.joblib": "b3c981b38c63b509fb51cca7bd5cba8d5ab2b621c34901dbad2fc1bb6553b484"
+  }
+}

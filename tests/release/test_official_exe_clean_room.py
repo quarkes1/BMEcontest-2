@@ -45,7 +45,7 @@ def test_zip_roundtrip_relocated_exe_and_self_check(exe, tmp_path):
         neutral = base/'outside'; neutral.mkdir()
         result = invoke(relocated/exe.name,neutral,'--self-check')
         assert result.returncode == 0, result.stderr
-        assert json.loads(result.stdout)['run_key'] == '160afaf81debf1ee'
+        assert json.loads(result.stdout)['run_key'] == 'official_deployment_f1_policy_v3'
         # A fresh checkout normalizes text to LF; its manifest must still verify.
         committed_zip = base/'committed.zip'
         exported = subprocess.run(['git','archive','--format=zip','--output',str(committed_zip),
@@ -97,7 +97,7 @@ def test_nonempty_prediction_parity_against_canonical_release(exe, tmp_path):
     paths = sorted((config.SENSOR_DIR/sid).glob('collect_data*.txt'))
     if not paths: pytest.skip('local original fixture not available')
     raw = paths[0]
-    pred = Predictor.from_bundle(ROOT/'models/event_stack/160afaf81debf1ee/deployment')
+    pred = Predictor.from_bundle(ROOT/'models/event_stack/official_deployment_f1_policy_v3/deployment')
     expected = pred.trace_file(raw,subject_id='HNU00001').events
     assert expected, 'fixture must exercise non-empty model output'
     with tempfile.TemporaryDirectory(prefix='official-parity-',dir=tmp_path) as temporary:

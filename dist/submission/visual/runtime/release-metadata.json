@@ -1,11 +1,24 @@
 {
-  "run_key": "160afaf81debf1ee",
-  "outer_metrics": {
-    "f1": 0.6514285714285715,
-    "n_pred": 197,
-    "n_tp": 114,
-    "n_true": 153,
-    "ppv": 0.5786802030456852,
-    "sensitivity": 0.7450980392156863
+  "run_key": "official_deployment_f1_policy_v3",
+  "official_metrics": {
+    "f1": 0.5333333333333333,
+    "ppv": 0.5714285714285714,
+    "sensitivity": 0.5,
+    "n_tp": 56,
+    "n_true": 112,
+    "n_pred": 98,
+    "fp": 42,
+    "fn": 56
+  },
+  "historical_reproduction": {
+    "run_key": "160afaf81debf1ee",
+    "outer_metrics": {
+      "f1": 0.6514285714285715,
+      "n_pred": 197,
+      "n_tp": 114,
+      "n_true": 153,
+      "ppv": 0.5786802030456852,
+      "sensitivity": 0.7450980392156863
+    }
   }
 }

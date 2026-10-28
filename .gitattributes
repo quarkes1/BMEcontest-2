@@ -1,5 +1,6 @@
 * text=auto eol=lf
 models/event_stack/** -text
+dist/submission/models/event_stack/** -text -eol whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 dist/event_stack/** -text
 # .bat 需要保持 CRLF 字节（批处理对行尾敏感）；-text 禁用文本转换，-eol 清除 eol=lf 残留
 *.bat -text -eol

@@ -1,5 +1,8 @@
 # EatingSense 可视化应用
 
+最终推理版本为 `official_deployment_f1_policy_v3`，官方反馈F1=0.533333。
+Model页将官方成绩与历史本地0.651428复现成绩分开显示，二者不能混用。
+
 在本包上一级双击`start.bat`，或运行`EatingDetection.exe --visual --open`。
 不需要安装Python、Node、CUDA，不需要联网；浏览器访问`http://127.0.0.1:4173/`。
 
@@ -27,6 +30,6 @@
 前端源码位于app/src，构建工具位于tools。Python服务源码位于上一级src/pipeline/inference/。
 需要调试Python时，安装上一级requirements.txt后运行`python serve.py --open`。
 仅重建前端时需Node和npm，在visual/app执行`npm ci`、`npm test`、`npm run build`。
-发布指标由本包release和outputs/crossfit证据生成，不手工填写。
+当前官方指标由release/final_submission.json生成，历史本地指标由outputs/crossfit生成，不混作同一评估。
 端到端真实TXT测试需要另外提供合法原始数据，可通过BME_E2E_DATA_ROOT指定Data目录。
 重建前端会改变文件哈希；正式提交应使用重新生成清单并校验后的完整包。
