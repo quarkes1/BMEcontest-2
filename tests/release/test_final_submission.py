@@ -82,3 +82,58 @@ def test_final_inference_implementation_matches_evaluated_executable_source():
     for name,digest in evidence['source_sha256'].items():
         if name.startswith('src/'):
             assert sha(ROOT/name)==digest, f'inference implementation changed: {name}'
+
+
+def test_conflicting_root_exe_is_rejected_before_dist_publication(tmp_path):
+    module=api('build_final_submission')
+    target=tmp_path/'submission';target.mkdir();(target/'EatingDetection.exe').write_bytes(b'MZforeign')
+    dest=tmp_path/'dist/submission';dest.mkdir(parents=True);(dest/'old.txt').write_text('old package')
+    staging=tmp_path/'dist/staging';staging.mkdir();(staging/'EatingDetection.exe').write_bytes(b'MZnew')
+    with pytest.raises(ValueError): module.publish_final(staging,dest,tmp_path)
+    assert (dest/'old.txt').read_text()=='old package'
+    assert (target/'EatingDetection.exe').read_bytes()==b'MZforeign'
+    assert staging.exists()
+
+
+def test_root_exe_creation_rolls_back_when_dist_publication_fails(tmp_path,monkeypatch):
+    import hashlib
+    module=api('build_final_submission')
+    content=b'MZknown final'
+    monkeypatch.setattr(module,'EXPECTED_EXE',hashlib.sha256(content).hexdigest())
+    staging=tmp_path/'dist/staging';staging.mkdir(parents=True);(staging/'EatingDetection.exe').write_bytes(content)
+    dest=tmp_path/'dist/submission';dest.mkdir();(dest/'old.txt').write_text('old package')
+    def fail(*args): raise OSError('injected install failure')
+    monkeypatch.setattr(module,'_atomic_replace',fail)
+    with pytest.raises(OSError,match='injected'): module.publish_final(staging,dest,tmp_path)
+    assert not (tmp_path/'submission/EatingDetection.exe').exists()
+    assert (dest/'old.txt').read_text()=='old package'
+
+
+def test_existing_correct_root_exe_is_not_rewritten(tmp_path,monkeypatch):
+    import hashlib
+    module=api('build_final_submission');content=b'MZknown final'
+    monkeypatch.setattr(module,'EXPECTED_EXE',hashlib.sha256(content).hexdigest())
+    target=tmp_path/'submission';target.mkdir();exe=target/'EatingDetection.exe';exe.write_bytes(content)
+    before=exe.stat().st_mtime_ns
+    staging=tmp_path/'dist/staging';staging.mkdir(parents=True);(staging/'EatingDetection.exe').write_bytes(content)
+    dest=tmp_path/'dist/submission'
+    def fail(*args): raise AssertionError('must not recopy an already verified root EXE')
+    monkeypatch.setattr(module.shutil,'copyfile',fail)
+    module.publish_final(staging,dest,tmp_path)
+    assert exe.stat().st_mtime_ns==before and exe.read_bytes()==content
+    assert (dest/'EatingDetection.exe').read_bytes()==content
+
+
+def test_completed_two_target_publication_survives_backup_cleanup_error(tmp_path,monkeypatch):
+    import hashlib,os
+    module=api('build_final_submission');content=b'MZknown final'
+    monkeypatch.setattr(module,'EXPECTED_EXE',hashlib.sha256(content).hexdigest())
+    staging=tmp_path/'dist/staging';staging.mkdir(parents=True);(staging/'EatingDetection.exe').write_bytes(content)
+    dest=tmp_path/'dist/submission'
+    def install_then_cleanup_error(source,target):
+        os.replace(source,target)
+        raise OSError('injected backup cleanup failure')
+    monkeypatch.setattr(module,'_atomic_replace',install_then_cleanup_error)
+    with pytest.raises(OSError,match='backup cleanup'): module.publish_final(staging,dest,tmp_path)
+    assert (tmp_path/'submission/EatingDetection.exe').read_bytes()==content
+    assert (dest/'EatingDetection.exe').read_bytes()==content

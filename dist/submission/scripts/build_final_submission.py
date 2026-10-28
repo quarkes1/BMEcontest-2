@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -54,9 +55,49 @@ def verify_final(package):
     return manifest
 
 
+def final_output(root):
+    root=Path(root).resolve();target=root/'submission';output=target/'EatingDetection.exe'
+    from src.pipeline.artifacts import _is_link_or_reparse_point
+    if _is_link_or_reparse_point(target) or _is_link_or_reparse_point(output):
+        raise ValueError('linked final output is forbidden')
+    if target.exists():
+        if not target.is_dir() or any(p.name!='EatingDetection.exe' for p in target.iterdir()):
+            raise ValueError('root submission must contain only the final EXE')
+        if output.exists() and (not output.is_file() or sha(output)!=EXPECTED_EXE):
+            raise ValueError('unexpected existing root executable')
+    return target,output
+
+
+def publish_final(staging,dest,root):
+    """Publish the fixed root EXE first; restore its absence if package install fails."""
+    staging,dest=Path(staging),Path(dest);target,output=final_output(root)
+    created=False;temporary=None
+    try:
+        if not output.exists():
+            target.mkdir(exist_ok=True)
+            handle,filename=tempfile.mkstemp(prefix='.EatingDetection.',suffix='.tmp',dir=target)
+            os.close(handle);temporary=Path(filename)
+            shutil.copyfile(staging/'EatingDetection.exe',temporary)
+            if sha(temporary)!=EXPECTED_EXE: raise ValueError('staged root executable SHA differs')
+            if output.exists(): raise FileExistsError('root executable appeared during publication')
+            os.replace(temporary,output);temporary=None;created=True
+        _atomic_replace(staging,dest)
+        return dest
+    except BaseException:
+        # A pre-existing correct EXE is immutable and never touched by a rebuild.
+        completed=(not staging.exists() and (dest/'EatingDetection.exe').is_file()
+            and sha(dest/'EatingDetection.exe')==EXPECTED_EXE)
+        if created and not completed and output.is_file() and sha(output)==EXPECTED_EXE:
+            output.unlink()
+        raise
+    finally:
+        if temporary is not None and temporary.exists(): temporary.unlink()
+
+
 def build(root=ROOT):
     root=Path(root).resolve();selection,bundle=selected_model(root);exe=final_executable(root)
     historical=selection['reproduction_run_key'];dest=root/'dist/submission'
+    final_output(root)
     for path in (root/'dist',dest):
         if path.is_symlink(): raise ValueError('linked destination forbidden')
     if (dest/'ACC_test_data').exists() or (dest/'results.csv').exists():
@@ -101,15 +142,7 @@ def build(root=ROOT):
             result=subprocess.run(command,cwd=root,env=clean_environment(),capture_output=True,text=True,encoding='utf-8',errors='replace',timeout=180)
             if result.returncode or json.loads(result.stdout.strip().splitlines()[-1]).get('run_key')!=VERSION:
                 raise RuntimeError('final EXE/source self-check failed')
-        _atomic_replace(staging,dest)
-        target=root/'submission';target.mkdir(exist_ok=True)
-        if target.is_symlink(): raise ValueError('linked final output directory forbidden')
-        output=target/'EatingDetection.exe'
-        if output.exists() and sha(output)!=EXPECTED_EXE:
-            raise ValueError('unexpected existing executable in root submission directory')
-        shutil.copyfile(dest/'EatingDetection.exe',output)
-        if sha(output)!=EXPECTED_EXE: raise ValueError('final root copy SHA differs')
-        return dest
+        return publish_final(staging,dest,root)
     finally:
         if staging.exists():
             if staging.parent!=dest.parent or not staging.name.startswith('.submission.staging-'):
