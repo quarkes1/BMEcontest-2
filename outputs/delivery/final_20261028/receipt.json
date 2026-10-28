@@ -33,8 +33,8 @@
   "runtime_data_or_results_shipped": false,
   "report": "Archieves/作品报告_基于智能手表传感器的进食检测算法.pdf",
   "report_pages": 12,
-  "report_bytes": 708111,
-  "report_sha256": "1b473cf8883645e16675343fbe9bcf12192f4a02ecc7eb3020fcabb6713e6a1e",
+  "report_bytes": 718591,
+  "report_sha256": "f5c23050162dd5b3b6d4b21d8a1347b49ac2199a869e030b2caca1faf4afba7f",
   "report_cover_pixel_unchanged": true,
   "report_monitor_and_events_images_unchanged": true,
   "report_visual_review": "ALL_12_PAGES",
@@ -104,5 +104,15 @@
       "bytes": 5750782,
       "included_in_submission": false
     }
+  },
+  "report_navigation": {
+    "previous_report_sha256": "1b473cf8883645e16675343fbe9bcf12192f4a02ecc7eb3020fcabb6713e6a1e",
+    "toc_links": 21,
+    "body_reference_links": 10,
+    "bibliography_return_links": 7,
+    "outline_bookmarks": 22,
+    "all_link_targets_verified_after_reopen": true,
+    "all_12_page_text_and_pixels_unchanged": true,
+    "temporary_files_created": false
   }
 }
