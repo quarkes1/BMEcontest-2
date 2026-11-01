@@ -1,6 +1,6 @@
 # 数据集与缓存目录只忽略仓库根下的实体；不做无锚定匹配，
 # 否则 Windows 大小写不敏感会误伤 src/data、dist/submission/src/data 等。
-/Archieves/
+
 /Data/
 *.7z
 *.pyc
@@ -26,6 +26,7 @@ outputs/experiments/
 .coverage
 .mypy_cache/
 .ruff_cache/
+docs/
 
 # 可视化前端（app/ 为开发目录；构建产物 index.html/assets/runtime 仍提交）
 node_modules/
